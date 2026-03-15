@@ -1,0 +1,278 @@
+﻿// Prisma schema for ACE Studio
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  CREATOR
+  ADMIN
+}
+
+enum RightsTier {
+  SHARED
+  EXCLUSIVE
+}
+
+enum PriceTier {
+  SNACK
+  STANDARD
+  PREMIERE
+}
+
+enum AgeRating {
+  ALL
+  PG13
+  PG16
+  PG18
+}
+
+enum VideoType {
+  FEATURE
+  SERIES
+  SHORT
+  SKIT
+  DOCUMENTARY
+  ADVERT
+}
+
+enum VideoStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UnlockSource {
+  WALLET
+  PASS
+  PAYSTACK
+  ADMIN
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum P2PStatus {
+  CREATED
+  TRANSFERRED
+  UNLOCKED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum Gateway {
+  PAYSTACK
+  STRIPE
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  phone        String
+  passwordHash String
+  role         Role            @default(USER)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  wallet       Wallet?
+  creator      CreatorProfile?
+  videos       Video[]         @relation("CreatorVideos")
+  unlocks      Unlock[]
+  subscriptions SubscriptionPass[]
+  moderation   ModerationItem[] @relation("Moderator")
+  p2pTransfers P2PTransfer[]   @relation("P2PSender")
+  payments     Payment[]
+  referralLinks ReferralLink[]
+  familyLinks  FamilyLink[]
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balanceNaira  Int      @default(0)
+  credits       Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model CreatorProfile {
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  displayName        String
+  bio                String? 
+  payoutSplitStandard Float  @default(0.6)
+  payoutSplitExclusive Float @default(0.6)
+  verified           Boolean @default(false)
+  user               User    @relation(fields: [userId], references: [id])
+  contracts          Contract[]
+}
+
+model Video {
+  id          String       @id @default(cuid())
+  creatorId   String
+  title       String
+  description String
+  videoType   VideoType    @default(FEATURE)
+  ageRating   AgeRating    @default(ALL)
+  category    String       @default("General")
+  genres      String[]     @default([])
+  priceTier   PriceTier
+  rightsTier  RightsTier
+  status      VideoStatus @default(DRAFT)
+  durationSec Int
+  teaserSec   Int
+  highlightSeconds Int[]   @default([])
+  r2Key       String
+  posterKey   String?
+  tags        String[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  creator     User         @relation("CreatorVideos", fields: [creatorId], references: [id])
+  unlocks     Unlock[]
+  contracts   Contract[]
+  moderation  ModerationItem?
+  p2pTransfers P2PTransfer[]
+  @@index([status])
+  @@index([priceTier])
+}
+
+model Unlock {
+  id            String       @id @default(cuid())
+  userId        String
+  videoId       String
+  amountNaira   Int
+  amountMinor   Int?         // charged amount in minor units for non-NGN
+  currency      String       @default("NGN")
+  source        UnlockSource
+  watermarkText String
+  referralCode  String?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id])
+  video         Video        @relation(fields: [videoId], references: [id])
+  @@index([userId])
+  @@index([videoId])
+}
+
+model SubscriptionPass {
+  id              String   @id @default(cuid())
+  userId          String
+  creditsRemaining Int
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
+  @@index([userId])
+}
+
+model Contract {
+  id          String     @id @default(cuid())
+  creatorId   String
+  videoId     String
+  rightsTier  RightsTier
+  contractText String
+  createdAt   DateTime   @default(now())
+  creator     CreatorProfile @relation(fields: [creatorId], references: [id])
+  video       Video      @relation(fields: [videoId], references: [id])
+}
+
+model ModerationItem {
+  id          String           @id @default(cuid())
+  videoId     String           @unique
+  status      ModerationStatus @default(PENDING)
+  reviewerId  String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  video       Video            @relation(fields: [videoId], references: [id])
+  reviewer    User?            @relation("Moderator", fields: [reviewerId], references: [id])
+}
+
+model NodeHealth {
+  id          String   @id @default(cuid())
+  nodeName    String
+  region      String
+  cpuLoad     Float
+  memoryUsed  Float
+  diskFreeGb  Float
+  cacheHitRate Float
+  latencyMs   Float
+  createdAt   DateTime @default(now())
+  @@index([nodeName])
+}
+
+model P2PTransfer {
+  id            String    @id @default(cuid())
+  senderId      String
+  recipientPhone String
+  videoId       String
+  aceFileKey    String
+  wrappedKey    String
+  unlockFee     Int
+  status        P2PStatus @default(CREATED)
+  createdAt     DateTime  @default(now())
+  sender        User      @relation("P2PSender", fields: [senderId], references: [id])
+  video         Video     @relation(fields: [videoId], references: [id])
+  @@index([recipientPhone])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  reference   String        @unique
+  amountNaira Int
+  amountMinor Int?
+  currency    String        @default("NGN")
+  gateway     Gateway       @default(PAYSTACK)
+  feeMinor    Int?          // gateway fee in minor units
+  netMinor    Int?          // net after fees in minor units
+  referralCode String?
+  status      PaymentStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
+}
+
+model ReferralLink {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  promoterId       String
+  commissionPercent Int
+  targetVideoId    String?
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+  promoter         User     @relation(fields: [promoterId], references: [id])
+  targetVideo      Video?   @relation(fields: [targetVideoId], references: [id])
+  events           ReferralEvent[]
+}
+
+model ReferralEvent {
+  id           String    @id @default(cuid())
+  referralId   String
+  unlockId     String?
+  paymentId    String?
+  commissionNaira Int    @default(0)
+  createdAt    DateTime  @default(now())
+  referral     ReferralLink @relation(fields: [referralId], references: [id])
+}
+
+model FamilyLink {
+  id            String   @id @default(cuid())
+  ownerId       String
+  recipientPhone String
+  createdAt     DateTime @default(now())
+  owner         User     @relation(fields: [ownerId], references: [id])
+}
+
