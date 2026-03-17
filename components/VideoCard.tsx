@@ -46,7 +46,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   return (
     <Link href={`/v/${video.id}`} className="video-card">
       <div className="video-thumb">
-        <span>{video.posterKey ? 'Poster Ready' : 'ACE'} </span>
+        <span>{video.posterKey ? 'Poster Ready' : 'Ace Studio'} </span>
       </div>
       <div className="video-meta">
         <strong>{video.title}</strong>

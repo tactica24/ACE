@@ -30,7 +30,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       ? formatNaira(Math.round(regionalPrice.amountMinor / 100))
       : `${regionalPrice.currency} ${(regionalPrice.amountMinor / 100).toFixed(2)}`;
   let unlocked = false;
-  let watermarkText = 'ACE Preview';
+  let watermarkText = 'Ace Studio Preview';
 
   if (user) {
     const unlock = await prisma.unlock.findFirst({
@@ -57,7 +57,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     <div className="section">
       <div className="container" style={{ display: 'grid', gap: 24 }}>
         <div>
-          <div className="pill">{video.rightsTier === 'EXCLUSIVE' ? 'ACE Exclusive' : 'Shared Rights'}</div>
+          <div className="pill">{video.rightsTier === 'EXCLUSIVE' ? 'Ace Studio Exclusive' : 'Shared Rights'}</div>
           <h1 className="hero-title" style={{ marginTop: 12 }}>{video.title}</h1>
           <p className="muted">{video.description}</p>
           <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
@@ -74,22 +74,23 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        {user ? (
-          <AcePlayer
-            videoId={video.id}
-            teaserSec={video.teaserSec}
-            priceLabel={priceLabel}
-            initialUnlocked={unlocked}
-            watermarkText={watermarkText}
-            highlightSeconds={video.highlightSeconds}
-          />
-        ) : (
+        <AcePlayer
+          videoId={video.id}
+          teaserSec={video.teaserSec}
+          priceLabel={priceLabel}
+          initialUnlocked={unlocked}
+          watermarkText={watermarkText}
+          highlightSeconds={video.highlightSeconds}
+          isAuthenticated={Boolean(user)}
+          loginHref={`/auth/login?next=/v/${video.id}`}
+        />
+        {!user ? (
           <div className="card">
-            <h3>Sign in to start watching</h3>
-            <p className="muted">ACE uses wallet unlocks and dynamic watermarking. Sign in to stream.</p>
-            <Link className="btn btn-primary" href="/auth/login">Sign in</Link>
+            <h3>Preview unlocked, full film requires sign in</h3>
+            <p className="muted">Ace Studio lets new viewers watch the teaser first, then sign in to unlock the full title.</p>
+            <Link className="btn btn-primary" href={`/auth/login?next=/v/${video.id}`}>Sign in</Link>
           </div>
-        )}
+        ) : null}
 
         <div className="grid">
           <div className="card">
@@ -99,7 +100,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           </div>
           <div className="card">
             <h3>Offline Share (.ace)</h3>
-            <p className="muted">Send an encrypted .ace file over Wi-Fi Direct. Recipient unlocks with ACE wallet.</p>
+            <p className="muted">Send an encrypted .ace file over Wi-Fi Direct. Recipient unlocks with the Ace Studio wallet.</p>
             <Link className="btn btn-ghost" href="/wallet">Manage wallet</Link>
           </div>
           <div className="card">

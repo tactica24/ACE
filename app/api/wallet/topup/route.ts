@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         {
           price_data: {
             currency: charge.currency.toLowerCase(),
-            product_data: { name: 'ACE Wallet Top-up' },
+            product_data: { name: 'Ace Studio Wallet Top-up' },
             unit_amount: charge.amountMinor
           },
           quantity: 1

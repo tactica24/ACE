@@ -1,4 +1,5 @@
-ï»¿import Link from 'next/link';
+import Image from 'next/image';
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { verifyAuthToken } from '@/lib/auth';
 
@@ -19,8 +20,13 @@ export default function TopNav() {
     <nav className="nav">
       <div className="container nav-inner">
         <Link className="brand" href="/">
-          <span className="brand-mark">AC</span>
-          ACE Studio
+          <span className="brand-mark brand-mark-image">
+            <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={38} height={38} priority />
+          </span>
+          <span>
+            <strong>Ace Studio</strong>
+            <small>TV • Mobile • Creator Economy</small>
+          </span>
         </Link>
         <div className="nav-links">
           <Link href="/browse">Browse</Link>
@@ -38,7 +44,7 @@ export default function TopNav() {
           ) : (
             <>
               <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
-              <Link className="btn btn-primary" href="/auth/register">Join ACE</Link>
+              <Link className="btn btn-primary" href="/auth/register">Join Ace Studio</Link>
             </>
           )}
         </div>
@@ -46,6 +52,3 @@ export default function TopNav() {
     </nav>
   );
 }
-
-
-

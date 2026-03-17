@@ -13,7 +13,7 @@ export default async function HighlightsPage() {
     <div className="section">
       <div className="container">
         <div style={{ marginBottom: 24 }}>
-          <div className="pill">ACE Highlights</div>
+          <div className="pill">Ace Studio Highlights</div>
           <h1 className="hero-title" style={{ marginTop: 12 }}>Preview the moments that matter</h1>
           <p className="muted">Curated highlight scenes and teaser moments to entice viewers.</p>
         </div>

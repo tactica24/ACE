@@ -1,6 +1,6 @@
-﻿# ACE Studio
+# Ace Studio
 
-ACE Studio is a production-ready, Africa-first video marketplace with Lagos Relay caching, wallet unlocks, creator analytics, and admin moderation.
+Ace Studio is a production-ready, Africa-first video marketplace with Lagos Relay caching, wallet unlocks, creator analytics, and admin moderation.
 
 ## Stack
 - Next.js App Router
@@ -66,7 +66,7 @@ Streaming requests first check `storage/cache`. Cache misses pull from R2 and pe
 ## Success targets
 - Latency: < 20ms in Nigeria
 - Wallet unlock to play: < 2 seconds
-- Cost per 90-minute view: < ₦5
+- Cost per 90-minute view: < N5
 
 ## Mobile app (React Native)
 The native app lives in `mobile/` (Expo + Expo Router).
@@ -82,5 +82,3 @@ For device testing, use your machine's LAN IP for `EXPO_PUBLIC_API_URL`.
 
 ## Family Pass (Diaspora)
 Diaspora users can purchase a Home Bundle that adds wallet credits to a linked Nigerian phone number. Configure credits with `ACE_FAMILY_PASS_CREDITS`.
-
-

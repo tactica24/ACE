@@ -79,6 +79,13 @@ enum Gateway {
   STRIPE
 }
 
+enum PairingStatus {
+  PENDING
+  CLAIMED
+  COMPLETED
+  EXPIRED
+}
+
 model User {
   id           String          @id @default(cuid())
   email        String          @unique
@@ -97,6 +104,7 @@ model User {
   payments     Payment[]
   referralLinks ReferralLink[]
   familyLinks  FamilyLink[]
+  tvPairings   TvPairingSession[] @relation("TvPairingOwner")
 }
 
 model Wallet {
@@ -113,6 +121,17 @@ model CreatorProfile {
   userId             String  @unique
   displayName        String
   bio                String? 
+  phoneVerified      Boolean @default(false)
+  emailVerified      Boolean @default(false)
+  ninNumber          String?
+  ninVerified        Boolean @default(false)
+  idCardUrl          String?
+  idVerified         Boolean @default(false)
+  bankName           String?
+  bankAccountName    String?
+  bankAccountNumber  String?
+  bankVerified       Boolean @default(false)
+  reliabilityNotes   String?
   payoutSplitStandard Float  @default(0.6)
   payoutSplitExclusive Float @default(0.6)
   verified           Boolean @default(false)
@@ -274,5 +293,20 @@ model FamilyLink {
   recipientPhone String
   createdAt     DateTime @default(now())
   owner         User     @relation(fields: [ownerId], references: [id])
+}
+
+model TvPairingSession {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  deviceName   String?
+  platform     String?
+  status       PairingStatus @default(PENDING)
+  claimedById  String?
+  expiresAt    DateTime
+  claimedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  claimedBy    User?         @relation("TvPairingOwner", fields: [claimedById], references: [id])
+  @@index([status, expiresAt])
 }
 

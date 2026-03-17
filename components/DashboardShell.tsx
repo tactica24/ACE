@@ -38,7 +38,7 @@ export function DashboardShell({
     <div className="section">
       <div className="container">
         <div style={{ marginBottom: 24 }}>
-          <div className="pill">ACE Studio</div>
+          <div className="pill">Ace Studio</div>
           <h1 className="hero-title" style={{ margin: '12px 0 4px' }}>{title}</h1>
           <p className="muted">{description}</p>
         </div>

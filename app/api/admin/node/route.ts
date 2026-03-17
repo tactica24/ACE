@@ -9,20 +9,27 @@ export async function GET(req: NextRequest) {
   const auth = getAuthFromRequest(req);
   if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const startedAt = Date.now();
   const health = await getNodeHealth();
-  const latencyMs = Math.max(8, Math.min(18, 12 + (Math.random() - 0.5) * 4));
-
-  await prisma.nodeHealth.create({
-    data: {
-      nodeName: health.nodeName,
-      region: health.region,
-      cpuLoad: health.cpuLoad,
-      memoryUsed: health.memoryUsed,
-      diskFreeGb: health.diskFreeGb,
-      cacheHitRate: health.cacheHitRate,
-      latencyMs
-    }
+  const latencyMs = Math.max(1, Date.now() - startedAt);
+  const latest = await prisma.nodeHealth.findFirst({
+    where: { nodeName: health.nodeName },
+    orderBy: { createdAt: 'desc' }
   });
+
+  if (!latest || Date.now() - latest.createdAt.getTime() > 60_000) {
+    await prisma.nodeHealth.create({
+      data: {
+        nodeName: health.nodeName,
+        region: health.region,
+        cpuLoad: health.cpuLoad,
+        memoryUsed: health.memoryUsed,
+        diskFreeGb: health.diskFreeGb,
+        cacheHitRate: health.cacheHitRate,
+        latencyMs
+      }
+    });
+  }
 
   return NextResponse.json({ ...health, latencyMs });
 }

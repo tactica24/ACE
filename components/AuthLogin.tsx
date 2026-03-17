@@ -1,11 +1,15 @@
-﻿'use client';
+'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 export default function AuthLogin() {
+  const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const next = params.get('next') || '/browse';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +21,7 @@ export default function AuthLogin() {
         body: JSON.stringify({ email, password })
       });
       if (!res.ok) throw new Error('Login failed');
-      window.location.href = '/browse';
+      window.location.href = next;
     } catch {
       alert('Invalid credentials.');
     } finally {
@@ -35,6 +39,3 @@ export default function AuthLogin() {
     </form>
   );
 }
-
-
-

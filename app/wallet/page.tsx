@@ -32,7 +32,7 @@ export default async function WalletPage() {
     <div className="section">
       <div className="container">
         <div style={{ marginBottom: 20 }}>
-          <div className="pill">ACE Wallet</div>
+          <div className="pill">Ace Studio Wallet</div>
           <h1 className="hero-title" style={{ marginTop: 12 }}>Instant unlocks, no delay.</h1>
           <p className="muted">Wallet unlock to play in under 2 seconds.</p>
         </div>

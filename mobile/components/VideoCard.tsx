@@ -34,13 +34,13 @@ export default function VideoCard({ video, onPress }: { video: MobileVideo; onPr
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.thumb}>
-        <Text style={styles.thumbText}>ACE</Text>
+        <Text style={styles.thumbText}>AS</Text>
       </View>
-      <View style={styles.meta}>
+      <View style={styles.metaBlock}>
         <Text style={styles.title}>{video.title}</Text>
         <Text style={styles.desc} numberOfLines={2}>{video.description}</Text>
         {(video.category || video.videoType || video.ageRating) ? (
-          <Text style={styles.meta}>
+          <Text style={styles.metaText}>
             {[video.category, video.videoType, video.ageRating ? (ageLabel[video.ageRating] ?? video.ageRating) : null]
               .filter(Boolean)
               .join(' · ')}
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.brand
   },
-  meta: { padding: 14, gap: 6 },
+  metaBlock: { padding: 14, gap: 6 },
   title: { fontWeight: '700', color: theme.ink, fontSize: 16 },
   desc: { color: theme.muted },
-  meta: { color: theme.muted, fontSize: 12 },
+  metaText: { color: theme.muted, fontSize: 12 },
   price: { color: theme.accent, fontWeight: '700' }
 });

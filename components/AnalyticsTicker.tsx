@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 
@@ -14,7 +14,18 @@ export default function AnalyticsTicker() {
 
   useEffect(() => {
     let active = true;
-    const fetchData = async () => {
+    const eventSource = new EventSource('/api/studio/analytics/live');
+
+    eventSource.onmessage = (event) => {
+      if (!active) return;
+      try {
+        setData(JSON.parse(event.data));
+      } catch {
+        return;
+      }
+    };
+
+    eventSource.onerror = async () => {
       try {
         const res = await fetch('/api/studio/analytics');
         const json = await res.json();
@@ -23,11 +34,10 @@ export default function AnalyticsTicker() {
         if (active) setData(null);
       }
     };
-    fetchData();
-    const interval = setInterval(fetchData, 6000);
+
     return () => {
       active = false;
-      clearInterval(interval);
+      eventSource.close();
     };
   }, []);
 
@@ -60,6 +70,3 @@ export default function AnalyticsTicker() {
     </div>
   );
 }
-
-
-

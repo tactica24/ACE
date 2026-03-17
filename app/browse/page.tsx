@@ -31,7 +31,7 @@ export default async function BrowsePage() {
       <div className="container">
         <div className="hero" style={{ marginBottom: 24 }}>
           <div>
-            <div className="pill">ACE Marketplace</div>
+            <div className="pill">Ace Studio Marketplace</div>
             <h1 className="hero-title" style={{ marginTop: 12 }}>Browse Africa-first cinema</h1>
             <p className="muted">Pay per title, stream instantly, share offline with secure unlocks.</p>
           </div>

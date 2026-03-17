@@ -1,6 +1,7 @@
-ï»¿import { prisma } from '@/lib/db';
-import { VideoStatus } from '@prisma/client';
 import Link from 'next/link';
+import { VideoStatus } from '@prisma/client';
+import TvPairingPanel from '@/components/TvPairingPanel';
+import { prisma } from '@/lib/db';
 
 export default async function TvPage() {
   const videos = await prisma.video.findMany({
@@ -26,9 +27,12 @@ export default async function TvPage() {
     <div style={{ padding: '60px 0' }}>
       <div className="container">
         <div style={{ marginBottom: 32 }}>
-          <div className="pill">ACE TV</div>
+          <div className="pill">Ace Studio TV</div>
           <h1 className="hero-title" style={{ fontSize: '3rem', marginTop: 12 }}>Lean-back cinema for the big screen</h1>
           <p className="muted" style={{ fontSize: '1.1rem' }}>Remote-friendly tiles, quick unlocks, zero buffering.</p>
+        </div>
+        <div style={{ marginBottom: 32 }}>
+          <TvPairingPanel />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
           {videos.map((video) => (
@@ -40,7 +44,7 @@ export default async function TvPage() {
                 <div style={{ padding: 16 }}>
                   <strong style={{ display: 'block', fontSize: '1.1rem' }}>{video.title}</strong>
                   <span className="muted" style={{ display: 'block', marginTop: 6 }}>
-                    {video.category} Â· {labelize(video.videoType)} Â· {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
+                    {video.category} · {labelize(video.videoType)} · {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
                   </span>
                 </div>
               </div>

@@ -20,7 +20,7 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={{ gap: 12 }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: theme.ink }}>ACE Studio</Text>
+        <Text style={{ fontSize: 28, fontWeight: '800', color: theme.ink }}>Ace Studio</Text>
         <Text style={{ color: theme.muted }}>
           Africa-first video marketplace with instant wallet unlocks.
         </Text>

@@ -7,7 +7,7 @@ const space = Space_Grotesk({ subsets: ['latin'], variable: '--font-space', disp
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' });
 
 export const metadata = {
-  title: 'ACE Studio',
+  title: 'Ace Studio',
   description: 'African Content Economy marketplace for creators.',
   icons: {
     icon: '/favicon.svg'

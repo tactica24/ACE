@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         {
           price_data: {
             currency: charge.currency.toLowerCase(),
-            product_data: { name: 'ACE Hybrid Pass' },
+            product_data: { name: 'Ace Studio Hybrid Pass' },
             unit_amount: charge.amountMinor
           },
           quantity: 1

@@ -6,7 +6,7 @@ export default function RegisterPage() {
     <div className="section">
       <div className="container" style={{ maxWidth: 480 }}>
         <div className="card">
-          <h2>Create your ACE account</h2>
+          <h2>Create your Ace Studio account</h2>
           <p className="muted">Unlock, publish, and monetize.</p>
           <AuthRegister />
           <p className="muted" style={{ marginTop: 12 }}>

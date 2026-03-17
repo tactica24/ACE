@@ -1,22 +1,31 @@
-﻿{
+{
   "expo": {
-    "name": "ACE Studio",
+    "name": "Ace Studio",
     "slug": "ace-studio",
     "scheme": "acestudio",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/icon.png",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0d7b5f"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1026"
       }
     },
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1026"
+    },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "expoRouter": {

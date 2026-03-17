@@ -1,12 +1,16 @@
-﻿'use client';
+'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 export default function AuthRegister() {
+  const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const next = params.get('next') || '/browse';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +22,7 @@ export default function AuthRegister() {
         body: JSON.stringify({ email, phone, password })
       });
       if (!res.ok) throw new Error('Register failed');
-      window.location.href = '/browse';
+      window.location.href = next;
     } catch {
       alert('Unable to create account.');
     } finally {
@@ -37,6 +41,3 @@ export default function AuthRegister() {
     </form>
   );
 }
-
-
-

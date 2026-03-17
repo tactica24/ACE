@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -8,7 +8,9 @@ export default function AcePlayer({
   priceLabel,
   initialUnlocked,
   watermarkText,
-  highlightSeconds = []
+  highlightSeconds = [],
+  isAuthenticated,
+  loginHref = '/auth/login'
 }: {
   videoId: string;
   teaserSec: number;
@@ -16,6 +18,8 @@ export default function AcePlayer({
   initialUnlocked: boolean;
   watermarkText: string;
   highlightSeconds?: number[];
+  isAuthenticated: boolean;
+  loginHref?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -25,17 +29,28 @@ export default function AcePlayer({
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/stream/token?videoId=${videoId}`)
+    const tokenUrl = isAuthenticated
+      ? `/api/stream/token?videoId=${videoId}`
+      : `/api/stream/token?videoId=${videoId}&teaser=1`;
+
+    fetch(tokenUrl)
       .then((res) => res.json())
       .then((data) => {
         if (!active) return;
-        setStreamUrl(`/api/stream/${videoId}?token=${data.token}`);
+        const canPlayHls = typeof document !== 'undefined'
+          ? document.createElement('video').canPlayType('application/vnd.apple.mpegurl') !== ''
+          : false;
+        const nextUrl = canPlayHls
+          ? `/api/hls/${videoId}/master.m3u8?token=${data.token}`
+          : `/api/stream/${videoId}?token=${data.token}`;
+        setStreamUrl(nextUrl);
       })
       .catch(() => null);
+
     return () => {
       active = false;
     };
-  }, [videoId]);
+  }, [isAuthenticated, videoId]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -53,6 +68,10 @@ export default function AcePlayer({
   }, [teaserSec, unlocked]);
 
   const handleUnlock = async () => {
+    if (!isAuthenticated) {
+      window.location.href = loginHref;
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/unlock', {
@@ -96,12 +115,16 @@ export default function AcePlayer({
       {showPaywall && !unlocked ? (
         <div className="paywall">
           <div>
-            <h3 style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>Unlock Full Video</h3>
+            <h3 style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>
+              {isAuthenticated ? 'Unlock Full Video' : 'Sign in to unlock'}
+            </h3>
             <p className="muted" style={{ color: '#f7efe0' }}>
-              You have reached the teaser limit. Pay {priceLabel} to continue.
+              {isAuthenticated
+                ? `You have reached the teaser limit. Pay ${priceLabel} to continue.`
+                : 'You have reached the teaser limit. Sign in to continue with wallet or pass unlocks.'}
             </p>
             <button className="btn btn-primary" onClick={handleUnlock} disabled={loading}>
-              {loading ? 'Processing...' : `Pay ${priceLabel}`}
+              {loading ? 'Processing...' : isAuthenticated ? `Pay ${priceLabel}` : 'Sign in'}
             </button>
           </div>
         </div>
@@ -133,6 +156,3 @@ export default function AcePlayer({
     </div>
   );
 }
-
-
-

@@ -1,8 +1,9 @@
-﻿import VideoCard from '@/components/VideoCard';
-import { prisma } from '@/lib/db';
-import { VideoStatus, PriceTier } from '@prisma/client';
+import Image from 'next/image';
 import Link from 'next/link';
+import { PriceTier, VideoStatus } from '@prisma/client';
 import { headers } from 'next/headers';
+import VideoCard from '@/components/VideoCard';
+import { prisma } from '@/lib/db';
 import { getRegionalPrice } from '@/lib/pricing';
 
 export default async function HomePage() {
@@ -33,13 +34,22 @@ export default async function HomePage() {
       <section className="section">
         <div className="container hero">
           <div className="hero-card">
-            <div className="pill">MASTER PRD · Lagos Relay Ready</div>
-            <h1 className="hero-title">ACE Studio powers Africa-first video monetization.</h1>
+            <div className="pill">Streaming for Africa � Living room ready</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '22px 0 14px' }}>
+              <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={88} height={88} priority />
+              <div>
+                <h1 className="hero-title">Ace Studio</h1>
+                <p className="hero-sub" style={{ marginTop: 8 }}>
+                  Premium pay-per-view cinema, creator payouts, and TV-first streaming with neon polish.
+                </p>
+              </div>
+            </div>
             <p className="hero-sub">
-              Replace low-yield ad models with micro-transactions, edge-cached streaming, and creator-led licensing.
+              Replace low-yield ad models with micro-transactions, edge-cached playback, creator licensing, and living-room discovery.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
               <Link className="btn btn-primary" href="/browse">Explore Catalog</Link>
+              <Link className="btn btn-ghost" href="/tv">Open TV Experience</Link>
               <Link className="btn btn-ghost" href="/studio">Creator Dashboard</Link>
             </div>
           </div>
@@ -47,17 +57,17 @@ export default async function HomePage() {
             <div className="card">
               <div className="badge">Latency Target</div>
               <h3 className="section-title" style={{ marginTop: 12 }}>Under 20ms in Nigeria</h3>
-              <p className="muted">Lagos Relay caches once and serves locally for ultra-low latency.</p>
+              <p className="muted">Regional relays in Lagos and Abuja keep HLS playback close to viewers.</p>
             </div>
             <div className="card">
               <div className="badge">Revenue Split</div>
               <h3 className="section-title" style={{ marginTop: 12 }}>60% creator share</h3>
-              <p className="muted">Net split after gateway fees. Platform keeps 40% to sustain relays.</p>
+              <p className="muted">Creator revenue stays protected while referrals are paid from the platform share.</p>
             </div>
             <div className="card">
-              <div className="badge">Hybrid Pass</div>
-              <h3 className="section-title" style={{ marginTop: 12 }}>NGN 2,500 / month</h3>
-              <p className="muted">30 credits to keep margins healthy without killing volume.</p>
+              <div className="badge">Trust and Safety</div>
+              <h3 className="section-title" style={{ marginTop: 12 }}>Watermarked, moderated, verified</h3>
+              <p className="muted">Signed HLS URLs, creator onboarding, admin moderation, and removal from production when needed.</p>
             </div>
           </div>
         </div>
@@ -76,14 +86,10 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="card">No approved titles yet. Upload your first release in ACE Studio.</div>
+            <div className="card">No approved titles yet. Upload your first release in Ace Studio.</div>
           )}
         </div>
       </section>
     </div>
   );
 }
-
-
-
-

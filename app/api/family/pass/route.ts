@@ -54,14 +54,14 @@ export async function POST(req: NextRequest) {
     mode: 'payment',
     customer_email: auth.email,
     line_items: [
-      {
-        price_data: {
-          currency: price.currency.toLowerCase(),
-          product_data: { name: `ACE Home Bundle (${credits} credits)` },
-          unit_amount: price.amountMinor
-        },
-        quantity: 1
-      }
+        {
+          price_data: {
+            currency: price.currency.toLowerCase(),
+            product_data: { name: `Ace Studio Home Bundle (${credits} credits)` },
+            unit_amount: price.amountMinor
+          },
+          quantity: 1
+        }
     ],
     metadata: { userId: auth.sub, type: 'family', reference, recipientUserId: recipient.id, credits: `${credits}` },
     success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,

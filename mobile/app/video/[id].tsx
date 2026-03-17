@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View, StyleSheet, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
@@ -17,7 +17,7 @@ export default function VideoDetailScreen() {
   const [unlocked, setUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
-  const [watermarkText, setWatermarkText] = useState('ACE Preview');
+  const [watermarkText, setWatermarkText] = useState('Ace Studio Preview');
 
   useEffect(() => {
     if (!id) return;
@@ -43,7 +43,7 @@ export default function VideoDetailScreen() {
     if (!id) return;
     apiGet<{ token: string; guest?: boolean }>(`/api/stream/token?videoId=${id}&teaser=1`)
       .then((payload) => {
-        setStreamUrl(`${BASE_URL}/api/stream/${id}?token=${payload.token}`);
+        setStreamUrl(`${BASE_URL}/api/hls/${id}/master.m3u8?token=${payload.token}`);
         setAuthRequired(false);
       })
       .catch(() => {
@@ -81,7 +81,7 @@ export default function VideoDetailScreen() {
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
   const priceLabel = data?.price
     ? data.price.currency === 'NGN'
-      ? `₦${Math.round(data.price.amountMinor / 100)}`
+      ? `?${Math.round(data.price.amountMinor / 100)}`
       : `${data.price.currency} ${(data.price.amountMinor / 100).toFixed(2)}`
     : null;
 
@@ -89,7 +89,7 @@ export default function VideoDetailScreen() {
     <Screen>
       <Text style={styles.title}>{data?.video?.title ?? 'Loading...'}</Text>
       <Text style={styles.desc}>{data?.video?.description}</Text>
-      <Text style={styles.meta}>{[data?.video?.category, data?.video?.videoType, data?.video?.ageRating].filter(Boolean).join(' · ')}</Text>
+      <Text style={styles.meta}>{[data?.video?.category, data?.video?.videoType, data?.video?.ageRating].filter(Boolean).join(' � ')}</Text>
       {streamUrl ? (
         <View style={styles.player}>
           <Video

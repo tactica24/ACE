@@ -7,10 +7,10 @@ export default function LoginPage() {
       <div className="container" style={{ maxWidth: 480 }}>
         <div className="card">
           <h2>Sign in</h2>
-          <p className="muted">Welcome back to ACE Studio.</p>
+          <p className="muted">Welcome back to Ace Studio.</p>
           <AuthLogin />
           <p className="muted" style={{ marginTop: 12 }}>
-            New to ACE? <Link href="/auth/register">Create an account</Link>
+            New to Ace Studio? <Link href="/auth/register">Create an account</Link>
           </p>
         </div>
       </div>
