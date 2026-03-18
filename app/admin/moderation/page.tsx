@@ -1,26 +1,31 @@
-﻿import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { prisma } from '@/lib/db';
 import ModerationQueue from '@/components/ModerationQueue';
 
 export default async function ModerationPage() {
   const items = await prisma.moderationItem.findMany({
-    where: { status: 'PENDING' },
-    include: { video: true }
+    where: { status: { in: ['PENDING', 'APPROVED'] } },
+    include: { video: true },
+    orderBy: { createdAt: 'desc' },
+    take: 50
   });
   const queueItems = items.map((item) => ({
     id: item.id,
     status: item.status,
+    notes: item.notes,
     video: {
       id: item.video.id,
       title: item.video.title,
-      description: item.video.description
+      description: item.video.description,
+      category: item.video.category,
+      status: item.video.status
     }
   }));
 
   return (
     <DashboardShell
       title="Moderation Queue"
-      description="Review uploads for rights, quality, and copyright integrity."
+      description="Review uploads, approve releases, and remove films from production with audit reasons."
       sideNav={
         <SideNav
           active="/admin/moderation"
@@ -38,7 +43,3 @@ export default async function ModerationPage() {
     </DashboardShell>
   );
 }
-
-
-
-

@@ -1,4 +1,4 @@
-﻿version: '3.9'
+version: '3.9'
 services:
   db:
     image: postgres:16
@@ -11,6 +11,70 @@ services:
       - '5432:5432'
     volumes:
       - dbdata:/var/lib/postgresql/data
+
+  app:
+    image: node:20-bookworm
+    working_dir: /workspace
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./:/workspace
+    env_file:
+      - .env
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+
+  relay-lagos:
+    image: nginx:1.27-alpine
+    depends_on:
+      - app
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/relay.conf:/etc/nginx/conf.d/default.conf:ro
+      - ace_lagos_cache:/var/cache/nginx/ace
+    ports:
+      - '8081:80'
+
+  relay-abuja:
+    image: nginx:1.27-alpine
+    depends_on:
+      - app
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/relay.conf:/etc/nginx/conf.d/default.conf:ro
+      - ace_abuja_cache:/var/cache/nginx/ace
+    ports:
+      - '8082:80'
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    environment:
+      GF_SECURITY_ADMIN_USER: ace
+      GF_SECURITY_ADMIN_PASSWORD: aceadmin
+    volumes:
+      - ./infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infra/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '3001:3000'
+    depends_on:
+      - prometheus
+
 volumes:
   dbdata:
-
+  ace_lagos_cache:
+  ace_abuja_cache:
+  grafana_data:

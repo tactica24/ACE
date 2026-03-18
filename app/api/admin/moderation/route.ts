@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
@@ -9,18 +9,23 @@ export async function GET(req: NextRequest) {
   if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const items = await prisma.moderationItem.findMany({
-    where: { status: 'PENDING' },
-    include: { video: true }
+    where: { status: { in: ['PENDING', 'APPROVED'] } },
+    include: { video: true },
+    orderBy: { createdAt: 'desc' },
+    take: 50
   });
 
   return NextResponse.json({
     items: items.map((item) => ({
       id: item.id,
       status: item.status,
+      notes: item.notes,
       video: {
         id: item.video.id,
         title: item.video.title,
-        description: item.video.description
+        description: item.video.description,
+        category: item.video.category,
+        status: item.video.status
       }
     }))
   });

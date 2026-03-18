@@ -1,8 +1,10 @@
-﻿export const theme = {
-  bg: '#f7f4ef',
-  surface: '#ffffff',
-  ink: '#1b1a17',
-  muted: '#5b5650',
-  brand: '#0d7b5f',
-  accent: '#f08c2e'
+export const theme = {
+  bg: '#070b18',
+  surface: '#10182b',
+  panel: '#131f37',
+  ink: '#f4f8ff',
+  muted: '#8ca0c9',
+  brand: '#55d8ff',
+  accent: '#b15cff',
+  glow: '#43f4ff'
 };

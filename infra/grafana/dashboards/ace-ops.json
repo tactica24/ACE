@@ -1,0 +1,43 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Users",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "ace_users_total"}]
+    },
+    {
+      "type": "stat",
+      "title": "Approved Videos",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [{"expr": "ace_videos_approved_total"}]
+    },
+    {
+      "type": "stat",
+      "title": "Unlocks",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "ace_unlocks_total"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Node CPU Load",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{"expr": "ace_node_cpu_load"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Cache Hit Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{"expr": "ace_node_cache_hit_rate"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["ace"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "Ace Studio Ops",
+  "version": 1
+}
