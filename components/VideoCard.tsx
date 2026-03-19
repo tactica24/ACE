@@ -1,9 +1,9 @@
-﻿import Link from 'next/link';
-import { PriceTier } from '@prisma/client';
+import Link from 'next/link';
 import { formatNaira } from '@/lib/format';
+import { type PriceTierValue } from '@/lib/media-types';
 import { getPrice } from '@/lib/wallet';
 
-const tierLabel: Record<PriceTier, string> = {
+const tierLabel: Record<PriceTierValue, string> = {
   SNACK: 'Snack',
   STANDARD: 'Standard',
   PREMIERE: 'Premiere'
@@ -30,7 +30,7 @@ export type VideoCardData = {
   videoType: string;
   ageRating: string;
   category: string;
-  priceTier: PriceTier;
+  priceTier: PriceTierValue;
   posterKey?: string | null;
   price?: { currency: string; amountMinor: number };
 };
@@ -61,6 +61,3 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     </Link>
   );
 }
-
-
-

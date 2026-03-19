@@ -1,11 +1,10 @@
 import Link from 'next/link';
-import { VideoStatus } from '@prisma/client';
 import TvPairingPanel from '@/components/TvPairingPanel';
 import { prisma } from '@/lib/db';
 
 export default async function TvPage() {
   const videos = await prisma.video.findMany({
-    where: { status: VideoStatus.APPROVED },
+    where: { status: 'APPROVED' },
     orderBy: { createdAt: 'desc' },
     take: 20
   });

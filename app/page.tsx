@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { PriceTier, VideoStatus } from '@prisma/client';
 import { headers } from 'next/headers';
 import VideoCard from '@/components/VideoCard';
 import { prisma } from '@/lib/db';
+import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
 
 export default async function HomePage() {
@@ -11,7 +11,7 @@ export default async function HomePage() {
     id: string;
     title: string;
     description: string;
-    priceTier: PriceTier;
+    priceTier: PriceTierValue;
     posterKey: string | null;
     videoType: string;
     ageRating: string;
@@ -19,7 +19,7 @@ export default async function HomePage() {
   }[];
   try {
     videos = await prisma.video.findMany({
-      where: { status: VideoStatus.APPROVED },
+      where: { status: 'APPROVED' },
       take: 6,
       orderBy: { createdAt: 'desc' }
     });

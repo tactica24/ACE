@@ -1,13 +1,13 @@
-﻿import { PriceTier } from '@prisma/client';
 import { prisma } from './db';
+import { type PriceTierValue } from './media-types';
 
-export const PRICE_MAP: Record<PriceTier, number> = {
+export const PRICE_MAP: Record<PriceTierValue, number> = {
   SNACK: 100,
   STANDARD: 200,
   PREMIERE: 500
 };
 
-export function getPrice(tier: PriceTier) {
+export function getPrice(tier: PriceTierValue) {
   return PRICE_MAP[tier];
 }
 
@@ -62,5 +62,3 @@ export async function useWalletCredit(userId: string) {
     });
   });
 }
-
-

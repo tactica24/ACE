@@ -1,7 +1,7 @@
-﻿import { NextRequest } from 'next/server';
-import { PriceTier } from '@prisma/client';
+import { NextRequest } from 'next/server';
 import { getGeoContext, getGeoContextFromHeaders, isDiaspora } from './geo';
 import { env } from './env';
+import { type PriceTierValue } from './media-types';
 
 export type RegionalPrice = {
   currency: string;
@@ -15,25 +15,25 @@ export type RegionalCurrency = {
   region: 'NG' | 'DIASPORA';
 };
 
-const NGN_PRICES: Record<PriceTier, number> = {
+const NGN_PRICES: Record<PriceTierValue, number> = {
   SNACK: 100,
   STANDARD: 200,
   PREMIERE: 500
 };
 
-const USD_PRICES: Record<PriceTier, number> = {
+const USD_PRICES: Record<PriceTierValue, number> = {
   SNACK: 1.49,
   STANDARD: 1.99,
   PREMIERE: 2.49
 };
 
-const GBP_PRICES: Record<PriceTier, number> = {
+const GBP_PRICES: Record<PriceTierValue, number> = {
   SNACK: 0.99,
   STANDARD: 1.49,
   PREMIERE: 1.99
 };
 
-const CAD_PRICES: Record<PriceTier, number> = {
+const CAD_PRICES: Record<PriceTierValue, number> = {
   SNACK: 1.99,
   STANDARD: 2.49,
   PREMIERE: 2.99
@@ -83,7 +83,7 @@ export function getFamilyPassPrice(req: NextRequest | Headers) {
   return { currency, region, amountMinor, amountNaira };
 }
 
-export function getRegionalPrice(req: NextRequest | Headers, tier: PriceTier): RegionalPrice {
+export function getRegionalPrice(req: NextRequest | Headers, tier: PriceTierValue): RegionalPrice {
   const { country } = req instanceof Headers ? getGeoContextFromHeaders(req) : getGeoContext(req);
   if (!isDiaspora(country) || country === 'NG') {
     const amountNaira = NGN_PRICES[tier];

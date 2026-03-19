@@ -1,10 +1,9 @@
-﻿import { prisma } from '@/lib/db';
-import { VideoStatus } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import Link from 'next/link';
 
 export default async function HighlightsPage() {
   const videos = await prisma.video.findMany({
-    where: { status: VideoStatus.APPROVED },
+    where: { status: 'APPROVED' },
     orderBy: { createdAt: 'desc' },
     take: 12
   });
