@@ -6,6 +6,24 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+type ReferralEventRow = {
+  unlockId: string | null;
+  paymentId: string | null;
+  commissionNaira: number;
+  createdAt: Date;
+};
+
+type ReferralLinkRow = {
+  id: string;
+  code: string;
+  promoter: { id: string; email: string; phone: string };
+  commissionPercent: number;
+  targetVideo: { id: string; title: string } | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  events: ReferralEventRow[];
+};
+
 function generateCode() {
   return `ACE${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
@@ -30,17 +48,19 @@ export async function GET(req: NextRequest) {
       targetVideo: { select: { id: true, title: true } },
       events: { select: { unlockId: true, paymentId: true, commissionNaira: true, createdAt: true } }
     }
-  });
+  }) as ReferralLinkRow[];
 
   const baseUrl = env.ACE_APP_BASE_URL.replace(/\/$/, '');
-  const data = links.map((link) => {
-    const unlocks = link.events.filter((event) => event.unlockId).length;
-    const topups = link.events.filter((event) => event.paymentId).length;
-    const commissionNaira = link.events.reduce((sum, event) => sum + event.commissionNaira, 0);
-    const lastEventAt = link.events.reduce<Date | null>((acc, event) => {
-      if (!acc || event.createdAt > acc) return event.createdAt;
-      return acc;
-    }, null);
+  const data = links.map((link: ReferralLinkRow) => {
+    const unlocks = link.events.filter((event: ReferralEventRow) => event.unlockId).length;
+    const topups = link.events.filter((event: ReferralEventRow) => event.paymentId).length;
+    const commissionNaira = link.events.reduce((sum: number, event: ReferralEventRow) => sum + event.commissionNaira, 0);
+    let lastEventAt: Date | null = null;
+    for (const event of link.events) {
+      if (!lastEventAt || event.createdAt > lastEventAt) {
+        lastEventAt = event.createdAt;
+      }
+    }
     return {
       id: link.id,
       code: link.code,
