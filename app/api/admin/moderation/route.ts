@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { type ModerationQueueItem } from '@/components/ModerationQueue';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +16,20 @@ export async function GET(req: NextRequest) {
     take: 50
   });
 
+  const formattedItems: ModerationQueueItem[] = items.map((item: ModerationQueueItem) => ({
+    id: item.id,
+    status: item.status,
+    notes: item.notes,
+    video: {
+      id: item.video.id,
+      title: item.video.title,
+      description: item.video.description,
+      category: item.video.category,
+      status: item.video.status
+    }
+  }));
+
   return NextResponse.json({
-    items: items.map((item) => ({
-      id: item.id,
-      status: item.status,
-      notes: item.notes,
-      video: {
-        id: item.video.id,
-        title: item.video.title,
-        description: item.video.description,
-        category: item.video.category,
-        status: item.video.status
-      }
-    }))
+    items: formattedItems
   });
 }

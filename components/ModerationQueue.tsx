@@ -9,6 +9,8 @@ type Item = {
   notes?: string | null;
 };
 
+export type ModerationQueueItem = Item;
+
 export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [items, setItems] = useState(initial);
   const [reasons, setReasons] = useState<Record<string, string>>({});

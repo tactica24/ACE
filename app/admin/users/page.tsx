@@ -1,6 +1,15 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
-import CreatorVerificationAdmin from '@/components/CreatorVerificationAdmin';
+import CreatorVerificationAdmin, { type CreatorRow } from '@/components/CreatorVerificationAdmin';
 import { prisma } from '@/lib/db';
+
+type UserWithCreator = {
+  id: string;
+  email: string;
+  phone: string;
+  role: string;
+  createdAt: Date;
+  creator: CreatorRow['creator'];
+};
 
 export default async function UsersPage() {
   const users = await prisma.user.findMany({
@@ -9,7 +18,7 @@ export default async function UsersPage() {
     include: { creator: true }
   });
 
-  const initialUsers = users.map((user) => ({
+  const initialUsers: CreatorRow[] = users.map((user: UserWithCreator) => ({
     id: user.id,
     email: user.email,
     phone: user.phone,

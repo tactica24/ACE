@@ -1,6 +1,6 @@
 'use client';
 
-type CreatorRow = {
+export type CreatorRow = {
   id: string;
   email: string;
   phone: string;

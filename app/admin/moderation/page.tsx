@@ -1,6 +1,6 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { prisma } from '@/lib/db';
-import ModerationQueue from '@/components/ModerationQueue';
+import ModerationQueue, { type ModerationQueueItem } from '@/components/ModerationQueue';
 
 export default async function ModerationPage() {
   const items = await prisma.moderationItem.findMany({
@@ -9,7 +9,7 @@ export default async function ModerationPage() {
     orderBy: { createdAt: 'desc' },
     take: 50
   });
-  const queueItems = items.map((item) => ({
+  const queueItems: ModerationQueueItem[] = items.map((item: ModerationQueueItem) => ({
     id: item.id,
     status: item.status,
     notes: item.notes,
