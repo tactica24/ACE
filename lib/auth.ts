@@ -1,12 +1,12 @@
-﻿import jwt from 'jsonwebtoken';
-import type { Role } from '@prisma/client';
+import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { env } from './env';
+import { type RoleValue } from './media-types';
 
 export type AuthTokenPayload = {
   sub: string;
-  role: Role;
+  role: RoleValue;
   email: string;
   phone: string;
 };
@@ -64,5 +64,3 @@ export function createP2PToken(payload: { transferId: string; userId: string }) 
 export function verifyP2PToken(token: string) {
   return jwt.verify(token, env.ACE_STREAM_SIGNING_SECRET) as { transferId: string; userId: string };
 }
-
-
