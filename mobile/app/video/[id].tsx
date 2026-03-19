@@ -81,7 +81,7 @@ export default function VideoDetailScreen() {
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
   const priceLabel = data?.price
     ? data.price.currency === 'NGN'
-      ? `?${Math.round(data.price.amountMinor / 100)}`
+      ? `NGN ${Math.round(data.price.amountMinor / 100)}`
       : `${data.price.currency} ${(data.price.amountMinor / 100).toFixed(2)}`
     : null;
 
@@ -89,7 +89,7 @@ export default function VideoDetailScreen() {
     <Screen>
       <Text style={styles.title}>{data?.video?.title ?? 'Loading...'}</Text>
       <Text style={styles.desc}>{data?.video?.description}</Text>
-      <Text style={styles.meta}>{[data?.video?.category, data?.video?.videoType, data?.video?.ageRating].filter(Boolean).join(' · ')}</Text>
+      <Text style={styles.meta}>{[data?.video?.category, data?.video?.videoType, data?.video?.ageRating].filter(Boolean).join(' | ')}</Text>
       {streamUrl ? (
         <View style={styles.player}>
           <Video

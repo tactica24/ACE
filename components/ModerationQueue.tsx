@@ -41,7 +41,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
             <div>
               <h3>{item.video.title}</h3>
               <p className="muted">{item.video.description}</p>
-              <p className="muted">{item.video.category} · Moderation {item.status} · Video {item.video.status}</p>
+              <p className="muted">{item.video.category} | Moderation {item.status} | Video {item.video.status}</p>
             </div>
             <span className="badge">{item.status}</span>
           </div>

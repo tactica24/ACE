@@ -14,14 +14,14 @@ export default function Footer() {
           </div>
           <div>
             <strong>Pricing</strong>
-            <p className="muted">NGN 100 Snack · NGN 200 Standard · NGN 500 Premiere</p>
+            <p className="muted">NGN 100 Snack | NGN 200 Standard | NGN 500 Premiere</p>
           </div>
           <div>
             <strong>Security</strong>
             <p className="muted">Signed URLs, dynamic watermarking, encrypted .ace offline unlocks.</p>
           </div>
         </div>
-        <p className="muted" style={{ marginTop: 24 }}>© {new Date().getFullYear()} Ace Studio. Lagos Relay Ready.</p>
+        <p className="muted" style={{ marginTop: 24 }}>Â© {new Date().getFullYear()} Ace Studio. Lagos Relay Ready.</p>
       </div>
     </footer>
   );

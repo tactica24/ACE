@@ -25,7 +25,7 @@ export default function TopNav() {
           </span>
           <span>
             <strong>Ace Studio</strong>
-            <small>TV • Mobile • Creator Economy</small>
+            <small>TV | Mobile | Creator Economy</small>
           </span>
         </Link>
         <div className="nav-links">

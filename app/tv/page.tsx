@@ -44,7 +44,7 @@ export default async function TvPage() {
                 <div style={{ padding: 16 }}>
                   <strong style={{ display: 'block', fontSize: '1.1rem' }}>{video.title}</strong>
                   <span className="muted" style={{ display: 'block', marginTop: 6 }}>
-                    {video.category} · {labelize(video.videoType)} · {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
+                    {video.category} | {labelize(video.videoType)} | {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
                   </span>
                 </div>
               </div>

@@ -34,7 +34,7 @@ export default async function HomePage() {
       <section className="section">
         <div className="container hero">
           <div className="hero-card">
-            <div className="pill">Streaming for Africa • Living room ready</div>
+            <div className="pill">Streaming for Africa | Living room ready</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '22px 0 14px' }}>
               <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={88} height={88} priority />
               <div>
