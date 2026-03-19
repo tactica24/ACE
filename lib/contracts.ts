@@ -1,12 +1,12 @@
-﻿import { RightsTier } from '@prisma/client';
+export type RightsTierValue = 'SHARED' | 'EXCLUSIVE';
 
 export function generateContract(args: {
   creatorName: string;
   videoTitle: string;
-  rightsTier: RightsTier;
+  rightsTier: RightsTierValue;
   payoutSplit: number;
 }) {
-  const tierLabel = args.rightsTier === RightsTier.EXCLUSIVE ? 'Exclusive' : 'Shared';
+  const tierLabel = args.rightsTier === 'EXCLUSIVE' ? 'Exclusive' : 'Shared';
   const payoutPercent = Math.round(args.payoutSplit * 100);
   const platformPercent = 100 - payoutPercent;
 
@@ -24,5 +24,3 @@ export function generateContract(args: {
     `Governing Law: Federal Republic of Nigeria.`
   ].join('\n');
 }
-
-

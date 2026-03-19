@@ -1,8 +1,33 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
-import { generateContract } from '@/lib/contracts';
-import { RightsTier, PriceTier, VideoStatus, VideoType, AgeRating } from '@prisma/client';
+import { generateContract, type RightsTierValue } from '@/lib/contracts';
+
+type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
+type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+type VideoTypeValue = 'FEATURE' | 'SERIES' | 'SHORT' | 'SKIT' | 'DOCUMENTARY' | 'ADVERT';
+type AgeRatingValue = 'ALL' | 'PG13' | 'PG16' | 'PG18';
+
+const PRICE_TIERS: PriceTierValue[] = ['SNACK', 'STANDARD', 'PREMIERE'];
+const RIGHTS_TIERS: RightsTierValue[] = ['SHARED', 'EXCLUSIVE'];
+const VIDEO_TYPES: VideoTypeValue[] = ['FEATURE', 'SERIES', 'SHORT', 'SKIT', 'DOCUMENTARY', 'ADVERT'];
+const AGE_RATINGS: AgeRatingValue[] = ['ALL', 'PG13', 'PG16', 'PG18'];
+
+function isPriceTier(value: string | undefined): value is PriceTierValue {
+  return Boolean(value && PRICE_TIERS.includes(value as PriceTierValue));
+}
+
+function isRightsTier(value: string | undefined): value is RightsTierValue {
+  return Boolean(value && RIGHTS_TIERS.includes(value as RightsTierValue));
+}
+
+function isVideoType(value: string | undefined): value is VideoTypeValue {
+  return Boolean(value && VIDEO_TYPES.includes(value as VideoTypeValue));
+}
+
+function isAgeRating(value: string | undefined): value is AgeRatingValue {
+  return Boolean(value && AGE_RATINGS.includes(value as AgeRatingValue));
+}
 
 export async function POST(req: NextRequest) {
   const auth = getAuthFromRequest(req);
@@ -18,8 +43,8 @@ export async function POST(req: NextRequest) {
     ageRating?: string;
     category?: string;
     genres?: string[];
-    priceTier?: PriceTier;
-    rightsTier?: RightsTier;
+    priceTier?: string;
+    rightsTier?: string;
     teaserSec?: number;
     durationSec?: number;
     tags?: string[];
@@ -30,6 +55,14 @@ export async function POST(req: NextRequest) {
   if (!title || !description || !priceTier || !rightsTier || !teaserSec || !durationSec || !r2Key) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
+
+  if (!isPriceTier(priceTier) || !isRightsTier(rightsTier)) {
+    return NextResponse.json({ error: 'Invalid pricing or rights tier' }, { status: 400 });
+  }
+
+  const safeVideoType: VideoTypeValue = isVideoType(videoType) ? videoType : 'FEATURE';
+  const safeAgeRating: AgeRatingValue = isAgeRating(ageRating) ? ageRating : 'ALL';
+  const pendingStatus: VideoStatusValue = 'PENDING';
 
   const creatorProfile = await prisma.creatorProfile.upsert({
     where: { userId: auth.sub },
@@ -45,13 +78,13 @@ export async function POST(req: NextRequest) {
       creatorId: auth.sub,
       title,
       description,
-      videoType: (videoType as VideoType) ?? VideoType.FEATURE,
-      ageRating: (ageRating as AgeRating) ?? AgeRating.ALL,
+      videoType: safeVideoType,
+      ageRating: safeAgeRating,
       category: category ?? 'General',
       genres: genres ?? [],
       priceTier,
       rightsTier,
-      status: VideoStatus.PENDING,
+      status: pendingStatus,
       teaserSec,
       durationSec,
       tags: tags ?? [],
@@ -67,7 +100,7 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  const payoutSplit = rightsTier === RightsTier.EXCLUSIVE ? creatorProfile.payoutSplitExclusive : creatorProfile.payoutSplitStandard;
+  const payoutSplit = rightsTier === 'EXCLUSIVE' ? creatorProfile.payoutSplitExclusive : creatorProfile.payoutSplitStandard;
   const contractText = generateContract({
     creatorName: creatorProfile.displayName,
     videoTitle: video.title,
@@ -86,7 +119,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, videoId: video.id });
 }
-
-
-
-
