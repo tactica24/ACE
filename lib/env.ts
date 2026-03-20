@@ -30,10 +30,10 @@ const envSchema = z.object({
 
 type Env = z.infer<typeof envSchema>;
 
-let cachedEnv: Env | undefined;
+let cachedEnv: Env | null = null;
 
 function loadEnv(): Env {
-  if (cachedEnv !== undefined) return cachedEnv;
+  if (cachedEnv) return cachedEnv;
 
   cachedEnv = envSchema.parse({
     DATABASE_URL: process.env.DATABASE_URL,
@@ -69,5 +69,5 @@ function loadEnv(): Env {
 export const env: Env = loadEnv();
 
 export function getEnv(): Env {
-  return env;
+  return loadEnv();
 }
