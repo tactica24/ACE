@@ -1,7 +1,7 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
-import { debitWallet, usePassCredit, useWalletCredit } from '@/lib/wallet';
+import { debitWallet, usePassCredit as consumePassCredit, useWalletCredit as consumeWalletCredit } from '@/lib/wallet';
 import { getRegionalPrice } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 
@@ -22,17 +22,17 @@ export async function POST(req: NextRequest) {
   const price = getRegionalPrice(req, video.priceTier);
   let source: 'PASS' | 'WALLET' = 'WALLET';
 
-  const pass = await usePassCredit(auth.sub);
+  const pass = await consumePassCredit(auth.sub);
   if (pass) {
     source = 'PASS';
   } else {
-    const credit = await useWalletCredit(auth.sub);
+    const credit = await consumeWalletCredit(auth.sub);
     if (credit) {
-      source = 'PASS';
+      source = 'WALLET';
     } else {
       try {
         await debitWallet(auth.sub, price.amountNaira);
-      } catch (err) {
+      } catch {
         return NextResponse.json({ error: 'Insufficient balance' }, { status: 402 });
       }
     }

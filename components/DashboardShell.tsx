@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 
 export function SideNav({
   items,
@@ -25,12 +25,11 @@ export function SideNav({
 
 export function DashboardShell({
   title,
-  description,
   sideNav,
   children
 }: {
   title: string;
-  description: string;
+  description?: string;
   sideNav: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -40,7 +39,6 @@ export function DashboardShell({
         <div style={{ marginBottom: 24 }}>
           <div className="pill">Ace Studio</div>
           <h1 className="hero-title" style={{ margin: '12px 0 4px' }}>{title}</h1>
-          <p className="muted">{description}</p>
         </div>
         <div className="dashboard">
           {sideNav}
@@ -50,6 +48,3 @@ export function DashboardShell({
     </div>
   );
 }
-
-
-
