@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
 
+export const dynamic = 'force-dynamic';
+
 type HomeVideo = {
   id: string;
   title: string;
