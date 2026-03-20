@@ -1,0 +1,5 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g2" x1="0" x2="1"><stop stop-color="#7c2d12"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#g2)"/>
+  <text x="48" y="300" fill="#fff" font-size="44" font-family="Arial" font-weight="700">SAHARA RUN</text>
+</svg>

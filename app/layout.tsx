@@ -1,10 +1,6 @@
-﻿import './globals.css';
-import { Space_Grotesk, Sora } from 'next/font/google';
+import './globals.css';
 import TopNav from '@/components/TopNav';
 import Footer from '@/components/Footer';
-
-const space = Space_Grotesk({ subsets: ['latin'], variable: '--font-space', display: 'swap' });
-const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' });
 
 export const metadata = {
   title: 'Ace Studio',
@@ -16,7 +12,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${space.variable} ${sora.variable}`}>
+    <html lang="en">
       <body>
         <div className="app-shell">
           <TopNav />
@@ -27,7 +23,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
-
-
-

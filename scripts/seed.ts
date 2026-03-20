@@ -1,4 +1,4 @@
-﻿import { PrismaClient, PriceTier, RightsTier, VideoStatus, Role } from '@prisma/client';
+import { PrismaClient, PriceTier, RightsTier, VideoStatus, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -104,5 +104,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-
