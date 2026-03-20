@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PriceTier, RightsTier, VideoStatus, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -14,24 +14,24 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { role: 'ADMIN', passwordHash: adminPassword, phone: '+2348000000001' },
+    update: { role: Role.ADMIN, passwordHash: adminPassword, phone: '+2348000000001' },
     create: {
       email: adminEmail,
       phone: '+2348000000001',
       passwordHash: adminPassword,
-      role: 'ADMIN',
+      role: Role.ADMIN,
       wallet: { create: {} }
     }
   });
 
   const creator = await prisma.user.upsert({
     where: { email: creatorEmail },
-    update: { role: 'CREATOR', passwordHash: creatorPassword, phone: '+2348000000002' },
+    update: { role: Role.CREATOR, passwordHash: creatorPassword, phone: '+2348000000002' },
     create: {
       email: creatorEmail,
       phone: '+2348000000002',
       passwordHash: creatorPassword,
-      role: 'CREATOR',
+      role: Role.CREATOR,
       wallet: { create: {} },
       creator: { create: { displayName: 'Studio Danfo' } }
     }
@@ -39,12 +39,12 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: userEmail },
-    update: { role: 'USER', passwordHash: userPassword, phone: '+2348000000003' },
+    update: { role: Role.USER, passwordHash: userPassword, phone: '+2348000000003' },
     create: {
       email: userEmail,
       phone: '+2348000000003',
       passwordHash: userPassword,
-      role: 'USER',
+      role: Role.USER,
       wallet: { create: { balanceNaira: 2000, credits: 5 } }
     }
   });
@@ -61,9 +61,9 @@ async function main() {
           ageRating: 'PG16',
           category: 'Thriller',
           genres: ['thriller', 'noir', 'crime'],
-          priceTier: 'PREMIERE',
-          rightsTier: 'EXCLUSIVE',
-          status: 'APPROVED',
+          priceTier: PriceTier.PREMIERE,
+          rightsTier: RightsTier.EXCLUSIVE,
+          status: VideoStatus.APPROVED,
           durationSec: 5400,
           teaserSec: 300,
           highlightSeconds: [45, 120, 210],
@@ -79,9 +79,9 @@ async function main() {
           ageRating: 'ALL',
           category: 'Documentary',
           genres: ['docu', 'food', 'series'],
-          priceTier: 'STANDARD',
-          rightsTier: 'SHARED',
-          status: 'APPROVED',
+          priceTier: PriceTier.STANDARD,
+          rightsTier: RightsTier.SHARED,
+          status: VideoStatus.APPROVED,
           durationSec: 1800,
           teaserSec: 180,
           highlightSeconds: [30, 90, 150],
@@ -104,4 +104,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
