@@ -25,6 +25,7 @@ export function SideNav({
 
 export function DashboardShell({
   title,
+  description,
   sideNav,
   children
 }: {
@@ -36,9 +37,16 @@ export function DashboardShell({
   return (
     <div className="section">
       <div className="container">
-        <div style={{ marginBottom: 24 }}>
-          <div className="pill">Ace Studio</div>
-          <h1 className="hero-title" style={{ margin: '12px 0 4px' }}>{title}</h1>
+        <div className="dashboard-header">
+          <div>
+            <div className="pill">Ace Studio</div>
+            <h1 className="hero-title dashboard-title">{title}</h1>
+            {description ? <p className="muted dashboard-subtitle">{description}</p> : null}
+          </div>
+          <div className="dashboard-links">
+            <Link className="btn btn-ghost" href="/admin">Admin</Link>
+            <Link className="btn btn-primary" href="/creator">Creator</Link>
+          </div>
         </div>
         <div className="dashboard">
           {sideNav}
