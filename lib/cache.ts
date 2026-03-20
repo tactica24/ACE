@@ -1,16 +1,24 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import { env } from './env';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 
-const storageDir = env.ACE_STORAGE_DIR;
-export const cacheDir = path.join(storageDir, 'cache');
-export const aceDir = path.join(storageDir, 'ace');
+function getStorageDir() {
+  return env.ACE_STORAGE_DIR;
+}
+
+export function getCacheDir() {
+  return path.join(getStorageDir(), 'cache');
+}
+
+export function getAceDir() {
+  return path.join(getStorageDir(), 'ace');
+}
 
 export async function ensureStorageDirs() {
-  await fs.mkdir(cacheDir, { recursive: true });
-  await fs.mkdir(aceDir, { recursive: true });
+  await fs.mkdir(getCacheDir(), { recursive: true });
+  await fs.mkdir(getAceDir(), { recursive: true });
 }
 
 function assertSafeKey(key: string) {
@@ -21,12 +29,12 @@ function assertSafeKey(key: string) {
 
 export function getCachePath(key: string) {
   assertSafeKey(key);
-  return path.join(cacheDir, key);
+  return path.join(getCacheDir(), key);
 }
 
 export function getAcePath(key: string) {
   assertSafeKey(key);
-  return path.join(aceDir, key);
+  return path.join(getAceDir(), key);
 }
 
 export async function cacheExists(key: string) {
@@ -46,5 +54,3 @@ export async function writeCacheFromStream(key: string, stream: Readable) {
   await pipeline(stream, writeStream);
   return cachePath;
 }
-
-

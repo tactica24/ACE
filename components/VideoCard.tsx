@@ -45,12 +45,14 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
 
   return (
     <Link href={`/v/${video.id}`} className="video-card">
-      <div className="video-thumb">
-        <span>{video.posterKey ? 'Poster Ready' : 'Ace Studio'} </span>
+      <div
+        className="video-thumb"
+        style={video.posterKey ? { backgroundImage: `url(${video.posterKey})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      >
+        {!video.posterKey ? <span>Ace Studio</span> : null}
       </div>
       <div className="video-meta">
         <strong>{video.title}</strong>
-        <span className="muted" style={{ fontSize: '0.9rem' }}>{video.description}</span>
         <span className="muted" style={{ fontSize: '0.85rem' }}>
           {video.category} · {labelize(video.videoType)} · {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
         </span>

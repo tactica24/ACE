@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   const filePath = await ensureCached(video.r2Key);
-  const transfer = await prisma.p2pTransfer.create({
+  const transfer = await prisma.p2PTransfer.create({
     data: {
       senderId: auth.sub,
       recipientPhone,
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const acePath = getAcePath(transfer.aceFileKey);
   await encryptFile(filePath, acePath, aceKey);
 
-  await prisma.p2pTransfer.update({ where: { id: transfer.id }, data: { wrappedKey } });
+  await prisma.p2PTransfer.update({ where: { id: transfer.id }, data: { wrappedKey } });
 
   return NextResponse.json({ ok: true, transferId: transfer.id });
 }

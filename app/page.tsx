@@ -6,21 +6,69 @@ import { prisma } from '@/lib/db';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
 
+export const dynamic = 'force-dynamic';
+
+type HomeVideo = {
+  id: string;
+  title: string;
+  description: string;
+  priceTier: PriceTierValue;
+  posterKey: string | null;
+  videoType: string;
+  ageRating: string;
+  category: string;
+};
+
+const demoSlides: HomeVideo[] = [
+  {
+    id: 'demo-1',
+    title: 'Midnight in Lagos',
+    description: '',
+    priceTier: 'PREMIERE',
+    posterKey: '/demo/midnight-lagos.svg',
+    videoType: 'FEATURE',
+    ageRating: 'PG16',
+    category: 'Thriller'
+  },
+  {
+    id: 'demo-2',
+    title: 'Sahara Run',
+    description: '',
+    priceTier: 'STANDARD',
+    posterKey: '/demo/sahara-run.svg',
+    videoType: 'FEATURE',
+    ageRating: 'PG13',
+    category: 'Action'
+  },
+  {
+    id: 'demo-3',
+    title: 'City of Rhythms',
+    description: '',
+    priceTier: 'STANDARD',
+    posterKey: '/demo/city-rhythms.svg',
+    videoType: 'DOCUMENTARY',
+    ageRating: 'ALL',
+    category: 'Music'
+  },
+  {
+    id: 'demo-4',
+    title: 'Red Sand Protocol',
+    description: '',
+    priceTier: 'PREMIERE',
+    posterKey: '/demo/red-sand.svg',
+    videoType: 'SERIES',
+    ageRating: 'PG18',
+    category: 'Sci-Fi'
+  }
+];
+
 export default async function HomePage() {
-  let videos = [] as {
-    id: string;
-    title: string;
-    description: string;
-    priceTier: PriceTierValue;
-    posterKey: string | null;
-    videoType: string;
-    ageRating: string;
-    category: string;
-  }[];
+  let videos: HomeVideo[] = [];
+
   try {
     videos = await prisma.video.findMany({
       where: { status: 'APPROVED' },
-      take: 6,
+      take: 8,
       orderBy: { createdAt: 'desc' }
     });
   } catch {
@@ -28,66 +76,45 @@ export default async function HomePage() {
   }
 
   const requestHeaders = headers();
+  const featured = videos.length ? videos : demoSlides;
 
   return (
     <div>
-      <section className="section">
+      <section className="section" style={{ paddingBottom: 24 }}>
         <div className="container hero">
           <div className="hero-card">
-            <div className="pill">Streaming for Africa | Living room ready</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '22px 0 14px' }}>
+            <div className="pill">ACE ORIGINALS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '22px 0 18px' }}>
               <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={88} height={88} priority />
-              <div>
-                <h1 className="hero-title">Ace Studio</h1>
-                <p className="hero-sub" style={{ marginTop: 8 }}>
-                  Premium pay-per-view cinema, creator payouts, and TV-first streaming with neon polish.
-                </p>
-              </div>
+              <h1 className="hero-title">Ace Studio</h1>
             </div>
-            <p className="hero-sub">
-              Replace low-yield ad models with micro-transactions, edge-cached playback, creator licensing, and living-room discovery.
-            </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-              <Link className="btn btn-primary" href="/browse">Explore Catalog</Link>
-              <Link className="btn btn-ghost" href="/tv">Open TV Experience</Link>
-              <Link className="btn btn-ghost" href="/studio">Creator Dashboard</Link>
+              <Link className="btn btn-primary" href="/browse">Browse</Link>
+              <Link className="btn btn-ghost" href="/tv">TV Mode</Link>
+              <Link className="btn btn-ghost" href="/creator">Studio</Link>
             </div>
           </div>
-          <div className="grid">
-            <div className="card">
-              <div className="badge">Latency Target</div>
-              <h3 className="section-title" style={{ marginTop: 12 }}>Under 20ms in Nigeria</h3>
-              <p className="muted">Regional relays in Lagos and Abuja keep HLS playback close to viewers.</p>
-            </div>
-            <div className="card">
-              <div className="badge">Revenue Split</div>
-              <h3 className="section-title" style={{ marginTop: 12 }}>60% creator share</h3>
-              <p className="muted">Creator revenue stays protected while referrals are paid from the platform share.</p>
-            </div>
-            <div className="card">
-              <div className="badge">Trust and Safety</div>
-              <h3 className="section-title" style={{ marginTop: 12 }}>Watermarked, moderated, verified</h3>
-              <p className="muted">Signed HLS URLs, creator onboarding, admin moderation, and removal from production when needed.</p>
-            </div>
+          <div className="hero-carousel">
+            {demoSlides.map((slide) => (
+              <div key={slide.id} className="hero-slide" style={{ backgroundImage: `url(${slide.posterKey})` }}>
+                <span>{slide.title}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 10 }}>
+      <section className="section" style={{ paddingTop: 0 }}>
         <div className="container">
-          <h2 className="section-title">Featured Releases</h2>
-          {videos.length ? (
-            <div className="video-grid">
-              {videos.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="card">No approved titles yet. Upload your first release in Ace Studio.</div>
-          )}
+          <h2 className="section-title">Now Streaming</h2>
+          <div className="video-grid">
+            {featured.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
+              />
+            ))}
+          </div>
         </div>
       </section>
     </div>
