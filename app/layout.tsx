@@ -1,22 +1,23 @@
-﻿import './globals.css';
-import { Space_Grotesk, Sora } from 'next/font/google';
+import './globals.css';
 import TopNav from '@/components/TopNav';
 import Footer from '@/components/Footer';
-
-const space = Space_Grotesk({ subsets: ['latin'], variable: '--font-space', display: 'swap' });
-const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap' });
 
 export const metadata = {
   title: 'Ace Studio',
   description: 'African Content Economy marketplace for creators.',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.svg'
   }
 };
 
+export const viewport = {
+  themeColor: '#070b18'
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${space.variable} ${sora.variable}`}>
+    <html lang="en">
       <body>
         <div className="app-shell">
           <TopNav />
@@ -27,7 +28,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
-
-
-

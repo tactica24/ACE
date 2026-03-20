@@ -1,44 +1,46 @@
 {
-    "name":  "ace-studio",
-    "private":  true,
-    "version":  "1.0.0",
-    "scripts":  {
-                    "dev":  "next dev",
-                    "build":  "next build",
-                    "start":  "next start",
-                    "lint":  "next lint",
-                    "prisma:generate":  "prisma generate",
-                    "prisma:migrate":  "prisma migrate dev",
-                    "db:seed":  "tsx scripts/seed.ts",
-                    "smoke:relay":  "node scripts/smoke-relay.mjs",
-                    "transcode:hls":  "node scripts/transcode-hls.mjs",
-                    "publish:hls":  "node scripts/publish-hls.mjs"
-                },
-    "dependencies":  {
-                         "@aws-sdk/client-s3":  "^3.600.0",
-                         "@aws-sdk/s3-request-presigner":  "^3.600.0",
-                         "@prisma/client":  "^5.16.1",
-                         "bcryptjs":  "^2.4.3",
-                         "date-fns":  "^3.6.0",
-                         "jsonwebtoken":  "^9.0.2",
-                         "next":  "14.2.5",
-                         "react":  "18.2.0",
-                         "react-dom":  "18.2.0",
-                         "stripe":  "^16.2.0",
-                         "uuid":  "^9.0.1",
-                         "zod":  "^3.23.8"
-                     },
-    "devDependencies":  {
-                            "@types/bcryptjs":  "^2.4.6",
-                            "@types/jsonwebtoken":  "^9.0.6",
-                            "@types/node":  "^20.12.12",
-                            "@types/react":  "^18.2.0",
-                            "@types/react-dom":  "^18.2.0",
-                            "@types/uuid":  "^9.0.8",
-                            "eslint":  "^8.57.0",
-                            "eslint-config-next":  "14.2.5",
-                            "prisma":  "^5.16.1",
-                            "tsx":  "^4.15.6",
-                            "typescript":  "^5.4.5"
-                        }
+  "name": "ace-studio",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "db:seed": "tsx scripts/seed.ts",
+    "smoke:relay": "node scripts/smoke-relay.mjs",
+    "transcode:hls": "node scripts/transcode-hls.mjs",
+    "publish:hls": "node scripts/publish-hls.mjs",
+    "prebuild": "npm run check:conflicts && prisma generate",
+    "check:conflicts": "node scripts/check-conflicts.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
+    "@prisma/client": "^5.16.1",
+    "bcryptjs": "^2.4.3",
+    "date-fns": "^3.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "next": "14.2.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "stripe": "^16.2.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.12.12",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^9.0.8",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "prisma": "^5.16.1",
+    "tsx": "^4.15.6",
+    "typescript": "^5.4.5"
+  }
 }
