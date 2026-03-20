@@ -1,0 +1,13 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f2937"/>
+      <stop offset="1" stop-color="#991b1b"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <path d="M0 278 C112 248 238 330 340 280 C420 240 518 290 640 248 L640 360 L0 360 Z" fill="#ef4444" opacity="0.35"/>
+  <rect x="430" y="56" width="138" height="172" fill="#111827" opacity="0.35"/>
+  <rect x="458" y="90" width="82" height="112" fill="#fca5a5" opacity="0.22"/>
+  <text x="44" y="304" fill="#ffffff" font-size="38" font-family="Arial" font-weight="700">RED SAND PROTOCOL</text>
+</svg>

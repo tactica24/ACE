@@ -32,9 +32,9 @@ export default function TopNav() {
           <Link href="/browse">Browse</Link>
           <Link href="/highlights">Highlights</Link>
           <Link href="/wallet">Wallet</Link>
-          <Link href="/studio">Creator</Link>
+          <Link href="/creator">Creator</Link>
           <Link href="/tv">TV</Link>
-          {user?.role === 'ADMIN' ? <Link href="/admin">Admin</Link> : null}
+          {user?.role === 'ADMIN' ? <Link href="/admin">Admin Console</Link> : null}
         </div>
         <div className="nav-actions">
           {user ? (

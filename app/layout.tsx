@@ -5,9 +5,14 @@ import Footer from '@/components/Footer';
 export const metadata = {
   title: 'Ace Studio',
   description: 'African Content Economy marketplace for creators.',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.svg'
   }
+};
+
+export const viewport = {
+  themeColor: '#070b18'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

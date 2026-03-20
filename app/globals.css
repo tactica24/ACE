@@ -185,6 +185,31 @@ button {
   margin-top: 14px;
 }
 
+.hero-carousel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hero-slide {
+  height: 132px;
+  border-radius: 14px;
+  border: 1px solid rgba(141, 160, 200, 0.26);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  padding: 12px;
+}
+
+.hero-slide span {
+  font-weight: 700;
+  font-size: 0.86rem;
+  background: rgba(0, 0, 0, 0.52);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -308,6 +333,19 @@ button {
   place-items: center;
   font-weight: 700;
   color: var(--ink);
+  position: relative;
+}
+
+.video-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(3, 5, 14, 0.65), rgba(3, 5, 14, 0.1));
+}
+
+.video-thumb span {
+  position: relative;
+  z-index: 1;
 }
 
 .video-meta {

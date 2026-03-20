@@ -5,8 +5,7 @@ import Link from 'next/link';
 export default function StudioPage() {
   return (
     <DashboardShell
-      title="Creator Command Center"
-      description="Track real-time unlocks, upload new releases, and manage licensing."
+      title="Creator Studio"
       sideNav={
         <SideNav
           active="/studio"
@@ -22,21 +21,19 @@ export default function StudioPage() {
       <AnalyticsTicker />
       <div className="grid">
         <div className="card">
-          <h3>Payout formula</h3>
-          <p className="muted">Standard and exclusive releases use a 60/40 creator-platform split net of payment gateway fees.</p>
-          <p className="muted">Referral incentives come from the platform share, so creator revenue remains protected.</p>
+          <h3>Performance</h3>
+          <p className="muted">Real-time unlock and revenue telemetry.</p>
         </div>
         <div className="card">
-          <h3>Onboarding and trust</h3>
-          <p className="muted">Complete phone, email, ID card, NIN, and bank details in onboarding before expecting payout activation.</p>
+          <h3>Verification</h3>
           <Link className="btn btn-ghost" href="/studio/onboarding">Complete onboarding</Link>
         </div>
       </div>
       <div className="card">
         <h3>Quick actions</h3>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link className="btn btn-primary" href="/studio/upload">Upload new title</Link>
-          <Link className="btn btn-ghost" href="/studio/library">View library</Link>
+          <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
+          <Link className="btn btn-ghost" href="/studio/library">Library</Link>
         </div>
       </div>
     </DashboardShell>
