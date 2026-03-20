@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const auth = getAuthFromRequest(req);
   if (!auth) return new Response('Unauthorized', { status: 401 });
 
-  const transfer = await prisma.p2pTransfer.findUnique({ where: { id: params.id } });
+  const transfer = await prisma.p2PTransfer.findUnique({ where: { id: params.id } });
   if (!transfer) return new Response('Not found', { status: 404 });
   if (transfer.senderId !== auth.sub) return new Response('Forbidden', { status: 403 });
 

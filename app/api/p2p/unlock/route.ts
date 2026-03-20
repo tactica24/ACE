@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const transferId = body.transferId as string | undefined;
   if (!transferId) return NextResponse.json({ error: 'Missing transferId' }, { status: 400 });
 
-  const transfer = await prisma.p2pTransfer.findUnique({ where: { id: transferId } });
+  const transfer = await prisma.p2PTransfer.findUnique({ where: { id: transferId } });
   if (!transfer) return NextResponse.json({ error: 'Transfer not found' }, { status: 404 });
 
   if (transfer.recipientPhone !== auth.phone) {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 402 });
     }
-    await prisma.p2pTransfer.update({ where: { id: transferId }, data: { status: 'UNLOCKED' } });
+    await prisma.p2PTransfer.update({ where: { id: transferId }, data: { status: 'UNLOCKED' } });
   }
 
   const token = createP2PToken({ transferId, userId: auth.sub });

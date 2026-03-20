@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (payload.transferId !== params.id) return new Response('Token mismatch', { status: 403 });
 
-  const transfer = await prisma.p2pTransfer.findUnique({ where: { id: params.id } });
+  const transfer = await prisma.p2PTransfer.findUnique({ where: { id: params.id } });
   if (!transfer || transfer.status !== 'UNLOCKED') return new Response('Not unlocked', { status: 403 });
 
   const acePath = getAcePath(transfer.aceFileKey);
