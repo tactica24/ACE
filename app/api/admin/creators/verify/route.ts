@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
+export const runtime = 'nodejs';
+
 const fields = ['phoneVerified', 'emailVerified', 'ninVerified', 'idVerified', 'bankVerified'] as const;
 type Field = (typeof fields)[number];
 

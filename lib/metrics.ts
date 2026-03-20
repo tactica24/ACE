@@ -1,8 +1,8 @@
-﻿import os from 'os';
+import os from 'os';
 import fs from 'fs/promises';
 import path from 'path';
 import { env } from './env';
-import { cacheDir } from './cache';
+import { getCacheDir } from './cache';
 
 const metrics = {
   cacheHits: 0,
@@ -22,7 +22,7 @@ export function getCacheHitRate() {
 
 export async function getDiskFreeGb() {
   try {
-    const stat = await fs.statfs(path.resolve(cacheDir));
+    const stat = await fs.statfs(path.resolve(getCacheDir()));
     const freeBytes = stat.bavail * stat.bsize;
     return freeBytes / 1024 / 1024 / 1024;
   } catch {
@@ -44,5 +44,3 @@ export async function getNodeHealth() {
     cacheHitRate: getCacheHitRate()
   };
 }
-
-
