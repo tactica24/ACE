@@ -21,6 +21,7 @@ export default async function AdminPage() {
   return (
     <DashboardShell
       title="Admin Console"
+      description="Monitor platform quality, content approvals, and growth metrics with a clean command center."
       sideNav={
         <SideNav
           active="/admin"
@@ -34,19 +35,43 @@ export default async function AdminPage() {
         />
       }
     >
-      <div className="grid">
-        <div className="card"><strong>{users}</strong><p className="muted">Users</p></div>
-        <div className="card"><strong>{videos}</strong><p className="muted">Titles</p></div>
-        <div className="card"><strong>{pending}</strong><p className="muted">Pending</p></div>
+      <div className="feature-banner">
+        <div>
+          <p className="muted">Operations pulse</p>
+          <h3>Everything you need to run ACE from one view</h3>
+          <p className="muted">Track moderation load, infrastructure health, and ecosystem growth in real time.</p>
+        </div>
+        <span className="badge">Live</span>
       </div>
+
+      <div className="metric-grid">
+        <div className="metric-card">
+          <span className="muted">Total users</span>
+          <strong>{users}</strong>
+          <span className="trend-up">Growing community</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Published titles</span>
+          <strong>{videos}</strong>
+          <span className="trend-up">Catalog expanding</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Pending moderation</span>
+          <strong>{pending}</strong>
+          <span className={pending > 15 ? 'trend-warn' : 'trend-up'}>
+            {pending > 15 ? 'Needs attention' : 'Within SLA'}
+          </span>
+        </div>
+      </div>
+
       <div className="grid">
         <div className="card">
           <h3>Moderation queue</h3>
-          <p className="muted">Review, approve, and reject titles instantly.</p>
+          <p className="muted">Review, approve, and reject titles instantly with policy-safe guardrails.</p>
         </div>
         <div className="card">
           <h3>Platform health</h3>
-          <p className="muted">Track node status, users, catalog and referrals.</p>
+          <p className="muted">Track node uptime, stream quality, onboarding funnel, and payouts at a glance.</p>
         </div>
       </div>
     </DashboardShell>
