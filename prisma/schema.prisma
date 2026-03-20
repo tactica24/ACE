@@ -1,4 +1,4 @@
-﻿// Prisma schema for ACE Studio
+// Prisma schema for ACE Studio
 
 generator client {
   provider = "prisma-client-js"
@@ -164,6 +164,7 @@ model Video {
   contracts   Contract[]
   moderation  ModerationItem?
   p2pTransfers P2PTransfer[]
+  referralLinks ReferralLink[] @relation("VideoReferralLinks")
   @@index([status])
   @@index([priceTier])
 }
@@ -273,7 +274,7 @@ model ReferralLink {
   expiresAt        DateTime?
   createdAt        DateTime @default(now())
   promoter         User     @relation(fields: [promoterId], references: [id])
-  targetVideo      Video?   @relation(fields: [targetVideoId], references: [id])
+  targetVideo      Video?   @relation("VideoReferralLinks", fields: [targetVideoId], references: [id])
   events           ReferralEvent[]
 }
 
@@ -309,4 +310,3 @@ model TvPairingSession {
   claimedBy    User?         @relation("TvPairingOwner", fields: [claimedById], references: [id])
   @@index([status, expiresAt])
 }
-
