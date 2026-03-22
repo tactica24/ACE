@@ -82,3 +82,16 @@ For device testing, use your machine's LAN IP for `EXPO_PUBLIC_API_URL`.
 
 ## Family Pass (Diaspora)
 Diaspora users can purchase a Home Bundle that adds wallet credits to a linked Nigerian phone number. Configure credits with `ACE_FAMILY_PASS_CREDITS`.
+
+## Strict launch checklist
+Run a pre-launch gate before production cutover:
+
+```bash
+npm run launch:check
+```
+
+This checks:
+- required `.env` keys and placeholder/test value detection
+- `ffmpeg` and `ffprobe` availability for HLS processing (warning-only when this host is not your transcoder)
+- lint and production build gates
+- relay health smoke check (`/api/health`)

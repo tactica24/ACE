@@ -1,12 +1,19 @@
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HighlightsPage() {
-  const videos = await prisma.video.findMany({
-    where: { status: 'APPROVED' },
-    orderBy: { createdAt: 'desc' },
-    take: 12
-  });
+  let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
+  try {
+    videos = await prisma.video.findMany({
+      where: { status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      take: 12
+    });
+  } catch {
+    videos = [];
+  }
 
   return (
     <div className="section">
