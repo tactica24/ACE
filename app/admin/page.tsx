@@ -1,6 +1,8 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminPage() {
   let users = 0;
   let videos = 0;

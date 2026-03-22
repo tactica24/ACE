@@ -2,12 +2,19 @@ import Link from 'next/link';
 import TvPairingPanel from '@/components/TvPairingPanel';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TvPage() {
-  const videos = await prisma.video.findMany({
-    where: { status: 'APPROVED' },
-    orderBy: { createdAt: 'desc' },
-    take: 20
-  });
+  let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
+  try {
+    videos = await prisma.video.findMany({
+      where: { status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+  } catch {
+    videos = [];
+  }
 
   const labelize = (value: string) =>
     value

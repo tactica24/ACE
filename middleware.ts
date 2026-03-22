@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuthToken } from './lib/auth';
+import { verifyAuthTokenEdge } from './lib/auth-edge';
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const token = req.cookies.get('ace_token')?.value;
   const url = req.nextUrl.clone();
 
@@ -12,7 +12,7 @@ export function middleware(req: NextRequest) {
   }
 
   try {
-    const payload = verifyAuthToken(token);
+    const payload = await verifyAuthTokenEdge(token);
     if (req.nextUrl.pathname.startsWith('/admin') && payload.role !== 'ADMIN') {
       url.pathname = '/';
       return NextResponse.redirect(url);

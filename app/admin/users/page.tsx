@@ -2,6 +2,8 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorVerificationAdmin, { type CreatorRow } from '@/components/CreatorVerificationAdmin';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 type UserWithCreator = {
   id: string;
   email: string;
@@ -12,11 +14,16 @@ type UserWithCreator = {
 };
 
 export default async function UsersPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: { creator: true }
-  });
+  let users: UserWithCreator[] = [];
+  try {
+    users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { creator: true }
+    });
+  } catch {
+    users = [];
+  }
 
   const initialUsers: CreatorRow[] = users.map((user: UserWithCreator) => ({
     id: user.id,
