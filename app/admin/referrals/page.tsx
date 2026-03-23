@@ -20,15 +20,15 @@ export default async function ReferralsPage() {
 
   return (
     <DashboardShell
-      title="Referral Pipeline"
-      description="Generate promoter links, track unlocks, and monitor top-up conversions."
+      title="Referral pipeline"
+      description="Create promoter links, track unlocks, and monitor top-up conversions."
       sideNav={
         <SideNav
           active="/admin/referrals"
           items={[
             { href: '/admin', label: 'Overview' },
             { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/node', label: 'Node Monitor' },
+            { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
           ]}

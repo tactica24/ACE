@@ -1,26 +1,33 @@
-﻿import { DashboardShell, SideNav } from '@/components/DashboardShell';
-import { prisma } from '@/lib/db';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
 import Link from 'next/link';
+import { headers } from 'next/headers';
+import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import VideoCard from '@/components/VideoCard';
+import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { getRegionalPrice } from '@/lib/pricing';
 
 export default async function LibraryPage() {
   const token = getAuthCookie();
-  const user = token ? (() => {
-    try {
-      return verifyAuthToken(token);
-    } catch {
-      return null;
-    }
-  })() : null;
+  const user = token
+    ? (() => {
+        try {
+          return verifyAuthToken(token);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   const videos = user
     ? await prisma.video.findMany({ where: { creatorId: user.sub }, orderBy: { createdAt: 'desc' } })
     : [];
 
+  const requestHeaders = headers();
+
   return (
     <DashboardShell
       title="Your library"
-      description="Track moderation status, pricing, and unlock performance."
+      description="Review exactly how each release is stored for moderation and storefront display."
       sideNav={
         <SideNav
           active="/studio/library"
@@ -32,41 +39,38 @@ export default async function LibraryPage() {
           ]}
         />
       }
+      actions={<Link className="btn btn-primary" href="/studio/upload">Upload another title</Link>}
     >
-      <div className="card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Rights</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Age</th>
-              <th>Price Tier</th>
-            </tr>
-          </thead>
-          <tbody>
-            {videos.map((video) => (
-              <tr key={video.id}>
-                <td>{video.title}</td>
-                <td>{video.status}</td>
-                <td>{video.rightsTier}</td>
-                <td>{video.videoType}</td>
-                <td>{video.category}</td>
-                <td>{video.ageRating}</td>
-                <td>{video.priceTier}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {videos.length === 0 ? <p className="muted">No uploads yet.</p> : null}
-      </div>
-      <Link className="btn btn-primary" href="/studio/upload">Upload another</Link>
+      {videos.length ? (
+        <div className="library-grid">
+          {videos.map((video) => (
+            <div key={video.id} className="card library-card">
+              <VideoCard
+                video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
+              />
+              <div className="detail-grid">
+                <div className="detail-card">
+                  <span className="detail-label">Status</span>
+                  <strong>{video.status}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Rights</span>
+                  <strong>{video.rightsTier}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Uploaded</span>
+                  <strong>{video.createdAt.toISOString().slice(0, 10)}</strong>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card empty-state">
+          <h3>No creator uploads yet</h3>
+          <p className="muted">Your releases will appear here after you submit them for moderation.</p>
+        </div>
+      )}
     </DashboardShell>
   );
 }
-
-
-
-

@@ -45,57 +45,63 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
 
   return (
     <div className="card">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Role</th>
-            <th>Verification</th>
-            <th>Reliability</th>
-            <th>Joined</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.email}</td>
-              <td>{user.phone}</td>
-              <td>{user.role}</td>
-              <td>
-                {user.creator ? (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {verificationFields.map((field) => {
-                      const active = Boolean(user.creator?.[field.key]);
-                      return (
-                        <button
-                          key={field.key}
-                          className={active ? 'btn btn-primary' : 'btn btn-ghost'}
-                          style={{ padding: '8px 12px', fontSize: '0.78rem' }}
-                          onClick={() => toggle(user.id, field.key, active)}
-                        >
-                          {field.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : '--'}
-              </td>
-              <td>
-                {user.creator ? (
-                  <div className="muted" style={{ maxWidth: 280 }}>
-                    <div>{user.creator.displayName}</div>
-                    <div>{user.creator.ninNumber || 'No NIN'}</div>
-                    <div>{user.creator.bankName || 'No bank'}</div>
-                    <div>{user.creator.reliabilityNotes || 'No notes'}</div>
-                  </div>
-                ) : '--'}
-              </td>
-              <td>{user.joinedAt}</td>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Verification</th>
+              <th>Creator profile</th>
+              <th>Joined</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.email}</td>
+                <td>{user.phone}</td>
+                <td>{user.role}</td>
+                <td>
+                  {user.creator ? (
+                    <div className="action-list">
+                      {verificationFields.map((field) => {
+                        const active = Boolean(user.creator?.[field.key]);
+                        return (
+                          <button
+                            key={field.key}
+                            className={active ? 'btn btn-primary' : 'btn btn-ghost'}
+                            style={{ padding: '8px 12px', fontSize: '0.78rem' }}
+                            onClick={() => toggle(user.id, field.key, active)}
+                          >
+                            {field.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="muted">No creator profile</span>
+                  )}
+                </td>
+                <td>
+                  {user.creator ? (
+                    <div className="stack-list" style={{ gap: 6, minWidth: 220 }}>
+                      <strong>{user.creator.displayName}</strong>
+                      <span className="muted">{user.creator.ninNumber || 'No NIN on file'}</span>
+                      <span className="muted">{user.creator.bankName || 'No bank on file'}</span>
+                      <span className="muted">{user.creator.reliabilityNotes || 'No release notes added'}</span>
+                    </div>
+                  ) : (
+                    <span className="muted">Not started</span>
+                  )}
+                </td>
+                <td>{user.joinedAt}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,11 @@
-﻿import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import UploadForm from '@/components/UploadForm';
 
 export default function UploadPage() {
   return (
     <DashboardShell
       title="Upload a new release"
-      description="Choose your rights tier, set pricing, and publish for review."
+      description="Enter the same title, artwork, pricing, and runtime details that will appear in review and on the storefront."
       sideNav={
         <SideNav
           active="/studio/upload"
@@ -24,7 +24,3 @@ export default function UploadPage() {
     </DashboardShell>
   );
 }
-
-
-
-

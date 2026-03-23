@@ -26,11 +26,13 @@ export function SideNav({
 export function DashboardShell({
   title,
   description,
+  actions,
   sideNav,
   children
 }: {
   title: string;
   description?: string;
+  actions?: React.ReactNode;
   sideNav: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -43,14 +45,11 @@ export function DashboardShell({
             <h1 className="hero-title dashboard-title">{title}</h1>
             {description ? <p className="muted dashboard-subtitle">{description}</p> : null}
           </div>
-          <div className="dashboard-links">
-            <Link className="btn btn-ghost" href="/admin">Admin</Link>
-            <Link className="btn btn-primary" href="/creator">Creator</Link>
-          </div>
+          {actions ? <div className="dashboard-links">{actions}</div> : null}
         </div>
         <div className="dashboard">
           {sideNav}
-          <div style={{ display: 'grid', gap: 20 }}>{children}</div>
+          <div className="dashboard-main">{children}</div>
         </div>
       </div>
     </div>

@@ -314,6 +314,7 @@ button {
 }
 
 .video-card {
+  display: grid;
   background: var(--surface);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -328,7 +329,8 @@ button {
 
 .video-thumb {
   background: radial-gradient(circle at 40% 35%, rgba(67, 244, 255, 0.28), transparent 30%), linear-gradient(135deg, #17264a, #211047 62%, #0f1935);
-  height: 170px;
+  aspect-ratio: 16 / 9;
+  min-height: 170px;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -414,6 +416,296 @@ button {
 .form-grid {
   display: grid;
   gap: 16px;
+}
+
+.dashboard-main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+
+.hero-actions,
+.action-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-showcase {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hero-poster,
+.hero-panel {
+  min-height: 180px;
+  border-radius: 20px;
+  border: 1px solid rgba(141, 160, 200, 0.22);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+}
+
+.hero-poster {
+  background: linear-gradient(145deg, rgba(20, 37, 69, 0.94), rgba(11, 18, 36, 0.94));
+}
+
+.hero-poster span,
+.hero-panel strong {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-poster span {
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.48);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.hero-panel {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(145deg, rgba(17, 30, 56, 0.94), rgba(11, 18, 36, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.form-section {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(88, 217, 255, 0.12);
+  background: rgba(12, 18, 35, 0.62);
+}
+
+.form-section-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.form-section-copy,
+.form-message {
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field-label {
+  font-weight: 600;
+}
+
+.field-hint {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.field-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.detail-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(88, 217, 255, 0.12);
+}
+
+.detail-label {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tv-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 24px;
+  margin-bottom: 28px;
+  align-items: stretch;
+}
+
+.tv-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.detail-page {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-hero {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.detail-poster {
+  padding: 0;
+  overflow: hidden;
+}
+
+.detail-poster-image {
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: radial-gradient(circle at 40% 35%, rgba(67, 244, 255, 0.28), transparent 30%), linear-gradient(135deg, #17264a, #211047 62%, #0f1935);
+}
+
+.detail-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.detail-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  display: grid;
+  gap: 8px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.status-live {
+  color: #9cf2c0;
+  background: rgba(47, 130, 83, 0.18);
+  border-color: rgba(126, 243, 196, 0.2);
+}
+
+.status-review {
+  color: #ffd279;
+  background: rgba(255, 210, 121, 0.12);
+  border-color: rgba(255, 210, 121, 0.18);
+}
+
+.stack-list {
+  display: grid;
+  gap: 12px;
+}
+
+.stack-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.library-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.library-card {
+  display: grid;
+  gap: 16px;
+}
+
+.moderation-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.moderation-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.moderation-poster {
+  aspect-ratio: 16 / 9;
+  min-height: 180px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 40% 35%, rgba(67, 244, 255, 0.28), transparent 30%), linear-gradient(135deg, #17264a, #211047 62%, #0f1935);
+  font-weight: 700;
+}
+
+.moderation-content {
+  display: grid;
+  gap: 16px;
+}
+
+.moderation-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.moderation-header h3 {
+  margin: 0 0 8px;
+}
+
+.moderation-statuses,
+.moderation-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.table-wrap {
+  overflow-x: auto;
 }
 
 .player {
@@ -566,5 +858,34 @@ button {
   .feature-banner {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .section-heading,
+  .tv-layout,
+  .detail-hero,
+  .moderation-card,
+  .field-grid-2,
+  .field-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-showcase {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .form-section,
+  .card {
+    padding: 18px;
+  }
+
+  .hero-card {
+    padding: 28px;
   }
 }

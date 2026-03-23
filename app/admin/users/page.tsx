@@ -52,15 +52,15 @@ export default async function UsersPage() {
 
   return (
     <DashboardShell
-      title="User Directory"
-      description="Manage roles, creator verification readiness, and access across Ace Studio."
+      title="User directory"
+      description="Manage roles, creator verification readiness, and account access across Ace Studio."
       sideNav={
         <SideNav
           active="/admin/users"
           items={[
             { href: '/admin', label: 'Overview' },
             { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/node', label: 'Node Monitor' },
+            { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
           ]}

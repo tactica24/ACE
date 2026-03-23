@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { prisma } from '@/lib/db';
 
@@ -7,73 +8,101 @@ export default async function AdminPage() {
   let users = 0;
   let videos = 0;
   let pending = 0;
+  let creatorsPending = 0;
+  let recentTitles: Array<{ id: string; title: string; status: string; createdAt: Date }> = [];
 
   try {
-    [users, videos, pending] = await Promise.all([
+    [users, videos, pending, creatorsPending, recentTitles] = await Promise.all([
       prisma.user.count(),
       prisma.video.count(),
-      prisma.moderationItem.count({ where: { status: 'PENDING' } })
+      prisma.moderationItem.count({ where: { status: 'PENDING' } }),
+      prisma.creatorProfile.count({ where: { verified: false } }),
+      prisma.video.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { id: true, title: true, status: true, createdAt: true }
+      })
     ]);
   } catch {
     users = 0;
     videos = 0;
     pending = 0;
+    creatorsPending = 0;
+    recentTitles = [];
   }
 
   return (
     <DashboardShell
-      title="Admin Console"
-      description="Monitor platform quality, content approvals, and growth metrics with a clean command center."
+      title="Admin console"
+      description="Review submissions, verify creators, and keep the storefront ready for release."
       sideNav={
         <SideNav
           active="/admin"
           items={[
             { href: '/admin', label: 'Overview' },
             { href: '/admin/moderation', label: 'Moderation', count: `${pending}` },
-            { href: '/admin/node', label: 'Node Monitor' },
+            { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
           ]}
         />
       }
+      actions={<Link className="btn btn-primary" href="/admin/moderation">Open moderation</Link>}
     >
-      <div className="feature-banner">
-        <div>
-          <p className="muted">Operations pulse</p>
-          <h3>Everything you need to run ACE from one view</h3>
-          <p className="muted">Track moderation load, infrastructure health, and ecosystem growth in real time.</p>
-        </div>
-        <span className="badge">Live</span>
-      </div>
-
       <div className="metric-grid">
         <div className="metric-card">
-          <span className="muted">Total users</span>
+          <span className="muted">Users</span>
           <strong>{users}</strong>
-          <span className="trend-up">Growing community</span>
+          <span className="trend-up">Accounts on platform</span>
         </div>
         <div className="metric-card">
-          <span className="muted">Published titles</span>
+          <span className="muted">Titles</span>
           <strong>{videos}</strong>
-          <span className="trend-up">Catalog expanding</span>
+          <span className="trend-up">Uploaded to catalog</span>
         </div>
         <div className="metric-card">
           <span className="muted">Pending moderation</span>
           <strong>{pending}</strong>
           <span className={pending > 15 ? 'trend-warn' : 'trend-up'}>
-            {pending > 15 ? 'Needs attention' : 'Within SLA'}
+            {pending > 15 ? 'Needs review attention' : 'Within review capacity'}
+          </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Creators pending verification</span>
+          <strong>{creatorsPending}</strong>
+          <span className={creatorsPending > 10 ? 'trend-warn' : 'trend-up'}>
+            {creatorsPending > 10 ? 'Verification backlog building' : 'Verification queue healthy'}
           </span>
         </div>
       </div>
 
       <div className="grid">
         <div className="card">
-          <h3>Moderation queue</h3>
-          <p className="muted">Review, approve, and reject titles instantly with policy-safe guardrails.</p>
+          <h3>Immediate actions</h3>
+          <div className="action-list">
+            <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
+            <Link className="btn btn-ghost" href="/admin/users">Check creator verification</Link>
+            <Link className="btn btn-ghost" href="/admin/node">Inspect platform health</Link>
+          </div>
         </div>
+
         <div className="card">
-          <h3>Platform health</h3>
-          <p className="muted">Track node uptime, stream quality, onboarding funnel, and payouts at a glance.</p>
+          <h3>Recent uploads</h3>
+          {recentTitles.length ? (
+            <div className="stack-list">
+              {recentTitles.map((video) => (
+                <div key={video.id} className="stack-row">
+                  <div>
+                    <strong>{video.title}</strong>
+                    <p className="muted">{video.createdAt.toISOString().slice(0, 10)}</p>
+                  </div>
+                  <span className={`status-chip ${video.status === 'APPROVED' ? 'status-live' : 'status-review'}`}>{video.status}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Uploads will appear here as creators submit titles.</p>
+          )}
         </div>
       </div>
     </DashboardShell>

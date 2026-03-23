@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { title, description, videoType, ageRating, category, genres, priceTier, rightsTier, teaserSec, durationSec, tags, highlightSeconds, r2Key } = body as {
+  const { title, description, videoType, ageRating, category, genres, priceTier, rightsTier, teaserSec, durationSec, tags, highlightSeconds, r2Key, posterKey } = body as {
     title?: string;
     description?: string;
     videoType?: string;
@@ -50,9 +50,18 @@ export async function POST(req: NextRequest) {
     tags?: string[];
     highlightSeconds?: number[];
     r2Key?: string;
+    posterKey?: string | null;
   };
 
-  if (!title || !description || !priceTier || !rightsTier || !teaserSec || !durationSec || !r2Key) {
+  const safeTitle = title?.trim();
+  const safeDescription = description?.trim();
+  const safeCategory = category?.trim() || 'General';
+  const safePosterKey = posterKey?.trim() || null;
+  const safeGenres = (genres ?? []).map((value) => value.trim()).filter(Boolean);
+  const safeTags = (tags ?? []).map((value) => value.trim()).filter(Boolean);
+  const safeHighlights = (highlightSeconds ?? []).filter((value) => Number.isFinite(value) && value >= 0);
+
+  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !teaserSec || !durationSec || !r2Key) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
@@ -76,20 +85,21 @@ export async function POST(req: NextRequest) {
   const video = await prisma.video.create({
     data: {
       creatorId: auth.sub,
-      title,
-      description,
+      title: safeTitle,
+      description: safeDescription,
       videoType: safeVideoType,
       ageRating: safeAgeRating,
-      category: category ?? 'General',
-      genres: genres ?? [],
+      category: safeCategory,
+      genres: safeGenres,
       priceTier,
       rightsTier,
       status: pendingStatus,
       teaserSec,
       durationSec,
-      tags: tags ?? [],
-      highlightSeconds: highlightSeconds ?? [],
-      r2Key
+      tags: safeTags,
+      highlightSeconds: safeHighlights,
+      r2Key,
+      posterKey: safePosterKey
     }
   });
 

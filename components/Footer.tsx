@@ -21,7 +21,7 @@ export default function Footer() {
             <p className="muted">Signed URLs, dynamic watermarking, encrypted .ace offline unlocks.</p>
           </div>
         </div>
-        <p className="muted" style={{ marginTop: 24 }}>© {new Date().getFullYear()} Ace Studio. Lagos Relay Ready.</p>
+        <p className="muted" style={{ marginTop: 24 }}>(c) {new Date().getFullYear()} Ace Studio. Lagos Relay Ready.</p>
       </div>
     </footer>
   );

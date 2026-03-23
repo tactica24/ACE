@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 
 export default function CreatorApply() {
   const [form, setForm] = useState({
@@ -20,10 +20,11 @@ export default function CreatorApply() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setMessage(null);
+
     try {
       const res = await fetch('/api/studio/apply', {
         method: 'POST',
@@ -32,7 +33,7 @@ export default function CreatorApply() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Unable to save onboarding');
-      setMessage('Creator onboarding submitted. Email and phone are captured, while ID, NIN, and bank details await verification review.');
+      setMessage('Creator profile submitted for review.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save onboarding');
     } finally {
@@ -42,28 +43,65 @@ export default function CreatorApply() {
 
   return (
     <form onSubmit={handleSubmit} className="form-grid">
-      <div className="card card-soft" style={{ padding: 16 }}>
-        <strong>Verification checklist</strong>
-        <p className="muted" style={{ marginTop: 8 }}>
-          To unlock creator payouts, we collect phone, email, ID card, NIN, and bank account details for trust and settlement review.
-        </p>
+      <div className="form-section">
+        <div>
+          <h3 className="form-section-title">Profile</h3>
+          <p className="muted form-section-copy">This information helps the team verify your public creator identity and payout setup.</p>
+        </div>
+        <div className="field-grid field-grid-2">
+          <label className="field">
+            <span className="field-label">Display name</span>
+            <input className="input" value={form.displayName} onChange={(event) => handleChange('displayName', event.target.value)} required />
+          </label>
+          <label className="field">
+            <span className="field-label">NIN</span>
+            <input className="input" value={form.ninNumber} onChange={(event) => handleChange('ninNumber', event.target.value)} />
+          </label>
+        </div>
+        <label className="field">
+          <span className="field-label">Bio</span>
+          <textarea className="input" rows={4} value={form.bio} onChange={(event) => handleChange('bio', event.target.value)} />
+        </label>
+        <label className="field">
+          <span className="field-label">ID card upload URL</span>
+          <input className="input" value={form.idCardUrl} onChange={(event) => handleChange('idCardUrl', event.target.value)} />
+        </label>
       </div>
-      <input className="input" placeholder="Display name" value={form.displayName} onChange={(e) => handleChange('displayName', e.target.value)} />
-      <textarea className="input" rows={3} placeholder="Bio" value={form.bio} onChange={(e) => handleChange('bio', e.target.value)} />
-      <div className="grid">
-        <input className="input" placeholder="NIN" value={form.ninNumber} onChange={(e) => handleChange('ninNumber', e.target.value)} />
-        <input className="input" placeholder="ID card upload URL" value={form.idCardUrl} onChange={(e) => handleChange('idCardUrl', e.target.value)} />
+
+      <div className="form-section">
+        <div>
+          <h3 className="form-section-title">Payout details</h3>
+          <p className="muted form-section-copy">Bank details are kept in the admin verification view so approvals and settlements line up cleanly.</p>
+        </div>
+        <div className="field-grid field-grid-2">
+          <label className="field">
+            <span className="field-label">Bank name</span>
+            <input className="input" value={form.bankName} onChange={(event) => handleChange('bankName', event.target.value)} />
+          </label>
+          <label className="field">
+            <span className="field-label">Bank account name</span>
+            <input className="input" value={form.bankAccountName} onChange={(event) => handleChange('bankAccountName', event.target.value)} />
+          </label>
+        </div>
+        <label className="field">
+          <span className="field-label">Bank account number</span>
+          <input className="input" value={form.bankAccountNumber} onChange={(event) => handleChange('bankAccountNumber', event.target.value)} />
+        </label>
       </div>
-      <div className="grid">
-        <input className="input" placeholder="Bank name" value={form.bankName} onChange={(e) => handleChange('bankName', e.target.value)} />
-        <input className="input" placeholder="Bank account name" value={form.bankAccountName} onChange={(e) => handleChange('bankAccountName', e.target.value)} />
+
+      <div className="form-section">
+        <label className="field">
+          <span className="field-label">Release history or reliability notes</span>
+          <textarea className="input" rows={4} value={form.reliabilityNotes} onChange={(event) => handleChange('reliabilityNotes', event.target.value)} />
+        </label>
       </div>
-      <input className="input" placeholder="Bank account number" value={form.bankAccountNumber} onChange={(e) => handleChange('bankAccountNumber', e.target.value)} />
-      <textarea className="input" rows={3} placeholder="Reliability notes, links, or release history" value={form.reliabilityNotes} onChange={(e) => handleChange('reliabilityNotes', e.target.value)} />
-      <button className="btn btn-primary" type="submit" disabled={loading}>
-        {loading ? 'Submitting...' : 'Submit creator onboarding'}
-      </button>
-      {message ? <p className="muted" style={{ margin: 0 }}>{message}</p> : null}
+
+      <div className="form-actions">
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? 'Submitting profile...' : 'Submit creator profile'}
+        </button>
+        {message ? <p className="muted form-message">{message}</p> : null}
+      </div>
     </form>
   );
 }

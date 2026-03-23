@@ -1,17 +1,19 @@
-﻿import { prisma } from '@/lib/db';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
 import Link from 'next/link';
 import AccountActions from '@/components/AccountActions';
+import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
 export default async function AccountPage() {
   const token = getAuthCookie();
-  const user = token ? (() => {
-    try {
-      return verifyAuthToken(token);
-    } catch {
-      return null;
-    }
-  })() : null;
+  const user = token
+    ? (() => {
+        try {
+          return verifyAuthToken(token);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   if (!user) {
     return (
@@ -35,14 +37,10 @@ export default async function AccountPage() {
           <h2>Account</h2>
           <p className="muted">{user.email}</p>
           <p className="muted">{user.phone}</p>
-          <p className="muted">Wallet balance: ?{wallet?.balanceNaira ?? 0}</p>
+          <p className="muted">Wallet balance: NGN {wallet?.balanceNaira ?? 0}</p>
           <AccountActions />
         </div>
       </div>
     </div>
   );
 }
-
-
-
-

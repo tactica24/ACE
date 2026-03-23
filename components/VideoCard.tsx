@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { formatNaira } from '@/lib/format';
+import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getPrice } from '@/lib/wallet';
 
@@ -38,6 +39,7 @@ export type VideoCardData = {
 export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getPrice(video.priceTier) * 100;
   const currency = video.price?.currency ?? 'NGN';
+  const posterUrl = getMediaAssetUrl(video.posterKey);
   const priceLabel =
     currency === 'NGN'
       ? formatNaira(Math.round(priceMinor / 100))
@@ -47,17 +49,17 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     <Link href={`/v/${video.id}`} className="video-card">
       <div
         className="video-thumb"
-        style={video.posterKey ? { backgroundImage: `url(${video.posterKey})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        {!video.posterKey ? <span>Ace Studio</span> : null}
+        {!posterUrl ? <span>Ace Studio</span> : null}
       </div>
       <div className="video-meta">
         <strong>{video.title}</strong>
         <span className="muted" style={{ fontSize: '0.85rem' }}>
-          {video.category} · {labelize(video.videoType)} · {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
+          {video.category} / {labelize(video.videoType)} / {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
         </span>
         <div className="badge">
-          {tierLabel[video.priceTier]} · {priceLabel}
+          {tierLabel[video.priceTier]} / {priceLabel}
         </div>
       </div>
     </Link>

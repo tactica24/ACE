@@ -22,6 +22,12 @@ npm run db:seed
 npm run dev
 ```
 
+## Production deployment
+For the recommended production stack (`Vercel + Neon + Cloudflare R2`), use:
+
+- `.env.production.example`
+- `DEPLOY_VERCEL_NEON_R2.md`
+
 ## Demo accounts (seed)
 - Admin: `admin@acestudio.local` / `AdminPass123!`
 - Creator: `creator@acestudio.local` / `CreatorPass123!`

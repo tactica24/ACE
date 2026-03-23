@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       amountMinor: price.amountMinor,
       currency: price.currency,
       source,
-      watermarkText: `${auth.phone} · ${auth.email}`,
+      watermarkText: `${auth.phone} / ${auth.email}`,
       referralCode: referral?.code
     }
   });
@@ -74,7 +74,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, unlocked: true });
 }
-
-
-
-
