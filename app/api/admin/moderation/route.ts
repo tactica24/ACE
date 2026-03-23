@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     take: 50
   });
 
-  const formattedItems: ModerationQueueItem[] = items.map((item: ModerationQueueItem) => ({
+  const formattedItems: ModerationQueueItem[] = items.map((item) => ({
     id: item.id,
     status: item.status,
     notes: item.notes,
