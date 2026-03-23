@@ -9,22 +9,25 @@ export default function AuthRegister() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const next = params.get('next') || '/browse';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, phone, password })
       });
-      if (!res.ok) throw new Error('Register failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Register failed');
       window.location.href = next;
-    } catch {
-      alert('Unable to create account.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to create account.');
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,7 @@ export default function AuthRegister() {
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>
+      {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}
     </form>
   );
 }
