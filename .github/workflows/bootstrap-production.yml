@@ -27,8 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run production migrations
-        run: npm run db:migrate:deploy
+      - name: Sync production schema
+        run: npm run db:push
 
       - name: Seed default data
         if: ${{ inputs.seed_defaults }}

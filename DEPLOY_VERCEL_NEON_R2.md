@@ -66,12 +66,12 @@ Optional:
 - `ACE_CAD_NGN_RATE`
 - `ACE_FAMILY_PASS_CREDITS`
 
-## 3. Run production migrations
+## 3. Sync the production schema
 
 Before the first production deploy, run:
 
 ```bash
-npx prisma migrate deploy
+npm run db:push
 ```
 
 Then seed initial accounts if you want the default admin and creator records:
@@ -93,12 +93,10 @@ npm run vercel:build
 
 This repository is now configured so Vercel runs:
 
-- `prisma migrate deploy`
+- `prisma db push`
 - then the production Next.js build
 
-That means schema migrations apply automatically during deploy.
-If `DIRECT_URL` is set, migration commands will use it.
-If `DIRECT_URL` is not set, they fall back to `DATABASE_URL`.
+That means the schema is synced automatically during deploy.
 
 ## 5. Post-deploy checks
 
@@ -137,7 +135,7 @@ After you add these GitHub repository secrets:
 you can run the workflow from the Actions tab to:
 
 1. install dependencies
-2. run `prisma migrate deploy`
+2. run `npm run db:push`
 3. optionally run `npm run db:seed`
 
 That gives you a one-click database bootstrap without needing to run local CLI commands yourself.
