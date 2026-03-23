@@ -11,16 +11,16 @@
     "vercel:build": "npm run db:migrate:deploy && npm run build",
     "start": "next start",
     "lint": "next lint",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "node scripts/run-prisma.mjs generate",
+    "prisma:migrate": "node scripts/run-prisma.mjs migrate dev",
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap": "npm run db:migrate:deploy && npm run db:seed",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "launch:check": "node scripts/launch-checklist.mjs",
-    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:deploy": "node scripts/run-prisma.mjs migrate deploy",
     "transcode:hls": "node scripts/transcode-hls.mjs",
     "publish:hls": "node scripts/publish-hls.mjs",
-    "prebuild": "prisma generate"
+    "prebuild": "npm run prisma:generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
