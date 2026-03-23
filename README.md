@@ -27,6 +27,7 @@ For the recommended production stack (`Vercel + Neon + Cloudflare R2`), use:
 
 - `.env.production.example`
 - `DEPLOY_VERCEL_NEON_R2.md`
+- `vercel.json` for automatic production migrations during deploy
 
 ## Demo accounts (seed)
 - Admin: `admin@acestudio.local` / `AdminPass123!`

@@ -8,11 +8,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel:build": "npm run db:migrate:deploy && npm run build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
+    "db:bootstrap": "npm run db:migrate:deploy && npm run db:seed",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "launch:check": "node scripts/launch-checklist.mjs",
     "db:migrate:deploy": "prisma migrate deploy",

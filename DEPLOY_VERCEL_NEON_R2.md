@@ -88,10 +88,15 @@ Recommended build flow:
 
 ```bash
 npm install
-npm run build
+npm run vercel:build
 ```
 
-This repository already runs `prisma generate` before build.
+This repository is now configured so Vercel runs:
+
+- `prisma migrate deploy`
+- then the production Next.js build
+
+That means schema migrations apply automatically during deploy as long as `DATABASE_URL` and `DIRECT_URL` are set in Vercel.
 
 ## 5. Post-deploy checks
 
@@ -117,3 +122,20 @@ Validate these flows on the live site:
 - `ACE_APP_BASE_URL` must be the final production URL so callbacks and cookies behave correctly.
 - Uploads and posters will not work until R2 credentials are set correctly.
 - This repo currently expects a Node-enabled environment for build, Prisma CLI, and deployment operations.
+
+## 7. One-click production bootstrap
+
+A GitHub Actions workflow is included at `.github/workflows/bootstrap-production.yml`.
+
+After you add these GitHub repository secrets:
+
+- `DATABASE_URL`
+- `DIRECT_URL`
+
+you can run the workflow from the Actions tab to:
+
+1. install dependencies
+2. run `prisma migrate deploy`
+3. optionally run `npm run db:seed`
+
+That gives you a one-click database bootstrap without needing to run local CLI commands yourself.
