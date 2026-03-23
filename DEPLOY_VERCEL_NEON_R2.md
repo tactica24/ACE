@@ -96,7 +96,9 @@ This repository is now configured so Vercel runs:
 - `prisma migrate deploy`
 - then the production Next.js build
 
-That means schema migrations apply automatically during deploy as long as `DATABASE_URL` and `DIRECT_URL` are set in Vercel.
+That means schema migrations apply automatically during deploy.
+If `DIRECT_URL` is set, migration commands will use it.
+If `DIRECT_URL` is not set, they fall back to `DATABASE_URL`.
 
 ## 5. Post-deploy checks
 
@@ -118,7 +120,7 @@ Validate these flows on the live site:
 ## 6. Important runtime notes
 
 - `DATABASE_URL` should be the Neon pooled connection string.
-- `DIRECT_URL` should be the direct Neon connection string.
+- `DIRECT_URL` is recommended for migrations, but not strictly required.
 - `ACE_APP_BASE_URL` must be the final production URL so callbacks and cookies behave correctly.
 - Uploads and posters will not work until R2 credentials are set correctly.
 - This repo currently expects a Node-enabled environment for build, Prisma CLI, and deployment operations.

@@ -7,10 +7,12 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const env = {
-  ...process.env,
-  DIRECT_URL: process.env.DIRECT_URL || process.env.DATABASE_URL || ''
-};
+const isMigrationCommand = args[0] === 'migrate';
+const env = { ...process.env };
+
+if (isMigrationCommand && process.env.DIRECT_URL) {
+  env.DATABASE_URL = process.env.DIRECT_URL;
+}
 
 const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const result = spawnSync(command, ['prisma', ...args], {

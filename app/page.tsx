@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import VideoCard from '@/components/VideoCard';
@@ -20,13 +19,45 @@ type HomeVideo = {
   category: string;
 };
 
+type VideoRow = {
+  title: string;
+  items: HomeVideo[];
+};
+
+function buildRows(videos: HomeVideo[]) {
+  const rows: VideoRow[] = [];
+
+  if (videos.length) {
+    rows.push({ title: 'Trending now', items: videos.slice(0, 10) });
+  }
+
+  const byCategory = new Map<string, HomeVideo[]>();
+  for (const video of videos) {
+    const current = byCategory.get(video.category) ?? [];
+    current.push(video);
+    byCategory.set(video.category, current);
+  }
+
+  for (const [category, items] of byCategory) {
+    if (items.length >= 2) {
+      rows.push({ title: category, items: items.slice(0, 10) });
+    }
+  }
+
+  if (videos.length > 6) {
+    rows.push({ title: 'New releases', items: videos.slice(2, 12) });
+  }
+
+  return rows.slice(0, 4);
+}
+
 export default async function HomePage() {
   let videos: HomeVideo[] = [];
 
   try {
     videos = await prisma.video.findMany({
       where: { status: 'APPROVED' },
-      take: 8,
+      take: 18,
       orderBy: { createdAt: 'desc' }
     });
   } catch {
@@ -34,103 +65,69 @@ export default async function HomePage() {
   }
 
   const requestHeaders = headers();
-  const featured = videos.slice(0, 4);
+  const featured = videos[0] ?? null;
+  const featuredPoster = getMediaAssetUrl(featured?.posterKey);
+  const rows = buildRows(videos);
 
   return (
-    <div>
-      <section className="section" style={{ paddingBottom: 24 }}>
-        <div className="container hero">
-          <div className="hero-card">
-            <div className="pill">ACE Marketplace</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '22px 0 18px', flexWrap: 'wrap' }}>
-              <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={88} height={88} priority />
-              <div>
-                <h1 className="hero-title">Ace Studio</h1>
-                <p className="hero-sub">A clean release flow for creators, moderators, and TV-ready viewers.</p>
-              </div>
+    <div className="viewer-home">
+      <section
+        className="home-hero"
+        style={featuredPoster ? { backgroundImage: `linear-gradient(90deg, rgba(3, 5, 14, 0.92) 0%, rgba(3, 5, 14, 0.58) 48%, rgba(3, 5, 14, 0.88) 100%), url(${featuredPoster})` } : undefined}
+      >
+        <div className="container home-hero-inner">
+          <div className="home-hero-copy">
+            <span className="home-kicker">Now streaming</span>
+            <h1 className="home-title">
+              {featured?.title ?? 'Watch bold films, series, and originals in one place'}
+            </h1>
+            <p className="home-summary">
+              {featured?.description ?? 'Create an account, sign in, and start watching a premium lineup built for viewers first.'}
+            </p>
+            <div className="home-actions">
+              <Link className="btn btn-primary" href={featured ? `/v/${featured.id}` : '/auth/register'}>
+                {featured ? 'Watch now' : 'Create account'}
+              </Link>
+              <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
             </div>
-            <div className="hero-actions">
-              <Link className="btn btn-primary" href="/browse">Browse titles</Link>
-              <Link className="btn btn-ghost" href="/tv">Open TV mode</Link>
-              <Link className="btn btn-ghost" href="/studio/upload">Submit a release</Link>
-            </div>
-            <div className="detail-grid" style={{ marginTop: 20 }}>
-              <div className="detail-card">
-                <span className="detail-label">Latest titles</span>
-                <strong>{videos.length}</strong>
+            {featured ? (
+              <div className="home-badges">
+                <span className="badge">{featured.category}</span>
+                <span className="badge">{featured.videoType}</span>
+                <span className="badge">{featured.ageRating}</span>
               </div>
-              <div className="detail-card">
-                <span className="detail-label">TV pairing</span>
-                <strong>Ready</strong>
-              </div>
-              <div className="detail-card">
-                <span className="detail-label">Creator flow</span>
-                <strong>Submission to review</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-showcase">
-            {featured.length ? (
-              featured.map((slide) => {
-                const posterUrl = getMediaAssetUrl(slide.posterKey);
-                return (
-                  <Link
-                    key={slide.id}
-                    href={`/v/${slide.id}`}
-                    className="hero-poster"
-                    style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                  >
-                    <span>{slide.title}</span>
-                  </Link>
-                );
-              })
-            ) : (
-              <>
-                <div className="hero-panel">
-                  <strong>Homepage</strong>
-                  <p className="muted">Approved releases appear here automatically.</p>
-                </div>
-                <div className="hero-panel">
-                  <strong>Creator upload</strong>
-                  <p className="muted">Pricing, artwork, and runtime stay aligned through review.</p>
-                </div>
-                <div className="hero-panel">
-                  <strong>Admin review</strong>
-                  <p className="muted">Moderators get the same metadata the creator submits.</p>
-                </div>
-                <div className="hero-panel">
-                  <strong>TV shelf</strong>
-                  <p className="muted">Approved posters and titles are ready for big-screen browsing.</p>
-                </div>
-              </>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 0 }}>
+      <section className="home-shelves">
         <div className="container">
-          <div className="section-heading">
-            <div>
-              <h2 className="section-title">Now streaming</h2>
-              <p className="muted">Approved releases are shown here exactly as they will appear to viewers.</p>
-            </div>
-          </div>
-
-          {videos.length ? (
-            <div className="video-grid">
-              {videos.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
-                />
-              ))}
-            </div>
+          {rows.length ? (
+            rows.map((row) => (
+              <div key={row.title} className="home-shelf">
+                <div className="home-shelf-header">
+                  <h2>{row.title}</h2>
+                </div>
+                <div className="home-carousel">
+                  {row.items.map((video) => (
+                    <div key={`${row.title}-${video.id}`} className="home-carousel-item">
+                      <VideoCard
+                        video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
           ) : (
-            <div className="card empty-state">
-              <h3>No approved titles are live yet</h3>
-              <p className="muted">Once a creator submission is approved, it will appear here, on browse, and on the TV page.</p>
+            <div className="home-empty">
+              <h2>Fresh releases are loading</h2>
+              <p className="muted">Sign in or create an account to be ready when the catalog goes live.</p>
+              <div className="home-actions">
+                <Link className="btn btn-primary" href="/auth/register">Create account</Link>
+                <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
+              </div>
             </div>
           )}
         </div>
