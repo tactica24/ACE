@@ -10,7 +10,7 @@ import { theme } from '@/lib/theme';
 export default function VideoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const videoRef = useRef<Video | null>(null);
+  const videoRef = useRef<any>(null);
   const [data, setData] = useState<any>(null);
   const [streamUrl, setStreamUrl] = useState<string>('');
   const [showPaywall, setShowPaywall] = useState(false);
@@ -93,7 +93,7 @@ export default function VideoDetailScreen() {
       {streamUrl ? (
         <View style={styles.player}>
           <Video
-            ref={videoRef}
+            ref={videoRef as any}
             source={{ uri: streamUrl }}
             useNativeControls
             resizeMode={ResizeMode.CONTAIN}

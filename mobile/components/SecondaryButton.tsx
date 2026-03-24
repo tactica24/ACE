@@ -3,13 +3,15 @@ import { theme } from '@/lib/theme';
 
 export default function SecondaryButton({
   label,
-  onPress
+  onPress,
+  disabled
 }: {
   label: string;
-  onPress?: () => void;
+  onPress?: () => void | Promise<void>;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable style={styles.button} onPress={onPress}>
+    <Pressable style={[styles.button, disabled && styles.disabled]} onPress={onPress} disabled={disabled}>
       <Text style={styles.text}>{label}</Text>
     </Pressable>
   );
@@ -27,5 +29,8 @@ const styles = StyleSheet.create({
   text: {
     color: theme.ink,
     fontWeight: '600'
+  },
+  disabled: {
+    opacity: 0.6
   }
 });

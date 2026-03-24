@@ -7,7 +7,7 @@ export default function PrimaryButton({
   disabled
 }: {
   label: string;
-  onPress?: () => void;
+  onPress?: () => void | Promise<void>;
   disabled?: boolean;
 }) {
   return (

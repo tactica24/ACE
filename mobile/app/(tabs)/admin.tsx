@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { Text, View, Pressable } from 'react-native';
+import { Text, View, Pressable, StyleSheet } from 'react-native';
 import Screen from '@/components/Screen';
 import { apiGet, apiPost } from '@/lib/client';
 import { theme } from '@/lib/theme';
@@ -58,7 +58,7 @@ export default function AdminScreen() {
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   actionPrimary: {
     backgroundColor: theme.brand,
     paddingHorizontal: 12,
@@ -73,6 +73,6 @@ const styles = {
     paddingVertical: 8,
     borderRadius: 999
   },
-  actionText: { color: 'white', fontWeight: '700' },
-  actionTextDark: { color: theme.ink, fontWeight: '700' }
-};
+  actionText: { color: 'white', fontWeight: '700' as const },
+  actionTextDark: { color: theme.ink, fontWeight: '700' as const }
+});
