@@ -83,6 +83,7 @@ The native app lives in `mobile/` (Expo + Expo Router).
 
 Setup:
 ```bash
+npm run env:sync:mobile
 cd mobile
 npm install
 EXPO_PUBLIC_API_URL=http://localhost:3000 \
@@ -96,6 +97,7 @@ npm run start
 ```
 
 For device testing, use your machine's LAN IP for `EXPO_PUBLIC_API_URL`.
+If your root `.env` already has the Firebase web config, you can generate `mobile/.env.local` automatically with `npm run env:sync:mobile`.
 
 ## Family Pass (Diaspora)
 Diaspora users can purchase a Home Bundle that adds wallet credits to a linked Nigerian phone number. Configure credits with `ACE_FAMILY_PASS_CREDITS`.

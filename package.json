@@ -16,6 +16,7 @@
     "db:push": "node scripts/run-prisma.mjs db push --skip-generate",
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap": "npm run db:push && npm run db:seed",
+    "env:sync:mobile": "node scripts/sync-mobile-firebase-env.mjs",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "launch:check": "node scripts/launch-checklist.mjs",
     "db:migrate:deploy": "node scripts/run-prisma.mjs migrate deploy",
