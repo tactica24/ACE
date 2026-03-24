@@ -8,22 +8,25 @@ export default function AuthLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const next = params.get('next') || '/browse';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      if (!res.ok) throw new Error('Login failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Login failed');
       window.location.href = next;
-    } catch {
-      alert('Invalid credentials.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Invalid credentials.');
     } finally {
       setLoading(false);
     }
@@ -36,6 +39,7 @@ export default function AuthLogin() {
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign in'}
       </button>
+      {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}
     </form>
   );
 }
