@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel:build": "npm run db:migrate:deploy && npm run build",
+    "vercel:build": "npm run db:repair:known && npm run db:migrate:deploy && npm run build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "node scripts/run-prisma.mjs generate",
@@ -16,6 +16,7 @@
     "db:push": "node scripts/run-prisma.mjs db push --skip-generate",
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap": "npm run db:push && npm run db:seed",
+    "db:repair:known": "node scripts/repair-known-production-migrations.mjs",
     "env:sync:mobile": "node scripts/sync-mobile-firebase-env.mjs",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "launch:check": "node scripts/launch-checklist.mjs",

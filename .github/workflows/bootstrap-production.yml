@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Repair known failed migrations
+        run: npm run db:repair:known
+
       - name: Apply production migrations
         run: npm run db:migrate:deploy
 

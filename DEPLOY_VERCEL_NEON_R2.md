@@ -121,10 +121,11 @@ npm run vercel:build
 
 This repository is now configured so Vercel runs:
 
+- a targeted repair for the known `202603170001_tv_pairing` failed migration state
 - `prisma migrate deploy`
 - then the production Next.js build
 
-That means committed Prisma migrations are applied automatically during deploy.
+That means the known stuck production migration state is repaired automatically, then committed Prisma migrations are applied during deploy.
 
 ## 5. Post-deploy checks
 
