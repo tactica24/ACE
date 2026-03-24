@@ -26,8 +26,10 @@ export default async function AccountPage() {
       <div className="container">
         <div className="card">
           <h2>Account</h2>
+          <p className="muted">{user.name ?? 'No name yet'}</p>
           <p className="muted">{user.email}</p>
           <p className="muted">{user.phone}</p>
+          <p className="muted">Email verified: {user.emailVerified ? 'Yes' : 'Pending'}</p>
           <p className="muted">Wallet balance: NGN {wallet?.balanceNaira ?? 0}</p>
           <AccountActions />
         </div>

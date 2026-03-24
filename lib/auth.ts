@@ -17,19 +17,23 @@ const FIREBASE_PASSWORD_SENTINEL = 'FIREBASE_AUTH_MANAGED';
 export type AuthTokenPayload = {
   sub: string;
   role: RoleValue;
+  name?: string | null;
   email: string;
   phone: string;
   firebaseUid: string;
+  emailVerified?: boolean;
 };
 
 type SyncOptions = {
   allowCreate?: boolean;
+  name?: string | null;
   phone?: string | null;
 };
 
 type DbAuthUser = {
   id: string;
   firebaseUid: string | null;
+  name: string | null;
   email: string;
   phone: string;
   role: RoleValue;
@@ -43,7 +47,12 @@ function normalizePhone(phone?: string | null) {
   return phone?.trim() ?? '';
 }
 
-function toAuthPayload(user: DbAuthUser): AuthTokenPayload {
+function normalizeName(name?: string | null) {
+  const value = name?.trim() ?? '';
+  return value || null;
+}
+
+function toAuthPayload(user: DbAuthUser, decodedToken?: DecodedIdToken): AuthTokenPayload {
   if (!user.firebaseUid) {
     throw new Error('User is missing a Firebase UID.');
   }
@@ -51,9 +60,11 @@ function toAuthPayload(user: DbAuthUser): AuthTokenPayload {
   return {
     sub: user.id,
     role: user.role,
+    name: user.name,
     email: user.email,
     phone: user.phone,
-    firebaseUid: user.firebaseUid
+    firebaseUid: user.firebaseUid,
+    emailVerified: decodedToken?.email_verified ?? false
   };
 }
 
@@ -81,6 +92,7 @@ async function verifySessionCookie(sessionCookie: string) {
 
 async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions = {}) {
   const firebaseUid = decodedToken.uid;
+  const name = normalizeName(options.name ?? decodedToken.name);
   const email = normalizeEmail(decodedToken.email);
   const phone = normalizePhone(options.phone ?? decodedToken.phone_number);
 
@@ -95,6 +107,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     select: {
       id: true,
       firebaseUid: true,
+      name: true,
       email: true,
       phone: true,
       role: true
@@ -113,6 +126,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     user = await prisma.user.create({
       data: {
         firebaseUid,
+        name,
         email,
         phone,
         passwordHash: FIREBASE_PASSWORD_SENTINEL,
@@ -121,19 +135,23 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       select: {
         id: true,
         firebaseUid: true,
+        name: true,
         email: true,
         phone: true,
         role: true
       }
     });
   } else {
-    const updateData: { firebaseUid?: string; email?: string; phone?: string } = {};
+    const updateData: { firebaseUid?: string; name?: string | null; email?: string; phone?: string } = {};
 
     if (user.firebaseUid && user.firebaseUid !== firebaseUid) {
       throw new Error('This account is already linked to a different Firebase user.');
     }
     if (!user.firebaseUid) {
       updateData.firebaseUid = firebaseUid;
+    }
+    if (name && user.name !== name) {
+      updateData.name = name;
     }
     if (user.email !== email) {
       updateData.email = email;
@@ -149,6 +167,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         select: {
           id: true,
           firebaseUid: true,
+          name: true,
           email: true,
           phone: true,
           role: true
@@ -163,7 +182,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     });
   }
 
-  return toAuthPayload(user);
+  return toAuthPayload(user, decodedToken);
 }
 
 export async function verifyFirebaseIdToken(token: string) {

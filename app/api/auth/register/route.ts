@@ -3,15 +3,16 @@ import { applyAuthSession, syncAuthSession } from '@/lib/auth';
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { idToken, phone } = body as { idToken?: string; phone?: string };
+  const { idToken, name, phone } = body as { idToken?: string; name?: string; phone?: string };
+  const safeName = name?.trim();
   const safePhone = phone?.trim();
 
-  if (!idToken || !safePhone) {
+  if (!idToken || !safeName || !safePhone) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   try {
-    const { user, sessionCookie } = await syncAuthSession(idToken, { phone: safePhone });
+    const { user, sessionCookie } = await syncAuthSession(idToken, { name: safeName, phone: safePhone });
     const response = NextResponse.json({ ok: true, user });
     applyAuthSession(response, sessionCookie);
     return response;

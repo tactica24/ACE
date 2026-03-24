@@ -2,11 +2,12 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
+import { createUserWithEmailAndPassword, deleteUser, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase';
 
 export default function AuthRegister() {
   const params = useSearchParams();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -22,11 +23,13 @@ export default function AuthRegister() {
 
     try {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      await updateProfile(credential.user, { displayName: name.trim() });
+      await sendEmailVerification(credential.user).catch(() => null);
       const idToken = await credential.user.getIdToken();
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, phone })
+        body: JSON.stringify({ idToken, name, phone })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -43,12 +46,14 @@ export default function AuthRegister() {
 
   return (
     <form onSubmit={handleSubmit} className="form-grid">
+      <input className="input" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
       <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="input" placeholder="Phone (e.g. +234...)" value={phone} onChange={(e) => setPhone(e.target.value)} />
       <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>
+      <p className="muted" style={{ margin: 0 }}>We will send a verification email after signup.</p>
       {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}
     </form>
   );

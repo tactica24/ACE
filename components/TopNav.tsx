@@ -22,7 +22,7 @@ export default async function TopNav() {
         <div className="nav-actions">
           {user ? (
             <Link className="btn btn-ghost" href="/account">
-              {user.email}
+              {user.name ?? user.email}
             </Link>
           ) : (
             <>
