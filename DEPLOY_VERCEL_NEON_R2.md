@@ -121,7 +121,8 @@ npm run vercel:build
 
 This repository is now configured so Vercel runs:
 
-- a targeted repair for the known `202603170001_tv_pairing` failed migration state
+- an idempotent SQL repair for the known `202603170001_tv_pairing` partial migration state
+- `prisma migrate resolve --applied 202603170001_tv_pairing`
 - `prisma migrate deploy`
 - then the production Next.js build
 

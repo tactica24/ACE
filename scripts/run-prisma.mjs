@@ -7,10 +7,10 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const isMigrationCommand = args[0] === 'migrate';
+const usesDirectUrl = args[0] === 'migrate' || (args[0] === 'db' && args[1] === 'execute');
 const env = { ...process.env };
 
-if (isMigrationCommand && process.env.DIRECT_URL) {
+if (usesDirectUrl && process.env.DIRECT_URL) {
   env.DATABASE_URL = process.env.DIRECT_URL;
 }
 
