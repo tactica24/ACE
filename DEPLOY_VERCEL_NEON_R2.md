@@ -99,7 +99,7 @@ Optional:
 Before the first production deploy, run:
 
 ```bash
-npm run db:push
+npm run db:migrate:deploy
 ```
 
 Then seed initial accounts if you want the default admin and creator records:
@@ -121,10 +121,10 @@ npm run vercel:build
 
 This repository is now configured so Vercel runs:
 
-- `prisma db push`
+- `prisma migrate deploy`
 - then the production Next.js build
 
-That means the schema is synced automatically during deploy.
+That means committed Prisma migrations are applied automatically during deploy.
 
 ## 5. Post-deploy checks
 
@@ -169,7 +169,7 @@ Add these GitHub repository secrets before running it:
 You can then use the workflow from the Actions tab to:
 
 1. install dependencies
-2. run `npm run db:push`
+2. run `npm run db:migrate:deploy`
 3. optionally run `npm run db:seed`
 
 That gives you a one-click database bootstrap for Neon plus Firebase-backed demo users.
