@@ -1,0 +1,51 @@
+name: Repair Production Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_name:
+        description: "The failed Prisma migration name"
+        required: true
+        default: "202603170001_tv_pairing"
+        type: string
+      resolution:
+        description: "How to mark the failed migration in the production database"
+        required: true
+        default: "rolled-back"
+        type: choice
+        options:
+          - rolled-back
+          - applied
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Resolve failed migration as rolled back
+        if: ${{ inputs.resolution == 'rolled-back' }}
+        run: npx prisma migrate resolve --rolled-back "${{ inputs.migration_name }}"
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+
+      - name: Resolve failed migration as applied
+        if: ${{ inputs.resolution == 'applied' }}
+        run: npx prisma migrate resolve --applied "${{ inputs.migration_name }}"
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+
+      - name: Apply remaining production migrations
+        run: npm run db:migrate:deploy

@@ -173,3 +173,15 @@ You can then use the workflow from the Actions tab to:
 3. optionally run `npm run db:seed`
 
 That gives you a one-click database bootstrap for Neon plus Firebase-backed demo users.
+
+## 8. GitHub migration repair workflow
+
+If production gets stuck on a previously failed Prisma migration, use `.github/workflows/repair-production-migration.yml`.
+
+It lets you:
+
+1. enter the failed migration name
+2. mark it as `rolled-back` or `applied`
+3. run `npm run db:migrate:deploy`
+
+This is safer than trying to auto-resolve failed migrations on every deploy, because Prisma recovery needs an explicit choice based on the actual database state.
