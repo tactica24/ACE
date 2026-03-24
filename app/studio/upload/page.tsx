@@ -1,7 +1,10 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import UploadForm from '@/components/UploadForm';
+import { requireCreatorUser } from '@/lib/auth-page';
 
-export default function UploadPage() {
+export default async function UploadPage() {
+  await requireCreatorUser('/studio/upload');
+
   return (
     <DashboardShell
       title="Upload a new release"

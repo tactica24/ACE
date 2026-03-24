@@ -26,8 +26,16 @@ function inspectEnv() {
   const envText = readFileSync('.env', 'utf8');
   const required = [
     'DATABASE_URL',
-    'JWT_SECRET',
     'ACE_STREAM_SIGNING_SECRET',
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_PRIVATE_KEY',
+    'NEXT_PUBLIC_FIREBASE_API_KEY',
+    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+    'NEXT_PUBLIC_FIREBASE_APP_ID',
     'PAYSTACK_SECRET_KEY',
     'R2_ENDPOINT',
     'R2_ACCESS_KEY_ID',
@@ -46,7 +54,16 @@ function inspectEnv() {
     return;
   }
 
-  const placeholderPatterns = [/replace-with-strong-secret/i, /sk_test_xxx/i, /pk_test_xxx/i, /<accountid>/i, /"replace"/i];
+  const placeholderPatterns = [
+    /replace-with-your-project-id/i,
+    /replace-with-your-client-email/i,
+    /replace-with-your-private-key/i,
+    /replace-with-your-web-api-key/i,
+    /sk_test_xxx/i,
+    /pk_test_xxx/i,
+    /<accountid>/i,
+    /"replace"/i
+  ];
   const hasPlaceholder = placeholderPatterns.some((pattern) => pattern.test(envText));
   checks.push({
     name: 'Required launch env keys configured',
@@ -82,7 +99,7 @@ const warnings = checks.filter((item) => item.status === 'WARNING').length;
 console.log('\nACE Launch Checklist\n');
 for (const item of checks) {
   const mark = item.status === 'DONE' ? '[x]' : '[ ]';
-  console.log(`${mark} ${item.name} — ${item.status}`);
+  console.log(`${mark} ${item.name} - ${item.status}`);
   console.log(`    ${item.note}`);
 }
 

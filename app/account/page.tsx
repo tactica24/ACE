@@ -1,19 +1,10 @@
 import Link from 'next/link';
 import AccountActions from '@/components/AccountActions';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 export default async function AccountPage() {
-  const token = getAuthCookie();
-  const user = token
-    ? (() => {
-        try {
-          return verifyAuthToken(token);
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  const user = await getCurrentUser();
 
   if (!user) {
     return (

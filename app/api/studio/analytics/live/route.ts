@@ -34,7 +34,7 @@ async function buildPayload(userId: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return new Response('Unauthorized', { status: 401 });
   }

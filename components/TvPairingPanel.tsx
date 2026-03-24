@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { signInWithCustomToken } from 'firebase/auth';
+import { firebaseAuth } from '@/lib/firebase';
 
 type PairingSession = {
   sessionId: string;
@@ -53,7 +55,19 @@ export default function TvPairingPanel() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId: session.sessionId })
           });
-          if (finalize.ok) {
+          const finalizePayload = await finalize.json().catch(() => ({}));
+          if (!finalize.ok || !finalizePayload.customToken) {
+            return;
+          }
+
+          const credential = await signInWithCustomToken(firebaseAuth, finalizePayload.customToken);
+          const idToken = await credential.user.getIdToken();
+          const login = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken })
+          });
+          if (login.ok) {
             setStatus('completed');
             window.location.reload();
             return;

@@ -2,6 +2,8 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { firebaseAuth } from '@/lib/firebase';
 
 export default function AuthLogin() {
   const params = useSearchParams();
@@ -16,14 +18,20 @@ export default function AuthLogin() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const idToken = await credential.user.getIdToken();
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ idToken })
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      if (!res.ok) {
+        await signOut(firebaseAuth).catch(() => null);
+        throw new Error(data.error || 'Login failed');
+      }
       window.location.href = next;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Invalid credentials.');
@@ -34,7 +42,7 @@ export default function AuthLogin() {
 
   return (
     <form onSubmit={handleSubmit} className="form-grid">
-      <input className="input" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign in'}

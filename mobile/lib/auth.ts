@@ -1,20 +1,20 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firebaseAuth } from '@/lib/firebase';
 
 export type MobileUser = {
-  sub: string;
+  uid: string;
   email: string;
-  phone: string;
-  role: 'USER' | 'CREATOR' | 'ADMIN';
 };
 
-export async function saveToken(token: string) {
-  await AsyncStorage.setItem('ace_token', token);
+export function getMobileUser(): MobileUser | null {
+  const user = firebaseAuth.currentUser;
+  if (!user?.email) return null;
+
+  return {
+    uid: user.uid,
+    email: user.email
+  };
 }
 
-export async function clearToken() {
-  await AsyncStorage.removeItem('ace_token');
-}
-
-export async function getToken() {
-  return AsyncStorage.getItem('ace_token');
+export async function signOutMobileUser() {
+  await firebaseAuth.signOut();
 }

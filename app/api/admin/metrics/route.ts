@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || auth.role !== 'ADMIN') {
     return new Response('Unauthorized', { status: 401 });
   }

@@ -1,17 +1,10 @@
-﻿import WalletClient from '@/components/WalletClient';
-import { prisma } from '@/lib/db';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
 import Link from 'next/link';
+import WalletClient from '@/components/WalletClient';
+import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
 export default async function WalletPage() {
-  const token = getAuthCookie();
-  const user = token ? (() => {
-    try {
-      return verifyAuthToken(token);
-    } catch {
-      return null;
-    }
-  })() : null;
+  const user = await getCurrentUser();
 
   if (!user) {
     return (
@@ -41,7 +34,3 @@ export default async function WalletPage() {
     </div>
   );
 }
-
-
-
-

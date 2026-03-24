@@ -11,7 +11,7 @@ import { readReferralCode, resolveReferral } from '@/lib/referrals';
 const PASS_PRICE = 2500;
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const referralCode = readReferralCode(req);

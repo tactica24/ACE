@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { formatNaira } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
@@ -30,16 +30,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
   if (!video) return notFound();
 
-  const token = getAuthCookie();
-  const user = token
-    ? (() => {
-        try {
-          return verifyAuthToken(token);
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  const user = await getCurrentUser();
 
   if (video.status !== 'APPROVED' && (!user || (user.role !== 'ADMIN' && user.sub !== video.creatorId))) {
     return notFound();

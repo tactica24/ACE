@@ -1,13 +1,14 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firebaseAuth } from '@/lib/firebase';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = await AsyncStorage.getItem('ace_token');
+  const token = await firebaseAuth.currentUser?.getIdToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined)
   };
+
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {

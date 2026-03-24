@@ -30,7 +30,7 @@ function isAgeRating(value: string | undefined): value is AgeRatingValue {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

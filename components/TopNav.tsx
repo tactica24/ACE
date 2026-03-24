@@ -1,20 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { verifyAuthToken } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
-function getUser() {
-  const token = cookies().get('ace_token')?.value;
-  if (!token) return null;
-  try {
-    return verifyAuthToken(token);
-  } catch {
-    return null;
-  }
-}
-
-export default function TopNav() {
-  const user = getUser();
+export default async function TopNav() {
+  const user = await getCurrentUser();
 
   return (
     <nav className="nav">

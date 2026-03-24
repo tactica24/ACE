@@ -2,26 +2,13 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import VideoCard from '@/components/VideoCard';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
+import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getRegionalPrice } from '@/lib/pricing';
 
 export default async function LibraryPage() {
-  const token = getAuthCookie();
-  const user = token
-    ? (() => {
-        try {
-          return verifyAuthToken(token);
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-
-  const videos = user
-    ? await prisma.video.findMany({ where: { creatorId: user.sub }, orderBy: { createdAt: 'desc' } })
-    : [];
-
+  const user = await requireCreatorUser('/studio/library');
+  const videos = await prisma.video.findMany({ where: { creatorId: user.sub }, orderBy: { createdAt: 'desc' } });
   const requestHeaders = headers();
 
   return (
@@ -45,9 +32,7 @@ export default async function LibraryPage() {
         <div className="library-grid">
           {videos.map((video) => (
             <div key={video.id} className="card library-card">
-              <VideoCard
-                video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
-              />
+              <VideoCard video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }} />
               <div className="detail-grid">
                 <div className="detail-card">
                   <span className="detail-label">Status</span>

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!video) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (video.status !== 'APPROVED') return NextResponse.json({ error: 'Not available' }, { status: 403 });
 
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   let unlocked = false;
   if (auth) {
     const unlock = await prisma.unlock.findFirst({ where: { userId: auth.sub, videoId: video.id } });

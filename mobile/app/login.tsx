@@ -1,11 +1,12 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import Screen from '@/components/Screen';
 import PrimaryButton from '@/components/PrimaryButton';
 import SecondaryButton from '@/components/SecondaryButton';
 import { BASE_URL } from '@/lib/client';
-import { saveToken } from '@/lib/auth';
-import { useRouter } from 'expo-router';
+import { firebaseAuth } from '@/lib/firebase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -16,14 +17,18 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const idToken = await credential.user.getIdToken();
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ idToken })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      await saveToken(data.token);
+      if (!res.ok) {
+        await signOut(firebaseAuth).catch(() => null);
+        throw new Error(data.error || 'Login failed');
+      }
       router.replace('/browse');
     } catch {
       alert('Login failed');

@@ -4,7 +4,7 @@ import { createPresignedPutUrl } from '@/lib/r2';
 import { v4 as uuid } from 'uuid';
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

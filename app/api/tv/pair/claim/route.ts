@@ -4,7 +4,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { isPairingExpired } from '@/lib/pairing';
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));

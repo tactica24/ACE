@@ -1,20 +1,10 @@
-﻿import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
-import { getAuthCookie, verifyAuthToken } from '@/lib/auth';
 
 export default async function ContractsPage() {
-  const token = getAuthCookie();
-  const user = token ? (() => {
-    try {
-      return verifyAuthToken(token);
-    } catch {
-      return null;
-    }
-  })() : null;
-
-  const creator = user
-    ? await prisma.creatorProfile.findUnique({ where: { userId: user.sub } })
-    : null;
+  const user = await requireCreatorUser('/studio/contracts');
+  const creator = await prisma.creatorProfile.findUnique({ where: { userId: user.sub } });
   const contracts = creator
     ? await prisma.contract.findMany({ where: { creatorId: creator.id }, orderBy: { createdAt: 'desc' } })
     : [];
@@ -50,7 +40,3 @@ export default async function ContractsPage() {
     </DashboardShell>
   );
 }
-
-
-
-

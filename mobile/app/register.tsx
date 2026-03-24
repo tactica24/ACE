@@ -1,11 +1,12 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import Screen from '@/components/Screen';
 import PrimaryButton from '@/components/PrimaryButton';
 import SecondaryButton from '@/components/SecondaryButton';
 import { BASE_URL } from '@/lib/client';
-import { saveToken } from '@/lib/auth';
-import { useRouter } from 'expo-router';
+import { firebaseAuth } from '@/lib/firebase';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -17,14 +18,18 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setLoading(true);
     try {
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const idToken = await credential.user.getIdToken();
       const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, phone, password })
+        body: JSON.stringify({ idToken, phone })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Register failed');
-      await saveToken(data.token);
+      if (!res.ok) {
+        await deleteUser(credential.user).catch(() => null);
+        throw new Error(data.error || 'Register failed');
+      }
       router.replace('/browse');
     } catch {
       alert('Register failed');

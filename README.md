@@ -1,10 +1,11 @@
 # Ace Studio
 
-Ace Studio is a production-ready, Africa-first video marketplace with Lagos Relay caching, wallet unlocks, creator analytics, and admin moderation.
+Ace Studio is a production-ready, Africa-first video marketplace with Firebase Auth identity, Neon-backed relational data, Cloudflare R2 media delivery, wallet unlocks, creator analytics, and admin moderation.
 
 ## Stack
-- Next.js App Router
-- Prisma + PostgreSQL
+- Next.js App Router on Vercel
+- Firebase Authentication
+- Prisma + Neon PostgreSQL
 - Cloudflare R2 (S3 compatible)
 - Paystack payments (NG)
 - Stripe Checkout (Diaspora)
@@ -23,7 +24,7 @@ npm run dev
 ```
 
 ## Production deployment
-For the recommended production stack (`Vercel + Neon + Cloudflare R2`), use:
+For the recommended production stack (`Vercel + Firebase Auth + Neon + Cloudflare R2`), use:
 
 - `.env.production.example`
 - `DEPLOY_VERCEL_NEON_R2.md`
@@ -33,6 +34,8 @@ For the recommended production stack (`Vercel + Neon + Cloudflare R2`), use:
 - Admin: `admin@acestudio.local` / `AdminPass123!`
 - Creator: `creator@acestudio.local` / `CreatorPass123!`
 - Viewer: `viewer@acestudio.local` / `ViewerPass123!`
+
+Seeded demo credentials are also provisioned in Firebase Auth when `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` are configured.
 
 ## Paystack callback
 Set Paystack callback URL to:
@@ -82,7 +85,14 @@ Setup:
 ```bash
 cd mobile
 npm install
-EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
+EXPO_PUBLIC_API_URL=http://localhost:3000 \
+EXPO_PUBLIC_FIREBASE_API_KEY=... \
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=... \
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=... \
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=... \
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=... \
+EXPO_PUBLIC_FIREBASE_APP_ID=... \
+npm run start
 ```
 
 For device testing, use your machine's LAN IP for `EXPO_PUBLIC_API_URL`.

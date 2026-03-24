@@ -1,8 +1,11 @@
 import Link from 'next/link';
-import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AnalyticsTicker from '@/components/AnalyticsTicker';
+import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { requireCreatorUser } from '@/lib/auth-page';
 
-export default function StudioPage() {
+export default async function StudioPage() {
+  await requireCreatorUser('/studio');
+
   return (
     <DashboardShell
       title="Creator studio"

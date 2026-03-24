@@ -3,7 +3,7 @@ import { getAuthFromRequest, createStreamToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   const teaser = req.nextUrl.searchParams.get('teaser') === '1';
   if (!auth && !teaser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

@@ -8,7 +8,7 @@ const fields = ['phoneVerified', 'emailVerified', 'ninVerified', 'idVerified', '
 type Field = (typeof fields)[number];
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();

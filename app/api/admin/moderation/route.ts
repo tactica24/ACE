@@ -6,7 +6,7 @@ import { type ModerationQueueItem } from '@/components/ModerationQueue';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const items = await prisma.moderationItem.findMany({
