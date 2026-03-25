@@ -42,45 +42,52 @@ type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;
 
+function normalizeEnvValue(value: string | undefined) {
+  if (typeof value !== 'string') return undefined;
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function loadEnv(): Env {
   if (cachedEnv) return cachedEnv;
 
   cachedEnv = envSchema.parse({
-    DATABASE_URL: process.env.DATABASE_URL,
-    ACE_STREAM_SIGNING_SECRET: process.env.ACE_STREAM_SIGNING_SECRET,
-    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
-    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
-    FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-    PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
-    PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-    R2_ENDPOINT: process.env.R2_ENDPOINT,
-    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
-    R2_BUCKET: process.env.R2_BUCKET,
-    R2_REGION: process.env.R2_REGION ?? 'auto',
-    ACE_STORAGE_DIR: process.env.ACE_STORAGE_DIR ?? './storage',
-    ACE_NODE_NAME: process.env.ACE_NODE_NAME ?? 'lagos-relay-01',
-    ACE_NODE_REGION: process.env.ACE_NODE_REGION ?? 'NG',
-    ACE_NODE_LAGOS_URL: process.env.ACE_NODE_LAGOS_URL,
-    ACE_NODE_ABUJA_URL: process.env.ACE_NODE_ABUJA_URL,
-    ACE_NODE_JHB_URL: process.env.ACE_NODE_JHB_URL,
-    ACE_CDN_BASE_URL: process.env.ACE_CDN_BASE_URL,
-    ACE_USD_NGN_RATE: process.env.ACE_USD_NGN_RATE,
-    ACE_GBP_NGN_RATE: process.env.ACE_GBP_NGN_RATE,
-    ACE_CAD_NGN_RATE: process.env.ACE_CAD_NGN_RATE,
-    ACE_FAMILY_PASS_CREDITS: process.env.ACE_FAMILY_PASS_CREDITS,
-    ACE_GRAFANA_URL: process.env.ACE_GRAFANA_URL,
-    ACE_APP_BASE_URL: process.env.ACE_APP_BASE_URL ?? 'http://localhost:3000'
+    DATABASE_URL: normalizeEnvValue(process.env.DATABASE_URL),
+    ACE_STREAM_SIGNING_SECRET: normalizeEnvValue(process.env.ACE_STREAM_SIGNING_SECRET),
+    FIREBASE_PROJECT_ID: normalizeEnvValue(process.env.FIREBASE_PROJECT_ID),
+    FIREBASE_CLIENT_EMAIL: normalizeEnvValue(process.env.FIREBASE_CLIENT_EMAIL),
+    FIREBASE_PRIVATE_KEY: normalizeEnvValue(process.env.FIREBASE_PRIVATE_KEY),
+    FIREBASE_STORAGE_BUCKET: normalizeEnvValue(process.env.FIREBASE_STORAGE_BUCKET),
+    NEXT_PUBLIC_FIREBASE_API_KEY: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+    NEXT_PUBLIC_FIREBASE_APP_ID: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID),
+    PAYSTACK_SECRET_KEY: normalizeEnvValue(process.env.PAYSTACK_SECRET_KEY),
+    PAYSTACK_PUBLIC_KEY: normalizeEnvValue(process.env.PAYSTACK_PUBLIC_KEY),
+    STRIPE_SECRET_KEY: normalizeEnvValue(process.env.STRIPE_SECRET_KEY),
+    STRIPE_WEBHOOK_SECRET: normalizeEnvValue(process.env.STRIPE_WEBHOOK_SECRET),
+    R2_ENDPOINT: normalizeEnvValue(process.env.R2_ENDPOINT),
+    R2_ACCESS_KEY_ID: normalizeEnvValue(process.env.R2_ACCESS_KEY_ID),
+    R2_SECRET_ACCESS_KEY: normalizeEnvValue(process.env.R2_SECRET_ACCESS_KEY),
+    R2_BUCKET: normalizeEnvValue(process.env.R2_BUCKET),
+    R2_REGION: normalizeEnvValue(process.env.R2_REGION),
+    ACE_STORAGE_DIR: normalizeEnvValue(process.env.ACE_STORAGE_DIR),
+    ACE_NODE_NAME: normalizeEnvValue(process.env.ACE_NODE_NAME),
+    ACE_NODE_REGION: normalizeEnvValue(process.env.ACE_NODE_REGION),
+    ACE_NODE_LAGOS_URL: normalizeEnvValue(process.env.ACE_NODE_LAGOS_URL),
+    ACE_NODE_ABUJA_URL: normalizeEnvValue(process.env.ACE_NODE_ABUJA_URL),
+    ACE_NODE_JHB_URL: normalizeEnvValue(process.env.ACE_NODE_JHB_URL),
+    ACE_CDN_BASE_URL: normalizeEnvValue(process.env.ACE_CDN_BASE_URL),
+    ACE_USD_NGN_RATE: normalizeEnvValue(process.env.ACE_USD_NGN_RATE),
+    ACE_GBP_NGN_RATE: normalizeEnvValue(process.env.ACE_GBP_NGN_RATE),
+    ACE_CAD_NGN_RATE: normalizeEnvValue(process.env.ACE_CAD_NGN_RATE),
+    ACE_FAMILY_PASS_CREDITS: normalizeEnvValue(process.env.ACE_FAMILY_PASS_CREDITS),
+    ACE_GRAFANA_URL: normalizeEnvValue(process.env.ACE_GRAFANA_URL),
+    ACE_APP_BASE_URL: normalizeEnvValue(process.env.ACE_APP_BASE_URL)
   });
 
   return cachedEnv;
