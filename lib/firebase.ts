@@ -58,6 +58,12 @@ export function toFirebaseAuthErrorMessage(error: unknown, fallback: string) {
       case 'auth/app-not-authorized':
       case 'auth/invalid-api-key':
         return 'Firebase web auth is misconfigured. Check your NEXT_PUBLIC_FIREBASE_* keys and authorized domains.';
+      case 'auth/operation-not-allowed':
+        return 'Email/password sign-in is not enabled in Firebase Authentication. Enable the Email/Password provider in Firebase Console.';
+      case 'auth/unauthorized-domain':
+        return 'This domain is not authorized in Firebase Authentication. Add your Vercel domain in Firebase Console -> Authentication -> Settings -> Authorized domains.';
+      case 'auth/project-not-found':
+        return 'The configured Firebase project could not be found. Check that your NEXT_PUBLIC_FIREBASE_* values point to the correct Firebase project.';
       case 'auth/invalid-credential':
       case 'auth/invalid-login-credentials':
       case 'auth/user-not-found':

@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { type DecodedIdToken } from 'firebase-admin/auth';
@@ -70,6 +71,52 @@ export function getAuthServerConfigErrorMessage() {
   return `Auth server configuration is missing: ${missing.join(', ')}. Add these values to .env.local or your deployment environment variables.`;
 }
 
+function getFirebaseProjectMismatchErrorMessage() {
+  const publicProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  const adminProjectId = process.env.FIREBASE_PROJECT_ID?.trim();
+
+  if (!publicProjectId || !adminProjectId || publicProjectId === adminProjectId) {
+    return null;
+  }
+
+  return `Firebase project mismatch detected: NEXT_PUBLIC_FIREBASE_PROJECT_ID (${publicProjectId}) does not match FIREBASE_PROJECT_ID (${adminProjectId}). Your web app and admin SDK must point to the same Firebase project.`;
+}
+
+function toAuthSyncErrorMessage(error: unknown) {
+  const projectMismatchError = getFirebaseProjectMismatchErrorMessage();
+  if (projectMismatchError) {
+    return projectMismatchError;
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return 'The database connection for account sync is unavailable. Check DATABASE_URL and the production database status.';
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2002') {
+      return 'This account already exists but could not be linked cleanly. Try signing in instead, or reset the previous account record.';
+    }
+
+    if (error.code === 'P2021' || error.code === 'P2022') {
+      return 'The production database schema is missing the latest auth columns. Apply the latest Prisma migrations, including the Firebase auth bridge migration.';
+    }
+  }
+
+  if (error instanceof Error) {
+    if (/firebaseUid/i.test(error.message) && /column|does not exist|invalid/i.test(error.message)) {
+      return 'The production database schema is missing the latest Firebase auth bridge changes. Apply the latest Prisma migrations and retry registration.';
+    }
+
+    if (/permission denied|authentication failed|connect|connection|database/i.test(error.message)) {
+      return 'The account service could not reach the database. Check DATABASE_URL and database availability.';
+    }
+
+    return error.message;
+  }
+
+  return 'Unable to complete account registration right now.';
+}
+
 function toAuthPayload(user: DbAuthUser, decodedToken?: DecodedIdToken): AuthTokenPayload {
   if (!user.firebaseUid) {
     throw new Error('User is missing a Firebase UID.');
@@ -118,10 +165,8 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     return null;
   }
 
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [{ firebaseUid }, { email }]
-    },
+  let user = await prisma.user.findUnique({
+    where: { firebaseUid },
     select: {
       id: true,
       firebaseUid: true,
@@ -131,6 +176,20 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       role: true
     }
   });
+
+  if (!user) {
+    user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firebaseUid: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true
+      }
+    });
+  }
 
   if (!user) {
     if (!options.allowCreate) {
@@ -163,7 +222,11 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     const updateData: { firebaseUid?: string; name?: string | null; email?: string; phone?: string } = {};
 
     if (user.firebaseUid && user.firebaseUid !== firebaseUid) {
-      throw new Error('This account is already linked to a different Firebase user.');
+      // Allow safe relinking when the verified Firebase token email matches the existing app account.
+      if (user.email !== email) {
+        throw new Error('This account is already linked to a different Firebase user.');
+      }
+      updateData.firebaseUid = firebaseUid;
     }
     if (!user.firebaseUid) {
       updateData.firebaseUid = firebaseUid;
@@ -209,12 +272,29 @@ export async function verifyFirebaseIdToken(token: string) {
     throw new Error(configError);
   }
 
+  const projectMismatchError = getFirebaseProjectMismatchErrorMessage();
+  if (projectMismatchError) {
+    throw new Error(projectMismatchError);
+  }
+
   return getFirebaseAdminAuth().verifyIdToken(token, true);
 }
 
 export async function syncAuthSession(idToken: string, options: SyncOptions = {}) {
-  const decodedToken = await verifyFirebaseIdToken(idToken);
-  const user = await syncUserRecord(decodedToken, { allowCreate: true, ...options });
+  let decodedToken: DecodedIdToken;
+
+  try {
+    decodedToken = await verifyFirebaseIdToken(idToken);
+  } catch (error) {
+    throw new Error(toAuthSyncErrorMessage(error));
+  }
+
+  let user: AuthTokenPayload | null;
+  try {
+    user = await syncUserRecord(decodedToken, { allowCreate: true, ...options });
+  } catch (error) {
+    throw new Error(toAuthSyncErrorMessage(error));
+  }
 
   if (!user) {
     throw new Error('Unable to resolve the authenticated user.');
