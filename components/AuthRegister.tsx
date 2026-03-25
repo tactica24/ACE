@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, deleteUser, sendEmailVerification, updateProfile } from 'firebase/auth';
-import { firebaseAuth } from '@/lib/firebase';
+import { getFirebaseAuthClient, toFirebaseAuthErrorMessage } from '@/lib/firebase';
 
 export default function AuthRegister() {
   const params = useSearchParams();
@@ -18,18 +18,28 @@ export default function AuthRegister() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
+
+    if (!trimmedName || !trimmedEmail || !trimmedPhone || !password) {
+      setError('Enter your name, email, phone number, and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
-      await updateProfile(credential.user, { displayName: name.trim() });
+      const firebaseAuth = getFirebaseAuthClient();
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmedEmail, password);
+      await updateProfile(credential.user, { displayName: trimmedName });
       await sendEmailVerification(credential.user).catch(() => null);
       const idToken = await credential.user.getIdToken();
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, name, phone })
+        body: JSON.stringify({ idToken, name: trimmedName, phone: trimmedPhone })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -38,7 +48,7 @@ export default function AuthRegister() {
       }
       window.location.href = next;
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to create account.');
+      setError(toFirebaseAuthErrorMessage(error, 'Unable to create your account right now.'));
     } finally {
       setLoading(false);
     }
@@ -46,10 +56,10 @@ export default function AuthRegister() {
 
   return (
     <form onSubmit={handleSubmit} className="form-grid">
-      <input className="input" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-      <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="input" placeholder="Phone (e.g. +234...)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-      <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <input className="input" placeholder="Full name" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
+      <input className="input" type="email" placeholder="Email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="input" placeholder="Phone (e.g. +234...)" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+      <input className="input" type="password" placeholder="Password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>

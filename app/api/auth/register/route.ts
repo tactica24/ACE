@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { applyAuthSession, syncAuthSession } from '@/lib/auth';
+import { applyAuthSession, getAuthServerConfigErrorMessage, syncAuthSession } from '@/lib/auth';
 
 export async function POST(req: Request) {
+  const configError = getAuthServerConfigErrorMessage();
+  if (configError) {
+    return NextResponse.json({ error: configError }, { status: 503 });
+  }
+
   const body = await req.json();
   const { idToken, name, phone } = body as { idToken?: string; name?: string; phone?: string };
   const safeName = name?.trim();

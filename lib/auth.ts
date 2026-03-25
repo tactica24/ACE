@@ -39,6 +39,13 @@ type DbAuthUser = {
   role: RoleValue;
 };
 
+const REQUIRED_AUTH_SERVER_ENV_KEYS = [
+  'DATABASE_URL',
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_CLIENT_EMAIL',
+  'FIREBASE_PRIVATE_KEY'
+] as const;
+
 function normalizeEmail(email?: string | null) {
   return email?.trim().toLowerCase() ?? '';
 }
@@ -50,6 +57,17 @@ function normalizePhone(phone?: string | null) {
 function normalizeName(name?: string | null) {
   const value = name?.trim() ?? '';
   return value || null;
+}
+
+export function getMissingAuthServerEnvKeys() {
+  return REQUIRED_AUTH_SERVER_ENV_KEYS.filter((key) => !process.env[key]?.trim());
+}
+
+export function getAuthServerConfigErrorMessage() {
+  const missing = getMissingAuthServerEnvKeys();
+  if (missing.length === 0) return null;
+
+  return `Auth server configuration is missing: ${missing.join(', ')}. Add these values to .env.local or your deployment environment variables.`;
 }
 
 function toAuthPayload(user: DbAuthUser, decodedToken?: DecodedIdToken): AuthTokenPayload {
@@ -186,6 +204,11 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
 }
 
 export async function verifyFirebaseIdToken(token: string) {
+  const configError = getAuthServerConfigErrorMessage();
+  if (configError) {
+    throw new Error(configError);
+  }
+
   return getFirebaseAdminAuth().verifyIdToken(token, true);
 }
 
