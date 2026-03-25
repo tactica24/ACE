@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
 import { generateUniqueCreatorNumber } from '@/lib/creator-number';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasVerifiedEmail(auth)) {
+    return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+  }
   if (
     auth.role !== 'CREATOR' &&
     auth.role !== 'ADMIN' &&
@@ -33,9 +36,11 @@ export async function POST(req: NextRequest) {
 
   const existingProfile = await prisma.creatorProfile.findUnique({
     where: { userId: auth.sub },
-    select: { creatorNumber: true }
+    select: { creatorNumber: true, phoneVerified: true, emailVerified: true }
   });
   const creatorNumber = existingProfile?.creatorNumber ?? (await generateUniqueCreatorNumber());
+  const emailVerified = existingProfile?.emailVerified || Boolean(auth.emailVerified);
+  const phoneVerified = existingProfile?.phoneVerified ?? false;
 
   const profile = await prisma.creatorProfile.upsert({
     where: { userId: auth.sub },
@@ -43,8 +48,8 @@ export async function POST(req: NextRequest) {
       creatorNumber,
       displayName,
       bio: bio ?? null,
-      phoneVerified: Boolean(auth.phone),
-      emailVerified: Boolean(auth.email),
+      phoneVerified,
+      emailVerified,
       ninNumber: ninNumber ?? null,
       ninVerified: false,
       idCardUrl: idCardUrl ?? null,
@@ -61,8 +66,8 @@ export async function POST(req: NextRequest) {
       creatorNumber,
       displayName,
       bio: bio ?? null,
-      phoneVerified: Boolean(auth.phone),
-      emailVerified: Boolean(auth.email),
+      phoneVerified,
+      emailVerified,
       ninNumber: ninNumber ?? null,
       ninVerified: false,
       idCardUrl: idCardUrl ?? null,

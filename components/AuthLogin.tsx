@@ -39,7 +39,7 @@ export default function AuthLogin() {
         await signOut(firebaseAuth).catch(() => null);
         throw new Error(data.error || 'Login failed');
       }
-      window.location.href = next;
+      window.location.href = data.user?.emailVerified ? next : '/account?verification=required';
     } catch (error) {
       setError(toFirebaseAuthErrorMessage(error, 'Unable to sign in right now.'));
     } finally {

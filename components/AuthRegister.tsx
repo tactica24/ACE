@@ -1,13 +1,11 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, deleteUser, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { getFirebaseAuthClient, toFirebaseAuthErrorMessage } from '@/lib/firebase';
 import { type SignupIntentValue } from '@/lib/media-types';
 
 export default function AuthRegister() {
-  const params = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -15,8 +13,6 @@ export default function AuthRegister() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const next = params.get('next') || '/browse';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +32,10 @@ export default function AuthRegister() {
       const firebaseAuth = getFirebaseAuthClient();
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmedEmail, password);
       await updateProfile(credential.user, { displayName: trimmedName });
-      await sendEmailVerification(credential.user).catch(() => null);
+      await sendEmailVerification(credential.user, {
+        url: `${window.location.origin}/account?verification=email`,
+        handleCodeInApp: false
+      }).catch(() => null);
       const idToken = await credential.user.getIdToken();
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -48,7 +47,7 @@ export default function AuthRegister() {
         await deleteUser(credential.user).catch(() => null);
         throw new Error(data.error || 'Register failed');
       }
-      window.location.href = signupIntent === 'CREATOR' ? '/account' : next;
+      window.location.href = '/account?verification=sent';
     } catch (error) {
       setError(toFirebaseAuthErrorMessage(error, 'Unable to create your account right now.'));
     } finally {
@@ -81,7 +80,7 @@ export default function AuthRegister() {
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>
-      <p className="muted" style={{ margin: 0 }}>We will send a verification email after signup.</p>
+      <p className="muted" style={{ margin: 0 }}>We will send a verification email after signup, and email verification is required before unlocks, top-ups, or creator submission.</p>
       {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}
     </form>
   );

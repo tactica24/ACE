@@ -27,6 +27,9 @@ export type AuthTokenPayload = {
   emailVerified?: boolean;
 };
 
+export const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
+  'Verify your email address before using this feature. You can resend the verification link from your account dashboard.';
+
 type SyncOptions = {
   allowCreate?: boolean;
   name?: string | null;
@@ -301,6 +304,20 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     });
   }
 
+  const creatorVerificationUpdate: { emailVerified?: boolean; phoneVerified?: boolean } = {};
+  if (decodedToken.email_verified) {
+    creatorVerificationUpdate.emailVerified = true;
+  }
+  if (decodedToken.phone_number) {
+    creatorVerificationUpdate.phoneVerified = true;
+  }
+  if (Object.keys(creatorVerificationUpdate).length > 0) {
+    await prisma.creatorProfile.updateMany({
+      where: { userId: user.id },
+      data: creatorVerificationUpdate
+    });
+  }
+
   return toAuthPayload(user, decodedToken);
 }
 
@@ -409,6 +426,10 @@ export async function requireAuthFromRequest(req: NextRequest) {
     throw new Error('Unauthorized');
   }
   return auth;
+}
+
+export function hasVerifiedEmail(auth: Pick<AuthTokenPayload, 'emailVerified'> | null | undefined) {
+  return Boolean(auth?.emailVerified);
 }
 
 export function createStreamToken(payload: { userId?: string; videoId: string; guest?: boolean }) {

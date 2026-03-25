@@ -7,7 +7,7 @@ export default function RegisterPage() {
       <div className="container" style={{ maxWidth: 480 }}>
         <div className="card">
           <h2>Create your Ace Studio account</h2>
-          <p className="muted">Unlock, publish, and monetize.</p>
+          <p className="muted">Unlock, publish, and monetize. Every new account must confirm its email before sensitive actions are enabled.</p>
           <AuthRegister />
           <p className="muted" style={{ marginTop: 12 }}>
             Already have an account? <Link href="/auth/login">Sign in</Link>

@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
 import { initializeTransaction } from '@/lib/paystack';
 import { v4 as uuid } from 'uuid';
 import { getChargeForNaira } from '@/lib/pricing';
@@ -13,6 +13,9 @@ const PASS_PRICE = 2500;
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasVerifiedEmail(auth)) {
+    return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+  }
 
   const referralCode = readReferralCode(req);
   const referral = await resolveReferral(referralCode);

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import AccountActions from '@/components/AccountActions';
+import AccountVerificationPanel from '@/components/AccountVerificationPanel';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
@@ -33,9 +34,11 @@ export default async function AccountPage() {
           <div className="card">
             <h2>Account</h2>
             <p className="muted">{user.name ?? 'No name yet'}</p>
-            <p className="muted">{user.email}</p>
-            <p className="muted">{user.phone}</p>
-            <p className="muted">Email verified: {user.emailVerified ? 'Yes' : 'Pending'}</p>
+            <AccountVerificationPanel
+              email={user.email}
+              phone={user.phone}
+              initialEmailVerified={Boolean(user.emailVerified)}
+            />
             <p className="muted">Wallet balance: NGN {wallet?.balanceNaira ?? 0}</p>
             <p className="muted">Account type: {user.signupIntent === 'CREATOR' ? 'Film creator' : 'Viewer'}</p>
             {user.signupIntent === 'CREATOR' && user.role === 'USER' ? (
