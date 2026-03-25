@@ -1,0 +1,40 @@
+name: Set User Role
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "User email to update"
+        required: true
+        type: string
+      role:
+        description: "Role to assign"
+        required: true
+        default: "ADMIN"
+        type: choice
+        options:
+          - USER
+          - CREATOR
+          - ADMIN
+
+jobs:
+  set-role:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TARGET_EMAIL: ${{ inputs.email }}
+      TARGET_ROLE: ${{ inputs.role }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set user role
+        run: node scripts/set-user-role.mjs
