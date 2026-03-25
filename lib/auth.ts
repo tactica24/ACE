@@ -11,7 +11,7 @@ import { getFirebaseAdminAuth } from './firebase-admin';
 import { type RoleValue } from './media-types';
 
 const AUTH_COOKIE_NAME = 'ace_session';
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 30;
+const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 14;
 const SESSION_MAX_AGE_SECONDS = SESSION_DURATION_MS / 1000;
 const FIREBASE_PASSWORD_SENTINEL = 'FIREBASE_AUTH_MANAGED';
 
