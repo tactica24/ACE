@@ -1,11 +1,11 @@
 'use client';
 
 import { signOut } from 'firebase/auth';
-import { firebaseAuth } from '@/lib/firebase';
+import { getFirebaseAuthClient } from '@/lib/firebase';
 
 export default function AccountActions() {
   const handleLogout = async () => {
-    await signOut(firebaseAuth).catch(() => null);
+    await signOut(getFirebaseAuthClient()).catch(() => null);
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/';
   };

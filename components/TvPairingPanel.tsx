@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { signInWithCustomToken } from 'firebase/auth';
-import { firebaseAuth } from '@/lib/firebase';
+import { getFirebaseAuthClient } from '@/lib/firebase';
 
 type PairingSession = {
   sessionId: string;
@@ -60,7 +60,7 @@ export default function TvPairingPanel() {
             return;
           }
 
-          const credential = await signInWithCustomToken(firebaseAuth, finalizePayload.customToken);
+          const credential = await signInWithCustomToken(getFirebaseAuthClient(), finalizePayload.customToken);
           const idToken = await credential.user.getIdToken();
           const login = await fetch('/api/auth/login', {
             method: 'POST',
