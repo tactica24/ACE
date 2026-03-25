@@ -15,6 +15,34 @@ enum Role {
   ADMIN
 }
 
+enum SignupIntent {
+  VIEWER
+  CREATOR
+}
+
+enum CreatorAccessStatus {
+  NONE
+  REQUESTED
+  INVITED
+  SUBMITTED
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SupportTicketCategory {
+  PAYMENT
+  ACCOUNT_ACCESS
+  CATALOG_HELP
+  CREATOR_ONBOARDING
+  VIDEO_UPLOAD
+  CONTRACTS
+  OTHER
+}
+
 enum RightsTier {
   SHARED
   EXCLUSIVE
@@ -94,6 +122,8 @@ model User {
   phone        String
   passwordHash String
   role         Role            @default(USER)
+  signupIntent SignupIntent    @default(VIEWER)
+  creatorAccessStatus CreatorAccessStatus @default(NONE)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   wallet       Wallet?
@@ -107,6 +137,7 @@ model User {
   referralLinks ReferralLink[]
   familyLinks  FamilyLink[]
   tvPairings   TvPairingSession[] @relation("TvPairingOwner")
+  supportTickets SupportTicket[]
 }
 
 model Wallet {
@@ -121,6 +152,7 @@ model Wallet {
 model CreatorProfile {
   id                 String  @id @default(cuid())
   userId             String  @unique
+  creatorNumber      String? @unique
   displayName        String
   bio                String? 
   phoneVerified      Boolean @default(false)
@@ -137,8 +169,10 @@ model CreatorProfile {
   payoutSplitStandard Float  @default(0.6)
   payoutSplitExclusive Float @default(0.6)
   verified           Boolean @default(false)
+  earningsBalanceNaira Int   @default(0)
   user               User    @relation(fields: [userId], references: [id])
   contracts          Contract[]
+  settlements        UnlockSettlement[]
 }
 
 model Video {
@@ -167,6 +201,7 @@ model Video {
   moderation  ModerationItem?
   p2pTransfers P2PTransfer[]
   referralLinks ReferralLink[] @relation("VideoReferralLinks")
+  settlements UnlockSettlement[]
   @@index([status])
   @@index([priceTier])
 }
@@ -184,6 +219,7 @@ model Unlock {
   createdAt     DateTime     @default(now())
   user          User         @relation(fields: [userId], references: [id])
   video         Video        @relation(fields: [videoId], references: [id])
+  settlement    UnlockSettlement?
   @@index([userId])
   @@index([videoId])
 }
@@ -311,4 +347,56 @@ model TvPairingSession {
   createdAt    DateTime      @default(now())
   claimedBy    User?         @relation("TvPairingOwner", fields: [claimedById], references: [id])
   @@index([status, expiresAt])
+}
+
+model FinanceConfig {
+  id                 String   @id @default("default")
+  creatorSharePercent Float   @default(60)
+  platformSharePercent Float  @default(29.5)
+  gatewayFeePercent   Float   @default(3)
+  taxPercent          Float   @default(7.5)
+  updatedAt           DateTime @default(now()) @updatedAt
+}
+
+model PlatformWallet {
+  id           String   @id @default("ace-platform")
+  balanceNaira Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model UnlockSettlement {
+  id                String   @id @default(cuid())
+  unlockId          String   @unique
+  videoId           String
+  creatorProfileId  String?
+  grossNaira        Int
+  creatorNaira      Int      @default(0)
+  platformNaira     Int      @default(0)
+  gatewayFeeNaira   Int      @default(0)
+  taxNaira          Int      @default(0)
+  referralNaira     Int      @default(0)
+  platformNetNaira  Int      @default(0)
+  createdAt         DateTime @default(now())
+  unlock            Unlock   @relation(fields: [unlockId], references: [id])
+  video             Video    @relation(fields: [videoId], references: [id])
+  creatorProfile    CreatorProfile? @relation(fields: [creatorProfileId], references: [id])
+
+  @@index([videoId, createdAt])
+  @@index([creatorProfileId, createdAt])
+}
+
+model SupportTicket {
+  id         String              @id @default(cuid())
+  userId     String
+  category   SupportTicketCategory
+  status     SupportTicketStatus @default(OPEN)
+  subject    String
+  message    String
+  adminNotes String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  user       User                @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }

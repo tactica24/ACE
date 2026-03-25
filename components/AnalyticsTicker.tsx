@@ -7,6 +7,7 @@ type Analytics = {
   revenueToday: number;
   totalUnlocks: number;
   totalRevenue: number;
+  walletBalance: number;
 };
 
 export default function AnalyticsTicker() {
@@ -65,6 +66,12 @@ export default function AnalyticsTicker() {
         <div className="stat">
           <span className="muted">Total revenue</span>
           <strong>NGN {data?.totalRevenue ?? '--'}</strong>
+        </div>
+      </div>
+      <div className="card">
+        <div className="stat">
+          <span className="muted">Creator wallet</span>
+          <strong>NGN {data?.walletBalance ?? '--'}</strong>
         </div>
       </div>
     </div>

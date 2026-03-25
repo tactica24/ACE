@@ -8,16 +8,26 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { idToken, name, phone } = body as { idToken?: string; name?: string; phone?: string };
+  const { idToken, name, phone, signupIntent } = body as {
+    idToken?: string;
+    name?: string;
+    phone?: string;
+    signupIntent?: 'VIEWER' | 'CREATOR';
+  };
   const safeName = name?.trim();
   const safePhone = phone?.trim();
+  const safeSignupIntent = signupIntent === 'CREATOR' ? 'CREATOR' : 'VIEWER';
 
   if (!idToken || !safeName || !safePhone) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   try {
-    const { user, sessionCookie } = await syncAuthSession(idToken, { name: safeName, phone: safePhone });
+    const { user, sessionCookie } = await syncAuthSession(idToken, {
+      name: safeName,
+      phone: safePhone,
+      signupIntent: safeSignupIntent
+    });
     const response = NextResponse.json({ ok: true, user });
     applyAuthSession(response, sessionCookie);
     return response;

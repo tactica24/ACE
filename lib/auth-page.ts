@@ -19,6 +19,20 @@ export async function requireCreatorUser(nextPath = '/studio') {
   return user;
 }
 
+export async function requireCreatorOnboardingAccess(nextPath = '/studio/onboarding') {
+  const user = await requireCurrentUser(nextPath);
+
+  if (
+    user.role !== 'CREATOR' &&
+    user.role !== 'ADMIN' &&
+    !(user.signupIntent === 'CREATOR' && (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED'))
+  ) {
+    redirect('/account');
+  }
+
+  return user;
+}
+
 export async function requireAdminUser(nextPath = '/admin') {
   const user = await requireCurrentUser(nextPath);
   if (user.role !== 'ADMIN') {

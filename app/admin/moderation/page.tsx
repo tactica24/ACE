@@ -1,10 +1,13 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { prisma } from '@/lib/db';
 import ModerationQueue, { type ModerationQueueItem } from '@/components/ModerationQueue';
+import { requireAdminUser } from '@/lib/auth-page';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ModerationPage() {
+  await requireAdminUser('/admin/moderation');
+
   let queueItems: ModerationQueueItem[] = [];
   try {
     const items = await prisma.moderationItem.findMany({
@@ -46,7 +49,10 @@ export default async function ModerationPage() {
           active="/admin/moderation"
           items={[
             { href: '/admin', label: 'Overview' },
+            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${queueItems.length}` },
+            { href: '/admin/support', label: 'Support' },
             { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }

@@ -18,6 +18,7 @@ export default async function TopNav() {
         </Link>
         <div className="nav-links">
           <Link href="/browse">Browse</Link>
+          {user ? <Link href="/wallet">Wallet</Link> : null}
         </div>
         <div className="nav-actions">
           {user ? (

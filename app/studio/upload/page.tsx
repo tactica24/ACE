@@ -14,9 +14,11 @@ export default async function UploadPage() {
           active="/studio/upload"
           items={[
             { href: '/studio', label: 'Overview' },
+            { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' }
+            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contact', label: 'Contact' }
           ]}
         />
       }

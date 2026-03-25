@@ -1,12 +1,18 @@
 'use client';
 
+import Link from 'next/link';
+
 export type CreatorRow = {
   id: string;
   email: string;
   phone: string;
   role: string;
+  signupIntent: string;
+  creatorAccessStatus: string;
   joinedAt: string;
   creator: null | {
+    creatorNumber?: string | null;
+    earningsBalanceNaira?: number;
     displayName: string;
     phoneVerified: boolean;
     emailVerified: boolean;
@@ -52,6 +58,8 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
               <th>Email</th>
               <th>Phone</th>
               <th>Role</th>
+              <th>Intent</th>
+              <th>Account</th>
               <th>Verification</th>
               <th>Creator profile</th>
               <th>Joined</th>
@@ -63,6 +71,17 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                 <td>{user.email}</td>
                 <td>{user.phone}</td>
                 <td>{user.role}</td>
+                <td>
+                  <div className="stack-list" style={{ gap: 4 }}>
+                    <strong>{user.signupIntent}</strong>
+                    <span className="muted">{user.creatorAccessStatus}</span>
+                  </div>
+                </td>
+                <td>
+                  <Link className="btn btn-ghost" href={`/admin/users/${user.id}`}>
+                    Open account
+                  </Link>
+                </td>
                 <td>
                   {user.creator ? (
                     <div className="action-list">
@@ -88,6 +107,8 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                   {user.creator ? (
                     <div className="stack-list" style={{ gap: 6, minWidth: 220 }}>
                       <strong>{user.creator.displayName}</strong>
+                      <span className="muted">{user.creator.creatorNumber || 'No creator number yet'}</span>
+                      <span className="muted">Earnings wallet: NGN {user.creator.earningsBalanceNaira ?? 0}</span>
                       <span className="muted">{user.creator.ninNumber || 'No NIN on file'}</span>
                       <span className="muted">{user.creator.bankName || 'No bank on file'}</span>
                       <span className="muted">{user.creator.reliabilityNotes || 'No release notes added'}</span>

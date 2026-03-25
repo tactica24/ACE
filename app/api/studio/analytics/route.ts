@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
@@ -10,32 +10,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const creatorProfile = await prisma.creatorProfile.findUnique({
+    where: { userId: auth.sub },
+    select: { id: true, earningsBalanceNaira: true }
+  });
+
+  if (!creatorProfile) {
+    return NextResponse.json({
+      unlocksToday: 0,
+      revenueToday: 0,
+      totalUnlocks: 0,
+      totalRevenue: 0,
+      walletBalance: 0
+    });
+  }
+
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const unlocks = await prisma.unlock.findMany({
-    where: { video: { creatorId: auth.sub } },
-    include: { video: { select: { rightsTier: true } } }
+  const settlements = await prisma.unlockSettlement.findMany({
+    where: { creatorProfileId: creatorProfile.id }
   });
 
-  let totalRevenue = 0;
-  let revenueToday = 0;
-  let unlocksToday = 0;
-
-  for (const unlock of unlocks) {
-    const creatorShare = Math.round(unlock.amountNaira * 0.6);
-    totalRevenue += creatorShare;
-    if (unlock.createdAt >= startOfDay) {
-      revenueToday += creatorShare;
-      unlocksToday += 1;
-    }
-  }
+  const totalRevenue = settlements.reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
+  const revenueToday = settlements
+    .filter((settlement) => settlement.createdAt >= startOfDay)
+    .reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
+  const unlocksToday = settlements.filter((settlement) => settlement.createdAt >= startOfDay).length;
 
   return NextResponse.json({
     unlocksToday,
     revenueToday,
-    totalUnlocks: unlocks.length,
-    totalRevenue
+    totalUnlocks: settlements.length,
+    totalRevenue,
+    walletBalance: creatorProfile.earningsBalanceNaira
   });
 }
-

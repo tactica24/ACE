@@ -1,22 +1,29 @@
 import Link from 'next/link';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
+  await requireAdminUser('/admin');
+
   let users = 0;
   let videos = 0;
   let pending = 0;
   let creatorsPending = 0;
+  let creatorRequests = 0;
+  let supportOpen = 0;
   let recentTitles: Array<{ id: string; title: string; status: string; createdAt: Date }> = [];
 
   try {
-    [users, videos, pending, creatorsPending, recentTitles] = await Promise.all([
+    [users, videos, pending, creatorsPending, creatorRequests, supportOpen, recentTitles] = await Promise.all([
       prisma.user.count(),
       prisma.video.count(),
       prisma.moderationItem.count({ where: { status: 'PENDING' } }),
       prisma.creatorProfile.count({ where: { verified: false } }),
+      prisma.user.count({ where: { signupIntent: 'CREATOR', creatorAccessStatus: 'REQUESTED' } }),
+      prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
       prisma.video.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -28,6 +35,8 @@ export default async function AdminPage() {
     videos = 0;
     pending = 0;
     creatorsPending = 0;
+    creatorRequests = 0;
+    supportOpen = 0;
     recentTitles = [];
   }
 
@@ -40,7 +49,10 @@ export default async function AdminPage() {
           active="/admin"
           items={[
             { href: '/admin', label: 'Overview' },
+            { href: '/admin/intake', label: 'Creator intake', count: `${creatorRequests}` },
+            { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${pending}` },
+            { href: '/admin/support', label: 'Support', count: `${supportOpen}` },
             { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
@@ -74,14 +86,31 @@ export default async function AdminPage() {
             {creatorsPending > 10 ? 'Verification backlog building' : 'Verification queue healthy'}
           </span>
         </div>
+        <div className="metric-card">
+          <span className="muted">Creator requests</span>
+          <strong>{creatorRequests}</strong>
+          <span className={creatorRequests > 5 ? 'trend-warn' : 'trend-up'}>
+            {creatorRequests > 5 ? 'New creator queue growing' : 'Creator intake under control'}
+          </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Support inbox</span>
+          <strong>{supportOpen}</strong>
+          <span className={supportOpen > 10 ? 'trend-warn' : 'trend-up'}>
+            {supportOpen > 10 ? 'Support responses need attention' : 'Support queue healthy'}
+          </span>
+        </div>
       </div>
 
       <div className="grid">
         <div className="card">
           <h3>Immediate actions</h3>
           <div className="action-list">
+            <Link className="btn btn-ghost" href="/admin/intake">Review creator requests</Link>
+            <Link className="btn btn-ghost" href="/admin/finance">Open finance console</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
             <Link className="btn btn-ghost" href="/admin/users">Check creator verification</Link>
+            <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
             <Link className="btn btn-ghost" href="/admin/node">Inspect platform health</Link>
           </div>
         </div>

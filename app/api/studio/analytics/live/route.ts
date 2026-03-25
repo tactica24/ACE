@@ -6,29 +6,41 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 async function buildPayload(userId: string) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const unlocks = await prisma.unlock.findMany({
-    where: { video: { creatorId: userId } }
+  const creatorProfile = await prisma.creatorProfile.findUnique({
+    where: { userId },
+    select: { id: true, earningsBalanceNaira: true }
   });
 
-  let totalRevenue = 0;
-  let revenueToday = 0;
-  let unlocksToday = 0;
-  for (const unlock of unlocks) {
-    const creatorShare = Math.round(unlock.amountNaira * 0.6);
-    totalRevenue += creatorShare;
-    if (unlock.createdAt >= startOfDay) {
-      revenueToday += creatorShare;
-      unlocksToday += 1;
-    }
+  if (!creatorProfile) {
+    return {
+      unlocksToday: 0,
+      revenueToday: 0,
+      totalUnlocks: 0,
+      totalRevenue: 0,
+      walletBalance: 0,
+      streamedAt: new Date().toISOString()
+    };
   }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const settlements = await prisma.unlockSettlement.findMany({
+    where: { creatorProfileId: creatorProfile.id }
+  });
+
+  const totalRevenue = settlements.reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
+  const revenueToday = settlements
+    .filter((settlement) => settlement.createdAt >= startOfDay)
+    .reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
+  const unlocksToday = settlements.filter((settlement) => settlement.createdAt >= startOfDay).length;
 
   return {
     unlocksToday,
     revenueToday,
-    totalUnlocks: unlocks.length,
+    totalUnlocks: settlements.length,
     totalRevenue,
+    walletBalance: creatorProfile.earningsBalanceNaira,
     streamedAt: new Date().toISOString()
   };
 }

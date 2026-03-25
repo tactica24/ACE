@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from './db';
 import { env } from './env';
 import { getFirebaseAdminAuth } from './firebase-admin';
-import { type RoleValue } from './media-types';
+import { type CreatorAccessStatusValue, type RoleValue, type SignupIntentValue } from './media-types';
 
 const AUTH_COOKIE_NAME = 'ace_session';
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 14;
@@ -18,6 +18,8 @@ const FIREBASE_PASSWORD_SENTINEL = 'FIREBASE_AUTH_MANAGED';
 export type AuthTokenPayload = {
   sub: string;
   role: RoleValue;
+  signupIntent: SignupIntentValue;
+  creatorAccessStatus: CreatorAccessStatusValue;
   name?: string | null;
   email: string;
   phone: string;
@@ -29,6 +31,7 @@ type SyncOptions = {
   allowCreate?: boolean;
   name?: string | null;
   phone?: string | null;
+  signupIntent?: SignupIntentValue | null;
 };
 
 type DbAuthUser = {
@@ -38,6 +41,8 @@ type DbAuthUser = {
   email: string;
   phone: string;
   role: RoleValue;
+  signupIntent: SignupIntentValue;
+  creatorAccessStatus: CreatorAccessStatusValue;
 };
 
 const REQUIRED_AUTH_SERVER_ENV_KEYS = [
@@ -58,6 +63,10 @@ function normalizePhone(phone?: string | null) {
 function normalizeName(name?: string | null) {
   const value = name?.trim() ?? '';
   return value || null;
+}
+
+function normalizeSignupIntent(signupIntent?: string | null): SignupIntentValue {
+  return signupIntent === 'CREATOR' ? 'CREATOR' : 'VIEWER';
 }
 
 export function getMissingAuthServerEnvKeys() {
@@ -125,6 +134,8 @@ function toAuthPayload(user: DbAuthUser, decodedToken?: DecodedIdToken): AuthTok
   return {
     sub: user.id,
     role: user.role,
+    signupIntent: user.signupIntent,
+    creatorAccessStatus: user.creatorAccessStatus,
     name: user.name,
     email: user.email,
     phone: user.phone,
@@ -160,6 +171,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
   const name = normalizeName(options.name ?? decodedToken.name);
   const email = normalizeEmail(decodedToken.email);
   const phone = normalizePhone(options.phone ?? decodedToken.phone_number);
+  const requestedSignupIntent = options.signupIntent ? normalizeSignupIntent(options.signupIntent) : null;
 
   if (!firebaseUid || !email) {
     return null;
@@ -173,7 +185,9 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       name: true,
       email: true,
       phone: true,
-      role: true
+      role: true,
+      signupIntent: true,
+      creatorAccessStatus: true
     }
   });
 
@@ -186,7 +200,9 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         name: true,
         email: true,
         phone: true,
-        role: true
+        role: true,
+        signupIntent: true,
+        creatorAccessStatus: true
       }
     });
   }
@@ -200,6 +216,9 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       throw new Error('A phone number is required to complete account setup.');
     }
 
+    const signupIntent = requestedSignupIntent ?? 'VIEWER';
+    const creatorAccessStatus: CreatorAccessStatusValue = signupIntent === 'CREATOR' ? 'REQUESTED' : 'NONE';
+
     user = await prisma.user.create({
       data: {
         firebaseUid,
@@ -207,6 +226,8 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         email,
         phone,
         passwordHash: FIREBASE_PASSWORD_SENTINEL,
+        signupIntent,
+        creatorAccessStatus,
         wallet: { create: {} }
       },
       select: {
@@ -215,11 +236,20 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         name: true,
         email: true,
         phone: true,
-        role: true
+        role: true,
+        signupIntent: true,
+        creatorAccessStatus: true
       }
     });
   } else {
-    const updateData: { firebaseUid?: string; name?: string | null; email?: string; phone?: string } = {};
+    const updateData: {
+      firebaseUid?: string;
+      name?: string | null;
+      email?: string;
+      phone?: string;
+      signupIntent?: SignupIntentValue;
+      creatorAccessStatus?: CreatorAccessStatusValue;
+    } = {};
 
     if (user.firebaseUid && user.firebaseUid !== firebaseUid) {
       // Allow safe relinking when the verified Firebase token email matches the existing app account.
@@ -240,6 +270,12 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
     if (phone && user.phone !== phone) {
       updateData.phone = phone;
     }
+    if (requestedSignupIntent && user.signupIntent !== requestedSignupIntent) {
+      updateData.signupIntent = requestedSignupIntent;
+    }
+    if (requestedSignupIntent === 'CREATOR' && user.role === 'USER' && user.creatorAccessStatus === 'NONE') {
+      updateData.creatorAccessStatus = 'REQUESTED';
+    }
 
     if (Object.keys(updateData).length > 0) {
       user = await prisma.user.update({
@@ -251,7 +287,9 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
           name: true,
           email: true,
           phone: true,
-          role: true
+          role: true,
+          signupIntent: true,
+          creatorAccessStatus: true
         }
       });
     }

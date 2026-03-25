@@ -1,11 +1,14 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import ReferralManager from '@/components/ReferralManager';
+import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReferralsPage() {
+  await requireAdminUser('/admin/referrals');
+
   let promoters: Array<{ id: string; email: string; phone: string }> = [];
   let videos: Array<{ id: string; title: string }> = [];
   try {
@@ -27,7 +30,10 @@ export default async function ReferralsPage() {
           active="/admin/referrals"
           items={[
             { href: '/admin', label: 'Overview' },
+            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
+            { href: '/admin/support', label: 'Support' },
             { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }

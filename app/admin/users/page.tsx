@@ -1,19 +1,25 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorVerificationAdmin, { type CreatorRow } from '@/components/CreatorVerificationAdmin';
+import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 type UserWithCreator = {
   id: string;
+  name: string | null;
   email: string;
   phone: string;
   role: string;
+  signupIntent: string;
+  creatorAccessStatus: string;
   createdAt: Date;
   creator: CreatorRow['creator'];
 };
 
 export default async function UsersPage() {
+  await requireAdminUser('/admin/users');
+
   let users: UserWithCreator[] = [];
   try {
     users = await prisma.user.findMany({
@@ -30,10 +36,14 @@ export default async function UsersPage() {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    signupIntent: user.signupIntent,
+    creatorAccessStatus: user.creatorAccessStatus,
     joinedAt: user.createdAt.toISOString().slice(0, 10),
     creator: user.creator
       ? {
           displayName: user.creator.displayName,
+          creatorNumber: user.creator.creatorNumber,
+          earningsBalanceNaira: user.creator.earningsBalanceNaira,
           phoneVerified: user.creator.phoneVerified,
           emailVerified: user.creator.emailVerified,
           ninVerified: user.creator.ninVerified,
@@ -59,7 +69,10 @@ export default async function UsersPage() {
           active="/admin/users"
           items={[
             { href: '/admin', label: 'Overview' },
+            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
+            { href: '/admin/support', label: 'Support' },
             { href: '/admin/node', label: 'Node monitor' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }

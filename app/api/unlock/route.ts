@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { calculateUnlockSplit, getFinanceConfig, getPlatformWallet } from '@/lib/finance';
 import { debitWallet, usePassCredit as consumePassCredit, useWalletCredit as consumeWalletCredit } from '@/lib/wallet';
 import { getRegionalPrice } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
@@ -13,7 +14,10 @@ export async function POST(req: NextRequest) {
   const videoId = body.videoId as string | undefined;
   if (!videoId) return NextResponse.json({ error: 'Missing videoId' }, { status: 400 });
 
-  const video = await prisma.video.findUnique({ where: { id: videoId } });
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    include: { creator: { include: { creator: true } } }
+  });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
 
   const existing = await prisma.unlock.findFirst({ where: { userId: auth.sub, videoId } });
@@ -40,37 +44,70 @@ export async function POST(req: NextRequest) {
 
   const referralCode = readReferralCode(req, body?.referralCode);
   const referral = await resolveReferral(referralCode, videoId);
+  const financeConfig = await getFinanceConfig();
+  await getPlatformWallet();
+  const split = calculateUnlockSplit(price.amountNaira, financeConfig);
+  const creatorProfileId = video.creator.creator?.id ?? null;
+  const creatorNaira = creatorProfileId ? split.creatorNaira : 0;
+  const referralNaira = referral ? Math.round(split.platformNaira * (referral.commissionPercent / 100)) : 0;
+  const platformNetNaira = Math.max(split.platformNaira - referralNaira, 0);
 
-  const unlock = await prisma.unlock.create({
-    data: {
-      userId: auth.sub,
-      videoId,
-      amountNaira: price.amountNaira,
-      amountMinor: price.amountMinor,
-      currency: price.currency,
-      source,
-      watermarkText: `${auth.phone} / ${auth.email}`,
-      referralCode: referral?.code
+  await prisma.$transaction(async (tx) => {
+    const unlock = await tx.unlock.create({
+      data: {
+        userId: auth.sub,
+        videoId,
+        amountNaira: price.amountNaira,
+        amountMinor: price.amountMinor,
+        currency: price.currency,
+        source,
+        watermarkText: `${auth.phone} / ${auth.email}`,
+        referralCode: referral?.code
+      }
+    });
+
+    await tx.platformWallet.upsert({
+      where: { id: 'ace-platform' },
+      update: { balanceNaira: { increment: platformNetNaira } },
+      create: { id: 'ace-platform', balanceNaira: platformNetNaira }
+    });
+
+    if (creatorProfileId && creatorNaira > 0) {
+      await tx.creatorProfile.update({
+        where: { id: creatorProfileId },
+        data: { earningsBalanceNaira: { increment: creatorNaira } }
+      });
     }
-  });
 
-  if (referral) {
-    const platformShare = Math.round(price.amountNaira * 0.4);
-    const commissionNaira = Math.round(platformShare * (referral.commissionPercent / 100));
-    await prisma.$transaction([
-      prisma.referralEvent.create({
+    await tx.unlockSettlement.create({
+      data: {
+        unlockId: unlock.id,
+        videoId,
+        creatorProfileId,
+        grossNaira: price.amountNaira,
+        creatorNaira,
+        platformNaira: split.platformNaira,
+        gatewayFeeNaira: split.gatewayFeeNaira,
+        taxNaira: split.taxNaira,
+        referralNaira,
+        platformNetNaira: platformNetNaira
+      }
+    });
+
+    if (referral) {
+      await tx.referralEvent.create({
         data: {
           referralId: referral.id,
           unlockId: unlock.id,
-          commissionNaira
+          commissionNaira: referralNaira
         }
-      }),
-      prisma.wallet.update({
+      });
+      await tx.wallet.update({
         where: { userId: referral.promoterId },
-        data: { balanceNaira: { increment: commissionNaira } }
-      })
-    ]);
-  }
+        data: { balanceNaira: { increment: referralNaira } }
+      });
+    }
+  });
 
   return NextResponse.json({ ok: true, unlocked: true });
 }

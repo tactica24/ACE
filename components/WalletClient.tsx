@@ -77,6 +77,7 @@ export default function WalletClient({
 
       <div className="card">
         <h3>Top up wallet</h3>
+        <p className="muted">NGN top-ups use Paystack. Non-NGN checkout routes through Stripe automatically.</p>
         <input
           className="input"
           type="number"

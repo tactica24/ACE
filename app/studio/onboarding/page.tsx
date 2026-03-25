@@ -1,6 +1,9 @@
 import CreatorApply from '@/components/CreatorApply';
+import { requireCreatorOnboardingAccess } from '@/lib/auth-page';
 
-export default function StudioOnboardingPage() {
+export default async function StudioOnboardingPage() {
+  await requireCreatorOnboardingAccess('/studio/onboarding');
+
   return (
     <div className="section">
       <div className="container" style={{ maxWidth: 760 }}>

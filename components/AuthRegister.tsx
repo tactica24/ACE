@@ -4,12 +4,14 @@ import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, deleteUser, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { getFirebaseAuthClient, toFirebaseAuthErrorMessage } from '@/lib/firebase';
+import { type SignupIntentValue } from '@/lib/media-types';
 
 export default function AuthRegister() {
   const params = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [signupIntent, setSignupIntent] = useState<SignupIntentValue>('VIEWER');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +41,14 @@ export default function AuthRegister() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, name: trimmedName, phone: trimmedPhone })
+        body: JSON.stringify({ idToken, name: trimmedName, phone: trimmedPhone, signupIntent })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         await deleteUser(credential.user).catch(() => null);
         throw new Error(data.error || 'Register failed');
       }
-      window.location.href = next;
+      window.location.href = signupIntent === 'CREATOR' ? '/account' : next;
     } catch (error) {
       setError(toFirebaseAuthErrorMessage(error, 'Unable to create your account right now.'));
     } finally {
@@ -59,6 +61,22 @@ export default function AuthRegister() {
       <input className="input" placeholder="Full name" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
       <input className="input" type="email" placeholder="Email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="input" placeholder="Phone (e.g. +234...)" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+      <div className="field">
+        <span className="field-label">Account type</span>
+        <div className="action-list">
+          <button className={signupIntent === 'VIEWER' ? 'btn btn-primary' : 'btn btn-ghost'} type="button" onClick={() => setSignupIntent('VIEWER')}>
+            Viewer
+          </button>
+          <button className={signupIntent === 'CREATOR' ? 'btn btn-primary' : 'btn btn-ghost'} type="button" onClick={() => setSignupIntent('CREATOR')}>
+            Film creator
+          </button>
+        </div>
+        <p className="muted" style={{ margin: 0 }}>
+          {signupIntent === 'CREATOR'
+            ? 'Creator requests are reviewed by admin before full studio onboarding is unlocked.'
+            : 'Viewers go straight to the catalog after signup.'}
+        </p>
+      </div>
       <input className="input" type="password" placeholder="Password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
