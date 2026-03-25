@@ -185,6 +185,9 @@ model Video {
   videoType   VideoType    @default(FEATURE)
   ageRating   AgeRating    @default(ALL)
   category    String       @default("General")
+  originalLanguage String? @default("en")
+  audioLanguages String[]  @default([])
+  contentWarnings String[] @default([])
   genres      String[]     @default([])
   priceTier   PriceTier
   rightsTier  RightsTier
@@ -206,8 +209,23 @@ model Video {
   settlements UnlockSettlement[]
   watchHistory WatchHistory[]
   streamSessions StreamSession[]
+  subtitleTracks SubtitleTrack[]
   @@index([status])
   @@index([priceTier])
+}
+
+model SubtitleTrack {
+  id           String   @id @default(cuid())
+  videoId       String
+  label         String
+  languageCode  String
+  kind          String   @default("subtitles")
+  fileKey       String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  video         Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId, languageCode])
 }
 
 model WatchHistory {

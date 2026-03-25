@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   await requireAdminUser('/admin');
 
+  const activeStreamCutoff = new Date(Date.now() - 1000 * 60 * 15);
   let users = 0;
   let approvedVideos = 0;
   let pendingModeration = 0;
@@ -20,11 +21,28 @@ export default async function AdminPage() {
   let activeStreams = 0;
   let watchingUsers = 0;
   let successfulPayments = 0;
+  let failedPayments = 0;
   let totalRevenue = 0;
   let platformBalance = 0;
+  let creatorVerificationBacklog = 0;
+  let safetySensitiveTitles = 0;
   let recentTitles: Array<{ id: string; title: string; status: string; createdAt: Date }> = [];
   let topUnlockedTitles: Array<{ title: string; unlocks: number }> = [];
   let recentPayments: Array<{ reference: string; amountNaira: number; status: string; gateway: string; createdAt: Date }> = [];
+  let recentFailedPayments: Array<{ reference: string; amountNaira: number; createdAt: Date; userEmail: string }> = [];
+  let recentSupportTickets: Array<{ id: string; subject: string; category: string; status: string; createdAt: Date; userEmail: string; userPhone: string }> = [];
+  let supportHotspots: Array<{ category: string; total: number }> = [];
+  let creatorVerificationQueue: Array<{
+    id: string;
+    displayName: string;
+    verified: boolean;
+    bankVerified: boolean;
+    ninVerified: boolean;
+    idVerified: boolean;
+    email: string;
+    phone: string;
+  }> = [];
+  let liveSessions: Array<{ id: string; deviceSessionId: string; lastSeenAt: Date; userEmail: string; videoTitle: string }> = [];
   let nodeHealth = {
     nodeName: 'ace-node',
     region: 'unknown',
@@ -41,7 +59,7 @@ export default async function AdminPage() {
   };
 
   try {
-    const [paymentsAggregate, recentUnlocks, watchHistoryUsers] = await Promise.all([
+    const [paymentsAggregate, recentUnlocks, watchHistoryUsers, failedPaymentsCount, safetySnapshot] = await Promise.all([
       prisma.payment.aggregate({
         where: { status: 'SUCCESS' },
         _sum: { amountNaira: true },
@@ -63,6 +81,14 @@ export default async function AdminPage() {
         },
         distinct: ['userId'],
         select: { userId: true }
+      }),
+      prisma.payment.count({
+        where: { status: 'FAILED' }
+      }),
+      prisma.video.findMany({
+        where: { status: 'APPROVED' },
+        take: 120,
+        select: { ageRating: true, contentWarnings: true }
       })
     ]);
 
@@ -75,6 +101,12 @@ export default async function AdminPage() {
       activeStreamCount,
       recentTitlesData,
       recentPaymentsData,
+      recentFailedPaymentsData,
+      recentSupportTicketsData,
+      supportHotspotsData,
+      creatorVerificationBacklogCount,
+      creatorVerificationQueueData,
+      liveSessionData,
       platformWallet,
       health,
       summary
@@ -95,6 +127,95 @@ export default async function AdminPage() {
         take: 8,
         select: { reference: true, amountNaira: true, status: true, gateway: true, createdAt: true }
       }),
+      prisma.payment.findMany({
+        where: { status: 'FAILED' },
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+        select: {
+          reference: true,
+          amountNaira: true,
+          createdAt: true,
+          user: {
+            select: { email: true }
+          }
+        }
+      }),
+      prisma.supportTicket.findMany({
+        where: {
+          status: { in: ['OPEN', 'IN_PROGRESS'] }
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+        select: {
+          id: true,
+          subject: true,
+          category: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: { email: true, phone: true }
+          }
+        }
+      }),
+      prisma.supportTicket.groupBy({
+        by: ['category'],
+        where: {
+          status: { in: ['OPEN', 'IN_PROGRESS'] }
+        },
+        _count: { _all: true }
+      }),
+      prisma.creatorProfile.count({
+        where: {
+          OR: [
+            { verified: false },
+            { bankVerified: false },
+            { ninVerified: false },
+            { idVerified: false }
+          ]
+        }
+      }),
+      prisma.creatorProfile.findMany({
+        where: {
+          OR: [
+            { verified: false },
+            { bankVerified: false },
+            { ninVerified: false },
+            { idVerified: false }
+          ]
+        },
+        orderBy: { id: 'asc' },
+        take: 6,
+        select: {
+          id: true,
+          displayName: true,
+          verified: true,
+          bankVerified: true,
+          ninVerified: true,
+          idVerified: true,
+          user: {
+            select: { email: true, phone: true }
+          }
+        }
+      }),
+      prisma.streamSession.findMany({
+        where: {
+          revokedAt: null,
+          lastSeenAt: { gte: activeStreamCutoff }
+        },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 6,
+        select: {
+          id: true,
+          deviceSessionId: true,
+          lastSeenAt: true,
+          user: {
+            select: { email: true }
+          },
+          video: {
+            select: { title: true }
+          }
+        }
+      }),
       prisma.platformWallet.findUnique({ where: { id: 'ace-platform' } }),
       getNodeHealth(),
       getReconciliationSummary()
@@ -114,12 +235,52 @@ export default async function AdminPage() {
     activeStreams = activeStreamCount;
     watchingUsers = watchHistoryUsers.length;
     successfulPayments = paymentsAggregate._count._all;
+    failedPayments = failedPaymentsCount;
     totalRevenue = paymentsAggregate._sum.amountNaira ?? 0;
     platformBalance = platformWallet?.balanceNaira ?? 0;
     recentTitles = recentTitlesData;
     recentPayments = recentPaymentsData;
+    recentFailedPayments = recentFailedPaymentsData.map((payment) => ({
+      reference: payment.reference,
+      amountNaira: payment.amountNaira,
+      createdAt: payment.createdAt,
+      userEmail: payment.user.email
+    }));
+    recentSupportTickets = recentSupportTicketsData.map((ticket) => ({
+      id: ticket.id,
+      subject: ticket.subject,
+      category: ticket.category,
+      status: ticket.status,
+      createdAt: ticket.createdAt,
+      userEmail: ticket.user.email,
+      userPhone: ticket.user.phone
+    }));
+    supportHotspots = supportHotspotsData
+      .map((item) => ({ category: item.category, total: item._count._all }))
+      .sort((a, b) => b.total - a.total);
+    creatorVerificationQueue = creatorVerificationQueueData.map((creator) => ({
+      id: creator.id,
+      displayName: creator.displayName,
+      verified: creator.verified,
+      bankVerified: creator.bankVerified,
+      ninVerified: creator.ninVerified,
+      idVerified: creator.idVerified,
+      email: creator.user.email,
+      phone: creator.user.phone
+    }));
+    creatorVerificationBacklog = creatorVerificationBacklogCount;
+    liveSessions = liveSessionData.map((session) => ({
+      id: session.id,
+      deviceSessionId: session.deviceSessionId,
+      lastSeenAt: session.lastSeenAt,
+      userEmail: session.user.email,
+      videoTitle: session.video.title
+    }));
     nodeHealth = health;
     reconciliationSummary = summary;
+    safetySensitiveTitles = safetySnapshot.filter(
+      (video) => video.ageRating === 'PG18' || video.contentWarnings.length > 0
+    ).length;
     topUnlockedTitles = Array.from(unlockCounts.entries())
       .map(([title, unlocks]) => ({ title, unlocks }))
       .sort((a, b) => b.unlocks - a.unlocks)
@@ -183,6 +344,13 @@ export default async function AdminPage() {
           <span className="trend-up">Completed commerce events</span>
         </div>
         <div className="metric-card">
+          <span className="muted">Failed payments</span>
+          <strong>{failedPayments}</strong>
+          <span className={failedPayments > 0 ? 'trend-warn' : 'trend-up'}>
+            {failedPayments > 0 ? 'Needs payment support follow-up' : 'Payments are resolving cleanly'}
+          </span>
+        </div>
+        <div className="metric-card">
           <span className="muted">Revenue</span>
           <strong>NGN {totalRevenue}</strong>
           <span className="trend-up">Gross successful payments</span>
@@ -198,6 +366,18 @@ export default async function AdminPage() {
           <span className={openSupport > 10 ? 'trend-warn' : 'trend-up'}>
             {openSupport > 10 ? 'Support queue needs attention' : 'Support queue stable'}
           </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Creator verification</span>
+          <strong>{creatorVerificationBacklog}</strong>
+          <span className={creatorVerificationBacklog > 0 ? 'trend-warn' : 'trend-up'}>
+            {creatorVerificationBacklog > 0 ? 'Profiles waiting for checks' : 'Creator checks are current'}
+          </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Safety-sensitive titles</span>
+          <strong>{safetySensitiveTitles}</strong>
+          <span className="trend-up">Adult-rated or warning-heavy approved titles</span>
         </div>
       </div>
 
@@ -237,6 +417,36 @@ export default async function AdminPage() {
 
       <div className="grid">
         <div className="card">
+          <h3>Issue resolution radar</h3>
+          <div className="detail-grid">
+            <div className="detail-card">
+              <span className="detail-label">Support cases</span>
+              <strong>{openSupport}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Failed payments</span>
+              <strong>{failedPayments}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Verification backlog</span>
+              <strong>{creatorVerificationBacklog}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Stale pending payments</span>
+              <strong>{reconciliationSummary.stalePendingPayments}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Pending moderation</span>
+              <strong>{pendingModeration}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Safety-sensitive titles</span>
+              <strong>{safetySensitiveTitles}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
           <h3>Most opened titles</h3>
           {topUnlockedTitles.length ? (
             <div className="stack-list">
@@ -274,6 +484,43 @@ export default async function AdminPage() {
 
       <div className="grid">
         <div className="card">
+          <h3>Support hotspots</h3>
+          {supportHotspots.length ? (
+            <div className="stack-list">
+              {supportHotspots.map((item) => (
+                <div key={item.category} className="stack-row">
+                  <strong>{item.category}</strong>
+                  <span className="badge">{item.total} open</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No support hotspots are active right now.</p>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Live viewing sessions</h3>
+          {liveSessions.length ? (
+            <div className="stack-list">
+              {liveSessions.map((session) => (
+                <div key={session.id} className="stack-row">
+                  <div>
+                    <strong>{session.videoTitle}</strong>
+                    <p className="muted">{session.userEmail} · {session.deviceSessionId.slice(0, 8)}</p>
+                  </div>
+                  <span className="muted">{session.lastSeenAt.toISOString().slice(11, 16)} UTC</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Live playback sessions will appear here when viewers are active.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid">
+        <div className="card">
           <h3>Recent uploads</h3>
           {recentTitles.length ? (
             <div className="stack-list">
@@ -302,6 +549,72 @@ export default async function AdminPage() {
             <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
             <Link className="btn btn-ghost" href="/admin/node">Inspect platform health</Link>
           </div>
+        </div>
+      </div>
+
+      <div className="grid">
+        <div className="card">
+          <h3>Recent support cases</h3>
+          {recentSupportTickets.length ? (
+            <div className="stack-list">
+              {recentSupportTickets.map((ticket) => (
+                <div key={ticket.id} className="stack-row">
+                  <div>
+                    <strong>{ticket.subject}</strong>
+                    <p className="muted">{ticket.category} · {ticket.userEmail} · {ticket.userPhone}</p>
+                  </div>
+                  <span className={`status-chip ${ticket.status === 'RESOLVED' ? 'status-live' : 'status-review'}`}>{ticket.status}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Open support cases will appear here.</p>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Creator verification queue</h3>
+          {creatorVerificationQueue.length ? (
+            <div className="stack-list">
+              {creatorVerificationQueue.map((creator) => (
+                <div key={creator.id} className="stack-row">
+                  <div>
+                    <strong>{creator.displayName}</strong>
+                    <p className="muted">{creator.email} · {creator.phone}</p>
+                    <p className="muted">
+                      Identity {creator.idVerified ? 'ok' : 'pending'} · NIN {creator.ninVerified ? 'ok' : 'pending'} · Bank {creator.bankVerified ? 'ok' : 'pending'}
+                    </p>
+                  </div>
+                  <span className={`status-chip ${creator.verified ? 'status-live' : 'status-review'}`}>
+                    {creator.verified ? 'Verified' : 'Needs review'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Creator verification backlog is clear.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid">
+        <div className="card">
+          <h3>Recent payment failures</h3>
+          {recentFailedPayments.length ? (
+            <div className="stack-list">
+              {recentFailedPayments.map((payment) => (
+                <div key={payment.reference} className="stack-row">
+                  <div>
+                    <strong>{payment.reference}</strong>
+                    <p className="muted">{payment.userEmail}</p>
+                  </div>
+                  <span className="muted">NGN {payment.amountNaira}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No recent payment failures.</p>
+          )}
         </div>
       </div>
     </DashboardShell>

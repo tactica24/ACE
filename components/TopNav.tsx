@@ -1,10 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { getCurrentUser } from '@/lib/auth';
+import { getPreferredUiLanguage } from '@/lib/ui-language-server';
+import { getUiCopy } from '@/lib/ui-language';
 import UserMenu from '@/components/UserMenu';
 
 export default async function TopNav() {
   const user = await getCurrentUser();
+  const language = await getPreferredUiLanguage();
+  const copy = getUiCopy(language);
 
   return (
     <nav className="nav">
@@ -18,21 +23,23 @@ export default async function TopNav() {
           </span>
         </Link>
         <div className="nav-links">
-          <Link href="/browse">Browse</Link>
-          {user ? <Link href="/wallet">Wallet</Link> : null}
+          <Link href="/browse">{copy.browse}</Link>
+          {user ? <Link href="/wallet">{copy.wallet}</Link> : null}
         </div>
         <div className="nav-actions">
+          <LanguageSwitcher language={language} />
           {user ? (
             <UserMenu
               name={user.name ?? user.email}
               email={user.email}
               showCreatorStudio={user.role === 'CREATOR' || user.role === 'ADMIN'}
               showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
+              language={language}
             />
           ) : (
             <>
-              <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
-              <Link className="btn btn-primary" href="/auth/register">Create account</Link>
+              <Link className="btn btn-ghost" href="/auth/login">{copy.signIn}</Link>
+              <Link className="btn btn-primary" href="/auth/register">{copy.createAccount}</Link>
             </>
           )}
         </div>

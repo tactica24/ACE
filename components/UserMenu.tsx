@@ -3,22 +3,26 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import SignOutButton from '@/components/SignOutButton';
+import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 type UserMenuProps = {
   name: string;
   email: string;
   showCreatorStudio: boolean;
   showCreatorOnboarding: boolean;
+  language: UILanguage;
 };
 
 export default function UserMenu({
   name,
   email,
   showCreatorStudio,
-  showCreatorOnboarding
+  showCreatorOnboarding,
+  language
 }: UserMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
+  const copy = getUiCopy(language);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -64,27 +68,27 @@ export default function UserMenu({
 
           <div className="user-menu-links">
             <Link className="user-menu-link" href="/account" onClick={() => setOpen(false)}>
-              Account
+              {copy.account}
             </Link>
             <Link className="user-menu-link" href="/wallet" onClick={() => setOpen(false)}>
-              Wallet
+              {copy.wallet}
             </Link>
             <Link className="user-menu-link" href="/account/contact" onClick={() => setOpen(false)}>
-              Support
+              {copy.getSupport}
             </Link>
             {showCreatorStudio ? (
               <Link className="user-menu-link" href="/studio" onClick={() => setOpen(false)}>
-                Creator studio
+                {copy.creatorStudio}
               </Link>
             ) : null}
             {showCreatorOnboarding ? (
               <Link className="user-menu-link" href="/studio/onboarding" onClick={() => setOpen(false)}>
-                Continue onboarding
+                {copy.continueOnboarding}
               </Link>
             ) : null}
           </div>
 
-          <SignOutButton className="user-menu-signout" onClick={() => setOpen(false)} />
+          <SignOutButton className="user-menu-signout" label={copy.signOut} onClick={() => setOpen(false)} />
         </div>
       ) : null}
     </div>

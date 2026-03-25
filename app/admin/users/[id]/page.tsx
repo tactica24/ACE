@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
@@ -65,6 +66,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       }
       actions={
         <div className="action-list">
+          <PromoteAdminButton userId={user.id} email={user.email} role={user.role} />
           <Link className="btn btn-ghost" href={`mailto:${user.email}`}>Email user</Link>
           <Link className="btn btn-ghost" href="/admin/users">Back to users</Link>
         </div>

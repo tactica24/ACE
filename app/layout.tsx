@@ -1,6 +1,7 @@
 import './globals.css';
 import TopNav from '@/components/TopNav';
 import Footer from '@/components/Footer';
+import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 
 export const metadata = {
   title: 'Ace Studio',
@@ -15,9 +16,11 @@ export const viewport = {
   themeColor: '#070b18'
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const language = await getPreferredUiLanguage();
+
   return (
-    <html lang="en">
+    <html lang={language}>
       <body>
         <div className="app-shell">
           <TopNav />

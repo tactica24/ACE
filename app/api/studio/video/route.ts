@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { generateContract, type RightsTierValue } from '@/lib/contracts';
+import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -36,12 +37,41 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { title, description, videoType, ageRating, category, genres, priceTier, rightsTier, teaserSec, durationSec, tags, highlightSeconds, r2Key, posterKey } = body as {
+  const {
+    title,
+    description,
+    videoType,
+    ageRating,
+    category,
+    originalLanguage,
+    audioLanguages,
+    contentWarnings,
+    subtitleTracks,
+    genres,
+    priceTier,
+    rightsTier,
+    teaserSec,
+    durationSec,
+    tags,
+    highlightSeconds,
+    r2Key,
+    posterKey
+  } = body as {
     title?: string;
     description?: string;
     videoType?: string;
     ageRating?: string;
     category?: string;
+    originalLanguage?: string;
+    audioLanguages?: string[];
+    contentWarnings?: string[];
+    subtitleTracks?: Array<{
+      label?: string;
+      languageCode?: string;
+      kind?: string;
+      fileKey?: string;
+      isDefault?: boolean;
+    }>;
     genres?: string[];
     priceTier?: string;
     rightsTier?: string;
@@ -60,8 +90,23 @@ export async function POST(req: NextRequest) {
   const safeGenres = (genres ?? []).map((value) => value.trim()).filter(Boolean);
   const safeTags = (tags ?? []).map((value) => value.trim()).filter(Boolean);
   const safeHighlights = (highlightSeconds ?? []).filter((value) => Number.isFinite(value) && value >= 0);
+  const safeOriginalLanguage = normalizeLanguageCodes([(originalLanguage ?? 'en').trim().toLowerCase()])[0] ?? 'en';
+  const safeAudioLanguages = normalizeLanguageCodes([safeOriginalLanguage, ...(audioLanguages ?? [])]);
+  const safeContentWarnings = normalizeContentWarnings(contentWarnings ?? []);
+  const safeSubtitleTracks = normalizeSubtitleTracks(
+    (subtitleTracks ?? []).map((track) => ({
+      label: track.label ?? '',
+      languageCode: track.languageCode ?? '',
+      kind: (track.kind ?? 'subtitles') as 'subtitles' | 'captions' | 'sdh',
+      fileKey: track.fileKey ?? '',
+      isDefault: track.isDefault
+    }))
+  );
 
-  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !teaserSec || !durationSec || !r2Key) {
+  const safeTeaserSec = Math.max(0, Math.floor(Number(teaserSec ?? 0)));
+  const safeDurationSec = Math.max(0, Math.floor(Number(durationSec ?? 0)));
+
+  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !safeDurationSec || !r2Key) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
@@ -82,6 +127,8 @@ export async function POST(req: NextRequest) {
     }
   });
 
+  const hasExplicitDefaultSubtitle = safeSubtitleTracks.some((track) => track.isDefault);
+
   const video = await prisma.video.create({
     data: {
       creatorId: auth.sub,
@@ -90,16 +137,30 @@ export async function POST(req: NextRequest) {
       videoType: safeVideoType,
       ageRating: safeAgeRating,
       category: safeCategory,
+      originalLanguage: safeOriginalLanguage,
+      audioLanguages: safeAudioLanguages,
+      contentWarnings: safeContentWarnings,
       genres: safeGenres,
       priceTier,
       rightsTier,
       status: pendingStatus,
-      teaserSec,
-      durationSec,
+      teaserSec: safeTeaserSec,
+      durationSec: safeDurationSec,
       tags: safeTags,
       highlightSeconds: safeHighlights,
       r2Key,
-      posterKey: safePosterKey
+      posterKey: safePosterKey,
+      subtitleTracks: safeSubtitleTracks.length
+        ? {
+            create: safeSubtitleTracks.map((track, index) => ({
+              label: track.label,
+              languageCode: track.languageCode,
+              kind: track.kind,
+              fileKey: track.fileKey,
+              isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
+            }))
+          }
+        : undefined
     }
   });
 

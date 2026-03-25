@@ -8,7 +8,15 @@ import { getRegionalPrice } from '@/lib/pricing';
 
 export default async function LibraryPage() {
   const user = await requireCreatorUser('/studio/library');
-  const videos = await prisma.video.findMany({ where: { creatorId: user.sub }, orderBy: { createdAt: 'desc' } });
+  const videos = await prisma.video.findMany({
+    where: { creatorId: user.sub },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { subtitleTracks: true }
+      }
+    }
+  });
   const requestHeaders = headers();
 
   return (
@@ -47,6 +55,30 @@ export default async function LibraryPage() {
                 <div className="detail-card">
                   <span className="detail-label">Uploaded</span>
                   <strong>{video.createdAt.toISOString().slice(0, 10)}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Category</span>
+                  <strong>{video.category}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Age</span>
+                  <strong>{video.ageRating}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Original language</span>
+                  <strong>{video.originalLanguage ?? 'en'}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Audio metadata</span>
+                  <strong>{video.audioLanguages.length ? video.audioLanguages.join(', ') : 'Single track'}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Advisories</span>
+                  <strong>{video.contentWarnings.length ? video.contentWarnings.join(', ') : 'None'}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Subtitles</span>
+                  <strong>{video._count.subtitleTracks}</strong>
                 </div>
               </div>
             </div>

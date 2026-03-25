@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
+import { getUiCopy } from '@/lib/ui-language';
+import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,34 +45,37 @@ function dedupeVideos(videos: HomeVideo[]) {
 function buildRows({
   videos,
   continueWatching,
-  unlockedVideos
+  unlockedVideos,
+  language
 }: {
   videos: HomeVideo[];
   continueWatching: HomeVideo[];
   unlockedVideos: HomeVideo[];
+  language: string;
 }) {
+  const copy = getUiCopy(language);
   const rows: HomeRow[] = [];
 
   if (continueWatching.length) {
     rows.push({
-      title: 'Continue watching',
-      description: 'Pick up right where you stopped across your devices.',
+      title: copy.continueWatchingRow,
+      description: copy.continueWatchingSummary,
       items: continueWatching.slice(0, 12)
     });
   }
 
   if (unlockedVideos.length) {
     rows.push({
-      title: 'Unlocked movies',
-      description: 'Everything this account has already paid for or unlocked with credits.',
+      title: copy.unlockedMovies,
+      description: copy.unlockedMoviesSummary,
       items: unlockedVideos.slice(0, 12)
     });
   }
 
   if (videos.length) {
     rows.push({
-      title: 'Trending now',
-      description: 'Fresh releases and the titles viewers are opening first.',
+      title: copy.trendingNow,
+      description: copy.trendingNowSummary,
       items: videos.slice(0, 12)
     });
   }
@@ -78,8 +83,8 @@ function buildRows({
   const familyNight = videos.filter((video) => video.ageRating === 'ALL' || video.ageRating === 'PG13');
   if (familyNight.length >= 2) {
     rows.push({
-      title: 'Family night',
-      description: 'Friendly picks for households watching together.',
+      title: copy.familyNight,
+      description: copy.familyNightSummary,
       items: familyNight.slice(0, 12)
     });
   }
@@ -87,8 +92,8 @@ function buildRows({
   const quickPicks = videos.filter((video) => video.durationSec <= 30 * 60 || ['SHORT', 'SKIT'].includes(video.videoType));
   if (quickPicks.length >= 2) {
     rows.push({
-      title: 'Quick picks',
-      description: 'Great when you want something good without a long commitment.',
+      title: copy.quickPicks,
+      description: copy.quickPicksSummary,
       items: quickPicks.slice(0, 12)
     });
   }
@@ -115,6 +120,8 @@ function buildRows({
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  const language = await getPreferredUiLanguage();
+  const copy = getUiCopy(language);
 
   let videos: HomeVideo[] = [];
   try {
@@ -165,7 +172,7 @@ export default async function HomePage() {
   const requestHeaders = headers();
   const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
-  const rows = buildRows({ videos, continueWatching, unlockedVideos });
+  const rows = buildRows({ videos, continueWatching, unlockedVideos, language });
 
   return (
     <div className="viewer-home">
@@ -175,7 +182,7 @@ export default async function HomePage() {
       >
         <div className="container home-hero-inner">
           <div className="home-hero-copy">
-            <span className="home-kicker">{continueWatching.length ? 'Continue your story' : 'Now streaming'}</span>
+            <span className="home-kicker">{continueWatching.length ? copy.watchStory : copy.nowStreaming}</span>
             <h1 className="home-title">
               {featured?.title ?? 'Watch bold films, series, and originals in one place'}
             </h1>
@@ -184,9 +191,9 @@ export default async function HomePage() {
             </p>
             <div className="home-actions">
               <Link className="btn btn-primary" href={featured ? `/v/${featured.id}` : '/auth/register'}>
-                {featured ? 'Watch now' : 'Create account'}
+                {featured ? copy.watchNow : copy.createAccount}
               </Link>
-              <Link className="btn btn-ghost" href="/browse">Browse catalog</Link>
+              <Link className="btn btn-ghost" href="/browse">{copy.browseCatalog}</Link>
             </div>
             {featured ? (
               <div className="home-badges">
@@ -203,14 +210,14 @@ export default async function HomePage() {
         <div className="container">
           <div className="feature-banner" style={{ marginBottom: 22 }}>
             <div>
-              <h3>Trust-first viewing</h3>
+              <h3>{copy.trustFirstViewing}</h3>
               <p className="muted" style={{ marginBottom: 0 }}>
-                Every unlock uses pass credits first, then wallet credits, then wallet balance. Your progress, unlocked titles, and family access stay tied to your account, with playback protected to 3 active devices at a time.
+                {copy.trustFirstViewingSummary}
               </p>
             </div>
             <div className="action-list">
-              <Link className="btn btn-primary" href="/wallet">Open wallet</Link>
-              <Link className="btn btn-ghost" href="/account/contact">Get support</Link>
+              <Link className="btn btn-primary" href="/wallet">{copy.openWallet}</Link>
+              <Link className="btn btn-ghost" href="/account/contact">{copy.getSupport}</Link>
             </div>
           </div>
 
@@ -236,11 +243,11 @@ export default async function HomePage() {
             ))
           ) : (
             <div className="home-empty">
-              <h2>Fresh releases are loading</h2>
-              <p className="muted">Sign in or create an account to be ready when the catalog goes live.</p>
+              <h2>{copy.freshReleases}</h2>
+              <p className="muted">{copy.freshReleasesSummary}</p>
               <div className="home-actions">
-                <Link className="btn btn-primary" href="/auth/register">Create account</Link>
-                <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
+                <Link className="btn btn-primary" href="/auth/register">{copy.createAccount}</Link>
+                <Link className="btn btn-ghost" href="/auth/login">{copy.signIn}</Link>
               </div>
             </div>
           )}

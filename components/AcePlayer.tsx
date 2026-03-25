@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getLanguageLabel } from '@/lib/media-types';
+import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const AUTO_UNLOCK_LEAD_SECONDS = 5;
 const HISTORY_SYNC_SECONDS = 5;
@@ -60,6 +62,21 @@ function getDeviceSessionId() {
 
 type UnlockState = 'idle' | 'unlocking' | 'needs_topup' | 'verification_required' | 'error';
 
+type SubtitleTrackOption = {
+  id: string;
+  label: string;
+  languageCode: string;
+  kind: string;
+  src: string;
+  isDefault?: boolean;
+};
+
+type AudioTrackLike = {
+  enabled: boolean;
+  label?: string;
+  language?: string;
+};
+
 export default function AcePlayer({
   videoId,
   teaserSec,
@@ -68,6 +85,9 @@ export default function AcePlayer({
   initialProgress = 0,
   watermarkText,
   highlightSeconds = [],
+  subtitles = [],
+  audioLanguages = [],
+  uiLanguage = 'en',
   isAuthenticated,
   loginHref = '/auth/login'
 }: {
@@ -78,6 +98,9 @@ export default function AcePlayer({
   initialProgress?: number;
   watermarkText: string;
   highlightSeconds?: number[];
+  subtitles?: SubtitleTrackOption[];
+  audioLanguages?: string[];
+  uiLanguage?: UILanguage;
   isAuthenticated: boolean;
   loginHref?: string;
 }) {
@@ -87,6 +110,8 @@ export default function AcePlayer({
   const pendingAutoplayRef = useRef(false);
   const lastSyncedRef = useRef(0);
   const historyInFlightRef = useRef(false);
+  const copy = getUiCopy(uiLanguage);
+  const subtitleTracks = subtitles.filter((track) => track.src);
   const [showPaywall, setShowPaywall] = useState(false);
   const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [unlockState, setUnlockState] = useState<UnlockState>('idle');
@@ -94,6 +119,73 @@ export default function AcePlayer({
   const [streamUrl, setStreamUrl] = useState<string>('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [resumePrompt, setResumePrompt] = useState<number | null>(null);
+  const [selectedSubtitleId, setSelectedSubtitleId] = useState<string>(subtitleTracks.find((track) => track.isDefault)?.id ?? subtitleTracks[0]?.id ?? 'off');
+  const [audioTrackOptions, setAudioTrackOptions] = useState<Array<{ index: number; label: string }>>([]);
+  const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
+
+  const applySubtitleSelection = (videoElement = videoRef.current) => {
+    if (!videoElement || !videoElement.textTracks) {
+      return;
+    }
+
+    for (let index = 0; index < videoElement.textTracks.length; index += 1) {
+      const track = videoElement.textTracks[index];
+      const option = subtitleTracks[index];
+      track.mode = option && selectedSubtitleId !== 'off' && option.id === selectedSubtitleId ? 'showing' : 'disabled';
+    }
+  };
+
+  const syncAudioTrackState = (videoElement = videoRef.current) => {
+    if (!videoElement) {
+      return;
+    }
+
+    const audioTracks = (videoElement as HTMLVideoElement & { audioTracks?: ArrayLike<AudioTrackLike> }).audioTracks;
+    if (!audioTracks || audioTracks.length <= 1) {
+      setAudioTrackOptions([]);
+      setSelectedAudioTrackIndex(0);
+      return;
+    }
+
+    const options = Array.from({ length: audioTracks.length }, (_, index) => {
+      const track = audioTracks[index];
+      const fallbackCode = audioLanguages[index] ?? track?.language ?? '';
+      const label = track?.label?.trim() || (fallbackCode ? getLanguageLabel(fallbackCode) : `${copy.audio} ${index + 1}`);
+      return { index, label };
+    });
+
+    let enabledIndex = 0;
+    for (let index = 0; index < audioTracks.length; index += 1) {
+      if (audioTracks[index]?.enabled) {
+        enabledIndex = index;
+        break;
+      }
+    }
+
+    setAudioTrackOptions(options);
+    setSelectedAudioTrackIndex(enabledIndex);
+  };
+
+  const setAudioTrack = (index: number) => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    const audioTracks = (videoElement as HTMLVideoElement & { audioTracks?: ArrayLike<AudioTrackLike> }).audioTracks;
+    if (!audioTracks || audioTracks.length <= index) {
+      return;
+    }
+
+    for (let currentIndex = 0; currentIndex < audioTracks.length; currentIndex += 1) {
+      const track = audioTracks[currentIndex];
+      if (track) {
+        track.enabled = currentIndex === index;
+      }
+    }
+
+    setSelectedAudioTrackIndex(index);
+  };
 
   const loadStream = async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
     const deviceSessionId = isAuthenticated ? getDeviceSessionId() : '';
@@ -237,6 +329,16 @@ export default function AcePlayer({
   }, [initialProgress, isAuthenticated, videoId]);
 
   useEffect(() => {
+    setSelectedSubtitleId(subtitles.find((track) => track.isDefault && track.src)?.id ?? subtitleTracks[0]?.id ?? 'off');
+    setAudioTrackOptions([]);
+    setSelectedAudioTrackIndex(0);
+  }, [subtitles, videoId]);
+
+  useEffect(() => {
+    applySubtitleSelection();
+  }, [selectedSubtitleId, streamUrl]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -255,6 +357,9 @@ export default function AcePlayer({
           setResumePrompt(safeResume);
         }
       }
+
+      applySubtitleSelection(video);
+      syncAudioTrackState(video);
 
       if (pendingAutoplayRef.current) {
         video.play().catch(() => null);
@@ -345,7 +450,7 @@ export default function AcePlayer({
       video.removeEventListener('ended', handleEnded);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [initialProgress, isAuthenticated, loginHref, teaserSec, unlockState, unlocked, videoId]);
+  }, [initialProgress, isAuthenticated, loginHref, selectedSubtitleId, teaserSec, unlockState, unlocked, videoId]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -369,9 +474,20 @@ export default function AcePlayer({
   return (
     <div className={`player${watchMode ? ' player-watch-mode' : ''}`}>
       {streamUrl ? (
-        <video ref={videoRef} src={streamUrl} controls playsInline />
+        <video ref={videoRef} src={streamUrl} controls playsInline>
+          {subtitleTracks.map((track) => (
+            <track
+              key={track.id}
+              kind={track.kind === 'sdh' ? 'captions' : track.kind}
+              src={track.src}
+              srcLang={track.languageCode}
+              label={track.label}
+              default={track.isDefault}
+            />
+          ))}
+        </video>
       ) : (
-        <div style={{ color: 'white', padding: '24px' }}>{feedback ?? 'Loading stream...'}</div>
+        <div style={{ color: 'white', padding: '24px' }}>{feedback ?? copy.loadingStream}</div>
       )}
 
       <div className="watermark">{watermarkText}</div>
@@ -381,15 +497,63 @@ export default function AcePlayer({
         type="button"
         onClick={() => setWatchMode((current) => !current)}
       >
-        {watchMode ? 'Exit watch mode' : 'Watch mode'}
+        {watchMode ? copy.exitWatchMode : copy.watchMode}
       </button>
+
+      {subtitleTracks.length || audioTrackOptions.length ? (
+        <div className="player-settings-panel">
+          {subtitleTracks.length ? (
+            <div className="player-settings-group">
+              <span className="player-settings-label">{copy.captions}</span>
+              <div className="player-settings-options">
+                <button
+                  className={`player-settings-chip${selectedSubtitleId === 'off' ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => setSelectedSubtitleId('off')}
+                >
+                  {copy.off}
+                </button>
+                {subtitleTracks.map((track) => (
+                  <button
+                    key={track.id}
+                    className={`player-settings-chip${selectedSubtitleId === track.id ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => setSelectedSubtitleId(track.id)}
+                  >
+                    {track.label || getLanguageLabel(track.languageCode)}
+                    {track.isDefault ? ` · ${copy.defaultSubtitle}` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {audioTrackOptions.length > 1 ? (
+            <div className="player-settings-group">
+              <span className="player-settings-label">{copy.audio}</span>
+              <div className="player-settings-options">
+                {audioTrackOptions.map((track) => (
+                  <button
+                    key={track.index}
+                    className={`player-settings-chip${selectedAudioTrackIndex === track.index ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => setAudioTrack(track.index)}
+                  >
+                    {track.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {resumePrompt ? (
         <div className="paywall">
           <div>
-            <h3 style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>Continue watching?</h3>
+            <h3 style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>{copy.continueWatchingPrompt}</h3>
             <p className="muted" style={{ color: '#f7efe0' }}>
-              We saved your place at {formatTime(resumePrompt)}. Choose whether to continue from there or start this title again.
+              {copy.resumeAt} {formatTime(resumePrompt)}. Choose whether to continue from there or start this title again.
             </p>
             <div className="player-overlay-actions">
               <button
@@ -403,7 +567,7 @@ export default function AcePlayer({
                   video.play().catch(() => null);
                 }}
               >
-                Continue from {formatTime(resumePrompt)}
+                {copy.continueFrom} {formatTime(resumePrompt)}
               </button>
               <button
                 className="btn btn-ghost"
@@ -419,7 +583,7 @@ export default function AcePlayer({
                   void syncHistory({ progressSec: 0, keepalive: true });
                 }}
               >
-                Start over
+                {copy.startOver}
               </button>
             </div>
           </div>
@@ -430,27 +594,27 @@ export default function AcePlayer({
         <div className="paywall">
           <div>
             <h3 style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>
-              {isAuthenticated ? 'Keep watching' : 'Sign in to continue'}
+              {isAuthenticated ? copy.keepWatching : copy.signInToContinue}
             </h3>
             <p className="muted" style={{ color: '#f7efe0' }}>
               {feedback
                 ? feedback
                 : isAuthenticated
-                  ? `We automatically use your pass, credits, or wallet balance first. Add funds if you need more to continue this title for ${priceLabel}.`
-                  : 'Sign in and we will keep your progress and continue from where you stopped.'}
+                  ? `${copy.keepWatchingSummary} ${priceLabel}.`
+                  : copy.signInToUnlockSummary}
             </p>
             <div className="player-overlay-actions">
               {!isAuthenticated ? (
                 <button className="btn btn-primary" type="button" onClick={() => { window.location.href = loginHref; }}>
-                  Sign in
+                  {copy.signIn}
                 </button>
               ) : unlockState === 'needs_topup' ? (
                 <a className="btn btn-primary" href="/wallet">
-                  Top up wallet
+                  {copy.topUpWallet}
                 </a>
               ) : unlockState === 'verification_required' ? (
                 <a className="btn btn-primary" href="/account">
-                  Verify account
+                  {copy.verifyAccount}
                 </a>
               ) : (
                 <button
@@ -462,12 +626,12 @@ export default function AcePlayer({
                   }}
                   disabled={unlockState === 'unlocking'}
                 >
-                  {unlockState === 'unlocking' ? 'Unlocking...' : 'Try again'}
+                  {unlockState === 'unlocking' ? 'Unlocking...' : copy.tryAgain}
                 </button>
               )}
               {isAuthenticated && unlockState !== 'needs_topup' ? (
                 <a className="btn btn-ghost" href="/wallet">
-                  Wallet
+                  {copy.wallet}
                 </a>
               ) : null}
             </div>

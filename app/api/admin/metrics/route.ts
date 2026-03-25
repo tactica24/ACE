@@ -13,12 +13,24 @@ export async function GET(req: NextRequest) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const [users, videos, unlocks, payments, referrals, node, activeStreams, reconciliation] = await Promise.all([
+  const [users, videos, unlocks, payments, failedPayments, referrals, openSupport, creatorVerificationBacklog, node, activeStreams, reconciliation] = await Promise.all([
     prisma.user.count(),
     prisma.video.count({ where: { status: 'APPROVED' } }),
     prisma.unlock.count(),
     prisma.payment.count({ where: { status: 'SUCCESS' } }),
+    prisma.payment.count({ where: { status: 'FAILED' } }),
     prisma.referralLink.count(),
+    prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+    prisma.creatorProfile.count({
+      where: {
+        OR: [
+          { verified: false },
+          { bankVerified: false },
+          { ninVerified: false },
+          { idVerified: false }
+        ]
+      }
+    }),
     getNodeHealth(),
     getActiveStreamCount(),
     getReconciliationSummary()
@@ -37,9 +49,18 @@ export async function GET(req: NextRequest) {
     '# HELP ace_payments_success_total Total successful payments',
     '# TYPE ace_payments_success_total counter',
     `ace_payments_success_total ${payments}`,
+    '# HELP ace_payments_failed_total Total failed payments',
+    '# TYPE ace_payments_failed_total counter',
+    `ace_payments_failed_total ${failedPayments}`,
     '# HELP ace_referral_links_total Total referral links',
     '# TYPE ace_referral_links_total gauge',
     `ace_referral_links_total ${referrals}`,
+    '# HELP ace_support_open_total Total open or in-progress support tickets',
+    '# TYPE ace_support_open_total gauge',
+    `ace_support_open_total ${openSupport}`,
+    '# HELP ace_creator_verification_backlog_total Creator profiles pending verification checks',
+    '# TYPE ace_creator_verification_backlog_total gauge',
+    `ace_creator_verification_backlog_total ${creatorVerificationBacklog}`,
     '# HELP ace_active_streams_total Active concurrent playback sessions',
     '# TYPE ace_active_streams_total gauge',
     `ace_active_streams_total ${activeStreams}`,

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import PromoteAdminButton from '@/components/PromoteAdminButton';
 
 export type CreatorRow = {
   id: string;
@@ -70,7 +71,17 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
               <tr key={user.id}>
                 <td>{user.email}</td>
                 <td>{user.phone}</td>
-                <td>{user.role}</td>
+                <td>
+                  <div className="stack-list" style={{ gap: 8 }}>
+                    <strong>{user.role}</strong>
+                    <PromoteAdminButton
+                      userId={user.id}
+                      email={user.email}
+                      role={user.role}
+                      className="btn btn-ghost"
+                    />
+                  </div>
+                </td>
                 <td>
                   <div className="stack-list" style={{ gap: 4 }}>
                     <strong>{user.signupIntent}</strong>

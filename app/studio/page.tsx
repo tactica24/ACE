@@ -40,6 +40,7 @@ export default async function StudioPage() {
         </div>
         <div className="card card-soft">
           <h3>Release workflow</h3>
+          <p className="muted">Upload the title, set category and age rating, add content advisories, then attach subtitle files for every language you want households to switch to.</p>
           <div className="action-list">
             <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>

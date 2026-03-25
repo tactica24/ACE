@@ -147,6 +147,29 @@ button {
   align-items: center;
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 217, 255, 0.16);
+  background: rgba(8, 15, 30, 0.74);
+}
+
+.language-switcher-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.language-switcher-select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
 .user-menu {
   position: relative;
 }
@@ -911,6 +934,64 @@ button {
   border-color: rgba(88, 217, 255, 0.32);
 }
 
+.player-settings-panel {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  display: grid;
+  gap: 10px;
+  max-width: min(48vw, 560px);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.player:hover .player-settings-panel,
+.player:focus-within .player-settings-panel,
+.player-watch-mode .player-settings-panel {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.player-settings-group {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(6, 10, 20, 0.8);
+  backdrop-filter: blur(14px);
+}
+
+.player-settings-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(247, 239, 224, 0.78);
+}
+
+.player-settings-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.player-settings-chip {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.player-settings-chip.active {
+  border-color: rgba(88, 217, 255, 0.52);
+  background: rgba(88, 217, 255, 0.16);
+}
+
 .player-highlight-row {
   position: absolute;
   bottom: 16px;
@@ -1132,6 +1213,10 @@ body.watch-mode-active .video-page-player {
     width: min(260px, 88vw);
   }
 
+  .language-switcher-label {
+    display: none;
+  }
+
   .home-hero {
     min-height: 64vh;
   }
@@ -1265,5 +1350,13 @@ body.watch-mode-active .video-page-player {
 
   .player-highlight-row {
     display: none;
+  }
+
+  .player-settings-panel {
+    left: 16px;
+    right: 16px;
+    top: auto;
+    bottom: 70px;
+    max-width: none;
   }
 }
