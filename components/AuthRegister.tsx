@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, deleteUser, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { getFirebaseAuthClient, toFirebaseAuthErrorMessage } from '@/lib/firebase';
-import { type SignupIntentValue } from '@/lib/media-types';
+import { getPostRegisterPath } from '@/lib/account-routing';
+import { type CreatorAccessStatusValue, type RoleValue, type SignupIntentValue } from '@/lib/media-types';
+
+type AuthResponseUser = {
+  role: RoleValue;
+  signupIntent: SignupIntentValue;
+  creatorAccessStatus: CreatorAccessStatusValue;
+};
 
 export default function AuthRegister() {
   const [name, setName] = useState('');
@@ -47,7 +54,7 @@ export default function AuthRegister() {
         await deleteUser(credential.user).catch(() => null);
         throw new Error(data.error || 'Register failed');
       }
-      window.location.href = '/account?verification=sent';
+      window.location.href = getPostRegisterPath(data.user as AuthResponseUser);
     } catch (error) {
       setError(toFirebaseAuthErrorMessage(error, 'Unable to create your account right now.'));
     } finally {
@@ -72,15 +79,15 @@ export default function AuthRegister() {
         </div>
         <p className="muted" style={{ margin: 0 }}>
           {signupIntent === 'CREATOR'
-            ? 'Creator requests are reviewed by admin before full studio onboarding is unlocked.'
-            : 'Viewers go straight to the catalog after signup.'}
+            ? 'Creator account'
+            : 'Viewer account'}
         </p>
       </div>
       <input className="input" type="password" placeholder="Password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>
-      <p className="muted" style={{ margin: 0 }}>We will send a verification email after signup, and email verification is required before unlocks, top-ups, or creator submission.</p>
+      <p className="muted" style={{ margin: 0 }}>We will send a verification email after signup.</p>
       {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}
     </form>
   );

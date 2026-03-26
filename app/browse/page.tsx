@@ -1,6 +1,6 @@
 import BrowseCatalog from '@/components/BrowseCatalog';
-import { prisma } from '@/lib/db';
 import { headers } from 'next/headers';
+import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
 
@@ -21,10 +21,7 @@ type BrowseVideo = {
 export default async function BrowsePage() {
   let videos: BrowseVideo[] = [];
   try {
-    videos = await prisma.video.findMany({
-      where: { status: 'APPROVED' },
-      orderBy: { createdAt: 'desc' }
-    });
+    videos = await getApprovedCatalogVideos();
   } catch {
     videos = [];
   }

@@ -4,6 +4,15 @@ import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirebaseAuthClient, toFirebaseAuthErrorMessage } from '@/lib/firebase';
+import { getPostLoginPath } from '@/lib/account-routing';
+import { type CreatorAccessStatusValue, type RoleValue, type SignupIntentValue } from '@/lib/media-types';
+
+type AuthResponseUser = {
+  role: RoleValue;
+  signupIntent: SignupIntentValue;
+  creatorAccessStatus: CreatorAccessStatusValue;
+  emailVerified?: boolean;
+};
 
 export default function AuthLogin() {
   const params = useSearchParams();
@@ -39,7 +48,8 @@ export default function AuthLogin() {
         await signOut(firebaseAuth).catch(() => null);
         throw new Error(data.error || 'Login failed');
       }
-      window.location.href = data.user?.emailVerified ? next : '/account?verification=required';
+      const destination = getPostLoginPath(data.user as AuthResponseUser, next);
+      window.location.href = data.user?.emailVerified ? destination : '/account?verification=required';
     } catch (error) {
       setError(toFirebaseAuthErrorMessage(error, 'Unable to sign in right now.'));
     } finally {

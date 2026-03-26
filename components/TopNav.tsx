@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getUiCopy } from '@/lib/ui-language';
 import UserMenu from '@/components/UserMenu';
@@ -10,6 +11,14 @@ export default async function TopNav() {
   const user = await getCurrentUser();
   const language = await getPreferredUiLanguage();
   const copy = getUiCopy(language);
+  const primaryHref = user ? getPrimaryAppPath(user) : '/browse';
+  const primaryLabel = user
+    ? user.role === 'ADMIN'
+      ? 'Admin'
+      : user.role === 'CREATOR'
+        ? 'Studio'
+        : copy.browse
+    : copy.browse;
 
   return (
     <nav className="nav">
@@ -23,8 +32,8 @@ export default async function TopNav() {
           </span>
         </Link>
         <div className="nav-links">
-          <Link href="/browse">{copy.browse}</Link>
-          {user ? <Link href="/wallet">{copy.wallet}</Link> : null}
+          <Link href={primaryHref}>{primaryLabel}</Link>
+          {user?.role === 'USER' ? <Link href="/wallet">{copy.wallet}</Link> : null}
         </div>
         <div className="nav-actions">
           <LanguageSwitcher language={language} />
@@ -32,7 +41,8 @@ export default async function TopNav() {
             <UserMenu
               name={user.name ?? user.email}
               email={user.email}
-              showCreatorStudio={user.role === 'CREATOR' || user.role === 'ADMIN'}
+              role={user.role}
+              showCreatorStudio={user.role === 'CREATOR'}
               showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
               language={language}
             />

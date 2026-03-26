@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import SignOutButton from '@/components/SignOutButton';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
+import { type RoleValue } from '@/lib/media-types';
 
 type UserMenuProps = {
   name: string;
   email: string;
+  role: RoleValue;
   showCreatorStudio: boolean;
   showCreatorOnboarding: boolean;
   language: UILanguage;
@@ -16,6 +18,7 @@ type UserMenuProps = {
 export default function UserMenu({
   name,
   email,
+  role,
   showCreatorStudio,
   showCreatorOnboarding,
   language
@@ -70,9 +73,16 @@ export default function UserMenu({
             <Link className="user-menu-link" href="/account" onClick={() => setOpen(false)}>
               {copy.account}
             </Link>
-            <Link className="user-menu-link" href="/wallet" onClick={() => setOpen(false)}>
-              {copy.wallet}
-            </Link>
+            {role === 'USER' ? (
+              <Link className="user-menu-link" href="/wallet" onClick={() => setOpen(false)}>
+                {copy.wallet}
+              </Link>
+            ) : null}
+            {role === 'ADMIN' ? (
+              <Link className="user-menu-link" href="/admin" onClick={() => setOpen(false)}>
+                Admin dashboard
+              </Link>
+            ) : null}
             <Link className="user-menu-link" href="/account/contact" onClick={() => setOpen(false)}>
               {copy.getSupport}
             </Link>

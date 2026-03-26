@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
@@ -125,11 +125,7 @@ export default async function HomePage() {
 
   let videos: HomeVideo[] = [];
   try {
-    videos = await prisma.video.findMany({
-      where: { status: 'APPROVED' },
-      take: 30,
-      orderBy: { createdAt: 'desc' }
-    });
+    videos = (await getApprovedCatalogVideos()).slice(0, 30);
   } catch {
     videos = [];
   }
