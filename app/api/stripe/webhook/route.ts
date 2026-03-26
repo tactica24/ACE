@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { prisma } from '@/lib/db';
-import { creditWallet } from '@/lib/wallet';
+import { markPaymentSuccessful } from '@/lib/payment-ops';
 
 export const runtime = 'nodejs';
 
@@ -43,58 +43,11 @@ export async function POST(req: NextRequest) {
 
   const currency = (session.currency ?? payment.currency ?? 'USD').toUpperCase();
   const amountMinor = session.amount_total ?? payment.amountMinor ?? 0;
-
-  await prisma.payment.update({
-    where: { reference },
-    data: {
-      status: 'SUCCESS',
-      amountMinor,
-      currency
-    }
+  await markPaymentSuccessful({
+    reference,
+    amountMinor,
+    currency
   });
-
-  const meta = session.metadata ?? {};
-  const type = meta.type ?? (payment.metadata as { type?: string } | null)?.type;
-
-  if (type === 'pass') {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    await prisma.subscriptionPass.create({
-      data: {
-        userId: payment.userId,
-        creditsRemaining: 30,
-        expiresAt
-      }
-    });
-  } else if (type === 'family') {
-    const credits = Number(meta.credits ?? (payment.metadata as { credits?: number } | null)?.credits ?? env.ACE_FAMILY_PASS_CREDITS ?? 50);
-    const recipientUserId =
-      meta.recipientUserId ?? (payment.metadata as { recipientUserId?: string } | null)?.recipientUserId;
-    if (recipientUserId) {
-      await prisma.wallet.update({
-        where: { userId: recipientUserId },
-        data: { credits: { increment: credits } }
-      });
-    }
-  } else {
-    await creditWallet(payment.userId, payment.amountNaira);
-  }
-
-  if (payment.referralCode) {
-    const referral = await prisma.referralLink.findUnique({ where: { code: payment.referralCode } });
-    if (referral) {
-      const existing = await prisma.referralEvent.findFirst({ where: { paymentId: payment.id } });
-      if (!existing) {
-        await prisma.referralEvent.create({
-          data: {
-            referralId: referral.id,
-            paymentId: payment.id,
-            commissionNaira: 0
-          }
-        });
-      }
-    }
-  }
 
   return new Response('OK', { status: 200 });
 }

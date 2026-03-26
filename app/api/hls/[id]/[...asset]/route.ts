@@ -8,6 +8,7 @@ import { ensureCached, streamFile } from '@/lib/stream';
 import { recordCacheHit } from '@/lib/metrics';
 import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
 import { getHlsAssetKey, getHlsContentType, rewriteManifestUris, trimPlaylistToTeaser } from '@/lib/hls';
+import { touchStreamSession } from '@/lib/stream-sessions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
   const token = req.nextUrl.searchParams.get('token');
   if (!token) return new Response('Missing token', { status: 401 });
 
-  let payload: { userId?: string; videoId: string; guest?: boolean };
+  let payload: { userId?: string; videoId: string; guest?: boolean; deviceSessionId?: string };
   try {
     payload = verifyStreamToken(token);
   } catch {
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
   if (!isGuest && payload.userId) {
     const unlock = await prisma.unlock.findFirst({ where: { userId: payload.userId, videoId: video.id } });
     unlocked = Boolean(unlock) || payload.userId === video.creatorId;
+    await touchStreamSession({ userId: payload.userId, deviceSessionId: payload.deviceSessionId, videoId: video.id });
   }
 
   const assetPath = params.asset.join('/');

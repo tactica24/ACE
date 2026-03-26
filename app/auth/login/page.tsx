@@ -7,7 +7,7 @@ export default function LoginPage() {
       <div className="container" style={{ maxWidth: 480 }}>
         <div className="card">
           <h2>Sign in</h2>
-          <p className="muted">Welcome back to Ace Studio. Unverified accounts can sign in, but they will be routed to the dashboard until email verification is completed.</p>
+          <p className="muted">Welcome back to Ace Studio. If your email is still pending, we will guide you through verification after you sign in.</p>
           <AuthLogin />
           <p className="muted" style={{ marginTop: 12 }}>
             New to Ace Studio? <Link href="/auth/register">Create an account</Link>

@@ -30,7 +30,7 @@ export default async function AccountPage() {
   return (
     <div className="section">
       <div className="container">
-        <div className="grid">
+        <div className="stack-list">
           <div className="card">
             <h2>Account</h2>
             <p className="muted">{user.name ?? 'No name yet'}</p>
@@ -52,18 +52,6 @@ export default async function AccountPage() {
               </p>
             ) : null}
             <AccountActions />
-          </div>
-
-          <div className="card card-soft">
-            <h3>Contact admin</h3>
-            <p className="muted">Get help with payments, account access, and catalog issues directly from your account.</p>
-            <div className="action-list">
-              <Link className="btn btn-ghost" href="/wallet">Open wallet</Link>
-              <Link className="btn btn-primary" href="/account/contact">Open contact</Link>
-              {user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED' ? (
-                <Link className="btn btn-ghost" href="/studio/onboarding">Continue creator onboarding</Link>
-              ) : null}
-            </div>
           </div>
 
           <div className="card">

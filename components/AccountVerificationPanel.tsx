@@ -59,11 +59,11 @@ export default function AccountVerificationPanel({
   useEffect(() => {
     const verificationState = searchParams.get('verification');
     if (verificationState === 'sent') {
-      setFeedback('Verification email sent. Open your inbox, confirm the link, then refresh status here.');
+      setFeedback('Verification email sent. Open your inbox, confirm the link, then refresh your status here.');
     } else if (verificationState === 'required') {
-      setFeedback('Verify your email address to unlock movies, fund your wallet, and complete creator submission.');
+      setFeedback('Please verify your email to unlock titles, fund your wallet, and finish setting up your account.');
     } else if (verificationState === 'email') {
-      setFeedback('Email verification confirmed. Refreshing your account status...');
+      setFeedback('Email confirmed. Refreshing your account status...');
     }
   }, [searchParams]);
 
@@ -175,12 +175,12 @@ export default function AccountVerificationPanel({
           <span className="muted">Phone number</span>
         </div>
         <div className="action-list">
-          <VerificationBadge verified={phoneVerified} label="Pending SMS verification" />
+          <VerificationBadge verified={phoneVerified} label="Not verified" />
         </div>
       </div>
 
       <p className="muted" style={{ margin: 0 }}>
-        Phone verification should use secure SMS OTP, not an email-style link, so this dashboard now shows the correct pending state until a verified phone credential is linked.
+        Your phone status will appear here once a verified number is connected to your account.
       </p>
       {feedback ? <p className="muted form-message" style={{ margin: 0 }}>{feedback}</p> : null}
     </div>

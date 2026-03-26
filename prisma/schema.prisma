@@ -138,6 +138,8 @@ model User {
   familyLinks  FamilyLink[]
   tvPairings   TvPairingSession[] @relation("TvPairingOwner")
   supportTickets SupportTicket[]
+  watchHistory WatchHistory[]
+  streamSessions StreamSession[]
 }
 
 model Wallet {
@@ -202,8 +204,41 @@ model Video {
   p2pTransfers P2PTransfer[]
   referralLinks ReferralLink[] @relation("VideoReferralLinks")
   settlements UnlockSettlement[]
+  watchHistory WatchHistory[]
   @@index([status])
   @@index([priceTier])
+}
+
+model WatchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  videoId     String
+  progressSec Int      @default(0)
+  durationSec Int?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  video       Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+  @@index([userId, updatedAt])
+}
+
+model StreamSession {
+  id              String   @id @default(cuid())
+  userId          String
+  deviceSessionId String
+  videoId         String
+  createdAt       DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  revokedAt       DateTime?
+  user            User     @relation(fields: [userId], references: [id])
+  video           Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, deviceSessionId])
+  @@index([userId, lastSeenAt])
+  @@index([videoId, lastSeenAt])
 }
 
 model Unlock {

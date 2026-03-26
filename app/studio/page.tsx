@@ -45,7 +45,7 @@ export default async function StudioPage() {
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>
             <Link className="btn btn-ghost" href="/studio/library">Open library</Link>
             <Link className="btn btn-ghost" href="/studio/contracts">View contracts</Link>
-            <Link className="btn btn-ghost" href="/studio/contact">Contact admin</Link>
+            <Link className="btn btn-ghost" href="/studio/contact">Contact support</Link>
           </div>
         </div>
       </div>

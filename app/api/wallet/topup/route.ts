@@ -7,12 +7,22 @@ import { getChargeForNaira } from '@/lib/pricing';
 import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!hasVerifiedEmail(auth)) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+  }
+
+  const rateLimit = consumeRateLimit({
+    key: `wallet-topup:${getRateLimitIdentity(req, auth.sub)}`,
+    limit: 8,
+    windowMs: 1000 * 60 * 10
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many top-up attempts. Please wait a moment and try again.' }, { status: 429 });
   }
 
   const body = await req.json();
@@ -68,6 +78,13 @@ export async function POST(req: NextRequest) {
     if (!session.url) {
       return NextResponse.json({ error: 'Stripe session unavailable' }, { status: 500 });
     }
+
+    await prisma.payment.update({
+      where: { reference },
+      data: {
+        metadata: { type: 'topup', stripeSessionId: session.id }
+      }
+    });
 
     return NextResponse.json({ authorizationUrl: session.url, reference });
   }

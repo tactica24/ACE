@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import VideoCard from '@/components/VideoCard';
+import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
@@ -14,21 +15,82 @@ type HomeVideo = {
   description: string;
   priceTier: PriceTierValue;
   posterKey: string | null;
+  genres: string[];
+  durationSec: number;
   videoType: string;
   ageRating: string;
   category: string;
 };
 
-type VideoRow = {
+type HomeRow = {
   title: string;
+  description: string;
   items: HomeVideo[];
 };
 
-function buildRows(videos: HomeVideo[]) {
-  const rows: VideoRow[] = [];
+function dedupeVideos(videos: HomeVideo[]) {
+  const seen = new Set<string>();
+  return videos.filter((video) => {
+    if (seen.has(video.id)) {
+      return false;
+    }
+
+    seen.add(video.id);
+    return true;
+  });
+}
+
+function buildRows({
+  videos,
+  continueWatching,
+  unlockedVideos
+}: {
+  videos: HomeVideo[];
+  continueWatching: HomeVideo[];
+  unlockedVideos: HomeVideo[];
+}) {
+  const rows: HomeRow[] = [];
+
+  if (continueWatching.length) {
+    rows.push({
+      title: 'Continue watching',
+      description: 'Pick up right where you stopped across your devices.',
+      items: continueWatching.slice(0, 12)
+    });
+  }
+
+  if (unlockedVideos.length) {
+    rows.push({
+      title: 'Unlocked movies',
+      description: 'Everything this account has already paid for or unlocked with credits.',
+      items: unlockedVideos.slice(0, 12)
+    });
+  }
 
   if (videos.length) {
-    rows.push({ title: 'Trending now', items: videos.slice(0, 10) });
+    rows.push({
+      title: 'Trending now',
+      description: 'Fresh releases and the titles viewers are opening first.',
+      items: videos.slice(0, 12)
+    });
+  }
+
+  const familyNight = videos.filter((video) => video.ageRating === 'ALL' || video.ageRating === 'PG13');
+  if (familyNight.length >= 2) {
+    rows.push({
+      title: 'Family night',
+      description: 'Friendly picks for households watching together.',
+      items: familyNight.slice(0, 12)
+    });
+  }
+
+  const quickPicks = videos.filter((video) => video.durationSec <= 30 * 60 || ['SHORT', 'SKIT'].includes(video.videoType));
+  if (quickPicks.length >= 2) {
+    rows.push({
+      title: 'Quick picks',
+      description: 'Great when you want something good without a long commitment.',
+      items: quickPicks.slice(0, 12)
+    });
   }
 
   const byCategory = new Map<string, HomeVideo[]>();
@@ -40,34 +102,70 @@ function buildRows(videos: HomeVideo[]) {
 
   for (const [category, items] of byCategory) {
     if (items.length >= 2) {
-      rows.push({ title: category, items: items.slice(0, 10) });
+      rows.push({
+        title: category,
+        description: `Explore more from ${category.toLowerCase()}.`,
+        items: items.slice(0, 12)
+      });
     }
   }
 
-  if (videos.length > 6) {
-    rows.push({ title: 'New releases', items: videos.slice(2, 12) });
-  }
-
-  return rows.slice(0, 4);
+  return rows.slice(0, 6);
 }
 
 export default async function HomePage() {
-  let videos: HomeVideo[] = [];
+  const user = await getCurrentUser();
 
+  let videos: HomeVideo[] = [];
   try {
     videos = await prisma.video.findMany({
       where: { status: 'APPROVED' },
-      take: 18,
+      take: 30,
       orderBy: { createdAt: 'desc' }
     });
   } catch {
     videos = [];
   }
 
+  let continueWatching: HomeVideo[] = [];
+  let unlockedVideos: HomeVideo[] = [];
+
+  if (user) {
+    const [watchHistory, unlocks] = await Promise.all([
+      prisma.watchHistory.findMany({
+        where: {
+          userId: user.sub,
+          completedAt: null,
+          progressSec: { gt: 0 },
+          video: { status: 'APPROVED' }
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 12,
+        include: { video: true }
+      }),
+      prisma.unlock.findMany({
+        where: {
+          userId: user.sub,
+          video: { status: 'APPROVED' }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 18,
+        include: { video: true }
+      })
+    ]);
+
+    continueWatching = dedupeVideos(
+      watchHistory.map((item) => item.video as HomeVideo)
+    );
+    unlockedVideos = dedupeVideos(
+      unlocks.map((item) => item.video as HomeVideo)
+    );
+  }
+
   const requestHeaders = headers();
-  const featured = videos[0] ?? null;
+  const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
-  const rows = buildRows(videos);
+  const rows = buildRows({ videos, continueWatching, unlockedVideos });
 
   return (
     <div className="viewer-home">
@@ -77,7 +175,7 @@ export default async function HomePage() {
       >
         <div className="container home-hero-inner">
           <div className="home-hero-copy">
-            <span className="home-kicker">Now streaming</span>
+            <span className="home-kicker">{continueWatching.length ? 'Continue your story' : 'Now streaming'}</span>
             <h1 className="home-title">
               {featured?.title ?? 'Watch bold films, series, and originals in one place'}
             </h1>
@@ -88,7 +186,7 @@ export default async function HomePage() {
               <Link className="btn btn-primary" href={featured ? `/v/${featured.id}` : '/auth/register'}>
                 {featured ? 'Watch now' : 'Create account'}
               </Link>
-              <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>
+              <Link className="btn btn-ghost" href="/browse">Browse catalog</Link>
             </div>
             {featured ? (
               <div className="home-badges">
@@ -103,11 +201,27 @@ export default async function HomePage() {
 
       <section className="home-shelves">
         <div className="container">
+          <div className="feature-banner" style={{ marginBottom: 22 }}>
+            <div>
+              <h3>Trust-first viewing</h3>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                Every unlock uses pass credits first, then wallet credits, then wallet balance. Your progress, unlocked titles, and family access stay tied to your account, with playback protected to 3 active devices at a time.
+              </p>
+            </div>
+            <div className="action-list">
+              <Link className="btn btn-primary" href="/wallet">Open wallet</Link>
+              <Link className="btn btn-ghost" href="/account/contact">Get support</Link>
+            </div>
+          </div>
+
           {rows.length ? (
             rows.map((row) => (
               <div key={row.title} className="home-shelf">
                 <div className="home-shelf-header">
-                  <h2>{row.title}</h2>
+                  <div>
+                    <h2>{row.title}</h2>
+                    <p className="muted" style={{ marginBottom: 0 }}>{row.description}</p>
+                  </div>
                 </div>
                 <div className="home-carousel">
                   {row.items.map((video) => (

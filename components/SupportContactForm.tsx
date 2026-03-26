@@ -24,7 +24,7 @@ export default function SupportContactForm({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!subject.trim() || !message.trim()) {
-      setFeedback('Enter a subject and message so the admin team can help properly.');
+      setFeedback('Enter a subject and message so our support team can help properly.');
       return;
     }
 
@@ -44,7 +44,7 @@ export default function SupportContactForm({
 
       setSubject('');
       setMessage('');
-      setFeedback('Your message has been sent to the admin support inbox.');
+      setFeedback('Your message has been sent to support.');
       router.refresh();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Unable to send support request.');
@@ -79,7 +79,7 @@ export default function SupportContactForm({
       </label>
       <div className="form-actions">
         <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? 'Sending...' : 'Send to admin'}
+          {loading ? 'Sending...' : 'Send message'}
         </button>
         {feedback ? <p className="muted form-message">{feedback}</p> : null}
       </div>

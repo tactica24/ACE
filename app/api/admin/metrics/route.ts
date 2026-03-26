@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db';
 import { getNodeHealth } from '@/lib/metrics';
 import { getAuthFromRequest } from '@/lib/auth';
 import { NextRequest } from 'next/server';
+import { getReconciliationSummary } from '@/lib/reconciliation';
+import { getActiveStreamCount } from '@/lib/stream-sessions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +13,15 @@ export async function GET(req: NextRequest) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const [users, videos, unlocks, payments, referrals, node] = await Promise.all([
+  const [users, videos, unlocks, payments, referrals, node, activeStreams, reconciliation] = await Promise.all([
     prisma.user.count(),
     prisma.video.count({ where: { status: 'APPROVED' } }),
     prisma.unlock.count(),
     prisma.payment.count({ where: { status: 'SUCCESS' } }),
     prisma.referralLink.count(),
-    getNodeHealth()
+    getNodeHealth(),
+    getActiveStreamCount(),
+    getReconciliationSummary()
   ]);
 
   const lines = [
@@ -36,6 +40,15 @@ export async function GET(req: NextRequest) {
     '# HELP ace_referral_links_total Total referral links',
     '# TYPE ace_referral_links_total gauge',
     `ace_referral_links_total ${referrals}`,
+    '# HELP ace_active_streams_total Active concurrent playback sessions',
+    '# TYPE ace_active_streams_total gauge',
+    `ace_active_streams_total ${activeStreams}`,
+    '# HELP ace_pending_payments_total Pending payment records',
+    '# TYPE ace_pending_payments_total gauge',
+    `ace_pending_payments_total ${reconciliation.pendingPayments}`,
+    '# HELP ace_stale_pending_payments_total Pending payments older than the reconciliation threshold',
+    '# TYPE ace_stale_pending_payments_total gauge',
+    `ace_stale_pending_payments_total ${reconciliation.stalePendingPayments}`,
     '# HELP ace_node_cache_hit_rate Current cache hit rate',
     '# TYPE ace_node_cache_hit_rate gauge',
     `ace_node_cache_hit_rate{node="${node.nodeName}",region="${node.region}"} ${node.cacheHitRate}`,

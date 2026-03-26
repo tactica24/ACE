@@ -432,7 +432,7 @@ export function hasVerifiedEmail(auth: Pick<AuthTokenPayload, 'emailVerified'> |
   return Boolean(auth?.emailVerified);
 }
 
-export function createStreamToken(payload: { userId?: string; videoId: string; guest?: boolean }) {
+export function createStreamToken(payload: { userId?: string; videoId: string; guest?: boolean; deviceSessionId?: string }) {
   return jwt.sign(payload, env.ACE_STREAM_SIGNING_SECRET, { expiresIn: '15m' });
 }
 
@@ -441,6 +441,7 @@ export function verifyStreamToken(token: string) {
     userId?: string;
     videoId: string;
     guest?: boolean;
+    deviceSessionId?: string;
   };
 }
 

@@ -44,20 +44,30 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       : `${regionalPrice.currency} ${(regionalPrice.amountMinor / 100).toFixed(2)}`;
 
   let unlocked = false;
+  let initialProgress = 0;
   let watermarkText = 'Ace Studio Preview';
 
   if (user) {
     const unlock = await prisma.unlock.findFirst({
       where: { userId: user.sub, videoId: video.id }
     });
+    const watchHistory = await prisma.watchHistory.findUnique({
+      where: {
+        userId_videoId: {
+          userId: user.sub,
+          videoId: video.id
+        }
+      }
+    });
     unlocked = Boolean(unlock);
+    initialProgress = watchHistory?.completedAt ? 0 : watchHistory?.progressSec ?? 0;
     watermarkText = `${user.phone} / ${user.email}`;
   }
 
   return (
-    <div className="section">
-      <div className="container detail-page">
-        <div className="detail-hero">
+    <div className="section video-page-section">
+      <div className="container detail-page video-page-shell">
+        <div className="detail-hero video-page-header">
           <div className="detail-poster card-soft">
             <div
               className="detail-poster-image"
@@ -82,26 +92,29 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        <AcePlayer
-          videoId={video.id}
-          teaserSec={video.teaserSec}
-          priceLabel={priceLabel}
-          initialUnlocked={unlocked}
-          watermarkText={watermarkText}
-          highlightSeconds={video.highlightSeconds}
-          isAuthenticated={Boolean(user)}
-          loginHref={`/auth/login?next=/v/${video.id}`}
-        />
+        <div className="video-page-player">
+          <AcePlayer
+            videoId={video.id}
+            teaserSec={video.teaserSec}
+            priceLabel={priceLabel}
+            initialUnlocked={unlocked}
+            initialProgress={initialProgress}
+            watermarkText={watermarkText}
+            highlightSeconds={video.highlightSeconds}
+            isAuthenticated={Boolean(user)}
+            loginHref={`/auth/login?next=/v/${video.id}`}
+          />
+        </div>
 
         {!user ? (
-          <div className="card">
+          <div className="card video-page-secondary">
             <h3>Continue with your account to unlock the full title</h3>
             <p className="muted">Viewers can watch the teaser first, then sign in to unlock the full release.</p>
             <Link className="btn btn-primary" href={`/auth/login?next=/v/${video.id}`}>Sign in</Link>
           </div>
         ) : null}
 
-        <div className="detail-grid">
+        <div className="detail-grid video-page-secondary">
           <div className="card">
             <h3>Creator</h3>
             <p className="muted">{video.creator.creator?.displayName ?? video.creator.email}</p>

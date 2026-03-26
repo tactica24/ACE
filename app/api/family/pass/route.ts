@@ -6,12 +6,22 @@ import { env } from '@/lib/env';
 import { getStripe } from '@/lib/stripe';
 import { v4 as uuid } from 'uuid';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!hasVerifiedEmail(auth)) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+  }
+
+  const rateLimit = consumeRateLimit({
+    key: `family-pass:${getRateLimitIdentity(req, auth.sub)}`,
+    limit: 6,
+    windowMs: 1000 * 60 * 10
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many family checkout attempts. Please wait a moment and try again.' }, { status: 429 });
   }
 
   const body = await req.json();
@@ -73,6 +83,19 @@ export async function POST(req: NextRequest) {
   if (!session.url) {
     return NextResponse.json({ error: 'Stripe session unavailable' }, { status: 500 });
   }
+
+  await prisma.payment.update({
+    where: { reference },
+    data: {
+      metadata: {
+        type: 'family',
+        recipientUserId: recipient.id,
+        recipientPhone,
+        credits,
+        stripeSessionId: session.id
+      }
+    }
+  });
 
   await prisma.familyLink.create({
     data: {

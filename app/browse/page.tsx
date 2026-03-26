@@ -1,4 +1,4 @@
-import VideoCard from '@/components/VideoCard';
+import BrowseCatalog from '@/components/BrowseCatalog';
 import { prisma } from '@/lib/db';
 import { headers } from 'next/headers';
 import { type PriceTierValue } from '@/lib/media-types';
@@ -12,6 +12,7 @@ type BrowseVideo = {
   description: string;
   priceTier: PriceTierValue;
   posterKey: string | null;
+  genres: string[];
   videoType: string;
   ageRating: string;
   category: string;
@@ -42,18 +43,16 @@ export default async function BrowsePage() {
         </div>
 
         {videos.length ? (
-          <div className="video-grid">
-            {videos.map((video) => (
-              <VideoCard
-                key={video.id}
-                video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
-              />
-            ))}
-          </div>
+          <BrowseCatalog
+            videos={videos.map((video) => ({
+              ...video,
+              price: getRegionalPrice(requestHeaders, video.priceTier)
+            }))}
+          />
         ) : (
           <div className="card empty-state">
             <h3>No approved titles are available yet</h3>
-            <p className="muted">Approve a creator submission in admin moderation and it will appear here immediately.</p>
+            <p className="muted">New releases will appear here as soon as they are available.</p>
           </div>
         )}
       </div>

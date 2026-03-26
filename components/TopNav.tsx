@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import UserMenu from '@/components/UserMenu';
 
 export default async function TopNav() {
   const user = await getCurrentUser();
@@ -22,9 +23,12 @@ export default async function TopNav() {
         </div>
         <div className="nav-actions">
           {user ? (
-            <Link className="btn btn-ghost" href="/account">
-              {user.name ?? user.email}
-            </Link>
+            <UserMenu
+              name={user.name ?? user.email}
+              email={user.email}
+              showCreatorStudio={user.role === 'CREATOR' || user.role === 'ADMIN'}
+              showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
+            />
           ) : (
             <>
               <Link className="btn btn-ghost" href="/auth/login">Sign in</Link>

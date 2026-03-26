@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { isSupportTicketCategory } from '@/lib/support';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rateLimit = consumeRateLimit({
+    key: `support:${getRateLimitIdentity(req, auth.sub)}`,
+    limit: 12,
+    windowMs: 1000 * 60 * 30
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many support requests in a short time. Please wait a bit and try again.' }, { status: 429 });
+  }
 
   const body = await req.json();
   const category = typeof body.category === 'string' ? body.category : '';

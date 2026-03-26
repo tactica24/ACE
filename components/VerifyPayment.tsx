@@ -35,9 +35,9 @@ export default function VerifyPayment({ reference }: { reference: string | null 
     };
   }, [reference]);
 
-  if (status === 'pending') return <p className="muted">Verifying payment...</p>;
-  if (status === 'success') return <p>Payment verified. Wallet updated.</p>;
-  return <p>Unable to verify payment. Contact support.</p>;
+  if (status === 'pending') return <p className="muted">We are confirming your payment...</p>;
+  if (status === 'success') return <p>Your payment was confirmed and your wallet has been updated.</p>;
+  return <p>We could not confirm that payment yet. Please contact support if you were charged.</p>;
 }
 
 

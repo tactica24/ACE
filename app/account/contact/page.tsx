@@ -34,7 +34,7 @@ export default async function AccountContactPage() {
             <SupportContactForm
               categories={viewerSupportCategories}
               title="Contact support"
-              description="Ask for help with payments, catalog access, or account issues directly from your account."
+              description="Ask for help with payments, access, or account issues directly from your account."
             />
           </div>
           <div className="card">

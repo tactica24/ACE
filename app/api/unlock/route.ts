@@ -5,12 +5,22 @@ import { calculateUnlockSplit, getFinanceConfig, getPlatformWallet } from '@/lib
 import { debitWallet, usePassCredit as consumePassCredit, useWalletCredit as consumeWalletCredit } from '@/lib/wallet';
 import { getRegionalPrice } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!hasVerifiedEmail(auth)) {
-    return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+    return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE, reason: 'EMAIL_VERIFICATION_REQUIRED' }, { status: 403 });
+  }
+
+  const rateLimit = consumeRateLimit({
+    key: `unlock:${getRateLimitIdentity(req, auth.sub)}`,
+    limit: 40,
+    windowMs: 1000 * 60 * 10
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many unlock attempts. Please wait a moment and try again.', reason: 'RATE_LIMITED' }, { status: 429 });
   }
 
   const body = await req.json();
@@ -40,7 +50,7 @@ export async function POST(req: NextRequest) {
       try {
         await debitWallet(auth.sub, price.amountNaira);
       } catch {
-        return NextResponse.json({ error: 'Insufficient balance' }, { status: 402 });
+        return NextResponse.json({ error: 'Insufficient balance', reason: 'INSUFFICIENT_BALANCE' }, { status: 402 });
       }
     }
   }
@@ -112,5 +122,5 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  return NextResponse.json({ ok: true, unlocked: true });
+  return NextResponse.json({ ok: true, unlocked: true, source });
 }

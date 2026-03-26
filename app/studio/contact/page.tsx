@@ -15,7 +15,7 @@ export default async function StudioContactPage() {
   return (
     <DashboardShell
       title="Creator contact"
-      description="Reach admin directly for onboarding, upload, contracts, and operational issues."
+      description="Reach the support team directly for onboarding, upload, contracts, and operational issues."
       sideNav={
         <SideNav
           active="/studio/contact"
@@ -34,8 +34,8 @@ export default async function StudioContactPage() {
         <div className="card">
           <SupportContactForm
             categories={creatorSupportCategories}
-            title="Contact admin"
-            description="Raise creator-specific issues so the admin team can resolve onboarding, upload, or contract blockers quickly."
+            title="Contact support"
+            description="Raise creator-specific issues so our team can resolve onboarding, upload, or contract blockers quickly."
           />
         </div>
         <div className="card">
