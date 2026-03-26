@@ -13,12 +13,16 @@ function StatusCard({
   title,
   description,
   primaryHref,
-  primaryLabel
+  primaryLabel,
+  secondaryHref,
+  secondaryLabel
 }: {
   title: string;
   description: string;
   primaryHref: string;
   primaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
 }) {
   return (
     <div className="card">
@@ -28,9 +32,11 @@ function StatusCard({
         <Link className="btn btn-primary" href={primaryHref}>
           {primaryLabel}
         </Link>
-        <Link className="btn btn-ghost" href="/auth/login">
-          Sign in
-        </Link>
+        {secondaryHref && secondaryLabel ? (
+          <Link className="btn btn-ghost" href={secondaryHref}>
+            {secondaryLabel}
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -50,6 +56,8 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
             description="This account already has admin access. Review creator applications and approvals from the admin dashboard."
             primaryHref="/admin"
             primaryLabel="Open admin dashboard"
+            secondaryHref="/account"
+            secondaryLabel="Open account"
           />
         </div>
       </div>
@@ -65,6 +73,8 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
             description="This account already has creator access and can go straight into the studio."
             primaryHref="/studio"
             primaryLabel="Open creator studio"
+            secondaryHref="/account"
+            secondaryLabel="Open account"
           />
         </div>
       </div>
@@ -90,9 +100,6 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
             <div className="action-list" style={{ marginTop: 16 }}>
               <Link className="btn btn-primary" href={readyForOnboarding ? '/studio/onboarding' : '/account'}>
                 {readyForOnboarding ? 'Continue onboarding' : 'View account status'}
-              </Link>
-              <Link className="btn btn-ghost" href="/auth/login">
-                Sign in
               </Link>
             </div>
           </div>

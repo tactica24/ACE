@@ -1,7 +1,15 @@
-﻿import AuthRegister from '@/components/AuthRegister';
+import AuthRegister from '@/components/AuthRegister';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const user = await getCurrentUser();
+  if (user) {
+    redirect(getPrimaryAppPath(user));
+  }
+
   return (
     <div className="section">
       <div className="container" style={{ maxWidth: 480 }}>
@@ -17,7 +25,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-
-
-
