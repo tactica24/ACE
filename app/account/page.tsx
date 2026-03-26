@@ -44,11 +44,13 @@ export default async function AccountPage() {
             {user.signupIntent === 'CREATOR' && user.role === 'USER' ? (
               <p className="muted">
                 Creator onboarding status:{' '}
-                {user.creatorAccessStatus === 'REQUESTED'
-                  ? 'Requested'
-                  : user.creatorAccessStatus === 'INVITED'
-                    ? 'Access granted'
-                    : user.creatorAccessStatus}
+                {!user.emailVerified
+                  ? 'Verify email'
+                  : user.creatorAccessStatus === 'REQUESTED'
+                    ? 'Complete onboarding'
+                    : user.creatorAccessStatus === 'SUBMITTED'
+                      ? 'Under admin review'
+                      : user.creatorAccessStatus}
               </p>
             ) : null}
             <AccountActions />

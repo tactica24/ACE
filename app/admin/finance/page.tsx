@@ -1,4 +1,5 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import CreatorPayoutAdmin from '@/components/CreatorPayoutAdmin';
 import FinanceSettingsForm from '@/components/FinanceSettingsForm';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminFinancePage() {
   await requireAdminUser('/admin/finance');
 
-  const [config, platformWallet, topMovies, recentSettlements, creators] = await Promise.all([
+  const [config, platformWallet, topMovies, recentSettlements, creators, payoutRequests] = await Promise.all([
     prisma.financeConfig.upsert({
       where: { id: 'default' },
       update: {},
@@ -33,6 +34,20 @@ export default async function AdminFinancePage() {
       orderBy: { earningsBalanceNaira: 'desc' },
       take: 30,
       select: { creatorNumber: true, displayName: true, earningsBalanceNaira: true, user: { select: { email: true } } }
+    }),
+    prisma.creatorPayoutRequest.findMany({
+      orderBy: { requestedAt: 'desc' },
+      take: 30,
+      include: {
+        creatorProfile: {
+          select: {
+            displayName: true,
+            user: {
+              select: { email: true }
+            }
+          }
+        }
+      }
     })
   ]);
 
@@ -89,6 +104,11 @@ export default async function AdminFinancePage() {
           <strong>{config.gatewayFeePercent + config.taxPercent}%</strong>
           <span className="trend-up">Global default</span>
         </div>
+        <div className="metric-card">
+          <span className="muted">Pending payouts</span>
+          <strong>{payoutRequests.filter((request) => request.status === 'PENDING').length}</strong>
+          <span className="trend-up">Creator withdrawal approvals waiting</span>
+        </div>
       </div>
 
       <div className="grid">
@@ -99,6 +119,21 @@ export default async function AdminFinancePage() {
             gatewayFeePercent: config.gatewayFeePercent,
             taxPercent: config.taxPercent
           }}
+        />
+
+        <CreatorPayoutAdmin
+          initialRequests={payoutRequests.map((request) => ({
+            id: request.id,
+            creatorName: request.creatorProfile.displayName,
+            creatorEmail: request.creatorProfile.user.email,
+            amountNaira: request.amountNaira,
+            bankName: request.bankName,
+            bankAccountName: request.bankAccountName,
+            bankAccountNumber: request.bankAccountNumber,
+            status: request.status,
+            requestedAt: request.requestedAt.toISOString().slice(0, 10),
+            adminNote: request.adminNote
+          }))}
         />
 
         <div className="card">

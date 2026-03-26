@@ -20,10 +20,6 @@ export function getPrimaryAppPath(user: UserRoutingState) {
   }
 
   if (user.signupIntent === 'CREATOR') {
-    if (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED') {
-      return '/studio/onboarding';
-    }
-
     return '/creator';
   }
 
@@ -52,11 +48,7 @@ export function getPostRegisterPath(user: UserRoutingState) {
   }
 
   if (user.signupIntent === 'CREATOR') {
-    if (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED') {
-      return '/studio/onboarding?verification=sent';
-    }
-
-    return '/creator?submitted=1&verification=sent';
+    return '/creator?verification=sent';
   }
 
   return '/browse?verification=sent';

@@ -107,6 +107,13 @@ enum Gateway {
   STRIPE
 }
 
+enum PayoutRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
 enum PairingStatus {
   PENDING
   CLAIMED
@@ -157,9 +164,11 @@ model CreatorProfile {
   creatorNumber      String? @unique
   displayName        String
   bio                String? 
+  address            String?
   phoneVerified      Boolean @default(false)
   emailVerified      Boolean @default(false)
   ninNumber          String?
+  idCardNumber       String?
   ninVerified        Boolean @default(false)
   idCardUrl          String?
   idVerified         Boolean @default(false)
@@ -175,6 +184,7 @@ model CreatorProfile {
   user               User    @relation(fields: [userId], references: [id])
   contracts          Contract[]
   settlements        UnlockSettlement[]
+  payoutRequests     CreatorPayoutRequest[]
 }
 
 model Video {
@@ -463,4 +473,23 @@ model SupportTicket {
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+}
+
+model CreatorPayoutRequest {
+  id                String              @id @default(cuid())
+  creatorProfileId  String
+  amountNaira       Int
+  bankName          String
+  bankAccountName   String
+  bankAccountNumber String
+  status            PayoutRequestStatus @default(PENDING)
+  adminNote         String?
+  reviewerId        String?
+  requestedAt       DateTime            @default(now())
+  reviewedAt        DateTime?
+  paidAt            DateTime?
+  creatorProfile    CreatorProfile      @relation(fields: [creatorProfileId], references: [id])
+
+  @@index([creatorProfileId, requestedAt])
+  @@index([status, requestedAt])
 }

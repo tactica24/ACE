@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 
 export type CreatorRow = {
@@ -21,34 +22,17 @@ export type CreatorRow = {
     idVerified: boolean;
     bankVerified: boolean;
     verified: boolean;
-    ninNumber?: string | null;
+    address?: string | null;
+    idCardNumber?: string | null;
     idCardUrl?: string | null;
     bankName?: string | null;
     bankAccountName?: string | null;
     bankAccountNumber?: string | null;
-    reliabilityNotes?: string | null;
   };
 };
 
-const verificationFields = [
-  { key: 'phoneVerified', label: 'Phone' },
-  { key: 'emailVerified', label: 'Email' },
-  { key: 'ninVerified', label: 'NIN' },
-  { key: 'idVerified', label: 'ID' },
-  { key: 'bankVerified', label: 'Bank' }
-] as const;
-
 export default function CreatorVerificationAdmin({ initialUsers }: { initialUsers: CreatorRow[] }) {
   const users = initialUsers;
-
-  const toggle = async (userId: string, field: (typeof verificationFields)[number]['key'], current: boolean) => {
-    await fetch('/api/admin/creators/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, field, value: !current })
-    });
-    window.location.reload();
-  };
 
   return (
     <div className="card">
@@ -61,7 +45,7 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
               <th>Role</th>
               <th>Intent</th>
               <th>Account</th>
-              <th>Verification</th>
+              <th>Approval</th>
               <th>Creator profile</th>
               <th>Joined</th>
             </tr>
@@ -95,21 +79,11 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                 </td>
                 <td>
                   {user.creator ? (
-                    <div className="action-list">
-                      {verificationFields.map((field) => {
-                        const active = Boolean(user.creator?.[field.key]);
-                        return (
-                          <button
-                            key={field.key}
-                            className={active ? 'btn btn-primary' : 'btn btn-ghost'}
-                            style={{ padding: '8px 12px', fontSize: '0.78rem' }}
-                            onClick={() => toggle(user.id, field.key, active)}
-                          >
-                            {field.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <ApproveCreatorButton
+                      userId={user.id}
+                      approved={user.role === 'CREATOR'}
+                      className="btn btn-primary"
+                    />
                   ) : (
                     <span className="muted">No creator profile</span>
                   )}
@@ -120,9 +94,9 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                       <strong>{user.creator.displayName}</strong>
                       <span className="muted">{user.creator.creatorNumber || 'No creator number yet'}</span>
                       <span className="muted">Earnings wallet: NGN {user.creator.earningsBalanceNaira ?? 0}</span>
-                      <span className="muted">{user.creator.ninNumber || 'No NIN on file'}</span>
+                      <span className="muted">{user.creator.address || 'No address on file'}</span>
+                      <span className="muted">{user.creator.idCardNumber || 'No ID number on file'}</span>
                       <span className="muted">{user.creator.bankName || 'No bank on file'}</span>
-                      <span className="muted">{user.creator.reliabilityNotes || 'No release notes added'}</span>
                     </div>
                   ) : (
                     <span className="muted">Not started</span>

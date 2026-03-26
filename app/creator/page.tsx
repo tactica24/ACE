@@ -44,8 +44,8 @@ function StatusCard({
 
 export default async function CreatorPage({ searchParams }: CreatorPageProps) {
   const user = await getCurrentUser();
-  const submitted = searchParams?.submitted === '1';
   const verificationSent = searchParams?.verification === 'sent';
+  const submitted = searchParams?.submitted === '1';
 
   if (user?.role === 'ADMIN') {
     return (
@@ -82,24 +82,35 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
   }
 
   if (user?.signupIntent === 'CREATOR') {
-    const readyForOnboarding = user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED';
+    const readyForOnboarding = Boolean(user.emailVerified && user.creatorAccessStatus === 'REQUESTED');
+    const waitingForReview = user.creatorAccessStatus === 'SUBMITTED';
 
     return (
       <div className="section">
         <div className="container" style={{ maxWidth: 560 }}>
           <div className="card">
-            <h2>{readyForOnboarding ? 'Creator access is ready' : 'Creator request submitted'}</h2>
+            <h2>
+              {!user.emailVerified
+                ? 'Verify your email to continue'
+                : waitingForReview
+                  ? 'Creator profile under review'
+                  : 'Continue creator onboarding'}
+            </h2>
             <p className="muted">
-              {readyForOnboarding
-                ? 'Your creator access has been opened. Continue to onboarding and complete your studio profile.'
-                : 'Your application is under review. Once approved, you can continue into creator onboarding.'}
+              {!user.emailVerified
+                ? 'Open the verification email we sent, then sign in again to continue your creator onboarding.'
+                : waitingForReview
+                  ? 'Your profile has been submitted. Admin will review it once, approve it, and then unlock your studio upload access.'
+                  : 'Your email is verified. Complete your onboarding form once so admin can review and approve your creator access.'}
             </p>
             {submitted || verificationSent ? (
-              <p className="muted">Your account has been created and your application has been received.</p>
+              <p className="muted">
+                {submitted ? 'Your creator profile is in the admin review queue.' : 'Your account has been created successfully.'}
+              </p>
             ) : null}
             <div className="action-list" style={{ marginTop: 16 }}>
               <Link className="btn btn-primary" href={readyForOnboarding ? '/studio/onboarding' : '/account'}>
-                {readyForOnboarding ? 'Continue onboarding' : 'View account status'}
+                {readyForOnboarding ? 'Continue onboarding' : waitingForReview ? 'Open account' : 'Open account'}
               </Link>
             </div>
           </div>
@@ -114,12 +125,12 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
         <div className="card">
           <h2>Create your creator account</h2>
           <p className="muted">
-            Start your creator account here. After signup, your application will be reviewed before studio access is opened.
+            Start your creator account here. After email verification, you complete onboarding once and admin reviews that profile before studio access is opened.
           </p>
           <AuthRegister
             initialSignupIntent="CREATOR"
             lockSignupIntent
-            submitLabel="Request creator access"
+            submitLabel="Create creator account"
             helperText="We will send a verification email after signup."
           />
           <p className="muted" style={{ marginTop: 12 }}>

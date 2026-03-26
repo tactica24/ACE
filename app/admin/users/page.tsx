@@ -50,12 +50,12 @@ export default async function UsersPage() {
           idVerified: user.creator.idVerified,
           bankVerified: user.creator.bankVerified,
           verified: user.creator.verified,
-          ninNumber: user.creator.ninNumber,
+          address: user.creator.address,
+          idCardNumber: user.creator.idCardNumber,
           idCardUrl: user.creator.idCardUrl,
           bankName: user.creator.bankName,
           bankAccountName: user.creator.bankAccountName,
-          bankAccountNumber: user.creator.bankAccountNumber,
-          reliabilityNotes: user.creator.reliabilityNotes
+          bankAccountNumber: user.creator.bankAccountNumber
         }
       : null
   }));
@@ -63,7 +63,7 @@ export default async function UsersPage() {
   return (
     <DashboardShell
       title="User directory"
-      description="Manage roles, creator verification readiness, and account access across Ace Studio."
+      description="Manage roles, creator approvals, and account corrections across Ace Studio."
       sideNav={
         <SideNav
           active="/admin/users"

@@ -45,8 +45,17 @@ export default async function TopNav() {
               email={user.email}
               role={user.role}
               showCreatorStudio={user.role === 'CREATOR'}
-              showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
-              showCreatorStatus={user.signupIntent === 'CREATOR' && user.role !== 'CREATOR' && user.creatorAccessStatus === 'REQUESTED'}
+              showCreatorOnboarding={
+                user.signupIntent === 'CREATOR' &&
+                user.role !== 'CREATOR' &&
+                user.creatorAccessStatus === 'REQUESTED' &&
+                Boolean(user.emailVerified)
+              }
+              showCreatorStatus={
+                user.signupIntent === 'CREATOR' &&
+                user.role !== 'CREATOR' &&
+                (!user.emailVerified || user.creatorAccessStatus === 'SUBMITTED')
+              }
               showSupport={user.role !== 'ADMIN'}
               language={language}
             />

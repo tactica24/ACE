@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AdminCreatorProfileEditor from '@/components/AdminCreatorProfileEditor';
+import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireAdminUser } from '@/lib/auth-page';
@@ -16,6 +18,10 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       wallet: true,
       creator: {
         include: {
+          payoutRequests: {
+            orderBy: { requestedAt: 'desc' },
+            take: 10
+          },
           settlements: {
             orderBy: { createdAt: 'desc' },
             take: 20,
@@ -48,7 +54,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
   return (
     <DashboardShell
       title={user.creator?.displayName ?? user.name ?? user.email}
-      description="Read-only account view for admin support, finance tracing, and creator issue resolution."
+      description="Admin support view for creator corrections, approvals, finance tracing, and issue resolution."
       sideNav={
         <SideNav
           active="/admin/users"
@@ -94,15 +100,35 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
               <span className="muted">Display name: {user.creator.displayName}</span>
               <span className="muted">Creator wallet: NGN {user.creator.earningsBalanceNaira}</span>
               <span className="muted">Verified: {user.creator.verified ? 'Yes' : 'No'}</span>
-              <span className="muted">NIN: {user.creator.ninNumber ?? 'Not provided'}</span>
+              <span className="muted">Address: {user.creator.address ?? 'Not provided'}</span>
+              <span className="muted">ID number: {user.creator.idCardNumber ?? 'Not provided'}</span>
               <span className="muted">Bank: {user.creator.bankName ?? 'Not provided'}</span>
               <span className="muted">Bank account name: {user.creator.bankAccountName ?? 'Not provided'}</span>
               <span className="muted">Bank account number: {user.creator.bankAccountNumber ?? 'Not provided'}</span>
+              <ApproveCreatorButton userId={user.id} approved={user.role === 'CREATOR'} />
             </div>
           ) : (
             <p className="muted">No creator profile on this account yet.</p>
           )}
         </div>
+
+        {(user.signupIntent === 'CREATOR' || user.creator) ? (
+          <div className="card">
+            <h3>Edit creator onboarding</h3>
+            <AdminCreatorProfileEditor
+              userId={user.id}
+              initialValues={{
+                name: user.name ?? '',
+                phone: user.phone,
+                address: user.creator?.address ?? '',
+                idCardNumber: user.creator?.idCardNumber ?? '',
+                idCardUrl: user.creator?.idCardUrl ?? '',
+                bankName: user.creator?.bankName ?? '',
+                bankAccountNumber: user.creator?.bankAccountNumber ?? ''
+              }}
+            />
+          </div>
+        ) : null}
 
         <div className="card">
           <h3>Recent viewer wallet statements</h3>
@@ -177,6 +203,25 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             </div>
           ) : (
             <p className="muted">No creator settlement records yet.</p>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Creator payout requests</h3>
+          {user.creator?.payoutRequests.length ? (
+            <div className="stack-list">
+              {user.creator.payoutRequests.map((request) => (
+                <div key={request.id} className="stack-row">
+                  <div>
+                    <strong>NGN {request.amountNaira}</strong>
+                    <p className="muted">{request.requestedAt.toISOString().slice(0, 10)} | {request.status}</p>
+                  </div>
+                  <span className="muted">{request.bankName}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No creator payout requests yet.</p>
           )}
         </div>
       </div>

@@ -2,16 +2,14 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorIntakeAdmin, { type CreatorIntentRow } from '@/components/CreatorIntakeAdmin';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
-import { env } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CreatorIntakePage() {
   await requireAdminUser('/admin/intake');
 
-  const baseUrl = env.ACE_APP_BASE_URL;
   const users = await prisma.user.findMany({
-    where: { signupIntent: 'CREATOR' },
+    where: { signupIntent: 'CREATOR', creatorAccessStatus: 'SUBMITTED', role: 'USER' },
     orderBy: { createdAt: 'desc' },
     take: 100,
     select: {
@@ -21,7 +19,17 @@ export default async function CreatorIntakePage() {
       phone: true,
       role: true,
       creatorAccessStatus: true,
-      createdAt: true
+      createdAt: true,
+      creator: {
+        select: {
+          address: true,
+          idCardNumber: true,
+          idCardUrl: true,
+          bankName: true,
+          bankAccountNumber: true,
+          emailVerified: true
+        }
+      }
     }
   });
 
@@ -33,13 +41,22 @@ export default async function CreatorIntakePage() {
     role: user.role,
     creatorAccessStatus: user.creatorAccessStatus,
     joinedAt: user.createdAt.toISOString().slice(0, 10),
-    onboardingLink: `${baseUrl}/studio/onboarding`
+    emailVerified: user.creator?.emailVerified ?? false,
+    creatorProfile: user.creator
+      ? {
+          address: user.creator.address,
+          idCardNumber: user.creator.idCardNumber,
+          idCardUrl: user.creator.idCardUrl,
+          bankName: user.creator.bankName,
+          bankAccountNumber: user.creator.bankAccountNumber
+        }
+      : null
   }));
 
   return (
     <DashboardShell
       title="Creator intake"
-      description="Review film creator signups, unlock onboarding when ready, and email the creator directly with the next step."
+      description="Review completed creator onboarding profiles, correct any mistakes, and approve studio access once."
       sideNav={
         <SideNav
           active="/admin/intake"

@@ -1,4 +1,5 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import CreatorWithdrawPanel from '@/components/CreatorWithdrawPanel';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
@@ -9,6 +10,10 @@ export default async function StudioWalletPage() {
     select: {
       creatorNumber: true,
       earningsBalanceNaira: true,
+      payoutRequests: {
+        orderBy: { requestedAt: 'desc' },
+        take: 20
+      },
       settlements: {
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -42,6 +47,16 @@ export default async function StudioWalletPage() {
           <p className="hero-title" style={{ fontSize: '2rem' }}>NGN {creatorProfile?.earningsBalanceNaira ?? 0}</p>
           <p className="muted">Creator number: {creatorProfile?.creatorNumber ?? 'Pending'}</p>
         </div>
+        <CreatorWithdrawPanel
+          balanceNaira={creatorProfile?.earningsBalanceNaira ?? 0}
+          payoutRequests={(creatorProfile?.payoutRequests ?? []).map((request) => ({
+            id: request.id,
+            amountNaira: request.amountNaira,
+            status: request.status,
+            adminNote: request.adminNote,
+            requestedAt: request.requestedAt.toISOString().slice(0, 10)
+          }))}
+        />
         <div className="card">
           <h3>Recent inflows</h3>
           {settlements.length ? (

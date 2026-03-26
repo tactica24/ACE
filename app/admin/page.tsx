@@ -115,7 +115,7 @@ export default async function AdminPage() {
       prisma.user.count(),
       prisma.video.count({ where: { status: 'APPROVED' } }),
       prisma.moderationItem.count({ where: { status: 'PENDING' } }),
-      prisma.user.count({ where: { signupIntent: 'CREATOR', creatorAccessStatus: 'REQUESTED' } }),
+      prisma.user.count({ where: { signupIntent: 'CREATOR', creatorAccessStatus: 'SUBMITTED', role: 'USER' } }),
       prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
       getActiveStreamCount(),
       prisma.video.findMany({
@@ -167,22 +167,20 @@ export default async function AdminPage() {
       }),
       prisma.creatorProfile.count({
         where: {
-          OR: [
-            { verified: false },
-            { bankVerified: false },
-            { ninVerified: false },
-            { idVerified: false }
-          ]
+          user: {
+            signupIntent: 'CREATOR',
+            creatorAccessStatus: 'SUBMITTED',
+            role: 'USER'
+          }
         }
       }),
       prisma.creatorProfile.findMany({
         where: {
-          OR: [
-            { verified: false },
-            { bankVerified: false },
-            { ninVerified: false },
-            { idVerified: false }
-          ]
+          user: {
+            signupIntent: 'CREATOR',
+            creatorAccessStatus: 'SUBMITTED',
+            role: 'USER'
+          }
         },
         orderBy: { id: 'asc' },
         take: 6,
@@ -373,10 +371,10 @@ export default async function AdminPage() {
           </span>
         </div>
         <div className="metric-card">
-          <span className="muted">Creator verification</span>
+          <span className="muted">Creator approvals</span>
           <strong>{creatorVerificationBacklog}</strong>
           <span className={creatorVerificationBacklog > 0 ? 'trend-warn' : 'trend-up'}>
-            {creatorVerificationBacklog > 0 ? 'Profiles waiting for checks' : 'Creator checks are current'}
+            {creatorVerificationBacklog > 0 ? 'Profiles waiting for admin approval' : 'Creator approvals are current'}
           </span>
         </div>
         <div className="metric-card">
@@ -433,7 +431,7 @@ export default async function AdminPage() {
               <strong>{failedPayments}</strong>
             </div>
             <div className="detail-card">
-              <span className="detail-label">Verification backlog</span>
+              <span className="detail-label">Creator approvals</span>
               <strong>{creatorVerificationBacklog}</strong>
             </div>
             <div className="detail-card">
@@ -550,7 +548,7 @@ export default async function AdminPage() {
             <Link className="btn btn-ghost" href="/admin/intake">Review creator requests</Link>
             <Link className="btn btn-ghost" href="/admin/finance">Open finance console</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
-            <Link className="btn btn-ghost" href="/admin/users">Check creator verification</Link>
+            <Link className="btn btn-ghost" href="/admin/users">Open creator accounts</Link>
             <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
             <Link className="btn btn-ghost" href="/admin/node">Inspect infrastructure</Link>
           </div>
@@ -578,7 +576,7 @@ export default async function AdminPage() {
         </div>
 
         <div className="card">
-          <h3>Creator verification queue</h3>
+          <h3>Creator approval queue</h3>
           {creatorVerificationQueue.length ? (
             <div className="stack-list">
               {creatorVerificationQueue.map((creator) => (
@@ -597,7 +595,7 @@ export default async function AdminPage() {
               ))}
             </div>
           ) : (
-            <p className="muted">Creator verification backlog is clear.</p>
+            <p className="muted">Creator approval backlog is clear.</p>
           )}
         </div>
       </div>

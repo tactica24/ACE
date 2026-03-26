@@ -28,9 +28,8 @@ export async function requireCreatorOnboardingAccess(nextPath = '/studio/onboard
   const user = await requireCurrentUser(nextPath);
 
   if (
-    user.role === 'CREATOR' ||
     user.role === 'ADMIN' ||
-    (user.signupIntent === 'CREATOR' && (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED'))
+    (user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'REQUESTED')
   ) {
     return user;
   }

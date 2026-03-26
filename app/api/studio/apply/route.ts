@@ -10,28 +10,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
   }
   if (
-    auth.role !== 'CREATOR' &&
     auth.role !== 'ADMIN' &&
-    !(auth.signupIntent === 'CREATOR' && (auth.creatorAccessStatus === 'INVITED' || auth.creatorAccessStatus === 'SUBMITTED'))
+    !(auth.signupIntent === 'CREATOR' && auth.creatorAccessStatus === 'REQUESTED')
   ) {
-    return NextResponse.json({ error: 'Creator onboarding has not been unlocked for this account yet.' }, { status: 403 });
+    return NextResponse.json({ error: 'This creator onboarding form is not available for this account.' }, { status: 403 });
   }
 
   const body = await req.json();
-  const displayName = body.displayName as string | undefined;
-  const bio = body.bio as string | undefined;
-  const ninNumber = body.ninNumber as string | undefined;
-  const idCardUrl = body.idCardUrl as string | undefined;
-  const bankName = body.bankName as string | undefined;
-  const bankAccountName = body.bankAccountName as string | undefined;
-  const bankAccountNumber = body.bankAccountNumber as string | undefined;
-  const reliabilityNotes = body.reliabilityNotes as string | undefined;
+  const displayName = auth.name?.trim() ?? '';
+  const address = typeof body.address === 'string' ? body.address.trim() : '';
+  const idCardNumber = typeof body.idCardNumber === 'string' ? body.idCardNumber.trim() : '';
+  const idCardUrl = typeof body.idCardUrl === 'string' ? body.idCardUrl.trim() : '';
+  const bankName = typeof body.bankName === 'string' ? body.bankName.trim() : '';
+  const bankAccountNumber = typeof body.bankAccountNumber === 'string' ? body.bankAccountNumber.trim() : '';
+  const bankAccountName = displayName;
 
-  if (!displayName) return NextResponse.json({ error: 'Missing display name' }, { status: 400 });
+  if (!displayName) return NextResponse.json({ error: 'Complete your account name before creator onboarding.' }, { status: 400 });
+  if (!address) return NextResponse.json({ error: 'Address is required.' }, { status: 400 });
+  if (!idCardNumber) return NextResponse.json({ error: 'Government ID number is required.' }, { status: 400 });
+  if (!idCardUrl) return NextResponse.json({ error: 'Upload your ID card image before submitting.' }, { status: 400 });
+  if (!bankName) return NextResponse.json({ error: 'Bank name is required.' }, { status: 400 });
+  if (!bankAccountNumber) return NextResponse.json({ error: 'Bank account number is required.' }, { status: 400 });
 
   await prisma.user.update({
     where: { id: auth.sub },
-    data: { role: 'CREATOR', signupIntent: 'CREATOR', creatorAccessStatus: 'SUBMITTED' }
+    data: { signupIntent: 'CREATOR', creatorAccessStatus: 'SUBMITTED' }
   });
 
   const existingProfile = await prisma.creatorProfile.findUnique({
@@ -47,10 +50,11 @@ export async function POST(req: NextRequest) {
     update: {
       creatorNumber,
       displayName,
-      bio: bio ?? null,
+      address,
       phoneVerified,
       emailVerified,
-      ninNumber: ninNumber ?? null,
+      ninNumber: idCardNumber ?? null,
+      idCardNumber: idCardNumber ?? null,
       ninVerified: false,
       idCardUrl: idCardUrl ?? null,
       idVerified: false,
@@ -58,17 +62,17 @@ export async function POST(req: NextRequest) {
       bankAccountName: bankAccountName ?? null,
       bankAccountNumber: bankAccountNumber ?? null,
       bankVerified: false,
-      reliabilityNotes: reliabilityNotes ?? null,
       verified: false
     },
     create: {
       userId: auth.sub,
       creatorNumber,
       displayName,
-      bio: bio ?? null,
+      address,
       phoneVerified,
       emailVerified,
-      ninNumber: ninNumber ?? null,
+      ninNumber: idCardNumber ?? null,
+      idCardNumber: idCardNumber ?? null,
       ninVerified: false,
       idCardUrl: idCardUrl ?? null,
       idVerified: false,
@@ -76,7 +80,6 @@ export async function POST(req: NextRequest) {
       bankAccountName: bankAccountName ?? null,
       bankAccountNumber: bankAccountNumber ?? null,
       bankVerified: false,
-      reliabilityNotes: reliabilityNotes ?? null,
       verified: false
     }
   });
