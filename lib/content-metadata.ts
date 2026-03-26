@@ -6,6 +6,8 @@ import {
   type SubtitleKindValue
 } from '@/lib/media-types';
 
+type LanguageCode = (typeof LANGUAGE_OPTIONS)[number]['code'];
+
 export type SubmittedSubtitleTrack = {
   label: string;
   languageCode: string;
@@ -14,11 +16,11 @@ export type SubmittedSubtitleTrack = {
   isDefault?: boolean;
 };
 
-const LANGUAGE_CODES = new Set(LANGUAGE_OPTIONS.map((option) => option.code));
-const CONTENT_WARNING_VALUES = new Set(CONTENT_WARNING_OPTIONS.map((option) => option.value));
-const SUBTITLE_KIND_VALUES = new Set(SUBTITLE_KIND_OPTIONS.map((option) => option.value));
+const LANGUAGE_CODES = new Set<string>(LANGUAGE_OPTIONS.map((option) => option.code));
+const CONTENT_WARNING_VALUES = new Set<string>(CONTENT_WARNING_OPTIONS.map((option) => option.value));
+const SUBTITLE_KIND_VALUES = new Set<string>(SUBTITLE_KIND_OPTIONS.map((option) => option.value));
 
-export function isSupportedLanguageCode(value: string | undefined): value is string {
+export function isSupportedLanguageCode(value: string | undefined): value is LanguageCode {
   return Boolean(value && LANGUAGE_CODES.has(value));
 }
 
