@@ -19,8 +19,12 @@ export function getPrimaryAppPath(user: UserRoutingState) {
     return '/studio';
   }
 
-  if (user.signupIntent === 'CREATOR' && (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED')) {
-    return '/studio/onboarding';
+  if (user.signupIntent === 'CREATOR') {
+    if (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED') {
+      return '/studio/onboarding';
+    }
+
+    return '/creator';
   }
 
   return '/browse';
@@ -47,9 +51,13 @@ export function getPostRegisterPath(user: UserRoutingState) {
     return '/studio';
   }
 
-  if (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED') {
-    return '/studio/onboarding?verification=sent';
+  if (user.signupIntent === 'CREATOR') {
+    if (user.creatorAccessStatus === 'INVITED' || user.creatorAccessStatus === 'SUBMITTED') {
+      return '/studio/onboarding?verification=sent';
+    }
+
+    return '/creator?submitted=1&verification=sent';
   }
 
-  return '/account?verification=sent';
+  return '/browse?verification=sent';
 }

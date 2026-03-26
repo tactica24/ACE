@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 export default function NodeMonitor() {
   const [data, setData] = useState<{
     nodeName: string;
+    region: string;
     cpuLoad: number;
     memoryUsed: number;
     diskFreeGb: number;
     cacheHitRate: number;
     latencyMs: number;
+    deliveryMode: string;
   } | null>(null);
 
   useEffect(() => {
@@ -35,13 +37,25 @@ export default function NodeMonitor() {
     <div className="grid">
       <div className="card">
         <div className="stat">
-          <span className="muted">Node</span>
+          <span className="muted">Runtime</span>
           <strong>{data?.nodeName ?? '--'}</strong>
         </div>
       </div>
       <div className="card">
         <div className="stat">
-          <span className="muted">CPU Load</span>
+          <span className="muted">Mode</span>
+          <strong>{data?.deliveryMode ?? '--'}</strong>
+        </div>
+      </div>
+      <div className="card">
+        <div className="stat">
+          <span className="muted">Region</span>
+          <strong>{data?.region ?? '--'}</strong>
+        </div>
+      </div>
+      <div className="card">
+        <div className="stat">
+          <span className="muted">CPU load</span>
           <strong>{data ? (data.cpuLoad * 100).toFixed(1) + '%' : '--'}</strong>
         </div>
       </div>

@@ -58,7 +58,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Node monitor' },
+            { href: '/admin/node', label: 'Infrastructure' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
           ]}

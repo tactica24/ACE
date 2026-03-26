@@ -44,13 +44,21 @@ const labelize = (value?: string) =>
 export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [items, setItems] = useState(initial);
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleAction = async (item: Item, action: 'approve' | 'reject' | 'remove') => {
     const endpoint = action === 'remove' ? '/api/admin/videos/delete' : `/api/admin/moderation/${action}`;
+    const reason = (reasons[item.video.id] ?? '').trim();
+
+    if (action === 'remove' && !reason) {
+      setErrors((prev) => ({ ...prev, [item.video.id]: 'Add a removal note before taking this title off the catalog.' }));
+      return;
+    }
+
     const payload =
       action === 'remove'
-        ? { videoId: item.video.id, reason: reasons[item.video.id] || 'Removed during admin review' }
-        : { id: item.id };
+        ? { videoId: item.video.id, reason }
+        : { id: item.id, reason };
 
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -59,8 +67,17 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     });
 
     if (res.ok) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[item.video.id];
+        return next;
+      });
       setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+      return;
     }
+
+    const data = await res.json().catch(() => ({}));
+    setErrors((prev) => ({ ...prev, [item.video.id]: data.error || 'This action could not be completed right now.' }));
   };
 
   if (items.length === 0) {
@@ -132,9 +149,19 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <input
                   className="input"
                   value={reasons[item.video.id] ?? ''}
-                  onChange={(event) => setReasons((prev) => ({ ...prev, [item.video.id]: event.target.value }))}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setReasons((prev) => ({ ...prev, [item.video.id]: value }));
+                    setErrors((prev) => {
+                      if (!prev[item.video.id]) return prev;
+                      const next = { ...prev };
+                      delete next[item.video.id];
+                      return next;
+                    });
+                  }}
                 />
               </label>
+              {errors[item.video.id] ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
 
               <div className="moderation-actions">
                 {item.status === 'PENDING' ? (

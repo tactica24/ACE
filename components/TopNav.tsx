@@ -17,7 +17,9 @@ export default async function TopNav() {
       ? 'Admin'
       : user.role === 'CREATOR'
         ? 'Studio'
-        : copy.browse
+        : user.signupIntent === 'CREATOR'
+          ? 'Creator'
+          : copy.browse
     : copy.browse;
 
   return (
@@ -44,6 +46,7 @@ export default async function TopNav() {
               role={user.role}
               showCreatorStudio={user.role === 'CREATOR'}
               showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
+              showCreatorStatus={user.signupIntent === 'CREATOR' && user.role !== 'CREATOR' && user.creatorAccessStatus === 'REQUESTED'}
               language={language}
             />
           ) : (

@@ -24,7 +24,7 @@ const envSchema = z.object({
   R2_BUCKET: z.string().default(''),
   R2_REGION: z.string().min(1).default('auto'),
   ACE_STORAGE_DIR: z.string().min(1).default('./storage'),
-  ACE_NODE_NAME: z.string().min(1).default('lagos-relay-01'),
+  ACE_NODE_NAME: z.string().min(1).default('ace-app-origin-01'),
   ACE_NODE_REGION: z.string().min(1).default('NG'),
   ACE_NODE_LAGOS_URL: z.string().min(1).optional(),
   ACE_NODE_ABUJA_URL: z.string().min(1).optional(),

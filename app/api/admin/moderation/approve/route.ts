@@ -1,6 +1,7 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateApprovedCatalog } from '@/lib/catalog';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -16,10 +17,7 @@ export async function POST(req: NextRequest) {
   });
 
   await prisma.video.update({ where: { id: moderation.videoId }, data: { status: 'APPROVED' } });
+  revalidateApprovedCatalog();
 
   return NextResponse.json({ ok: true });
 }
-
-
-
-

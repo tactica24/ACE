@@ -1,12 +1,16 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { env } from './env';
 import { getGeoContext, isDiaspora, isNigeria, isSouthernAfrica } from './geo';
+
+export function getConfiguredRelayTargets() {
+  return [env.ACE_NODE_LAGOS_URL, env.ACE_NODE_ABUJA_URL, env.ACE_NODE_JHB_URL].filter(Boolean) as string[];
+}
 
 export function getRelayBaseUrl(req: NextRequest) {
   const { country, regionHint } = getGeoContext(req);
 
   if (isDiaspora(country)) {
-    return env.ACE_CDN_BASE_URL ?? null;
+    return env.ACE_NODE_LAGOS_URL ?? env.ACE_NODE_ABUJA_URL ?? env.ACE_NODE_JHB_URL ?? null;
   }
 
   if (isSouthernAfrica(country)) {
@@ -19,7 +23,7 @@ export function getRelayBaseUrl(req: NextRequest) {
     return env.ACE_NODE_LAGOS_URL ?? env.ACE_NODE_ABUJA_URL ?? null;
   }
 
-  return env.ACE_NODE_LAGOS_URL ?? env.ACE_NODE_ABUJA_URL ?? null;
+  return env.ACE_NODE_LAGOS_URL ?? env.ACE_NODE_ABUJA_URL ?? env.ACE_NODE_JHB_URL ?? null;
 }
 
 export function shouldRedirectToRelay(req: NextRequest, targetBaseUrl: string | null) {

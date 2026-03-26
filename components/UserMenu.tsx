@@ -12,6 +12,7 @@ type UserMenuProps = {
   role: RoleValue;
   showCreatorStudio: boolean;
   showCreatorOnboarding: boolean;
+  showCreatorStatus: boolean;
   language: UILanguage;
 };
 
@@ -21,6 +22,7 @@ export default function UserMenu({
   role,
   showCreatorStudio,
   showCreatorOnboarding,
+  showCreatorStatus,
   language
 }: UserMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +96,11 @@ export default function UserMenu({
             {showCreatorOnboarding ? (
               <Link className="user-menu-link" href="/studio/onboarding" onClick={() => setOpen(false)}>
                 {copy.continueOnboarding}
+              </Link>
+            ) : null}
+            {showCreatorStatus ? (
+              <Link className="user-menu-link" href="/creator" onClick={() => setOpen(false)}>
+                Creator status
               </Link>
             ) : null}
           </div>

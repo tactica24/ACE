@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import AdminOpsPanel from '@/components/AdminOpsPanel';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import InfrastructureReadiness from '@/components/InfrastructureReadiness';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getNodeHealth } from '@/lib/metrics';
@@ -302,7 +303,7 @@ export default async function AdminPage() {
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${pendingModeration}` },
             { href: '/admin/support', label: 'Support', count: `${openSupport}` },
-            { href: '/admin/node', label: 'Node monitor' },
+            { href: '/admin/node', label: 'Infrastructure' },
             { href: '/admin/referrals', label: 'Referrals' },
             { href: '/admin/users', label: 'Users' }
           ]}
@@ -315,6 +316,10 @@ export default async function AdminPage() {
         </>
       }
     >
+      <div className="grid">
+        <InfrastructureReadiness />
+      </div>
+
       <div className="metric-grid">
         <div className="metric-card">
           <span className="muted">Users</span>
@@ -547,7 +552,7 @@ export default async function AdminPage() {
             <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
             <Link className="btn btn-ghost" href="/admin/users">Check creator verification</Link>
             <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
-            <Link className="btn btn-ghost" href="/admin/node">Inspect platform health</Link>
+            <Link className="btn btn-ghost" href="/admin/node">Inspect infrastructure</Link>
           </div>
         </div>
       </div>

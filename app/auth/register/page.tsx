@@ -6,9 +6,9 @@ export default function RegisterPage() {
     <div className="section">
       <div className="container" style={{ maxWidth: 480 }}>
         <div className="card">
-          <h2>Create your Ace Studio account</h2>
-          <p className="muted">Create your account to continue.</p>
-          <AuthRegister />
+          <h2>Create your account</h2>
+          <p className="muted">Open your viewer account and go straight into the catalog.</p>
+          <AuthRegister initialSignupIntent="VIEWER" lockSignupIntent submitLabel="Create viewer account" />
           <p className="muted" style={{ marginTop: 12 }}>
             Already have an account? <Link href="/auth/login">Sign in</Link>
           </p>

@@ -84,7 +84,7 @@ Optional:
 
 - `FIREBASE_STORAGE_BUCKET`
 - `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
-- `ACE_CDN_BASE_URL`
+- `ACE_CDN_BASE_URL` for media assets
 - `ACE_NODE_LAGOS_URL`
 - `ACE_NODE_ABUJA_URL`
 - `ACE_NODE_JHB_URL`
@@ -146,6 +146,8 @@ Validate these flows on the live site:
 8. Confirm poster image loads correctly from R2.
 9. Confirm unlock flow works with wallet/payment configuration.
 10. Confirm TV pairing signs the TV into Firebase and then into the web session.
+
+You do not need to provision a relay node before these checks. Without `ACE_NODE_*` values, the app streams approved titles directly through the Next.js origin from R2.
 
 ## 6. Important runtime notes
 

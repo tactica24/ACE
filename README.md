@@ -65,8 +65,9 @@ volumes:
   dbdata:
 ```
 
-## Lagos Relay cache
-Streaming requests first check `storage/cache`. Cache misses pull from R2 and persist locally for future low-latency playback.
+## Streaming cache
+Streaming requests first check `storage/cache`. Cache misses pull from R2 and persist locally for future playback.
+You can launch without a dedicated relay node first. In that mode, approved titles stream directly through the app from R2 until you add regional relay nodes later.
 
 ## P2P `.ace` flow
 1. Sender creates encrypted `.ace` file via `/api/p2p/create`.
@@ -110,7 +111,7 @@ npm run launch:check
 ```
 
 This checks:
-- required `.env` keys and placeholder/test value detection
+- required environment keys and placeholder/test value detection
 - `ffmpeg` and `ffprobe` availability for HLS processing (warning-only when this host is not your transcoder)
 - lint and production build gates
-- relay health smoke check (`/api/health`)
+- app health smoke check (`/api/health`)

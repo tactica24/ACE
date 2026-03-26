@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getNodeHealth } from '@/lib/metrics';
+import { getConfiguredRelayTargets } from '@/lib/relay';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,7 @@ export async function GET() {
     ok: true,
     nodeName: health.nodeName,
     region: health.region,
+    deliveryMode: getConfiguredRelayTargets().length ? 'relay' : 'direct-app',
     cacheHitRate: health.cacheHitRate,
     cpuLoad: health.cpuLoad,
     memoryUsed: health.memoryUsed,

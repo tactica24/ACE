@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateApprovedCatalog } from '@/lib/catalog';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
       notes: reason
     }
   });
+
+  revalidateApprovedCatalog();
 
   return NextResponse.json({ ok: true });
 }

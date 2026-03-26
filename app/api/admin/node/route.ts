@@ -1,7 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getNodeHealth } from '@/lib/metrics';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getConfiguredRelayTargets } from '@/lib/relay';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   const health = await getNodeHealth();
+  const deliveryMode = getConfiguredRelayTargets().length ? 'Relay ready' : 'Direct app streaming';
   const latencyMs = Math.max(1, Date.now() - startedAt);
   const latest = await prisma.nodeHealth.findFirst({
     where: { nodeName: health.nodeName },
@@ -31,6 +33,5 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ ...health, latencyMs });
+  return NextResponse.json({ ...health, latencyMs, deliveryMode });
 }
-
