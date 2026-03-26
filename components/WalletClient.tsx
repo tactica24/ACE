@@ -33,8 +33,9 @@ export default function WalletClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amountNaira: topupAmount })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Topup failed');
+      if (!data.authorizationUrl) throw new Error('Unable to start top-up right now.');
       window.location.href = data.authorizationUrl;
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'Unable to start top-up.');
@@ -50,8 +51,9 @@ export default function WalletClient({
       const res = await fetch('/api/pass/subscribe', {
         method: 'POST'
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Pass failed');
+      if (!data.authorizationUrl) throw new Error('Unable to start pass subscription right now.');
       window.location.href = data.authorizationUrl;
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'Unable to start pass subscription.');
@@ -70,8 +72,9 @@ export default function WalletClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientPhone })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Family pass failed');
+      if (!data.authorizationUrl) throw new Error('Unable to start family bundle right now.');
       window.location.href = data.authorizationUrl;
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'Unable to start family pass.');
@@ -123,7 +126,7 @@ export default function WalletClient({
 
       <div className="grid">
       <div className="card">
-        <h3>Wallet Balance</h3>
+        <h3>Available wallet</h3>
         <p className="hero-title" style={{ fontSize: '2rem' }}>{formatNaira(walletBalance)}</p>
         <p className="muted">Wallet credits: {walletCredits}</p>
         <p className="muted">Pass credits: {passCredits}</p>
@@ -131,7 +134,6 @@ export default function WalletClient({
 
       <div className="card">
         <h3>Top up wallet</h3>
-        <p className="muted">Add funds securely so you are ready to unlock titles whenever you want to watch.</p>
         <input
           className="input"
           type="number"
@@ -145,63 +147,58 @@ export default function WalletClient({
 
       <div className="card card-soft">
         <h3>Hybrid Pass</h3>
-        <p className="muted">Get 30 credits each month for NGN 2,500.</p>
+        <p className="muted">30 credits for NGN 2,500.</p>
         <button className="btn btn-ghost" onClick={handlePass} disabled={loading}>
           Activate pass
         </button>
       </div>
-      {isDiaspora ? (
-        <div className="card">
-          <h3>Family Share</h3>
-          <p className="muted">Send credits or wallet balance straight to a family member by phone number.</p>
-          <input
-            className="input"
-            placeholder="Family member phone number"
-            value={recipientPhone}
-            onChange={(e) => setRecipientPhone(e.target.value)}
-          />
-          <div className="action-list" style={{ marginTop: 12 }}>
-            <button
-              className={shareType === 'CREDITS' ? 'btn btn-primary' : 'btn btn-ghost'}
-              type="button"
-              onClick={() => setShareType('CREDITS')}
-            >
-              Share credits
-            </button>
-            <button
-              className={shareType === 'BALANCE' ? 'btn btn-primary' : 'btn btn-ghost'}
-              type="button"
-              onClick={() => setShareType('BALANCE')}
-            >
-              Share balance
-            </button>
-          </div>
-          <input
-            className="input"
-            type="number"
-            min={1}
-            value={shareAmount}
-            onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value || '1', 10)))}
-            style={{ marginTop: 12 }}
-          />
-          <div className="action-list" style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" type="button" onClick={handleFamilyShare} disabled={shareLoading}>
-              {shareLoading ? 'Sharing...' : shareType === 'CREDITS' ? 'Share credits' : 'Share balance'}
-            </button>
-            <button className="btn btn-ghost" onClick={handleFamilyPass} disabled={loading || !recipientPhone} type="button">
-              {loading ? 'Starting...' : 'Buy family bundle'}
-            </button>
-          </div>
-          <p className="muted" style={{ marginBottom: 0 }}>
-            The family member must already have an Ace Studio account linked to that phone number.
-          </p>
+      <div className="card">
+        <h3>Share with family</h3>
+        <input
+          className="input"
+          placeholder="Family member phone number"
+          value={recipientPhone}
+          onChange={(e) => setRecipientPhone(e.target.value)}
+        />
+        <div className="action-list" style={{ marginTop: 12 }}>
+          <button
+            className={shareType === 'CREDITS' ? 'btn btn-primary' : 'btn btn-ghost'}
+            type="button"
+            onClick={() => setShareType('CREDITS')}
+          >
+            Credits
+          </button>
+          <button
+            className={shareType === 'BALANCE' ? 'btn btn-primary' : 'btn btn-ghost'}
+            type="button"
+            onClick={() => setShareType('BALANCE')}
+          >
+            Balance
+          </button>
         </div>
-      ) : (
-        <div className="card">
-          <h3>Family support</h3>
-          <p className="muted">Family sharing from wallet balance or credits is reserved for diaspora accounts. You can still top up locally and manage your own viewing wallet here.</p>
+        <input
+          className="input"
+          type="number"
+          min={1}
+          value={shareAmount}
+          onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value || '1', 10)))}
+          style={{ marginTop: 12 }}
+          placeholder={shareType === 'CREDITS' ? 'Number of credits' : 'Amount in naira'}
+        />
+        <div className="action-list" style={{ marginTop: 12 }}>
+          <button className="btn btn-primary" type="button" onClick={handleFamilyShare} disabled={shareLoading}>
+            {shareLoading ? 'Sharing...' : shareType === 'CREDITS' ? 'Share credits' : 'Share balance'}
+          </button>
+          <button className="btn btn-ghost" onClick={handleFamilyPass} disabled={loading || !recipientPhone} type="button">
+            {loading ? 'Starting...' : 'Buy family bundle'}
+          </button>
         </div>
-      )}
+        <p className="muted" style={{ marginBottom: 0 }}>
+          {isDiaspora
+            ? 'The recipient must already have an Ace Studio account linked to that phone number.'
+            : 'Family credit or balance sharing is available on diaspora-funded accounts. You can still enter the recipient number here and use family bundle checkout where eligible.'}
+        </p>
+      </div>
       </div>
     </div>
   );

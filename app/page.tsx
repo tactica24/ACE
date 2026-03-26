@@ -208,19 +208,6 @@ export default async function HomePage() {
 
       <section className="home-shelves">
         <div className="container">
-          <div className="feature-banner" style={{ marginBottom: 22 }}>
-            <div>
-              <h3>{copy.trustFirstViewing}</h3>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                {copy.trustFirstViewingSummary}
-              </p>
-            </div>
-            <div className="action-list">
-              <Link className="btn btn-primary" href="/wallet">{copy.openWallet}</Link>
-              <Link className="btn btn-ghost" href="/account/contact">{copy.getSupport}</Link>
-            </div>
-          </div>
-
           {rows.length ? (
             rows.map((row) => (
               <div key={row.title} className="home-shelf">

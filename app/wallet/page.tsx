@@ -5,6 +5,23 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getRegionalCurrency } from '@/lib/pricing';
 
+function getPaymentLabel(payment: {
+  reference: string;
+  metadata: unknown;
+}) {
+  const metadata = payment.metadata as { type?: string } | null;
+  switch (metadata?.type) {
+    case 'pass':
+      return 'Hybrid pass';
+    case 'family':
+      return 'Family bundle';
+    case 'topup':
+      return 'Wallet top-up';
+    default:
+      return payment.reference;
+  }
+}
+
 export default async function WalletPage() {
   const user = await getCurrentUser();
 
@@ -43,9 +60,8 @@ export default async function WalletPage() {
     <div className="section">
       <div className="container">
         <div style={{ marginBottom: 20 }}>
-          <div className="pill">Ace Studio Wallet</div>
-          <h1 className="hero-title" style={{ marginTop: 12 }}>Instant unlocks, no delay.</h1>
-          <p className="muted">Add funds, unlock titles quickly, and keep track of your recent payments.</p>
+          <div className="pill">Wallet</div>
+          <h1 className="hero-title" style={{ marginTop: 12 }}>Manage balance, credits, and family sharing.</h1>
         </div>
         <WalletClient
           balance={wallet?.balanceNaira ?? 0}
@@ -54,13 +70,8 @@ export default async function WalletPage() {
           isDiaspora={region.region === 'DIASPORA'}
         />
         <div className="grid" style={{ marginTop: 20 }}>
-          <div className="card card-soft">
-            <h3>How unlocks work</h3>
-            <p className="muted">Ace Studio always tries your active pass credits first, then wallet credits, then wallet balance. You are only asked to top up when nothing usable is left.</p>
-            <p className="muted" style={{ marginBottom: 0 }}>Your unlocked titles remain tied to this account so you can return and keep watching from where you stopped, while playback stays limited to 3 active devices at a time.</p>
-          </div>
           <div className="card">
-            <h3>Recent unlock activity</h3>
+            <h3>Recently unlocked</h3>
             {recentUnlocks.length ? (
               <div className="stack-list">
                 {recentUnlocks.map((unlock) => (
@@ -74,20 +85,20 @@ export default async function WalletPage() {
                 ))}
               </div>
             ) : (
-              <p className="muted">Your recent unlocks will appear here once you start watching full titles.</p>
+              <p className="muted">No unlocked titles yet.</p>
             )}
           </div>
         </div>
         <div className="card" style={{ marginTop: 20 }}>
-          <h3>Recent wallet statements</h3>
+          <h3>Wallet activity</h3>
           {payments.length ? (
             <div className="stack-list">
               {payments.map((payment) => (
                 <div key={payment.id} className="stack-row">
                   <div>
-                    <strong>{payment.reference}</strong>
+                    <strong>{getPaymentLabel(payment)}</strong>
                     <p className="muted">
-                      {payment.gateway} | {payment.status} | {payment.currency}
+                      {payment.gateway} | {payment.status} | {payment.createdAt.toISOString().slice(0, 10)}
                     </p>
                   </div>
                   <span>NGN {payment.amountNaira}</span>
@@ -95,7 +106,7 @@ export default async function WalletPage() {
               ))}
             </div>
           ) : (
-            <p className="muted">Top-ups and wallet payment statements will appear here.</p>
+            <p className="muted">No wallet activity yet.</p>
           )}
         </div>
       </div>
