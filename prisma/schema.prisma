@@ -260,6 +260,16 @@ model StreamSession {
   @@index([videoId, lastSeenAt])
 }
 
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+}
+
 model Unlock {
   id            String       @id @default(cuid())
   userId        String

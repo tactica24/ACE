@@ -1,31 +1,30 @@
 import { NextRequest } from 'next/server';
-
-type RateLimitBucket = {
-  count: number;
-  resetAt: number;
-};
-
-type RateLimitStore = Map<string, RateLimitBucket>;
+import { prisma } from '@/lib/db';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __aceRateLimitStore: RateLimitStore | undefined;
+  var __aceRateLimitCleanupAt: number | undefined;
 }
 
-function getStore() {
-  if (!global.__aceRateLimitStore) {
-    global.__aceRateLimitStore = new Map();
+function getCleanupThreshold() {
+  return global.__aceRateLimitCleanupAt ?? 0;
+}
+
+function markCleanup(now: number) {
+  global.__aceRateLimitCleanupAt = now;
+}
+
+async function cleanupExpiredBuckets(now: number) {
+  if (now - getCleanupThreshold() < 1000 * 60 * 10) {
+    return;
   }
 
-  return global.__aceRateLimitStore;
-}
-
-function cleanupExpiredEntries(store: RateLimitStore, now: number) {
-  for (const [key, value] of store.entries()) {
-    if (value.resetAt <= now) {
-      store.delete(key);
+  markCleanup(now);
+  await prisma.rateLimitBucket.deleteMany({
+    where: {
+      resetAt: { lt: new Date(now - 1000 * 60 * 60) }
     }
-  }
+  }).catch(() => null);
 }
 
 export function getRateLimitIdentity(req: NextRequest, userId?: string | null) {
@@ -39,7 +38,7 @@ export function getRateLimitIdentity(req: NextRequest, userId?: string | null) {
   return `ip:${fallback}`;
 }
 
-export function consumeRateLimit({
+export async function consumeRateLimit({
   key,
   limit,
   windowMs
@@ -49,24 +48,30 @@ export function consumeRateLimit({
   windowMs: number;
 }) {
   const now = Date.now();
-  const store = getStore();
-  cleanupExpiredEntries(store, now);
+  const resetAt = new Date(now + windowMs);
 
-  const current = store.get(key);
-  if (!current || current.resetAt <= now) {
-    const next: RateLimitBucket = {
-      count: 1,
-      resetAt: now + windowMs
-    };
-    store.set(key, next);
-    return { allowed: true, remaining: Math.max(limit - 1, 0), resetAt: next.resetAt };
-  }
+  const [bucket] = await prisma.$queryRaw<Array<{ count: number; resetAt: Date }>>`
+    INSERT INTO "RateLimitBucket" ("key", "count", "resetAt", "createdAt", "updatedAt")
+    VALUES (${key}, 1, ${resetAt}, NOW(), NOW())
+    ON CONFLICT ("key")
+    DO UPDATE SET
+      "count" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= NOW() THEN 1
+        ELSE "RateLimitBucket"."count" + 1
+      END,
+      "resetAt" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= NOW() THEN ${resetAt}
+        ELSE "RateLimitBucket"."resetAt"
+      END,
+      "updatedAt" = NOW()
+    RETURNING "count", "resetAt"
+  `;
 
-  if (current.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: current.resetAt };
-  }
+  void cleanupExpiredBuckets(now);
 
-  current.count += 1;
-  store.set(key, current);
-  return { allowed: true, remaining: Math.max(limit - current.count, 0), resetAt: current.resetAt };
+  return {
+    allowed: bucket.count <= limit,
+    remaining: Math.max(limit - bucket.count, 0),
+    resetAt: bucket.resetAt.getTime()
+  };
 }

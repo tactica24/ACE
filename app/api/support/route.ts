@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: `support:${getRateLimitIdentity(req, auth.sub)}`,
     limit: 12,
     windowMs: 1000 * 60 * 30

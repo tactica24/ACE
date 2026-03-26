@@ -3,8 +3,39 @@ import { prisma } from '@/lib/db';
 const ACTIVE_STREAM_WINDOW_MS = 1000 * 60 * 15;
 const MAX_CONCURRENT_STREAMS = 3;
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __aceStreamCleanupAt: number | undefined;
+}
+
 function getActiveCutoff() {
   return new Date(Date.now() - ACTIVE_STREAM_WINDOW_MS);
+}
+
+function getCleanupThreshold() {
+  return global.__aceStreamCleanupAt ?? 0;
+}
+
+function markCleanup(now: number) {
+  global.__aceStreamCleanupAt = now;
+}
+
+async function cleanupInactiveStreamSessions() {
+  const now = Date.now();
+  if (now - getCleanupThreshold() < 1000 * 60 * 10) {
+    return;
+  }
+
+  markCleanup(now);
+  await prisma.streamSession.updateMany({
+    where: {
+      revokedAt: null,
+      lastSeenAt: { lt: getActiveCutoff() }
+    },
+    data: {
+      revokedAt: new Date(now)
+    }
+  }).catch(() => null);
 }
 
 export async function ensureStreamSession({
@@ -16,29 +47,41 @@ export async function ensureStreamSession({
   deviceSessionId: string;
   videoId: string;
 }) {
+  void cleanupInactiveStreamSessions();
   const cutoff = getActiveCutoff();
-
-  await prisma.streamSession.deleteMany({
+  const existingSession = await prisma.streamSession.findUnique({
     where: {
-      lastSeenAt: { lt: cutoff }
+      userId_deviceSessionId: {
+        userId,
+        deviceSessionId
+      }
+    },
+    select: {
+      id: true,
+      lastSeenAt: true,
+      revokedAt: true
     }
   });
 
-  const activeSessions = await prisma.streamSession.findMany({
+  const existingIsActive = Boolean(
+    existingSession &&
+    existingSession.revokedAt === null &&
+    existingSession.lastSeenAt >= cutoff
+  );
+
+  const activeOtherSessions = await prisma.streamSession.count({
     where: {
       userId,
       revokedAt: null,
-      lastSeenAt: { gte: cutoff }
-    },
-    orderBy: { lastSeenAt: 'desc' }
+      lastSeenAt: { gte: cutoff },
+      NOT: { deviceSessionId }
+    }
   });
 
-  const existing = activeSessions.find((session) => session.deviceSessionId === deviceSessionId);
-
-  if (!existing && activeSessions.length >= MAX_CONCURRENT_STREAMS) {
+  if (!existingIsActive && activeOtherSessions >= MAX_CONCURRENT_STREAMS) {
     return {
       allowed: false,
-      activeCount: activeSessions.length
+      activeCount: activeOtherSessions
     };
   }
 
@@ -63,7 +106,7 @@ export async function ensureStreamSession({
 
   return {
     allowed: true,
-    activeCount: existing ? activeSessions.length : activeSessions.length + 1,
+    activeCount: activeOtherSessions + 1,
     session
   };
 }
@@ -80,6 +123,8 @@ export async function touchStreamSession({
   if (!deviceSessionId) {
     return;
   }
+
+  void cleanupInactiveStreamSessions();
 
   await prisma.streamSession.updateMany({
     where: {

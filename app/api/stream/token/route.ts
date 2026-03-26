@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const teaser = req.nextUrl.searchParams.get('teaser') === '1';
   if (!auth && !teaser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: `stream-token:${getRateLimitIdentity(req, auth?.sub)}`,
     limit: 120,
     windowMs: 1000 * 60 * 10

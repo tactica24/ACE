@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE, reason: 'EMAIL_VERIFICATION_REQUIRED' }, { status: 403 });
   }
 
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: `unlock:${getRateLimitIdentity(req, auth.sub)}`,
     limit: 40,
     windowMs: 1000 * 60 * 10

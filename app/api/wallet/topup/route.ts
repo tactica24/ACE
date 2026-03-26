@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
   }
 
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: `wallet-topup:${getRateLimitIdentity(req, auth.sub)}`,
     limit: 8,
     windowMs: 1000 * 60 * 10
