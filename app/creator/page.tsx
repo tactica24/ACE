@@ -82,10 +82,10 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
             <p className="muted">
               {readyForOnboarding
                 ? 'Your creator access has been opened. Continue to onboarding and complete your studio profile.'
-                : 'Your creator account request is now with admin for review. As soon as it is approved, this account will move into creator onboarding.'}
+                : 'Your application is under review. Once approved, you can continue into creator onboarding.'}
             </p>
             {submitted || verificationSent ? (
-              <p className="muted">Your verification email has been sent and your creator request has been recorded.</p>
+              <p className="muted">Your account has been created and your application has been received.</p>
             ) : null}
             <div className="action-list" style={{ marginTop: 16 }}>
               <Link className="btn btn-primary" href={readyForOnboarding ? '/studio/onboarding' : '/account'}>
@@ -105,15 +105,15 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
     <div className="section">
       <div className="container" style={{ maxWidth: 560 }}>
         <div className="card">
-          <h2>Creator account request</h2>
+          <h2>Create your creator account</h2>
           <p className="muted">
-            Use this page for creator applications only. New creator accounts go to admin for approval before studio access is enabled.
+            Start your creator account here. After signup, your application will be reviewed before studio access is opened.
           </p>
           <AuthRegister
             initialSignupIntent="CREATOR"
             lockSignupIntent
             submitLabel="Request creator access"
-            helperText="We will send a verification email after signup, then your creator request goes to admin for approval."
+            helperText="We will send a verification email after signup."
           />
           <p className="muted" style={{ marginTop: 12 }}>
             Already have an account? <Link href="/auth/login">Sign in</Link>
