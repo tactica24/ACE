@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
+import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';

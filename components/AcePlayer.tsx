@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getLanguageLabel } from '@/lib/media-types';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
@@ -123,7 +123,7 @@ export default function AcePlayer({
   const [audioTrackOptions, setAudioTrackOptions] = useState<Array<{ index: number; label: string }>>([]);
   const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
 
-  const applySubtitleSelection = (videoElement = videoRef.current) => {
+  const applySubtitleSelection = useCallback((videoElement = videoRef.current) => {
     if (!videoElement || !videoElement.textTracks) {
       return;
     }
@@ -133,9 +133,9 @@ export default function AcePlayer({
       const option = subtitleTracks[index];
       track.mode = option && selectedSubtitleId !== 'off' && option.id === selectedSubtitleId ? 'showing' : 'disabled';
     }
-  };
+  }, [selectedSubtitleId, subtitleTracks]);
 
-  const syncAudioTrackState = (videoElement = videoRef.current) => {
+  const syncAudioTrackState = useCallback((videoElement = videoRef.current) => {
     if (!videoElement) {
       return;
     }
@@ -164,7 +164,7 @@ export default function AcePlayer({
 
     setAudioTrackOptions(options);
     setSelectedAudioTrackIndex(enabledIndex);
-  };
+  }, [audioLanguages, copy.audio]);
 
   const setAudioTrack = (index: number) => {
     const videoElement = videoRef.current;
@@ -187,7 +187,7 @@ export default function AcePlayer({
     setSelectedAudioTrackIndex(index);
   };
 
-  const loadStream = async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
+  const loadStream = useCallback(async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
     const deviceSessionId = isAuthenticated ? getDeviceSessionId() : '';
     const tokenUrl = isAuthenticated
       ? `/api/stream/token?videoId=${videoId}&deviceSessionId=${encodeURIComponent(deviceSessionId)}`
@@ -211,9 +211,9 @@ export default function AcePlayer({
         ? `/api/hls/${videoId}/master.m3u8?token=${data.token}`
         : `/api/stream/${videoId}?token=${data.token}`
     );
-  };
+  }, [isAuthenticated, videoId]);
 
-  const syncHistory = async ({
+  const syncHistory = useCallback(async ({
     progressSec,
     completed = false,
     keepalive = false
@@ -252,9 +252,9 @@ export default function AcePlayer({
     } finally {
       historyInFlightRef.current = false;
     }
-  };
+  }, [isAuthenticated, videoId]);
 
-  const unlockVideo = async ({
+  const unlockVideo = useCallback(async ({
     resumeAt,
     immediatePrompt = false
   }: {
@@ -319,24 +319,24 @@ export default function AcePlayer({
       }
       return false;
     }
-  };
+  }, [isAuthenticated, loadStream, loginHref, videoId]);
 
   useEffect(() => {
     loadStream({
       resumeAt: Math.max(initialProgress, readSavedProgress(videoId)),
       autoplay: false
     }).catch(() => setFeedback('Unable to load the stream right now.'));
-  }, [initialProgress, isAuthenticated, videoId]);
+  }, [initialProgress, loadStream, videoId]);
 
   useEffect(() => {
     setSelectedSubtitleId(subtitles.find((track) => track.isDefault && track.src)?.id ?? subtitleTracks[0]?.id ?? 'off');
     setAudioTrackOptions([]);
     setSelectedAudioTrackIndex(0);
-  }, [subtitles, videoId]);
+  }, [subtitleTracks, subtitles, videoId]);
 
   useEffect(() => {
     applySubtitleSelection();
-  }, [selectedSubtitleId, streamUrl]);
+  }, [applySubtitleSelection]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -450,7 +450,18 @@ export default function AcePlayer({
       video.removeEventListener('ended', handleEnded);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [initialProgress, isAuthenticated, loginHref, selectedSubtitleId, teaserSec, unlockState, unlocked, videoId]);
+  }, [
+    applySubtitleSelection,
+    initialProgress,
+    isAuthenticated,
+    syncAudioTrackState,
+    syncHistory,
+    teaserSec,
+    unlockState,
+    unlockVideo,
+    unlocked,
+    videoId
+  ]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
