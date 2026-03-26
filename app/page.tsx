@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
@@ -121,6 +123,13 @@ function buildRows({
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  if (user) {
+    const primaryAppPath = getPrimaryAppPath(user);
+    if (primaryAppPath !== '/browse') {
+      redirect(primaryAppPath);
+    }
+  }
+
   const language = await getPreferredUiLanguage();
   const copy = getUiCopy(language);
 

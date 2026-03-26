@@ -13,6 +13,7 @@ type UserMenuProps = {
   showCreatorStudio: boolean;
   showCreatorOnboarding: boolean;
   showCreatorStatus: boolean;
+  showSupport: boolean;
   language: UILanguage;
 };
 
@@ -23,6 +24,7 @@ export default function UserMenu({
   showCreatorStudio,
   showCreatorOnboarding,
   showCreatorStatus,
+  showSupport,
   language
 }: UserMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -85,9 +87,11 @@ export default function UserMenu({
                 Admin dashboard
               </Link>
             ) : null}
-            <Link className="user-menu-link" href="/account/contact" onClick={() => setOpen(false)}>
-              {copy.getSupport}
-            </Link>
+            {showSupport ? (
+              <Link className="user-menu-link" href="/account/contact" onClick={() => setOpen(false)}>
+                {copy.getSupport}
+              </Link>
+            ) : null}
             {showCreatorStudio ? (
               <Link className="user-menu-link" href="/studio" onClick={() => setOpen(false)}>
                 {copy.creatorStudio}

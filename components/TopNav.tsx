@@ -25,7 +25,7 @@ export default async function TopNav() {
   return (
     <nav className="nav">
       <div className="container nav-inner">
-        <Link className="brand" href="/">
+        <Link className="brand" href={primaryHref}>
           <span className="brand-mark brand-mark-image">
             <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={38} height={38} priority />
           </span>
@@ -47,6 +47,7 @@ export default async function TopNav() {
               showCreatorStudio={user.role === 'CREATOR'}
               showCreatorOnboarding={user.signupIntent === 'CREATOR' && user.creatorAccessStatus === 'INVITED'}
               showCreatorStatus={user.signupIntent === 'CREATOR' && user.role !== 'CREATOR' && user.creatorAccessStatus === 'REQUESTED'}
+              showSupport={user.role !== 'ADMIN'}
               language={language}
             />
           ) : (
