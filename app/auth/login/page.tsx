@@ -10,10 +10,10 @@ export default function LoginPage() {
           <p className="muted">Welcome back to Ace Studio. If your email is still pending, we will guide you through verification after you sign in.</p>
           <AuthLogin />
           <p className="muted" style={{ marginTop: 12 }}>
-            New to Ace Studio? <Link href="/auth/register">Create a viewer account</Link>
+            New to Ace Studio? <Link href="/auth/register">Create account</Link>
           </p>
           <p className="muted" style={{ marginTop: 8 }}>
-            Creator application link: <Link href="/creator">/creator</Link>
+            Applying as a creator? <Link href="/creator">Request creator access</Link>
           </p>
         </div>
       </div>
