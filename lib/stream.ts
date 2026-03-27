@@ -2,7 +2,7 @@
 import fsPromises from 'fs/promises';
 import { Readable } from 'stream';
 import { cacheExists, getCachePath, writeCacheFromStream, ensureStorageDirs } from './cache';
-import { getObjectStream } from './r2';
+import { getObjectStream, headObject } from './r2';
 
 export type StreamResult = {
   status: number;
@@ -35,6 +35,67 @@ function getVideoContentType(filePath: string) {
   if (normalizedPath.endsWith('.mkv')) return 'video/x-matroska';
   if (normalizedPath.endsWith('.avi')) return 'video/x-msvideo';
   return 'video/mp4';
+}
+
+function getSafeObjectSize(size: number | undefined) {
+  return typeof size === 'number' && Number.isFinite(size) ? Math.max(0, size) : 0;
+}
+
+export async function streamR2Object(
+  key: string,
+  rangeHeader: string | null,
+  maxBytes?: number
+): Promise<StreamResult> {
+  const objectHead = await headObject(key);
+  const totalSize = getSafeObjectSize(objectHead.ContentLength);
+  const effectiveSize = maxBytes ? Math.min(maxBytes, totalSize) : totalSize;
+  const contentType = objectHead.ContentType?.trim() || getVideoContentType(key);
+  const range = parseRange(rangeHeader, effectiveSize);
+
+  if (range && range.start >= effectiveSize) {
+    return {
+      status: 416,
+      headers: {
+        'Content-Range': `bytes */${effectiveSize}`,
+        'Content-Type': contentType
+      },
+      stream: Readable.from([]) as Readable
+    };
+  }
+
+  const rangeValue = range
+    ? `bytes=${range.start}-${range.end}`
+    : effectiveSize > 0
+      ? `bytes=0-${Math.max(effectiveSize - 1, 0)}`
+      : undefined;
+
+  const object = await getObjectStream(key, rangeValue);
+  const body = object.Body as Readable | undefined;
+  if (!body) throw new Error('Missing R2 object body');
+
+  if (!range) {
+    return {
+      status: 200,
+      headers: {
+        'Content-Length': effectiveSize.toString(),
+        'Content-Type': contentType,
+        'Accept-Ranges': 'bytes'
+      },
+      stream: body
+    };
+  }
+
+  const chunkSize = range.end - range.start + 1;
+  return {
+    status: 206,
+    headers: {
+      'Content-Range': `bytes ${range.start}-${range.end}/${effectiveSize}`,
+      'Content-Length': chunkSize.toString(),
+      'Content-Type': contentType,
+      'Accept-Ranges': 'bytes'
+    },
+    stream: body
+  };
 }
 
 export async function streamFile(

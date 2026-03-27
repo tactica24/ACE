@@ -2,11 +2,12 @@
 import { verifyStreamToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { cacheExists, getCachePath } from '@/lib/cache';
-import { ensureCached, streamFile } from '@/lib/stream';
+import { ensureCached, streamFile, streamR2Object } from '@/lib/stream';
 import { recordCacheHit } from '@/lib/metrics';
 import { Readable } from 'stream';
 import fsPromises from 'fs/promises';
 import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
+import { headObject } from '@/lib/r2';
 import { touchStreamSession } from '@/lib/stream-sessions';
 
 export const runtime = 'nodejs';
@@ -44,19 +45,49 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     await touchStreamSession({ userId: payload.userId, deviceSessionId: payload.deviceSessionId, videoId: video.id });
   }
 
-  const hit = await cacheExists(video.r2Key);
-  recordCacheHit(hit);
-
-  const filePath = hit ? getCachePath(video.r2Key) : await ensureCached(video.r2Key);
   const rangeHeader = req.headers.get('range');
   let maxBytes: number | undefined = undefined;
   if (!unlocked && video.durationSec > 0) {
-    const stat = await fsPromises.stat(filePath);
-    const ratio = Math.min(video.teaserSec / video.durationSec, 1);
-    maxBytes = Math.max(Math.floor(stat.size * ratio), Math.min(stat.size, 1024 * 512));
+    if (!relayBase) {
+      const objectHead = await headObject(video.r2Key);
+      const objectSize = typeof objectHead.ContentLength === 'number' ? objectHead.ContentLength : 0;
+      const ratio = Math.min(video.teaserSec / video.durationSec, 1);
+      maxBytes = Math.max(Math.floor(objectSize * ratio), Math.min(objectSize, 1024 * 512));
+    } else {
+      const hit = await cacheExists(video.r2Key);
+      recordCacheHit(hit);
+      const filePath = hit ? getCachePath(video.r2Key) : await ensureCached(video.r2Key);
+      const stat = await fsPromises.stat(filePath);
+      const ratio = Math.min(video.teaserSec / video.durationSec, 1);
+      maxBytes = Math.max(Math.floor(stat.size * ratio), Math.min(stat.size, 1024 * 512));
+      const result = await streamFile(filePath, rangeHeader, maxBytes);
+
+      return new Response(Readable.toWeb(result.stream) as any, {
+        status: result.status,
+        headers: {
+          ...result.headers,
+          'Cache-Control': 'private, max-age=0, no-store'
+        }
+      });
+    }
   }
 
-  const result = await streamFile(filePath, rangeHeader, maxBytes);
+  if (relayBase) {
+    const hit = await cacheExists(video.r2Key);
+    recordCacheHit(hit);
+    const filePath = hit ? getCachePath(video.r2Key) : await ensureCached(video.r2Key);
+    const result = await streamFile(filePath, rangeHeader, maxBytes);
+
+    return new Response(Readable.toWeb(result.stream) as any, {
+      status: result.status,
+      headers: {
+        ...result.headers,
+        'Cache-Control': 'private, max-age=0, no-store'
+      }
+    });
+  }
+
+  const result = await streamR2Object(video.r2Key, rangeHeader, maxBytes);
 
   return new Response(Readable.toWeb(result.stream) as any, {
     status: result.status,

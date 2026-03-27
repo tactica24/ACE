@@ -21,8 +21,8 @@ export async function headObject(key: string) {
   return createClient().send(new HeadObjectCommand({ Bucket: getBucket(), Key: key }));
 }
 
-export async function getObjectStream(key: string) {
-  return createClient().send(new GetObjectCommand({ Bucket: getBucket(), Key: key }));
+export async function getObjectStream(key: string, range?: string) {
+  return createClient().send(new GetObjectCommand({ Bucket: getBucket(), Key: key, Range: range }));
 }
 
 export async function putObject(key: string, body: Buffer, contentType: string) {
