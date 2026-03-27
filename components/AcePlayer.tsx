@@ -201,18 +201,10 @@ export default function AcePlayer({
       throw new Error(data.error ?? 'Unable to load this video right now.');
     }
 
-    const canPlayHls = typeof document !== 'undefined'
-      ? document.createElement('video').canPlayType('application/vnd.apple.mpegurl') !== ''
-      : false;
-
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
 
-    setStreamUrl(
-      canPlayHls
-        ? `/api/hls/${videoId}/master.m3u8?token=${data.token}`
-        : `/api/stream/${videoId}?token=${data.token}`
-    );
+    setStreamUrl(`/api/stream/${videoId}?token=${data.token}`);
   }, [isAuthenticated, videoId]);
 
   const syncHistory = useCallback(async ({
@@ -431,6 +423,10 @@ export default function AcePlayer({
       void syncHistory({ progressSec: 0, completed: true, keepalive: true });
     };
 
+    const handleError = () => {
+      setFeedback('This video could not be played right now. Use MP4 or WebM uploads for the most reliable playback.');
+    };
+
     const handlePageHide = () => {
       if (video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
@@ -442,6 +438,7 @@ export default function AcePlayer({
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleError);
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
@@ -450,6 +447,7 @@ export default function AcePlayer({
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('error', handleError);
       window.removeEventListener('pagehide', handlePageHide);
     };
   }, [

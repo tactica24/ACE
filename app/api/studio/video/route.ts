@@ -13,6 +13,7 @@ const PRICE_TIERS: PriceTierValue[] = ['SNACK', 'STANDARD', 'PREMIERE'];
 const RIGHTS_TIERS: RightsTierValue[] = ['SHARED', 'EXCLUSIVE'];
 const VIDEO_TYPES: VideoTypeValue[] = ['FEATURE', 'SERIES', 'SHORT', 'SKIT', 'DOCUMENTARY', 'ADVERT'];
 const AGE_RATINGS: AgeRatingValue[] = ['ALL', 'PG13', 'PG16', 'PG18'];
+const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.webm'];
 
 function isPriceTier(value: string | undefined): value is PriceTierValue {
   return Boolean(value && PRICE_TIERS.includes(value as PriceTierValue));
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
   const safeTitle = title?.trim();
   const safeDescription = description?.trim();
   const safeCategory = category?.trim() || 'General';
+  const safeR2Key = r2Key?.trim() || '';
   const safePosterKey = posterKey?.trim() || null;
   const safeGenres = (genres ?? []).map((value) => value.trim()).filter(Boolean);
   const safeTags = (tags ?? []).map((value) => value.trim()).filter(Boolean);
@@ -106,8 +108,12 @@ export async function POST(req: NextRequest) {
   const safeTeaserSec = Math.max(0, Math.floor(Number(teaserSec ?? 0)));
   const safeDurationSec = Math.max(0, Math.floor(Number(durationSec ?? 0)));
 
-  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !safeDurationSec || !r2Key) {
+  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !safeDurationSec || !safeR2Key) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+  }
+
+  if (!SUPPORTED_VIDEO_EXTENSIONS.some((extension) => safeR2Key.toLowerCase().endsWith(extension))) {
+    return NextResponse.json({ error: 'Upload MP4 or WebM video files for reliable playback.' }, { status: 400 });
   }
 
   if (!isPriceTier(priceTier) || !isRightsTier(rightsTier)) {
@@ -148,7 +154,7 @@ export async function POST(req: NextRequest) {
       durationSec: safeDurationSec,
       tags: safeTags,
       highlightSeconds: safeHighlights,
-      r2Key,
+      r2Key: safeR2Key,
       posterKey: safePosterKey,
       subtitleTracks: safeSubtitleTracks.length
         ? {
