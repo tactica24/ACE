@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
 import { calculateUnlockSplit, getFinanceConfig, getPlatformWallet } from '@/lib/finance';
 import { debitWallet, usePassCredit as consumePassCredit, useWalletCredit as consumeWalletCredit } from '@/lib/wallet';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.unlock.findFirst({ where: { userId: auth.sub, videoId } });
   if (existing) return NextResponse.json({ ok: true, unlocked: true });
 
-  const price = getRegionalPrice(req, video.priceTier);
+  const financeConfig = await getFinanceConfig();
+  const price = getRegionalPriceFromConfig(req, video.priceTier, financeConfig);
   let source: 'PASS' | 'WALLET' = 'WALLET';
 
   const pass = await consumePassCredit(auth.sub);
@@ -57,7 +58,6 @@ export async function POST(req: NextRequest) {
 
   const referralCode = readReferralCode(req, body?.referralCode);
   const referral = await resolveReferral(referralCode, videoId);
-  const financeConfig = await getFinanceConfig();
   await getPlatformWallet();
   const split = calculateUnlockSplit(price.amountNaira, financeConfig);
   const creatorProfileId = video.creator.creator?.id ?? null;

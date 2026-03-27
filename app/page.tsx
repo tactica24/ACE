@@ -1,16 +1,19 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import LaunchPage from '@/components/LaunchPage';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
+import { getFinanceConfig } from '@/lib/finance';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,6 +135,19 @@ export default async function HomePage() {
 
   const language = await getPreferredUiLanguage();
   const copy = getUiCopy(language);
+  const siteSettings = await getSiteSettings();
+
+  if (siteSettings.homePageMode === 'LAUNCH' && (!user || user.role === 'USER')) {
+    return (
+      <LaunchPage
+        title={siteSettings.launchTitle}
+        message={siteSettings.launchMessage}
+        countdownAt={siteSettings.launchCountdownAt?.toISOString() ?? null}
+        ctaLabel={siteSettings.launchCtaLabel}
+        ctaHref={siteSettings.launchCtaHref}
+      />
+    );
+  }
 
   let videos: HomeVideo[] = [];
   try {
@@ -176,6 +192,7 @@ export default async function HomePage() {
   }
 
   const requestHeaders = headers();
+  const pricingConfig = await getFinanceConfig();
   const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
   const rows = buildRows({ videos, continueWatching, unlockedVideos, language });
@@ -227,7 +244,7 @@ export default async function HomePage() {
                   {row.items.map((video) => (
                     <div key={`${row.title}-${video.id}`} className="home-carousel-item">
                       <VideoCard
-                        video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
+                        video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }}
                       />
                     </div>
                   ))}

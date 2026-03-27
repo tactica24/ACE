@@ -1,11 +1,14 @@
+import LaunchPage from '@/components/LaunchPage';
 import BrowseCatalog from '@/components/BrowseCatalog';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
+import { getFinanceConfig } from '@/lib/finance';
 import { type PriceTierValue } from '@/lib/media-types';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +26,24 @@ type BrowseVideo = {
 
 export default async function BrowsePage() {
   const user = await getCurrentUser();
+  const siteSettings = await getSiteSettings();
   if (user) {
     const primaryAppPath = getPrimaryAppPath(user);
     if (primaryAppPath !== '/browse') {
       redirect(primaryAppPath);
     }
+  }
+
+  if (siteSettings.homePageMode === 'LAUNCH' && (!user || user.role === 'USER')) {
+    return (
+      <LaunchPage
+        title={siteSettings.launchTitle}
+        message={siteSettings.launchMessage}
+        countdownAt={siteSettings.launchCountdownAt?.toISOString() ?? null}
+        ctaLabel={siteSettings.launchCtaLabel}
+        ctaHref={siteSettings.launchCtaHref}
+      />
+    );
   }
 
   let videos: BrowseVideo[] = [];
@@ -38,6 +54,7 @@ export default async function BrowsePage() {
   }
 
   const requestHeaders = headers();
+  const pricingConfig = await getFinanceConfig();
 
   return (
     <div className="section">
@@ -54,7 +71,7 @@ export default async function BrowsePage() {
           <BrowseCatalog
             videos={videos.map((video) => ({
               ...video,
-              price: getRegionalPrice(requestHeaders, video.priceTier)
+              price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig)
             }))}
           />
         ) : (

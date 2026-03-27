@@ -31,6 +31,9 @@ export default async function ModerationPage() {
         ageRating: item.video.ageRating,
         rightsTier: item.video.rightsTier,
         priceTier: item.video.priceTier,
+        originalLanguage: item.video.originalLanguage,
+        genres: item.video.genres,
+        contentWarnings: item.video.contentWarnings,
         posterKey: item.video.posterKey,
         createdAt: item.video.createdAt.toISOString(),
         creatorName: item.video.creator.creator?.displayName ?? item.video.creator.email
@@ -52,6 +55,7 @@ export default async function ModerationPage() {
             { href: '/admin/intake', label: 'Creator intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${queueItems.length}` },
+            { href: '/admin/settings', label: 'Controls' },
             { href: '/admin/support', label: 'Support' },
             { href: '/admin/node', label: 'Infrastructure' },
             { href: '/admin/referrals', label: 'Referrals' },

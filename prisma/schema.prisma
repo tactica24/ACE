@@ -114,6 +114,11 @@ enum PayoutRequestStatus {
   PAID
 }
 
+enum HomePageMode {
+  LIVE
+  LAUNCH
+}
+
 enum PairingStatus {
   PENDING
   CLAIMED
@@ -429,7 +434,33 @@ model FinanceConfig {
   platformSharePercent Float  @default(29.5)
   gatewayFeePercent   Float   @default(3)
   taxPercent          Float   @default(7.5)
+  snackNaira          Int      @default(100)
+  standardNaira       Int      @default(200)
+  premiereNaira       Int      @default(500)
+  snackUsdMinor       Int      @default(149)
+  standardUsdMinor    Int      @default(199)
+  premiereUsdMinor    Int      @default(249)
+  snackGbpMinor       Int      @default(99)
+  standardGbpMinor    Int      @default(149)
+  premiereGbpMinor    Int      @default(199)
+  snackCadMinor       Int      @default(199)
+  standardCadMinor    Int      @default(249)
+  premiereCadMinor    Int      @default(299)
+  familyPassUsdMinor  Int      @default(1000)
+  familyPassGbpMinor  Int      @default(800)
+  familyPassCadMinor  Int      @default(1300)
   updatedAt           DateTime @default(now()) @updatedAt
+}
+
+model SiteSettings {
+  id                String       @id @default("default")
+  homePageMode      HomePageMode @default(LIVE)
+  launchTitle       String       @default("ACE is launching soon")
+  launchMessage     String       @default("We are getting the catalog, producers, and launch details ready.")
+  launchCountdownAt DateTime?
+  launchCtaLabel    String?
+  launchCtaHref     String?
+  updatedAt         DateTime     @default(now()) @updatedAt
 }
 
 model PlatformWallet {

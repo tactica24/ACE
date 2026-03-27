@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getLanguageLabel } from '@/lib/media-types';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
-const AUTO_UNLOCK_LEAD_SECONDS = 5;
+const AUTO_UNLOCK_LEAD_SECONDS = 20;
 const HISTORY_SYNC_SECONDS = 5;
 
 function getProgressStorageKey(videoId: string) {
@@ -124,6 +124,33 @@ export default function AcePlayer({
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string>(subtitleTracks.find((track) => track.isDefault)?.id ?? subtitleTracks[0]?.id ?? 'off');
   const [audioTrackOptions, setAudioTrackOptions] = useState<Array<{ index: number; label: string }>>([]);
   const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
+
+  const seekToTime = useCallback((targetSec: number, shouldPlay = true) => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    const safeTarget = Math.max(0, targetSec);
+    const startPlayback = () => {
+      if (shouldPlay) {
+        videoElement.play().catch(() => null);
+      }
+    };
+
+    if (Math.abs(videoElement.currentTime - safeTarget) < 0.5) {
+      startPlayback();
+      return;
+    }
+
+    const handleSeeked = () => {
+      videoElement.removeEventListener('seeked', handleSeeked);
+      startPlayback();
+    };
+
+    videoElement.addEventListener('seeked', handleSeeked);
+    videoElement.currentTime = safeTarget;
+  }, []);
 
   const applySubtitleSelection = useCallback((videoElement = videoRef.current) => {
     if (!videoElement || !videoElement.textTracks) {
@@ -363,6 +390,41 @@ export default function AcePlayer({
       pendingAutoplayRef.current = false;
     };
 
+    const lockAtBoundary = (message?: string) => {
+      const lockPoint = Math.max(teaserSec - 0.35, 0);
+      video.pause();
+      if (video.currentTime > lockPoint) {
+        video.currentTime = lockPoint;
+      }
+      if (message) {
+        setFeedback(message);
+      }
+    };
+
+    const promptUnlock = () => {
+      if (!isAuthenticated) {
+        lockAtBoundary('Sign in to continue watching the full title.');
+        setShowPaywall(true);
+        return;
+      }
+
+      if (unlockState === 'unlocking') {
+        lockAtBoundary('Unlocking your full video...');
+        setShowPaywall(true);
+        return;
+      }
+
+      if (unlockState === 'needs_topup' || unlockState === 'verification_required' || unlockState === 'error') {
+        lockAtBoundary();
+        setShowPaywall(true);
+        return;
+      }
+
+      unlockAttemptedRef.current = true;
+      lockAtBoundary('Unlocking your full video...');
+      void unlockVideo({ resumeAt: video.currentTime, immediatePrompt: true });
+    };
+
     const handlePlay = () => {
       setResumePrompt(null);
       setWatchMode(true);
@@ -384,26 +446,8 @@ export default function AcePlayer({
       }
 
       if (!unlocked && currentTime >= teaserSec) {
-        video.pause();
-        if (!isAuthenticated) {
-          setFeedback('Sign in to continue watching the full title.');
-          setShowPaywall(true);
-          return;
-        }
-
-        if (unlockState === 'unlocking') {
-          setFeedback('Unlocking your full video...');
-          setShowPaywall(true);
-          return;
-        }
-
-        if (unlockState === 'needs_topup' || unlockState === 'verification_required' || unlockState === 'error') {
-          setShowPaywall(true);
-          return;
-        }
-
-        unlockAttemptedRef.current = true;
-        void unlockVideo({ resumeAt: currentTime, immediatePrompt: true });
+        promptUnlock();
+        return;
       }
 
       if (currentTime - lastSyncedRef.current >= HISTORY_SYNC_SECONDS) {
@@ -427,6 +471,12 @@ export default function AcePlayer({
       setFeedback('This video could not be played right now. Use MP4 or WebM uploads for the most reliable playback.');
     };
 
+    const handleSeeking = () => {
+      if (!unlocked && video.currentTime >= teaserSec) {
+        promptUnlock();
+      }
+    };
+
     const handlePageHide = () => {
       if (video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
@@ -439,6 +489,7 @@ export default function AcePlayer({
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('error', handleError);
+    video.addEventListener('seeking', handleSeeking);
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
@@ -448,12 +499,14 @@ export default function AcePlayer({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('error', handleError);
+      video.removeEventListener('seeking', handleSeeking);
       window.removeEventListener('pagehide', handlePageHide);
     };
   }, [
     applySubtitleSelection,
     initialProgress,
     isAuthenticated,
+    seekToTime,
     syncAudioTrackState,
     syncHistory,
     teaserSec,
@@ -510,7 +563,32 @@ export default function AcePlayer({
         <div style={{ color: 'white', padding: '24px' }}>{feedback ?? copy.loadingStream}</div>
       )}
 
-      <div className="watermark">{watermarkText}</div>
+      <div
+        className="watermark"
+        style={{ zIndex: 6, pointerEvents: 'none', textShadow: '0 2px 16px rgba(0, 0, 0, 0.85)' }}
+      >
+        {watermarkText}
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          top: 16,
+          left: 16,
+          right: 16,
+          zIndex: 7,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          pointerEvents: 'none'
+        }}
+      >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', pointerEvents: 'auto' }}>
+          <a className="btn btn-ghost" href="/browse">Browse</a>
+          <a className="btn btn-ghost" href="/">Home</a>
+          {isAuthenticated ? <a className="btn btn-ghost" href="/wallet">{copy.wallet}</a> : null}
+        </div>
+      </div>
 
       <button
         className="player-ghost-control"
@@ -580,11 +658,8 @@ export default function AcePlayer({
                 className="btn btn-primary"
                 type="button"
                 onClick={() => {
-                  const video = videoRef.current;
-                  if (!video) return;
-                  video.currentTime = resumePrompt;
                   setResumePrompt(null);
-                  video.play().catch(() => null);
+                  seekToTime(resumePrompt);
                 }}
               >
                 {copy.continueFrom} {formatTime(resumePrompt)}
@@ -596,10 +671,7 @@ export default function AcePlayer({
                   const video = videoRef.current;
                   clearSavedProgress(videoId);
                   setResumePrompt(null);
-                  if (video) {
-                    video.currentTime = 0;
-                    video.play().catch(() => null);
-                  }
+                  if (video) seekToTime(0);
                   void syncHistory({ progressSec: 0, keepalive: true });
                 }}
               >
@@ -671,10 +743,7 @@ export default function AcePlayer({
                 type="button"
                 onClick={() => {
                   if (locked) return;
-                  const video = videoRef.current;
-                  if (!video) return;
-                  video.currentTime = sec;
-                  video.play().catch(() => null);
+                  seekToTime(sec);
                 }}
                 disabled={locked}
               >

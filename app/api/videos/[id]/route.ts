@@ -1,7 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getFinanceConfig } from '@/lib/finance';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     unlocked = Boolean(unlock);
   }
 
-  const price = getRegionalPrice(req, video.priceTier);
+  const pricingConfig = await getFinanceConfig();
+  const price = getRegionalPriceFromConfig(req, video.priceTier, pricingConfig);
 
   return NextResponse.json({
     video: {

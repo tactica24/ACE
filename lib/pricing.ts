@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getGeoContext, getGeoContextFromHeaders, isDiaspora } from './geo';
 import { env } from './env';
+import { getFinanceConfig } from './finance';
 import { type PriceTierValue } from './media-types';
 
 export type RegionalPrice = {
@@ -15,35 +16,41 @@ export type RegionalCurrency = {
   region: 'NG' | 'DIASPORA';
 };
 
-const NGN_PRICES: Record<PriceTierValue, number> = {
-  SNACK: 100,
-  STANDARD: 200,
-  PREMIERE: 500
-};
+export type PricingConfigValues = Awaited<ReturnType<typeof getFinanceConfig>>;
 
-const USD_PRICES: Record<PriceTierValue, number> = {
-  SNACK: 1.49,
-  STANDARD: 1.99,
-  PREMIERE: 2.49
-};
+function getAmountMinorForTier(
+  config: PricingConfigValues,
+  tier: PriceTierValue,
+  currency: 'NGN' | 'USD' | 'GBP' | 'CAD'
+) {
+  if (currency === 'NGN') {
+    if (tier === 'SNACK') return config.snackNaira * 100;
+    if (tier === 'STANDARD') return config.standardNaira * 100;
+    return config.premiereNaira * 100;
+  }
 
-const GBP_PRICES: Record<PriceTierValue, number> = {
-  SNACK: 0.99,
-  STANDARD: 1.49,
-  PREMIERE: 1.99
-};
+  if (currency === 'USD') {
+    if (tier === 'SNACK') return config.snackUsdMinor;
+    if (tier === 'STANDARD') return config.standardUsdMinor;
+    return config.premiereUsdMinor;
+  }
 
-const CAD_PRICES: Record<PriceTierValue, number> = {
-  SNACK: 1.99,
-  STANDARD: 2.49,
-  PREMIERE: 2.99
-};
+  if (currency === 'GBP') {
+    if (tier === 'SNACK') return config.snackGbpMinor;
+    if (tier === 'STANDARD') return config.standardGbpMinor;
+    return config.premiereGbpMinor;
+  }
 
-const FAMILY_PASS_PRICES: Record<string, number> = {
-  USD: 10,
-  GBP: 8,
-  CAD: 13
-};
+  if (tier === 'SNACK') return config.snackCadMinor;
+  if (tier === 'STANDARD') return config.standardCadMinor;
+  return config.premiereCadMinor;
+}
+
+function getFamilyPassMinor(config: PricingConfigValues, currency: 'USD' | 'GBP' | 'CAD') {
+  if (currency === 'GBP') return config.familyPassGbpMinor;
+  if (currency === 'CAD') return config.familyPassCadMinor;
+  return config.familyPassUsdMinor;
+}
 
 export function getFxRate(currency: string) {
   if (currency === 'USD') return Number(env.ACE_USD_NGN_RATE ?? 1600);
@@ -72,49 +79,42 @@ export function getChargeForNaira(req: NextRequest | Headers, amountNaira: numbe
   return { currency, region, amountMinor, amountNaira };
 }
 
-export function getFamilyPassPrice(req: NextRequest | Headers) {
+export function getRegionalPriceFromConfig(
+  req: NextRequest | Headers,
+  tier: PriceTierValue,
+  config: PricingConfigValues
+): RegionalPrice {
+  const { currency, region } = getRegionalCurrency(req);
+  const amountMinor = getAmountMinorForTier(config, tier, currency as 'NGN' | 'USD' | 'GBP' | 'CAD');
+  const amountNaira =
+    currency === 'NGN'
+      ? Math.round(amountMinor / 100)
+      : Math.round((amountMinor / 100) * getFxRate(currency));
+
+  return {
+    currency,
+    amountMinor,
+    amountNaira,
+    region
+  };
+}
+
+export async function getRegionalPrice(req: NextRequest | Headers, tier: PriceTierValue): Promise<RegionalPrice> {
+  const config = await getFinanceConfig();
+  return getRegionalPriceFromConfig(req, tier, config);
+}
+
+export function getFamilyPassPriceFromConfig(req: NextRequest | Headers, config: PricingConfigValues) {
   const { currency, region } = getRegionalCurrency(req);
   if (currency === 'NGN') {
     return { currency: 'NGN', region, amountMinor: 0, amountNaira: 0 };
   }
-  const amount = FAMILY_PASS_PRICES[currency] ?? FAMILY_PASS_PRICES.USD;
-  const amountMinor = Math.round(amount * 100);
-  const amountNaira = Math.round(amount * getFxRate(currency));
+  const amountMinor = getFamilyPassMinor(config, currency as 'USD' | 'GBP' | 'CAD');
+  const amountNaira = Math.round((amountMinor / 100) * getFxRate(currency));
   return { currency, region, amountMinor, amountNaira };
 }
 
-export function getRegionalPrice(req: NextRequest | Headers, tier: PriceTierValue): RegionalPrice {
-  const { country } = req instanceof Headers ? getGeoContextFromHeaders(req) : getGeoContext(req);
-  if (!isDiaspora(country) || country === 'NG') {
-    const amountNaira = NGN_PRICES[tier];
-    return { currency: 'NGN', amountMinor: amountNaira * 100, amountNaira, region: 'NG' };
-  }
-
-  if (country === 'GB' || country === 'UK') {
-    const amount = GBP_PRICES[tier];
-    return {
-      currency: 'GBP',
-      amountMinor: Math.round(amount * 100),
-      amountNaira: Math.round(amount * getFxRate('GBP')),
-      region: 'DIASPORA'
-    };
-  }
-
-  if (country === 'CA') {
-    const amount = CAD_PRICES[tier];
-    return {
-      currency: 'CAD',
-      amountMinor: Math.round(amount * 100),
-      amountNaira: Math.round(amount * getFxRate('CAD')),
-      region: 'DIASPORA'
-    };
-  }
-
-  const amount = USD_PRICES[tier];
-  return {
-    currency: 'USD',
-    amountMinor: Math.round(amount * 100),
-    amountNaira: Math.round(amount * getFxRate('USD')),
-    region: 'DIASPORA'
-  };
+export async function getFamilyPassPrice(req: NextRequest | Headers) {
+  const config = await getFinanceConfig();
+  return getFamilyPassPriceFromConfig(req, config);
 }

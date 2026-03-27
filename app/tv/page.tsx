@@ -3,19 +3,26 @@ import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
+import { getFinanceConfig } from '@/lib/finance';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TvPage() {
   const user = await getCurrentUser();
+  const siteSettings = await getSiteSettings();
   if (user) {
     const primaryAppPath = getPrimaryAppPath(user);
     if (primaryAppPath !== '/browse') {
       redirect(primaryAppPath);
     }
+  }
+
+  if (siteSettings.homePageMode === 'LAUNCH' && !user) {
+    redirect('/');
   }
 
   let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
@@ -30,6 +37,7 @@ export default async function TvPage() {
   }
 
   const requestHeaders = headers();
+  const pricingConfig = await getFinanceConfig();
 
   return (
     <div className="section">
@@ -63,7 +71,7 @@ export default async function TvPage() {
             {videos.map((video) => (
               <VideoCard
                 key={video.id}
-                video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }}
+                video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }}
               />
             ))}
           </div>

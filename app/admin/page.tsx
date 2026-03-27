@@ -300,6 +300,7 @@ export default async function AdminPage() {
             { href: '/admin/intake', label: 'Creator intake', count: `${creatorRequests}` },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${pendingModeration}` },
+            { href: '/admin/settings', label: 'Controls' },
             { href: '/admin/support', label: 'Support', count: `${openSupport}` },
             { href: '/admin/node', label: 'Infrastructure' },
             { href: '/admin/referrals', label: 'Referrals' },
@@ -310,6 +311,7 @@ export default async function AdminPage() {
       actions={
         <>
           <Link className="btn btn-primary" href="/admin/moderation">Open moderation</Link>
+          <Link className="btn btn-ghost" href="/admin/settings">Controls</Link>
           <Link className="btn btn-ghost" href="/admin/finance">Finance</Link>
         </>
       }

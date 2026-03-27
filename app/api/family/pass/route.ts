@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   if (!recipient) return NextResponse.json({ error: 'Recipient not found' }, { status: 404 });
 
   const credits = Number(env.ACE_FAMILY_PASS_CREDITS ?? 50);
-  const price = getFamilyPassPrice(req);
+  const price = await getFamilyPassPrice(req);
   if (price.region === 'NG' || price.amountMinor <= 0) {
     return NextResponse.json({ error: 'Family pass is only available for diaspora purchases.' }, { status: 400 });
   }

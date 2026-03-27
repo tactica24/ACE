@@ -27,7 +27,6 @@ export default function LanguageSwitcher({
 
   return (
     <label className="language-switcher" aria-label={copy.uiLanguage}>
-      <span className="language-switcher-label">{copy.language}</span>
       <select
         className="language-switcher-select"
         value={language}
@@ -38,7 +37,7 @@ export default function LanguageSwitcher({
       >
         {UI_LANGUAGE_OPTIONS.map((option) => (
           <option key={option.code} value={option.code}>
-            {option.label}
+            {option.code.toUpperCase()}
           </option>
         ))}
       </select>

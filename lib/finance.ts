@@ -9,7 +9,22 @@ export async function getFinanceConfig() {
       creatorSharePercent: 60,
       platformSharePercent: 29.5,
       gatewayFeePercent: 3,
-      taxPercent: 7.5
+      taxPercent: 7.5,
+      snackNaira: 100,
+      standardNaira: 200,
+      premiereNaira: 500,
+      snackUsdMinor: 149,
+      standardUsdMinor: 199,
+      premiereUsdMinor: 249,
+      snackGbpMinor: 99,
+      standardGbpMinor: 149,
+      premiereGbpMinor: 199,
+      snackCadMinor: 199,
+      standardCadMinor: 249,
+      premiereCadMinor: 299,
+      familyPassUsdMinor: 1000,
+      familyPassGbpMinor: 800,
+      familyPassCadMinor: 1300
     }
   });
 }

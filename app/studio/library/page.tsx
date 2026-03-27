@@ -4,7 +4,8 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import VideoCard from '@/components/VideoCard';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getFinanceConfig } from '@/lib/finance';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
 
 export default async function LibraryPage() {
   const user = await requireCreatorUser('/studio/library');
@@ -18,6 +19,7 @@ export default async function LibraryPage() {
     }
   });
   const requestHeaders = headers();
+  const pricingConfig = await getFinanceConfig();
 
   return (
     <DashboardShell
@@ -42,7 +44,7 @@ export default async function LibraryPage() {
         <div className="library-grid">
           {videos.map((video) => (
             <div key={video.id} className="card library-card">
-              <VideoCard video={{ ...video, price: getRegionalPrice(requestHeaders, video.priceTier) }} />
+              <VideoCard video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }} />
               <div className="detail-grid">
                 <div className="detail-card">
                   <span className="detail-label">Status</span>

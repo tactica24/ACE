@@ -2,15 +2,18 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
+import LaunchPage from '@/components/LaunchPage';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
+import { getFinanceConfig } from '@/lib/finance';
 import { formatNaira } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getContentWarningLabel, getLanguageLabel } from '@/lib/media-types';
-import { getRegionalPrice } from '@/lib/pricing';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
+import { getSiteSettings } from '@/lib/site-settings';
 
 const ageLabel: Record<string, string> = {
   ALL: 'All',
@@ -29,6 +32,7 @@ const labelize = (value: string) =>
 export default async function VideoPage({ params }: { params: { id: string } }) {
   const language = await getPreferredUiLanguage();
   const copy = getUiCopy(language);
+  const siteSettings = await getSiteSettings();
   const video = await prisma.video.findUnique({
     where: { id: params.id },
     include: { creator: { include: { creator: true } }, subtitleTracks: true }
@@ -37,6 +41,18 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   if (!video) return notFound();
 
   const user = await getCurrentUser();
+
+  if (siteSettings.homePageMode === 'LAUNCH' && (!user || user.role === 'USER')) {
+    return (
+      <LaunchPage
+        title={siteSettings.launchTitle}
+        message={siteSettings.launchMessage}
+        countdownAt={siteSettings.launchCountdownAt?.toISOString() ?? null}
+        ctaLabel={siteSettings.launchCtaLabel}
+        ctaHref={siteSettings.launchCtaHref}
+      />
+    );
+  }
 
   if (video.status !== 'APPROVED' && (!user || (user.role !== 'ADMIN' && user.sub !== video.creatorId))) {
     return notFound();
@@ -49,7 +65,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     }
   }
 
-  const regionalPrice = getRegionalPrice(headers(), video.priceTier);
+  const pricingConfig = await getFinanceConfig();
+  const regionalPrice = getRegionalPriceFromConfig(headers(), video.priceTier, pricingConfig);
   const posterUrl = getMediaAssetUrl(video.posterKey);
   const priceLabel =
     regionalPrice.currency === 'NGN'
@@ -94,13 +111,24 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
             <div className="pill">{video.category}</div>
             <h1 className="hero-title" style={{ marginTop: 12 }}>{video.title}</h1>
             <p className="muted">{video.description}</p>
+            <p className="muted" style={{ marginTop: 12 }}>
+              <strong>Producer:</strong> {video.creator.creator?.displayName ?? video.creator.email}
+            </p>
+            <p className="muted">
+              {[labelize(video.videoType), ageLabel[video.ageRating] ?? labelize(video.ageRating), ...video.genres].filter(Boolean).join(' • ')}
+            </p>
+            {video.originalLanguage || video.subtitleTracks.length || video.contentWarnings.length ? (
+              <p className="muted">
+                {[
+                  video.originalLanguage ? `Audio: ${getLanguageLabel(video.originalLanguage)}` : null,
+                  video.subtitleTracks.length ? `Subtitles: ${video.subtitleTracks.map((track) => track.label).join(', ')}` : null,
+                  video.contentWarnings.length ? `Advisories: ${video.contentWarnings.map((warning) => getContentWarningLabel(warning)).join(', ')}` : null
+                ].filter(Boolean).join(' • ')}
+              </p>
+            ) : null}
             <div className="detail-badges">
               <span className="badge">{priceLabel}</span>
-              <span className="badge">{copy.teaser} {Math.floor(video.teaserSec / 60)} {copy.mins}</span>
-              <span className="badge">{video.durationSec ? `${Math.round(video.durationSec / 60)} ${copy.mins}` : 'Full length'}</span>
               <span className="badge">{video.category}</span>
-              <span className="badge">{labelize(video.videoType)}</span>
-              <span className="badge">{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
             </div>
           </div>
         </div>
@@ -137,51 +165,6 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
             <Link className="btn btn-primary" href={`/auth/login?next=/v/${video.id}`}>{copy.signIn}</Link>
           </div>
         ) : null}
-
-        <div className="detail-grid video-page-secondary">
-          <div className="card">
-            <h3>{copy.creator}</h3>
-            <p className="muted">{video.creator.creator?.displayName ?? video.creator.email}</p>
-          </div>
-          <div className="card">
-            <h3>{copy.languages}</h3>
-            <p className="muted">{copy.originalAudio}: {getLanguageLabel(video.originalLanguage ?? 'en')}</p>
-            {video.audioLanguages.length > 1 ? (
-              <p className="muted">{copy.audioOptions}: {video.audioLanguages.map((audioLanguage) => getLanguageLabel(audioLanguage)).join(', ')}</p>
-            ) : null}
-            {video.subtitleTracks.length ? (
-              <p className="muted">{copy.subtitleOptions}: {video.subtitleTracks.map((track) => track.label).join(', ')}</p>
-            ) : (
-              <p className="muted">{copy.noSubtitles}</p>
-            )}
-          </div>
-          {video.contentWarnings.length ? (
-            <div className="card">
-              <h3>{copy.contentAdvisories}</h3>
-              <div className="detail-badges">
-                {video.contentWarnings.map((warning) => (
-                  <span key={warning} className="badge">{getContentWarningLabel(warning)}</span>
-                ))}
-              </div>
-              <p className="muted">{copy.contentAdvisorySummary}</p>
-            </div>
-          ) : null}
-          <div className="card">
-            <h3>{copy.offlineShare}</h3>
-            <p className="muted">{copy.offlineShareSummary}</p>
-            <Link className="btn btn-ghost" href="/wallet">{copy.manageWallet}</Link>
-          </div>
-          <div className="card">
-            <h3>{copy.genresAndHighlights}</h3>
-            <p className="muted">{video.genres.length ? video.genres.join(', ') : copy.generalAudience}</p>
-            <p className="muted">
-              {copy.highlights}:{' '}
-              {video.highlightSeconds.length
-                ? video.highlightSeconds.map((sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`).join(', ')
-                : copy.none}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
