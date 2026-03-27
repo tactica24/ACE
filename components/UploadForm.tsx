@@ -398,7 +398,7 @@ export default function UploadForm() {
           <label className="field">
             <span className="field-label">Tags</span>
             <input className="input" value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
-            <span className="field-hint">Use short discovery tags like "festival", "romance", or "family".</span>
+            <span className="field-hint">Use short discovery tags like &quot;festival&quot;, &quot;romance&quot;, or &quot;family&quot;.</span>
           </label>
         </div>
       </div>
