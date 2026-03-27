@@ -1,12 +1,23 @@
 import TvPairingPanel from '@/components/TvPairingPanel';
 import VideoCard from '@/components/VideoCard';
+import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { getRegionalPrice } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TvPage() {
+  const user = await getCurrentUser();
+  if (user) {
+    const primaryAppPath = getPrimaryAppPath(user);
+    if (primaryAppPath !== '/browse') {
+      redirect(primaryAppPath);
+    }
+  }
+
   let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
   try {
     videos = await prisma.video.findMany({

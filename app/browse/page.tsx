@@ -1,5 +1,8 @@
 import BrowseCatalog from '@/components/BrowseCatalog';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalPrice } from '@/lib/pricing';
@@ -19,6 +22,14 @@ type BrowseVideo = {
 };
 
 export default async function BrowsePage() {
+  const user = await getCurrentUser();
+  if (user) {
+    const primaryAppPath = getPrimaryAppPath(user);
+    if (primaryAppPath !== '/browse') {
+      redirect(primaryAppPath);
+    }
+  }
+
   let videos: BrowseVideo[] = [];
   try {
     videos = await getApprovedCatalogVideos();

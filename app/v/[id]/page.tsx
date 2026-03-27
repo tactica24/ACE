@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
 import { getCurrentUser } from '@/lib/auth';
+import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
 import { formatNaira } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
@@ -39,6 +40,13 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
   if (video.status !== 'APPROVED' && (!user || (user.role !== 'ADMIN' && user.sub !== video.creatorId))) {
     return notFound();
+  }
+
+  if (user && user.role !== 'USER' && video.status === 'APPROVED') {
+    const primaryAppPath = getPrimaryAppPath(user);
+    if (primaryAppPath !== '/browse') {
+      redirect(primaryAppPath);
+    }
   }
 
   const regionalPrice = getRegionalPrice(headers(), video.priceTier);

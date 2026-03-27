@@ -135,30 +135,20 @@ export default function UploadForm() {
   };
 
   const uploadAsset = async (file: File) => {
-    const presign = await fetch('/api/studio/upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: file.type || 'application/octet-stream'
-      })
-    });
-    const presignData = await presign.json();
-    if (!presign.ok) {
-      throw new Error(presignData.error || 'Unable to prepare upload');
-    }
+    const payload = new FormData();
+    payload.append('file', file);
 
-    const upload = await fetch(presignData.url, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
+    const upload = await fetch('/api/studio/upload', {
+      method: 'POST',
+      body: payload
     });
+    const uploadData = await upload.json().catch(() => ({}));
 
     if (!upload.ok) {
-      throw new Error('Unable to upload file');
+      throw new Error(uploadData.error || 'Unable to upload file');
     }
 
-    return presignData.key as string;
+    return uploadData.key as string;
   };
 
   const handleUpload = async (event: FormEvent) => {

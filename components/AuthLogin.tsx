@@ -21,7 +21,7 @@ export default function AuthLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const next = params.get('next') || '/browse';
+  const next = params.get('next');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
