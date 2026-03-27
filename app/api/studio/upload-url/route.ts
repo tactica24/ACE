@@ -1,7 +1,11 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { createPresignedPutUrl } from '@/lib/r2';
-import { v4 as uuid } from 'uuid';
+
+function sanitizeFilename(filename: string) {
+  return filename.replace(/[^a-zA-Z0-9._-]/g, '-');
+}
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -10,18 +14,14 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const filename = body.filename as string | undefined;
-  const contentType = body.contentType as string | undefined;
+  const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
+  const contentType = typeof body.contentType === 'string' ? body.contentType.trim() : '';
   if (!filename || !contentType) {
     return NextResponse.json({ error: 'Missing file info' }, { status: 400 });
   }
 
-  const key = `uploads/${auth.sub}/${uuid()}-${filename}`;
+  const key = `uploads/${auth.sub}/${uuid()}-${sanitizeFilename(filename)}`;
   const url = await createPresignedPutUrl(key, contentType);
 
   return NextResponse.json({ url, key });
 }
-
-
-
-

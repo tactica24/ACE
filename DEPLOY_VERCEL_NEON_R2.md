@@ -47,6 +47,11 @@ Use the pooled string for runtime traffic and the direct string for Prisma migra
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
   - `R2_BUCKET`
+- Add an R2 CORS policy that allows browser uploads from your app domain.
+  Recommended minimum:
+  - Origins: your `ACE_APP_BASE_URL` domain and any active Vercel preview domain you test with
+  - Methods: `PUT`, `GET`, `HEAD`
+  - Allowed headers: `Content-Type`
 
 ## 2. Set Vercel environment variables
 

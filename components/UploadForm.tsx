@@ -36,6 +36,19 @@ type SubtitleDraft = {
   file: File | null;
 };
 
+type UploadJob = {
+  id: string;
+  label: string;
+  file: File;
+  kind: 'video' | 'poster' | 'subtitle';
+  subtitleMeta?: {
+    label: string;
+    languageCode: string;
+    kind: SubtitleKindValue;
+    isDefault: boolean;
+  };
+};
+
 const initialState: UploadState = {
   title: '',
   description: '',
@@ -67,6 +80,36 @@ function createSubtitleDraft(languageCode = 'en'): SubtitleDraft {
   };
 }
 
+function uploadFileToSignedUrl(url: string, file: File, onProgress: (loaded: number, total: number) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(event.loaded, event.total);
+      }
+    };
+    xhr.onerror = () => {
+      reject(
+        new Error(
+          'Upload could not reach storage. Check your connection and allow PUT uploads from this app domain in Cloudflare R2 CORS.'
+        )
+      );
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(file.size, file.size);
+        resolve();
+        return;
+      }
+
+      reject(new Error(`Storage upload failed with status ${xhr.status}.`));
+    };
+    xhr.send(file);
+  });
+}
+
 export default function UploadForm() {
   const [form, setForm] = useState<UploadState>(initialState);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -74,6 +117,8 @@ export default function UploadForm() {
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleDraft[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadLabel, setUploadLabel] = useState<string | null>(null);
 
   const updateField = <K extends keyof UploadState>(key: K, value: UploadState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -134,21 +179,27 @@ export default function UploadForm() {
     });
   };
 
-  const uploadAsset = async (file: File) => {
-    const payload = new FormData();
-    payload.append('file', file);
-
-    const upload = await fetch('/api/studio/upload', {
+  const uploadAsset = async (
+    file: File,
+    onProgress: (loaded: number, total: number) => void
+  ) => {
+    const presign = await fetch('/api/studio/upload-url', {
       method: 'POST',
-      body: payload
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream'
+      })
     });
-    const uploadData = await upload.json().catch(() => ({}));
+    const presignData = await presign.json().catch(() => ({}));
 
-    if (!upload.ok) {
-      throw new Error(uploadData.error || 'Unable to upload file');
+    if (!presign.ok || !presignData.url || !presignData.key) {
+      throw new Error(presignData.error || 'Unable to prepare upload');
     }
 
-    return uploadData.key as string;
+    await uploadFileToSignedUrl(presignData.url as string, file, onProgress);
+
+    return presignData.key as string;
   };
 
   const handleUpload = async (event: FormEvent) => {
@@ -165,22 +216,79 @@ export default function UploadForm() {
 
     setLoading(true);
     setMessage(null);
+    setUploadProgress(0);
+    setUploadLabel('Preparing upload...');
 
     try {
-      const subtitlePayload = await Promise.all(
-        subtitleTracks.map(async (track, index) => ({
-          label: track.label.trim() || getLanguageLabel(track.languageCode),
-          languageCode: track.languageCode,
-          kind: track.kind,
-          isDefault: track.isDefault || (index === 0 && !subtitleTracks.some((item) => item.isDefault)),
-          fileKey: await uploadAsset(track.file as File)
-        }))
-      );
+      const uploadQueue: UploadJob[] = [
+        {
+          id: 'video',
+          label: `Uploading video: ${videoFile.name}`,
+          file: videoFile,
+          kind: 'video'
+        }
+      ];
 
-      const [r2Key, posterKey] = await Promise.all([
-        uploadAsset(videoFile),
-        posterFile ? uploadAsset(posterFile) : Promise.resolve<string | null>(null)
-      ]);
+      if (posterFile) {
+        uploadQueue.push({
+          id: 'poster',
+          label: `Uploading poster: ${posterFile.name}`,
+          file: posterFile,
+          kind: 'poster'
+        });
+      }
+
+      subtitleTracks.forEach((track, index) => {
+        uploadQueue.push({
+          id: track.id,
+          label: `Uploading subtitle ${index + 1}: ${track.file?.name ?? track.label}`,
+          file: track.file as File,
+          kind: 'subtitle',
+          subtitleMeta: {
+            label: track.label.trim() || getLanguageLabel(track.languageCode),
+            languageCode: track.languageCode,
+            kind: track.kind,
+            isDefault: track.isDefault || (index === 0 && !subtitleTracks.some((item) => item.isDefault))
+          }
+        });
+      });
+
+      const totalBytes = uploadQueue.reduce((sum, item) => sum + item.file.size, 0);
+      let completedBytes = 0;
+      let r2Key: string | null = null;
+      let posterKey: string | null = null;
+      const subtitlePayload: Array<{
+        label: string;
+        languageCode: string;
+        kind: SubtitleKindValue;
+        isDefault: boolean;
+        fileKey: string;
+      }> = [];
+
+      for (const item of uploadQueue) {
+        setUploadLabel(item.label);
+        const fileKey = await uploadAsset(item.file, (loaded, total) => {
+          const safeTotal = total || item.file.size || 1;
+          const overallLoaded = completedBytes + Math.min(loaded, safeTotal);
+          setUploadProgress(Math.min(99, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
+        });
+
+        completedBytes += item.file.size;
+
+        if (item.kind === 'video') {
+          r2Key = fileKey;
+        } else if (item.kind === 'poster') {
+          posterKey = fileKey;
+        } else if (item.subtitleMeta) {
+          subtitlePayload.push({
+            ...item.subtitleMeta,
+            fileKey
+          });
+        }
+      }
+
+      setUploadLabel('Finalizing release...');
+      setUploadProgress(100);
 
       const create = await fetch('/api/studio/video', {
         method: 'POST',
@@ -218,6 +326,7 @@ export default function UploadForm() {
       window.location.href = '/studio/library';
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upload failed');
+      setUploadLabel(null);
     } finally {
       setLoading(false);
     }
@@ -289,7 +398,7 @@ export default function UploadForm() {
           <label className="field">
             <span className="field-label">Tags</span>
             <input className="input" value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
-            <span className="field-hint">Use short discovery tags like “festival”, “romance”, or “family”.</span>
+            <span className="field-hint">Use short discovery tags like "festival", "romance", or "family".</span>
           </label>
         </div>
       </div>
@@ -493,6 +602,17 @@ export default function UploadForm() {
         </button>
         {message ? <p className="muted form-message">{message}</p> : null}
       </div>
+      {(loading || uploadLabel) ? (
+        <div className="upload-progress" aria-live="polite">
+          <div className="upload-progress-meta">
+            <strong>{uploadLabel ?? 'Uploading...'}</strong>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="upload-progress-track">
+            <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }
