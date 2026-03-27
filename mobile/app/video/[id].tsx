@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { Text, View, StyleSheet, Pressable } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Text, View, StyleSheet, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import Screen from '@/components/Screen';
 import PrimaryButton from '@/components/PrimaryButton';
+import SecondaryButton from '@/components/SecondaryButton';
 import { apiGet, apiPost, BASE_URL } from '@/lib/client';
+import { getDeviceSessionId } from '@/lib/device-session';
 import { theme } from '@/lib/theme';
 
 export default function VideoDetailScreen() {
@@ -17,6 +19,9 @@ export default function VideoDetailScreen() {
   const [unlocked, setUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const [deviceSessionId, setDeviceSessionId] = useState<string>('');
+  const [preparingOffline, setPreparingOffline] = useState(false);
   const [watermarkText, setWatermarkText] = useState('Ace Studio Preview');
 
   useEffect(() => {
@@ -30,26 +35,49 @@ export default function VideoDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    apiGet<{ user: { phone?: string } | null }>('/api/me')
+    getDeviceSessionId()
+      .then((value) => setDeviceSessionId(value))
+      .catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    apiGet<{ user: { name?: string | null; email?: string | null } | null }>('/api/me')
       .then((payload) => {
-        if (payload.user?.phone) {
-          setWatermarkText(payload.user.phone);
+        const preferredName = payload.user?.name?.trim();
+        const emailHandle = payload.user?.email?.split('@')[0]?.trim();
+        const nextWatermark = preferredName || emailHandle;
+        if (nextWatermark) {
+          setWatermarkText(nextWatermark);
         }
       })
       .catch(() => null);
   }, []);
 
+  const loadStream = useCallback(async () => {
+    if (!id) return;
+    const query = new URLSearchParams({ videoId: id, teaser: '1' });
+    if (deviceSessionId) {
+      query.set('deviceSessionId', deviceSessionId);
+    }
+
+    setPlayerError(null);
+    try {
+      const payload = await apiGet<{ token: string; guest?: boolean }>(`/api/stream/token?${query.toString()}`);
+      setStreamUrl(`${BASE_URL}/api/stream/${id}?token=${payload.token}`);
+      setAuthRequired(false);
+    } catch (error) {
+      setStreamUrl('');
+      setAuthRequired(true);
+      if (error instanceof Error) {
+        setPlayerError(error.message);
+      }
+    }
+  }, [deviceSessionId, id]);
+
   useEffect(() => {
     if (!id) return;
-    apiGet<{ token: string; guest?: boolean }>(`/api/stream/token?videoId=${id}&teaser=1`)
-      .then((payload) => {
-        setStreamUrl(`${BASE_URL}/api/hls/${id}/master.m3u8?token=${payload.token}`);
-        setAuthRequired(false);
-      })
-      .catch(() => {
-        setAuthRequired(true);
-      });
-  }, [id]);
+    void loadStream();
+  }, [id, loadStream]);
 
   const handleUnlock = async () => {
     if (!id) return;
@@ -58,12 +86,36 @@ export default function VideoDetailScreen() {
       await apiPost('/api/unlock', { videoId: id });
       setUnlocked(true);
       setShowPaywall(false);
+      await loadStream();
       videoRef.current?.playAsync();
     } catch {
       alert('Sign in to unlock or top up your wallet.');
       router.push('/login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePrepareOffline = async () => {
+    if (!id || !unlocked) {
+      return;
+    }
+
+    setPreparingOffline(true);
+    try {
+      await apiPost('/api/offline/packages', { videoId: id });
+      Alert.alert(
+        'Secure ACE package ready',
+        'Your protected ACE package is ready. Open Downloads to save it into the app for offline use.'
+      );
+      router.push('/downloads');
+    } catch (error) {
+      Alert.alert(
+        'Offline package',
+        error instanceof Error ? error.message : 'This title could not be prepared for protected offline use.'
+      );
+    } finally {
+      setPreparingOffline(false);
     }
   };
 
@@ -127,6 +179,28 @@ export default function VideoDetailScreen() {
         <View style={styles.card}><Text style={styles.desc}>Loading stream...</Text></View>
       )}
 
+      {playerError && !streamUrl ? (
+        <View style={styles.card}>
+          <Text style={styles.desc}>{playerError}</Text>
+          <SecondaryButton label="Retry playback" onPress={() => void loadStream()} />
+        </View>
+      ) : null}
+
+      {unlocked ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Offline in ACE app</Text>
+          <Text style={styles.desc}>
+            Save this unlocked title as a protected `.ace` package for app-only offline access and secure sharing.
+          </Text>
+          <PrimaryButton
+            label={preparingOffline ? 'Preparing secure package...' : 'Prepare secure download'}
+            onPress={handlePrepareOffline}
+            disabled={preparingOffline}
+          />
+          <SecondaryButton label="Open Downloads" onPress={() => router.push('/downloads')} />
+        </View>
+      ) : null}
+
       {highlightSeconds.length ? (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Preview moments</Text>
@@ -181,7 +255,7 @@ const styles = StyleSheet.create({
   paywallTitle: { color: 'white', fontSize: 18, fontWeight: '700' },
   paywallSub: { color: 'white', opacity: 0.85 },
   card: { backgroundColor: theme.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(27,26,23,0.08)' },
-  sectionTitle: { fontWeight: '700', marginBottom: 8 },
+  sectionTitle: { fontWeight: '700', marginBottom: 8, color: theme.ink },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   badge: { backgroundColor: '#f1e7d8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   badgeText: { color: theme.ink, fontSize: 12 },

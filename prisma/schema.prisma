@@ -119,6 +119,12 @@ enum HomePageMode {
   LAUNCH
 }
 
+enum OfflinePackageStatus {
+  PREPARING
+  READY
+  REVOKED
+}
+
 enum PairingStatus {
   PENDING
   CLAIMED
@@ -152,6 +158,7 @@ model User {
   supportTickets SupportTicket[]
   watchHistory WatchHistory[]
   streamSessions StreamSession[]
+  offlinePackages OfflinePackage[] @relation("OfflinePackageOwner")
 }
 
 model Wallet {
@@ -225,8 +232,25 @@ model Video {
   watchHistory WatchHistory[]
   streamSessions StreamSession[]
   subtitleTracks SubtitleTrack[]
+  offlinePackages OfflinePackage[]
   @@index([status])
   @@index([priceTier])
+}
+
+model OfflinePackage {
+  id         String               @id @default(cuid())
+  ownerId    String
+  videoId    String
+  aceFileKey String               @unique
+  wrappedKey String
+  status     OfflinePackageStatus @default(PREPARING)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  owner      User                 @relation("OfflinePackageOwner", fields: [ownerId], references: [id])
+  video      Video                @relation(fields: [videoId], references: [id])
+
+  @@index([ownerId, createdAt])
+  @@index([videoId, createdAt])
 }
 
 model SubtitleTrack {

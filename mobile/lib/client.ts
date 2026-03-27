@@ -2,14 +2,24 @@ import { firebaseAuth } from '@/lib/firebase';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-export async function apiFetch(path: string, options: RequestInit = {}) {
+export async function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
   const token = await firebaseAuth.currentUser?.getIdToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined)
+    ...extraHeaders
   };
 
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+export async function apiFetch(path: string, options: RequestInit = {}) {
+  const headers = await getAuthHeaders({
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined)
+  });
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
