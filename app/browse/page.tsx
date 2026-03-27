@@ -61,8 +61,10 @@ export default async function BrowsePage() {
       <div className="container">
         <div className="section-heading">
           <div>
-            <h1 className="hero-title" style={{ fontSize: '2.2rem' }}>Browse</h1>
-            <p className="muted">Every approved title is listed here with the same artwork, pricing, and metadata used across the app.</p>
+            <h1 className="hero-title" style={{ fontSize: '2.45rem', marginBottom: 8 }}>Browse</h1>
+            <p className="muted" style={{ maxWidth: '52ch', marginTop: 0 }}>
+              Search, filter, and move through the catalog with a cleaner cinema-style layout built for fast discovery.
+            </p>
           </div>
           <div className="pill">Live catalog</div>
         </div>

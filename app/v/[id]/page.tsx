@@ -94,6 +94,19 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     watermarkText = user.name?.trim() || user.email.split('@')[0] || user.email;
   }
 
+  const primaryMeta = [
+    `Producer: ${video.creator.creator?.displayName ?? video.creator.email}`,
+    labelize(video.videoType),
+    ageLabel[video.ageRating] ?? labelize(video.ageRating),
+    ...video.genres
+  ].filter(Boolean);
+
+  const secondaryMeta = [
+    video.originalLanguage ? `Audio: ${getLanguageLabel(video.originalLanguage)}` : null,
+    video.subtitleTracks.length ? `Subtitles: ${video.subtitleTracks.map((track) => track.label).join(', ')}` : null,
+    video.contentWarnings.length ? `Advisories: ${video.contentWarnings.map((warning) => getContentWarningLabel(warning)).join(', ')}` : null
+  ].filter(Boolean);
+
   return (
     <div className="section video-page-section">
       <div className="container detail-page video-page-shell">
@@ -109,24 +122,15 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
           <div className="detail-copy">
             <div className="pill">{video.category}</div>
-            <h1 className="hero-title" style={{ marginTop: 12 }}>{video.title}</h1>
+            <h1 className="hero-title video-page-title">{video.title}</h1>
             <p className="muted">{video.description}</p>
-            <p className="muted" style={{ marginTop: 12 }}>
-              <strong>Producer:</strong> {video.creator.creator?.displayName ?? video.creator.email}
-            </p>
-            <p className="muted">
-              {[labelize(video.videoType), ageLabel[video.ageRating] ?? labelize(video.ageRating), ...video.genres].filter(Boolean).join(' • ')}
-            </p>
-            {video.originalLanguage || video.subtitleTracks.length || video.contentWarnings.length ? (
-              <p className="muted">
-                {[
-                  video.originalLanguage ? `Audio: ${getLanguageLabel(video.originalLanguage)}` : null,
-                  video.subtitleTracks.length ? `Subtitles: ${video.subtitleTracks.map((track) => track.label).join(', ')}` : null,
-                  video.contentWarnings.length ? `Advisories: ${video.contentWarnings.map((warning) => getContentWarningLabel(warning)).join(', ')}` : null
-                ].filter(Boolean).join(' • ')}
-              </p>
-            ) : null}
-            <div className="detail-badges">
+            <div className="video-page-meta-stack">
+              <p className="muted video-page-meta-line">{primaryMeta.join(' / ')}</p>
+              {secondaryMeta.length ? (
+                <p className="muted video-page-meta-line">{secondaryMeta.join(' / ')}</p>
+              ) : null}
+            </div>
+            <div className="detail-badges detail-badges-compact">
               <span className="badge">{priceLabel}</span>
               <span className="badge">{video.category}</span>
             </div>

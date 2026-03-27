@@ -64,6 +64,7 @@ export default function AdminSettingsPanel({
     setFeedback(null);
     const res = await fetch('/api/admin/settings/site', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(site)
     });
@@ -77,6 +78,7 @@ export default function AdminSettingsPanel({
     setFeedback(null);
     const res = await fetch('/api/admin/settings/pricing', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(finance)
     });
@@ -118,6 +120,11 @@ export default function AdminSettingsPanel({
             <input className="input" value={site.launchCtaHref} onChange={(event) => setSite((current) => ({ ...current, launchCtaHref: event.target.value }))} />
           </label>
         </div>
+        {site.launchCountdownAt ? (
+          <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
+            Countdown preview: {site.launchCountdownAt.replace('T', ' ')}
+          </p>
+        ) : null}
         <div className="moderation-actions" style={{ marginTop: 16 }}>
           <button className="btn btn-primary" onClick={saveSite} disabled={saving === 'site'}>
             {saving === 'site' ? 'Saving...' : 'Save launch controls'}

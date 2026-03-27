@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
+function parseLaunchCountdown(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const directDate = new Date(normalized);
+  if (!Number.isNaN(directDate.getTime())) {
+    return directDate;
+  }
+
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute] = match;
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    0,
+    0
+  );
+}
+
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
+  const auth = (await getAuthFromRequest(req)) ?? (await getCurrentUser());
   if (!auth || auth.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -15,6 +43,11 @@ export async function POST(req: NextRequest) {
   const launchCountdownAt = typeof body.launchCountdownAt === 'string' ? body.launchCountdownAt.trim() : '';
   const launchCtaLabel = typeof body.launchCtaLabel === 'string' ? body.launchCtaLabel.trim() : '';
   const launchCtaHref = typeof body.launchCtaHref === 'string' ? body.launchCtaHref.trim() : '';
+  const parsedLaunchCountdown = launchCountdownAt ? parseLaunchCountdown(launchCountdownAt) : null;
+
+  if (launchCountdownAt && (!parsedLaunchCountdown || Number.isNaN(parsedLaunchCountdown.getTime()))) {
+    return NextResponse.json({ error: 'Use a valid countdown date and time.' }, { status: 400 });
+  }
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: 'default' },
@@ -22,7 +55,7 @@ export async function POST(req: NextRequest) {
       homePageMode,
       launchTitle: launchTitle || 'ACE is launching soon',
       launchMessage: launchMessage || 'We are getting the catalog, producers, and launch details ready.',
-      launchCountdownAt: launchCountdownAt ? new Date(launchCountdownAt) : null,
+      launchCountdownAt: parsedLaunchCountdown,
       launchCtaLabel: launchCtaLabel || null,
       launchCtaHref: launchCtaHref || null
     },
@@ -31,7 +64,7 @@ export async function POST(req: NextRequest) {
       homePageMode,
       launchTitle: launchTitle || 'ACE is launching soon',
       launchMessage: launchMessage || 'We are getting the catalog, producers, and launch details ready.',
-      launchCountdownAt: launchCountdownAt ? new Date(launchCountdownAt) : null,
+      launchCountdownAt: parsedLaunchCountdown,
       launchCtaLabel: launchCtaLabel || null,
       launchCtaHref: launchCtaHref || null
     }

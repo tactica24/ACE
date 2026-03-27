@@ -53,7 +53,13 @@ export default function LaunchPage({
     if (!countdownAt) return null;
     const parsed = new Date(countdownAt);
     if (Number.isNaN(parsed.getTime())) return null;
-    return parsed.toLocaleString();
+    return parsed.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }, [countdownAt]);
 
   return (

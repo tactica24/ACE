@@ -54,11 +54,11 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
         {!posterUrl ? <span>Ace Studio</span> : null}
       </div>
       <div className="video-meta">
-        <strong>{video.title}</strong>
-        <span className="muted" style={{ fontSize: '0.85rem' }}>
-          {video.category} / {labelize(video.videoType)} / {ageLabel[video.ageRating] ?? labelize(video.ageRating)}
+        <strong className="video-card-title">{video.title}</strong>
+        <span className="video-card-meta">
+          {[video.category, labelize(video.videoType), ageLabel[video.ageRating] ?? labelize(video.ageRating)].filter(Boolean).join(' / ')}
         </span>
-        <div className="badge">
+        <div className="badge video-card-price">
           {tierLabel[video.priceTier]} / {priceLabel}
         </div>
       </div>

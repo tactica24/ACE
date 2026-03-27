@@ -6,6 +6,15 @@ import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
+function toDateTimeLocalValue(value: Date | null) {
+  if (!value) {
+    return '';
+  }
+
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
+
 export default async function AdminSettingsPage() {
   await requireAdminUser('/admin/settings');
   const finance = await getFinanceConfig();
@@ -54,7 +63,7 @@ export default async function AdminSettingsPage() {
           homePageMode: site.homePageMode,
           launchTitle: site.launchTitle,
           launchMessage: site.launchMessage,
-          launchCountdownAt: site.launchCountdownAt ? site.launchCountdownAt.toISOString().slice(0, 16) : '',
+          launchCountdownAt: toDateTimeLocalValue(site.launchCountdownAt),
           launchCtaLabel: site.launchCtaLabel ?? '',
           launchCtaHref: site.launchCtaHref ?? ''
         }}

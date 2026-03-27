@@ -570,33 +570,22 @@ export default function AcePlayer({
         {watermarkText}
       </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          top: 16,
-          left: 16,
-          right: 16,
-          zIndex: 7,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          pointerEvents: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', pointerEvents: 'auto' }}>
-          <a className="btn btn-ghost" href="/browse">Browse</a>
-          <a className="btn btn-ghost" href="/">Home</a>
-          {isAuthenticated ? <a className="btn btn-ghost" href="/wallet">{copy.wallet}</a> : null}
+      <div className="player-topbar">
+        <div className="player-topbar-group">
+          <button
+            className="player-topbar-control"
+            type="button"
+            onClick={() => setWatchMode((current) => !current)}
+          >
+            {watchMode ? copy.exitWatchMode : copy.watchMode}
+          </button>
+          <div className="player-topbar-links">
+            <a className="player-topbar-link" href="/browse">Browse</a>
+            <a className="player-topbar-link" href="/">Home</a>
+            {isAuthenticated ? <a className="player-topbar-link" href="/wallet">{copy.wallet}</a> : null}
+          </div>
         </div>
       </div>
-
-      <button
-        className="player-ghost-control"
-        type="button"
-        onClick={() => setWatchMode((current) => !current)}
-      >
-        {watchMode ? copy.exitWatchMode : copy.watchMode}
-      </button>
 
       {subtitleTracks.length || audioTrackOptions.length ? (
         <div className="player-settings-panel">

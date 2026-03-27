@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 function toInt(value: unknown, fallback: number) {
@@ -8,7 +8,7 @@ function toInt(value: unknown, fallback: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
+  const auth = (await getAuthFromRequest(req)) ?? (await getCurrentUser());
   if (!auth || auth.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
