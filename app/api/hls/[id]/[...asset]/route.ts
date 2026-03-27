@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
   const token = req.nextUrl.searchParams.get('token');
   if (!token) return new Response('Missing token', { status: 401 });
 
-  let payload: { userId?: string; videoId: string; guest?: boolean; deviceSessionId?: string };
+  let payload: { userId?: string; videoId: string; guest?: boolean; deviceSessionId?: string; role?: 'USER' | 'CREATOR' | 'ADMIN' };
   try {
     payload = verifyStreamToken(token);
   } catch {
@@ -33,7 +33,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
 
   const video = await prisma.video.findUnique({ where: { id: params.id } });
   if (!video) return new Response('Video not found', { status: 404 });
-  if (video.status !== 'APPROVED') return new Response('Video not available', { status: 403 });
+  const canPreviewPendingVideo = payload.role === 'ADMIN' || payload.userId === video.creatorId;
+  if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
+    return new Response('Video not available', { status: 403 });
+  }
 
   const isGuest = payload.guest || !payload.userId || payload.userId === 'guest';
   let unlocked = false;

@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         amountMinor: price.amountMinor,
         currency: price.currency,
         source,
-        watermarkText: `${auth.phone} / ${auth.email}`,
+        watermarkText: auth.name?.trim() || auth.email.split('@')[0] || auth.email,
         referralCode: referral?.code
       }
     });

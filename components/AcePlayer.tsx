@@ -84,6 +84,7 @@ export default function AcePlayer({
   initialUnlocked,
   initialProgress = 0,
   watermarkText,
+  posterSrc,
   highlightSeconds = [],
   subtitles = [],
   audioLanguages = [],
@@ -97,6 +98,7 @@ export default function AcePlayer({
   initialUnlocked: boolean;
   initialProgress?: number;
   watermarkText: string;
+  posterSrc?: string;
   highlightSeconds?: number[];
   subtitles?: SubtitleTrackOption[];
   audioLanguages?: string[];
@@ -485,7 +487,16 @@ export default function AcePlayer({
   return (
     <div className={`player${watchMode ? ' player-watch-mode' : ''}`}>
       {streamUrl ? (
-        <video ref={videoRef} src={streamUrl} controls playsInline>
+        <video
+          ref={videoRef}
+          src={streamUrl}
+          controls
+          playsInline
+          preload="metadata"
+          poster={posterSrc}
+          autoPlay={!unlocked}
+          muted={!unlocked}
+        >
           {subtitleTracks.map((track) => (
             <track
               key={track.id}

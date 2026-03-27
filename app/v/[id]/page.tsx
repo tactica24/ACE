@@ -74,7 +74,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     });
     unlocked = Boolean(unlock);
     initialProgress = watchHistory?.completedAt ? 0 : watchHistory?.progressSec ?? 0;
-    watermarkText = `${user.phone} / ${user.email}`;
+    watermarkText = user.name?.trim() || user.email.split('@')[0] || user.email;
   }
 
   return (
@@ -91,7 +91,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           </div>
 
           <div className="detail-copy">
-            <div className="pill">{video.rightsTier === 'EXCLUSIVE' ? copy.exclusiveRelease : copy.sharedRightsRelease}</div>
+            <div className="pill">{video.category}</div>
             <h1 className="hero-title" style={{ marginTop: 12 }}>{video.title}</h1>
             <p className="muted">{video.description}</p>
             <div className="detail-badges">
@@ -113,6 +113,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
             initialUnlocked={unlocked}
             initialProgress={initialProgress}
             watermarkText={watermarkText}
+            posterSrc={posterUrl ?? undefined}
             highlightSeconds={video.highlightSeconds}
             audioLanguages={video.audioLanguages}
             subtitles={video.subtitleTracks.map((track) => ({
@@ -141,7 +142,6 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           <div className="card">
             <h3>{copy.creator}</h3>
             <p className="muted">{video.creator.creator?.displayName ?? video.creator.email}</p>
-            <p className="muted">{copy.rightsTier}: {labelize(video.rightsTier)}</p>
           </div>
           <div className="card">
             <h3>{copy.languages}</h3>

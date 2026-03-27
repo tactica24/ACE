@@ -67,6 +67,9 @@ const initialState: UploadState = {
   contentWarnings: []
 };
 
+const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.webm'];
+const SUPPORTED_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'];
+
 function createSubtitleDraft(languageCode = 'en'): SubtitleDraft {
   return {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -206,6 +209,15 @@ export default function UploadForm() {
     event.preventDefault();
     if (!videoFile) {
       setMessage('Select a video file before you submit this release.');
+      return;
+    }
+
+    const normalizedVideoName = videoFile.name.toLowerCase();
+    const hasSupportedExtension = SUPPORTED_VIDEO_EXTENSIONS.some((extension) => normalizedVideoName.endsWith(extension));
+    const hasSupportedMimeType = !videoFile.type || SUPPORTED_VIDEO_MIME_TYPES.includes(videoFile.type);
+
+    if (!hasSupportedExtension || !hasSupportedMimeType) {
+      setMessage('Upload MP4 or WebM video files for reliable preview and viewer playback.');
       return;
     }
 
@@ -586,7 +598,8 @@ export default function UploadForm() {
         <div className="field-grid field-grid-2">
           <label className="field">
             <span className="field-label">Video file</span>
-            <input className="input" type="file" accept="video/*" onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)} required />
+            <input className="input" type="file" accept=".mp4,.webm,video/mp4,video/webm" onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)} required />
+            <span className="field-hint">Upload MP4 or WebM for reliable preview and viewer playback.</span>
           </label>
           <label className="field">
             <span className="field-label">Poster image</span>

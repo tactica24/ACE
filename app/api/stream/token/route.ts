@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
 
   const video = await prisma.video.findUnique({ where: { id: videoId } });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-  if (video.status !== 'APPROVED') return NextResponse.json({ error: 'Video not available' }, { status: 403 });
+  const canPreviewPendingVideo = Boolean(auth && (auth.role === 'ADMIN' || auth.sub === video.creatorId));
+  if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
+    return NextResponse.json({ error: 'Video not available' }, { status: 403 });
+  }
 
   const deviceSessionId = req.nextUrl.searchParams.get('deviceSessionId') ?? undefined;
   if (auth) {
@@ -49,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 
   const token = auth
-    ? createStreamToken({ userId: auth.sub, videoId, deviceSessionId })
+    ? createStreamToken({ userId: auth.sub, videoId, deviceSessionId, role: auth.role })
     : createStreamToken({ videoId, guest: true, userId: 'guest' });
   return NextResponse.json({ token, guest: !auth });
 }

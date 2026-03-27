@@ -28,6 +28,15 @@ function parseRange(rangeHeader: string | null, fileSize: number) {
   return { start, end };
 }
 
+function getVideoContentType(filePath: string) {
+  const normalizedPath = filePath.toLowerCase();
+  if (normalizedPath.endsWith('.webm')) return 'video/webm';
+  if (normalizedPath.endsWith('.mov')) return 'video/quicktime';
+  if (normalizedPath.endsWith('.mkv')) return 'video/x-matroska';
+  if (normalizedPath.endsWith('.avi')) return 'video/x-msvideo';
+  return 'video/mp4';
+}
+
 export async function streamFile(
   filePath: string,
   rangeHeader: string | null,
@@ -36,13 +45,14 @@ export async function streamFile(
   const stat = await fsPromises.stat(filePath);
   const effectiveSize = maxBytes ? Math.min(maxBytes, stat.size) : stat.size;
   const range = parseRange(rangeHeader, effectiveSize);
+  const contentType = getVideoContentType(filePath);
 
   if (range && range.start >= effectiveSize) {
     return {
       status: 416,
       headers: {
         'Content-Range': `bytes */${effectiveSize}`,
-        'Content-Type': 'video/mp4'
+        'Content-Type': contentType
       },
       stream: Readable.from([]) as Readable
     };
@@ -53,7 +63,7 @@ export async function streamFile(
       status: 200,
       headers: {
         'Content-Length': effectiveSize.toString(),
-        'Content-Type': 'video/mp4',
+        'Content-Type': contentType,
         'Accept-Ranges': 'bytes'
       },
       stream: fs.createReadStream(filePath, { start: 0, end: effectiveSize - 1 })
@@ -66,7 +76,7 @@ export async function streamFile(
     headers: {
       'Content-Range': `bytes ${range.start}-${range.end}/${effectiveSize}`,
       'Content-Length': chunkSize.toString(),
-      'Content-Type': 'video/mp4',
+      'Content-Type': contentType,
       'Accept-Ranges': 'bytes'
     },
     stream: fs.createReadStream(filePath, { start: range.start, end: range.end })
