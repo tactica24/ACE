@@ -18,10 +18,45 @@ export type RegionalCurrency = {
 
 export type PricingConfigValues = Awaited<ReturnType<typeof getFinanceConfig>>;
 
+const EURO_REGIONS = new Set([
+  'AT',
+  'BE',
+  'BG',
+  'CH',
+  'CY',
+  'CZ',
+  'DE',
+  'DK',
+  'EE',
+  'ES',
+  'FI',
+  'FR',
+  'GR',
+  'HR',
+  'HU',
+  'IE',
+  'IS',
+  'IT',
+  'LI',
+  'LT',
+  'LU',
+  'LV',
+  'MC',
+  'MT',
+  'NL',
+  'NO',
+  'PL',
+  'PT',
+  'RO',
+  'SE',
+  'SI',
+  'SK'
+]);
+
 function getAmountMinorForTier(
   config: PricingConfigValues,
   tier: PriceTierValue,
-  currency: 'NGN' | 'USD' | 'GBP' | 'CAD'
+  currency: 'NGN' | 'USD' | 'EUR' | 'GBP' | 'CAD'
 ) {
   if (currency === 'NGN') {
     if (tier === 'SNACK') return config.snackNaira * 100;
@@ -35,6 +70,12 @@ function getAmountMinorForTier(
     return config.premiereUsdMinor;
   }
 
+  if (currency === 'EUR') {
+    if (tier === 'SNACK') return config.snackEurMinor;
+    if (tier === 'STANDARD') return config.standardEurMinor;
+    return config.premiereEurMinor;
+  }
+
   if (currency === 'GBP') {
     if (tier === 'SNACK') return config.snackGbpMinor;
     if (tier === 'STANDARD') return config.standardGbpMinor;
@@ -46,7 +87,8 @@ function getAmountMinorForTier(
   return config.premiereCadMinor;
 }
 
-function getFamilyPassMinor(config: PricingConfigValues, currency: 'USD' | 'GBP' | 'CAD') {
+function getFamilyPassMinor(config: PricingConfigValues, currency: 'USD' | 'EUR' | 'GBP' | 'CAD') {
+  if (currency === 'EUR') return config.familyPassEurMinor;
   if (currency === 'GBP') return config.familyPassGbpMinor;
   if (currency === 'CAD') return config.familyPassCadMinor;
   return config.familyPassUsdMinor;
@@ -54,6 +96,7 @@ function getFamilyPassMinor(config: PricingConfigValues, currency: 'USD' | 'GBP'
 
 export function getFxRate(currency: string) {
   if (currency === 'USD') return Number(env.ACE_USD_NGN_RATE ?? 1600);
+  if (currency === 'EUR') return Number(env.ACE_EUR_NGN_RATE ?? 1750);
   if (currency === 'GBP') return Number(env.ACE_GBP_NGN_RATE ?? 2000);
   if (currency === 'CAD') return Number(env.ACE_CAD_NGN_RATE ?? 1200);
   return 1;
@@ -66,6 +109,7 @@ export function getRegionalCurrency(req: NextRequest | Headers): RegionalCurrenc
   }
   if (country === 'GB') return { currency: 'GBP', region: 'DIASPORA' };
   if (country === 'CA') return { currency: 'CAD', region: 'DIASPORA' };
+  if (EURO_REGIONS.has(country)) return { currency: 'EUR', region: 'DIASPORA' };
   return { currency: 'USD', region: 'DIASPORA' };
 }
 
@@ -85,7 +129,7 @@ export function getRegionalPriceFromConfig(
   config: PricingConfigValues
 ): RegionalPrice {
   const { currency, region } = getRegionalCurrency(req);
-  const amountMinor = getAmountMinorForTier(config, tier, currency as 'NGN' | 'USD' | 'GBP' | 'CAD');
+  const amountMinor = getAmountMinorForTier(config, tier, currency as 'NGN' | 'USD' | 'EUR' | 'GBP' | 'CAD');
   const amountNaira =
     currency === 'NGN'
       ? Math.round(amountMinor / 100)
@@ -109,7 +153,7 @@ export function getFamilyPassPriceFromConfig(req: NextRequest | Headers, config:
   if (currency === 'NGN') {
     return { currency: 'NGN', region, amountMinor: 0, amountNaira: 0 };
   }
-  const amountMinor = getFamilyPassMinor(config, currency as 'USD' | 'GBP' | 'CAD');
+  const amountMinor = getFamilyPassMinor(config, currency as 'USD' | 'EUR' | 'GBP' | 'CAD');
   const amountNaira = Math.round((amountMinor / 100) * getFxRate(currency));
   return { currency, region, amountMinor, amountNaira };
 }

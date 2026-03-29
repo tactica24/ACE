@@ -16,6 +16,9 @@ export async function getFinanceConfig() {
       snackUsdMinor: 149,
       standardUsdMinor: 199,
       premiereUsdMinor: 249,
+      snackEurMinor: 129,
+      standardEurMinor: 179,
+      premiereEurMinor: 229,
       snackGbpMinor: 99,
       standardGbpMinor: 149,
       premiereGbpMinor: 199,
@@ -23,6 +26,7 @@ export async function getFinanceConfig() {
       standardCadMinor: 249,
       premiereCadMinor: 299,
       familyPassUsdMinor: 1000,
+      familyPassEurMinor: 900,
       familyPassGbpMinor: 800,
       familyPassCadMinor: 1300
     }

@@ -9,6 +9,9 @@ type FinanceSettings = {
   snackUsdMinor: number;
   standardUsdMinor: number;
   premiereUsdMinor: number;
+  snackEurMinor: number;
+  standardEurMinor: number;
+  premiereEurMinor: number;
   snackGbpMinor: number;
   standardGbpMinor: number;
   premiereGbpMinor: number;
@@ -16,6 +19,7 @@ type FinanceSettings = {
   standardCadMinor: number;
   premiereCadMinor: number;
   familyPassUsdMinor: number;
+  familyPassEurMinor: number;
   familyPassGbpMinor: number;
   familyPassCadMinor: number;
 };
@@ -36,6 +40,9 @@ const pricingFields: Array<{ key: keyof FinanceSettings; label: string }> = [
   { key: 'snackUsdMinor', label: 'Snack USD cents' },
   { key: 'standardUsdMinor', label: 'Standard USD cents' },
   { key: 'premiereUsdMinor', label: 'Premiere USD cents' },
+  { key: 'snackEurMinor', label: 'Snack EUR cents' },
+  { key: 'standardEurMinor', label: 'Standard EUR cents' },
+  { key: 'premiereEurMinor', label: 'Premiere EUR cents' },
   { key: 'snackGbpMinor', label: 'Snack GBP pence' },
   { key: 'standardGbpMinor', label: 'Standard GBP pence' },
   { key: 'premiereGbpMinor', label: 'Premiere GBP pence' },
@@ -43,6 +50,7 @@ const pricingFields: Array<{ key: keyof FinanceSettings; label: string }> = [
   { key: 'standardCadMinor', label: 'Standard CAD cents' },
   { key: 'premiereCadMinor', label: 'Premiere CAD cents' },
   { key: 'familyPassUsdMinor', label: 'Family pass USD cents' },
+  { key: 'familyPassEurMinor', label: 'Family pass EUR cents' },
   { key: 'familyPassGbpMinor', label: 'Family pass GBP pence' },
   { key: 'familyPassCadMinor', label: 'Family pass CAD cents' }
 ];

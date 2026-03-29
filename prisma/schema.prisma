@@ -464,6 +464,9 @@ model FinanceConfig {
   snackUsdMinor       Int      @default(149)
   standardUsdMinor    Int      @default(199)
   premiereUsdMinor    Int      @default(249)
+  snackEurMinor       Int      @default(129)
+  standardEurMinor    Int      @default(179)
+  premiereEurMinor    Int      @default(229)
   snackGbpMinor       Int      @default(99)
   standardGbpMinor    Int      @default(149)
   premiereGbpMinor    Int      @default(199)
@@ -471,6 +474,7 @@ model FinanceConfig {
   standardCadMinor    Int      @default(249)
   premiereCadMinor    Int      @default(299)
   familyPassUsdMinor  Int      @default(1000)
+  familyPassEurMinor  Int      @default(900)
   familyPassGbpMinor  Int      @default(800)
   familyPassCadMinor  Int      @default(1300)
   updatedAt           DateTime @default(now()) @updatedAt

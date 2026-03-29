@@ -49,6 +49,9 @@ export default async function AdminSettingsPage() {
           snackUsdMinor: finance.snackUsdMinor,
           standardUsdMinor: finance.standardUsdMinor,
           premiereUsdMinor: finance.premiereUsdMinor,
+          snackEurMinor: finance.snackEurMinor,
+          standardEurMinor: finance.standardEurMinor,
+          premiereEurMinor: finance.premiereEurMinor,
           snackGbpMinor: finance.snackGbpMinor,
           standardGbpMinor: finance.standardGbpMinor,
           premiereGbpMinor: finance.premiereGbpMinor,
@@ -56,6 +59,7 @@ export default async function AdminSettingsPage() {
           standardCadMinor: finance.standardCadMinor,
           premiereCadMinor: finance.premiereCadMinor,
           familyPassUsdMinor: finance.familyPassUsdMinor,
+          familyPassEurMinor: finance.familyPassEurMinor,
           familyPassGbpMinor: finance.familyPassGbpMinor,
           familyPassCadMinor: finance.familyPassCadMinor
         }}

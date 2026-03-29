@@ -1,5 +1,6 @@
 function getCurrencyLocale(currency: string) {
   if (currency === 'NGN') return 'en-NG';
+  if (currency === 'EUR') return 'en-IE';
   if (currency === 'GBP') return 'en-GB';
   if (currency === 'CAD') return 'en-CA';
   return 'en-US';

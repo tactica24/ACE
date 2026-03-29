@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
       snackUsdMinor: toInt(body.snackUsdMinor, 149),
       standardUsdMinor: toInt(body.standardUsdMinor, 199),
       premiereUsdMinor: toInt(body.premiereUsdMinor, 249),
+      snackEurMinor: toInt(body.snackEurMinor, 129),
+      standardEurMinor: toInt(body.standardEurMinor, 179),
+      premiereEurMinor: toInt(body.premiereEurMinor, 229),
       snackGbpMinor: toInt(body.snackGbpMinor, 99),
       standardGbpMinor: toInt(body.standardGbpMinor, 149),
       premiereGbpMinor: toInt(body.premiereGbpMinor, 199),
@@ -30,6 +33,7 @@ export async function POST(req: NextRequest) {
       standardCadMinor: toInt(body.standardCadMinor, 249),
       premiereCadMinor: toInt(body.premiereCadMinor, 299),
       familyPassUsdMinor: toInt(body.familyPassUsdMinor, 1000),
+      familyPassEurMinor: toInt(body.familyPassEurMinor, 900),
       familyPassGbpMinor: toInt(body.familyPassGbpMinor, 800),
       familyPassCadMinor: toInt(body.familyPassCadMinor, 1300)
     },
@@ -45,6 +49,9 @@ export async function POST(req: NextRequest) {
       snackUsdMinor: toInt(body.snackUsdMinor, 149),
       standardUsdMinor: toInt(body.standardUsdMinor, 199),
       premiereUsdMinor: toInt(body.premiereUsdMinor, 249),
+      snackEurMinor: toInt(body.snackEurMinor, 129),
+      standardEurMinor: toInt(body.standardEurMinor, 179),
+      premiereEurMinor: toInt(body.premiereEurMinor, 229),
       snackGbpMinor: toInt(body.snackGbpMinor, 99),
       standardGbpMinor: toInt(body.standardGbpMinor, 149),
       premiereGbpMinor: toInt(body.premiereGbpMinor, 199),
@@ -52,6 +59,7 @@ export async function POST(req: NextRequest) {
       standardCadMinor: toInt(body.standardCadMinor, 249),
       premiereCadMinor: toInt(body.premiereCadMinor, 299),
       familyPassUsdMinor: toInt(body.familyPassUsdMinor, 1000),
+      familyPassEurMinor: toInt(body.familyPassEurMinor, 900),
       familyPassGbpMinor: toInt(body.familyPassGbpMinor, 800),
       familyPassCadMinor: toInt(body.familyPassCadMinor, 1300)
     }
