@@ -7,12 +7,18 @@ export default function WalletClient({
   balance,
   credits,
   passCredits,
-  isDiaspora
+  isDiaspora,
+  checkoutCurrency,
+  passChargeLabel,
+  familyPassChargeLabel
 }: {
   balance: number;
   credits: number;
   passCredits: number;
   isDiaspora: boolean;
+  checkoutCurrency: string;
+  passChargeLabel: string;
+  familyPassChargeLabel: string | null;
 }) {
   const [topupAmount, setTopupAmount] = useState(500);
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -134,6 +140,9 @@ export default function WalletClient({
 
       <div className="card">
         <h3>Top up wallet</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Wallet balance stays in naira. Checkout uses {checkoutCurrency} for your current location when needed.
+        </p>
         <input
           className="input"
           type="number"
@@ -147,7 +156,7 @@ export default function WalletClient({
 
       <div className="card card-soft">
         <h3>Hybrid Pass</h3>
-        <p className="muted">30 credits for NGN 2,500.</p>
+        <p className="muted">30 credits for {passChargeLabel}.</p>
         <button className="btn btn-ghost" onClick={handlePass} disabled={loading}>
           Activate pass
         </button>
@@ -195,7 +204,7 @@ export default function WalletClient({
         </div>
         <p className="muted" style={{ marginBottom: 0 }}>
           {isDiaspora
-            ? 'The recipient must already have an Ace Studio account linked to that phone number.'
+            ? `The recipient must already have an Ace Studio account linked to that phone number.${familyPassChargeLabel ? ` Family bundle checkout starts at ${familyPassChargeLabel}.` : ''}`
             : 'Family credit or balance sharing is available on diaspora-funded accounts. You can still enter the recipient number here and use family bundle checkout where eligible.'}
         </p>
       </div>

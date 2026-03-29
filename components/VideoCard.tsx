@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatNaira } from '@/lib/format';
+import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getPrice } from '@/lib/wallet';
@@ -40,10 +40,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getPrice(video.priceTier) * 100;
   const currency = video.price?.currency ?? 'NGN';
   const posterUrl = getMediaAssetUrl(video.posterKey);
-  const priceLabel =
-    currency === 'NGN'
-      ? formatNaira(Math.round(priceMinor / 100))
-      : `${currency} ${(priceMinor / 100).toFixed(2)}`;
+  const priceLabel = formatCurrencyMinor(priceMinor, currency);
 
   return (
     <Link href={`/v/${video.id}`} className="video-card">

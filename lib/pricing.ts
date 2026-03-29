@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getGeoContext, getGeoContextFromHeaders, isDiaspora } from './geo';
+import { getGeoContext, getGeoContextFromHeaders } from './geo';
 import { env } from './env';
 import { getFinanceConfig } from './finance';
 import { type PriceTierValue } from './media-types';
@@ -61,10 +61,10 @@ export function getFxRate(currency: string) {
 
 export function getRegionalCurrency(req: NextRequest | Headers): RegionalCurrency {
   const { country } = req instanceof Headers ? getGeoContextFromHeaders(req) : getGeoContext(req);
-  if (!isDiaspora(country) || country === 'NG') {
+  if (!country || country === 'NG') {
     return { currency: 'NGN', region: 'NG' };
   }
-  if (country === 'GB' || country === 'UK') return { currency: 'GBP', region: 'DIASPORA' };
+  if (country === 'GB') return { currency: 'GBP', region: 'DIASPORA' };
   if (country === 'CA') return { currency: 'CAD', region: 'DIASPORA' };
   return { currency: 'USD', region: 'DIASPORA' };
 }

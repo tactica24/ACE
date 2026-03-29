@@ -1,18 +1,33 @@
 import './globals.css';
+import type { Metadata, Viewport } from 'next';
 import TopNav from '@/components/TopNav';
 import Footer from '@/components/Footer';
+import PwaRegistrar from '@/components/PwaRegistrar';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Ace Studio',
   description: 'African Content Economy marketplace for creators.',
+  applicationName: 'Ace Studio',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/favicon.svg'
+    icon: '/icon',
+    apple: '/apple-icon'
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Ace Studio'
+  },
+  formatDetection: {
+    telephone: false
   }
 };
 
-export const viewport = {
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
   themeColor: '#070b18'
 };
 
@@ -22,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={language}>
       <body>
+        <PwaRegistrar />
         <div className="app-shell">
           <TopNav />
           <main style={{ flex: 1 }}>{children}</main>

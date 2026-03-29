@@ -3,7 +3,11 @@ import { headers } from 'next/headers';
 import WalletClient from '@/components/WalletClient';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getRegionalCurrency } from '@/lib/pricing';
+import { getFinanceConfig } from '@/lib/finance';
+import { formatRecordedCharge } from '@/lib/format';
+import { getChargeForNaira, getFamilyPassPriceFromConfig, getRegionalCurrency } from '@/lib/pricing';
+
+const PASS_PRICE_NAIRA = 2500;
 
 function getPaymentLabel(payment: {
   reference: string;
@@ -54,7 +58,11 @@ export default async function WalletPage() {
     orderBy: { createdAt: 'desc' },
     take: 8
   });
-  const region = getRegionalCurrency(headers());
+  const requestHeaders = headers();
+  const region = getRegionalCurrency(requestHeaders);
+  const financeConfig = await getFinanceConfig();
+  const passCharge = getChargeForNaira(requestHeaders, PASS_PRICE_NAIRA);
+  const familyPassCharge = getFamilyPassPriceFromConfig(requestHeaders, financeConfig);
 
   return (
     <div className="section">
@@ -68,6 +76,21 @@ export default async function WalletPage() {
           credits={wallet?.credits ?? 0}
           passCredits={pass?.creditsRemaining ?? 0}
           isDiaspora={region.region === 'DIASPORA'}
+          checkoutCurrency={region.currency}
+          passChargeLabel={formatRecordedCharge({
+            amountMinor: passCharge.amountMinor,
+            amountNaira: PASS_PRICE_NAIRA,
+            currency: passCharge.currency
+          })}
+          familyPassChargeLabel={
+            familyPassCharge.amountMinor > 0
+              ? formatRecordedCharge({
+                  amountMinor: familyPassCharge.amountMinor,
+                  amountNaira: familyPassCharge.amountNaira,
+                  currency: familyPassCharge.currency
+                })
+              : null
+          }
         />
         <div className="grid" style={{ marginTop: 20 }}>
           <div className="card">
@@ -78,7 +101,16 @@ export default async function WalletPage() {
                   <div key={unlock.id} className="stack-row">
                     <div>
                       <strong>{unlock.video.title}</strong>
-                      <p className="muted">{unlock.source} {unlock.amountNaira > 0 ? `| NGN ${unlock.amountNaira}` : ''}</p>
+                      <p className="muted">
+                        {unlock.source}
+                        {unlock.amountNaira > 0
+                          ? ` | ${formatRecordedCharge({
+                              amountMinor: unlock.amountMinor,
+                              amountNaira: unlock.amountNaira,
+                              currency: unlock.currency
+                            })}`
+                          : ''}
+                      </p>
                     </div>
                     <span className="muted">{unlock.createdAt.toISOString().slice(0, 10)}</span>
                   </div>
@@ -101,7 +133,13 @@ export default async function WalletPage() {
                       {payment.gateway} | {payment.status} | {payment.createdAt.toISOString().slice(0, 10)}
                     </p>
                   </div>
-                  <span>NGN {payment.amountNaira}</span>
+                  <span>
+                    {formatRecordedCharge({
+                      amountMinor: payment.amountMinor,
+                      amountNaira: payment.amountNaira,
+                      currency: payment.currency
+                    })}
+                  </span>
                 </div>
               ))}
             </div>

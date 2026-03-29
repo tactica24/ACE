@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { formatNaira } from '@/lib/format';
+import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getContentWarningLabel, getLanguageLabel } from '@/lib/media-types';
 import { getRegionalPriceFromConfig } from '@/lib/pricing';
@@ -68,10 +68,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   const pricingConfig = await getFinanceConfig();
   const regionalPrice = getRegionalPriceFromConfig(headers(), video.priceTier, pricingConfig);
   const posterUrl = getMediaAssetUrl(video.posterKey);
-  const priceLabel =
-    regionalPrice.currency === 'NGN'
-      ? formatNaira(Math.round(regionalPrice.amountMinor / 100))
-      : `${regionalPrice.currency} ${(regionalPrice.amountMinor / 100).toFixed(2)}`;
+  const priceLabel = formatCurrencyMinor(regionalPrice.amountMinor, regionalPrice.currency);
 
   let unlocked = false;
   let initialProgress = 0;

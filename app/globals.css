@@ -35,6 +35,10 @@ html, body {
   font-family: var(--font-sora), system-ui, sans-serif;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body::before {
   content: '';
   position: fixed;
@@ -91,6 +95,7 @@ button {
   justify-content: space-between;
   padding: 14px 0;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -145,6 +150,8 @@ button {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .language-switcher {
@@ -891,6 +898,11 @@ button {
   flex-wrap: wrap;
 }
 
+.offline-card {
+  display: grid;
+  gap: 16px;
+}
+
 .library-grid {
   display: grid;
   gap: 20px;
@@ -1329,8 +1341,39 @@ body.watch-mode-active .video-page-player {
 }
 
 @media (max-width: 700px) {
+  .container {
+    width: min(1220px, 94vw);
+  }
+
+  .nav {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .brand {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .brand strong {
+    font-size: 0.98rem;
+  }
+
+  .nav-inner {
+    align-items: start;
+  }
+
   .nav-links {
     display: none;
+  }
+
+  .nav-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nav-actions .btn {
+    flex: 1 1 0;
+    text-align: center;
   }
 
   .user-menu-panel {
@@ -1348,6 +1391,44 @@ body.watch-mode-active .video-page-player {
 
   .home-carousel {
     grid-auto-columns: minmax(220px, 78vw);
+  }
+
+  .video-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .video-thumb {
+    min-height: 136px;
+  }
+
+  .browse-filter-list {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .browse-filter-button {
+    width: auto;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .browse-results-header .pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stack-row {
+    align-items: flex-start;
+  }
+
+  .hero-actions > *,
+  .action-list > *,
+  .home-actions > * {
+    flex: 1 1 100%;
+    text-align: center;
   }
 
   .home-shelves {
