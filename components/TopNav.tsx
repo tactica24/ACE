@@ -60,10 +60,10 @@ export default async function TopNav() {
               language={language}
             />
           ) : (
-            <>
-              <Link className="btn btn-ghost btn-compact" href="/auth/login">{copy.signIn}</Link>
-              <Link className="btn btn-primary btn-compact" href="/auth/register">{copy.createAccount}</Link>
-            </>
+            <div className="nav-actions-guest">
+              <Link className="btn btn-ghost btn-compact nav-action-button" href="/auth/login">{copy.signIn}</Link>
+              <Link className="btn btn-primary btn-compact nav-action-button" href="/auth/register">{copy.createAccount}</Link>
+            </div>
           )}
         </div>
       </div>

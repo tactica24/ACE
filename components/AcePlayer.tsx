@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getLanguageLabel } from '@/lib/media-types';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
@@ -366,6 +367,21 @@ export default function AcePlayer({
     constrainedSeek(0);
     void syncHistory({ progressSec: 0, keepalive: true });
   }, [constrainedSeek, syncHistory, videoId]);
+
+  const prepareForNavigation = useCallback(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      setWatchMode(false);
+      return;
+    }
+
+    setWatchMode(false);
+    videoElement.pause();
+
+    if (videoElement.currentTime > 0 && !videoElement.ended) {
+      void syncHistory({ progressSec: videoElement.currentTime, keepalive: true });
+    }
+  }, [syncHistory]);
 
   const unlockVideo = useCallback(async ({
     resumeAt,
@@ -749,9 +765,9 @@ export default function AcePlayer({
             {watchMode ? copy.exitWatchMode : copy.watchMode}
           </button>
           <div className="player-topbar-links">
-            <a className="player-topbar-link" href="/browse">Browse</a>
-            <a className="player-topbar-link" href="/">Home</a>
-            {isAuthenticated ? <a className="player-topbar-link" href="/wallet">{copy.wallet}</a> : null}
+            <Link className="player-topbar-link" href="/browse" onClick={prepareForNavigation}>Browse</Link>
+            <Link className="player-topbar-link" href="/" onClick={prepareForNavigation}>Home</Link>
+            {isAuthenticated ? <Link className="player-topbar-link" href="/wallet" onClick={prepareForNavigation}>{copy.wallet}</Link> : null}
           </div>
         </div>
       </div>

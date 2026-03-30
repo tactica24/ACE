@@ -154,6 +154,12 @@ button {
   justify-content: flex-end;
 }
 
+.nav-actions-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .language-switcher {
   display: inline-flex;
   align-items: center;
@@ -194,6 +200,19 @@ button {
 .language-switcher-select option {
   background: #0b111b;
   color: var(--ink);
+}
+
+.language-switcher-nav {
+  min-height: 34px;
+  padding: 3px 8px;
+  gap: 4px;
+}
+
+.language-switcher-nav .language-switcher-select {
+  min-width: 42px;
+  padding: 0 14px 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
 }
 
 .user-menu {
@@ -380,8 +399,21 @@ button {
 }
 
 .btn-compact {
-  padding: 10px 16px;
-  font-size: 0.9rem;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+}
+
+.nav-action-button {
+  min-height: 34px;
+  padding: 8px 13px;
+  font-size: 0.82rem;
+}
+
+.auth-submit-button {
+  width: fit-content;
+  min-height: 36px;
+  padding: 9px 16px;
+  font-size: 0.86rem;
 }
 
 .btn-primary {
@@ -1585,9 +1617,23 @@ body.watch-mode-active .video-page-player {
     justify-content: space-between;
   }
 
-  .nav-actions .btn {
-    flex: 1 1 0;
+  .nav-actions-guest {
+    gap: 6px;
+  }
+
+  .nav-actions-guest .btn {
+    flex: 0 0 auto;
     text-align: center;
+  }
+
+  .language-switcher-nav {
+    min-height: 32px;
+    padding: 3px 7px;
+  }
+
+  .language-switcher-nav .language-switcher-select {
+    min-width: 38px;
+    font-size: 0.76rem;
   }
 
   .user-menu-panel {

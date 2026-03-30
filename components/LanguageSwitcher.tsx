@@ -26,7 +26,7 @@ export default function LanguageSwitcher({
   };
 
   return (
-    <label className="language-switcher" aria-label={copy.uiLanguage}>
+    <label className="language-switcher language-switcher-nav" aria-label={copy.uiLanguage}>
       <select
         className="language-switcher-select language-switcher-select-compact"
         value={language}

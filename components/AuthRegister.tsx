@@ -96,7 +96,7 @@ export default function AuthRegister({
         </div>
       )}
       <input className="input" type="password" placeholder="Password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button className="btn btn-primary btn-compact" type="submit" disabled={loading}>
+      <button className="btn btn-primary btn-compact auth-submit-button" type="submit" disabled={loading}>
         {loading ? 'Creating...' : submitLabel}
       </button>
       <p className="muted" style={{ margin: 0 }}>{helperText}</p>
