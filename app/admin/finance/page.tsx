@@ -66,13 +66,13 @@ export default async function AdminFinancePage() {
   return (
     <DashboardShell
       title="Finance console"
-      description="Monitor platform balance, creator earnings, split settings, unlock statements, and movie performance."
+      description="Monitor platform balance, producer earnings, split settings, unlock statements, and movie performance."
       sideNav={
         <SideNav
           active="/admin/finance"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },
@@ -90,7 +90,7 @@ export default async function AdminFinancePage() {
           <span className="trend-up">App-recorded net platform balance</span>
         </div>
         <div className="metric-card">
-          <span className="muted">Creator split</span>
+          <span className="muted">Producer split</span>
           <strong>{config.creatorSharePercent}%</strong>
           <span className="trend-up">Global default</span>
         </div>
@@ -107,7 +107,7 @@ export default async function AdminFinancePage() {
         <div className="metric-card">
           <span className="muted">Pending payouts</span>
           <strong>{payoutRequests.filter((request) => request.status === 'PENDING').length}</strong>
-          <span className="trend-up">Creator withdrawal approvals waiting</span>
+          <span className="trend-up">Producer withdrawal approvals waiting</span>
         </div>
       </div>
 
@@ -156,21 +156,21 @@ export default async function AdminFinancePage() {
         </div>
 
         <div className="card">
-          <h3>Creator wallets</h3>
+          <h3>Producer wallets</h3>
           {creators.length ? (
             <div className="stack-list">
               {creators.map((creator) => (
                 <div key={creator.creatorNumber ?? creator.user.email} className="stack-row">
                   <div>
                     <strong>{creator.displayName}</strong>
-                    <p className="muted">{creator.creatorNumber ?? 'No creator number'} | {creator.user.email}</p>
+                    <p className="muted">{creator.creatorNumber ?? 'No producer number'} | {creator.user.email}</p>
                   </div>
                   <span>NGN {creator.earningsBalanceNaira}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="muted">Creator wallet balances will appear here.</p>
+            <p className="muted">Producer wallet balances will appear here.</p>
           )}
         </div>
 
@@ -183,10 +183,10 @@ export default async function AdminFinancePage() {
                   <div>
                     <strong>{settlement.video.title}</strong>
                     <p className="muted">
-                      {settlement.creatorProfile?.displayName ?? 'Unknown creator'} | {settlement.creatorProfile?.creatorNumber ?? 'No creator number'}
+                      {settlement.creatorProfile?.displayName ?? 'Unknown producer'} | {settlement.creatorProfile?.creatorNumber ?? 'No producer number'}
                     </p>
                   </div>
-                  <span>Creator NGN {settlement.creatorNaira} / Platform NGN {settlement.platformNetNaira}</span>
+                  <span>Producer NGN {settlement.creatorNaira} / Platform NGN {settlement.platformNetNaira}</span>
                 </div>
               ))}
             </div>

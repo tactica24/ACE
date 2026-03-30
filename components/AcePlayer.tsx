@@ -6,6 +6,7 @@ import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const AUTO_UNLOCK_LEAD_SECONDS = 20;
 const HISTORY_SYNC_SECONDS = 5;
+const PLAYBACK_RATE_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
 
 function getProgressStorageKey(videoId: string) {
   return `ace-progress:${videoId}`;
@@ -124,6 +125,12 @@ export default function AcePlayer({
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string>(subtitleTracks.find((track) => track.isDefault)?.id ?? subtitleTracks[0]?.id ?? 'off');
   const [audioTrackOptions, setAudioTrackOptions] = useState<Array<{ index: number; label: string }>>([]);
   const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(Math.max(0, initialProgress));
+  const [durationSec, setDurationSec] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   const seekToTime = useCallback((targetSec: number, shouldPlay = true) => {
     const videoElement = videoRef.current;
@@ -214,6 +221,91 @@ export default function AcePlayer({
     }
 
     setSelectedAudioTrackIndex(index);
+  };
+
+  const getPlayableLimit = useCallback(() => {
+    const videoElement = videoRef.current;
+    const videoDuration = videoElement?.duration ?? 0;
+
+    if (unlocked) {
+      return Number.isFinite(videoDuration) && videoDuration > 0 ? videoDuration : Number.POSITIVE_INFINITY;
+    }
+
+    return Math.max(teaserSec - 0.35, 0);
+  }, [teaserSec, unlocked]);
+
+  const constrainedSeek = useCallback((targetSec: number, shouldPlay = true) => {
+    const limit = getPlayableLimit();
+    const safeTarget = Math.max(0, Number.isFinite(limit) ? Math.min(targetSec, limit) : targetSec);
+
+    if (!unlocked && targetSec > safeTarget + 0.1) {
+      setShowPaywall(true);
+      setFeedback(isAuthenticated ? `${copy.keepWatchingSummary} ${priceLabel}.` : copy.signInToUnlockSummary);
+    }
+
+    seekToTime(safeTarget, shouldPlay);
+  }, [copy.keepWatchingSummary, copy.signInToUnlockSummary, getPlayableLimit, isAuthenticated, priceLabel, seekToTime, unlocked]);
+
+  const jumpPlayback = useCallback((deltaSec: number) => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    constrainedSeek(videoElement.currentTime + deltaSec);
+  }, [constrainedSeek]);
+
+  const restartPlayback = useCallback(() => {
+    clearSavedProgress(videoId);
+    setResumePrompt(null);
+    constrainedSeek(0);
+    void syncHistory({ progressSec: 0, keepalive: true });
+  }, [constrainedSeek, syncHistory, videoId]);
+
+  const togglePlayback = useCallback(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    if (videoElement.paused) {
+      videoElement.play().catch(() => null);
+      return;
+    }
+
+    videoElement.pause();
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    videoElement.muted = !videoElement.muted;
+  }, []);
+
+  const updateVolume = (nextVolume: number) => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    const clampedVolume = Math.max(0, Math.min(nextVolume, 1));
+    videoElement.volume = clampedVolume;
+    videoElement.muted = clampedVolume === 0;
+    setVolume(clampedVolume);
+    setIsMuted(clampedVolume === 0);
+  };
+
+  const updatePlaybackRate = (nextRate: number) => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    videoElement.playbackRate = nextRate;
+    setPlaybackRate(nextRate);
   };
 
   const loadStream = useCallback(async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
@@ -381,6 +473,11 @@ export default function AcePlayer({
 
       applySubtitleSelection(video);
       syncAudioTrackState(video);
+      setDurationSec(Math.max(0, Math.floor(video.duration || 0)));
+      setCurrentTime(Math.max(0, Math.floor(video.currentTime || 0)));
+      setVolume(video.volume);
+      setIsMuted(video.muted);
+      setPlaybackRate(video.playbackRate);
 
       if (pendingAutoplayRef.current) {
         video.play().catch(() => null);
@@ -428,10 +525,12 @@ export default function AcePlayer({
     const handlePlay = () => {
       setResumePrompt(null);
       setWatchMode(true);
+      setIsPlaying(true);
     };
 
     const handleTimeUpdate = () => {
       const currentTime = video.currentTime;
+      setCurrentTime(Math.max(0, Math.floor(currentTime)));
       const unlockTriggerTime = Math.max(teaserSec - AUTO_UNLOCK_LEAD_SECONDS, 0);
 
       if (
@@ -456,12 +555,14 @@ export default function AcePlayer({
     };
 
     const handlePause = () => {
+      setIsPlaying(false);
       if (video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
       }
     };
 
     const handleEnded = () => {
+      setIsPlaying(false);
       setWatchMode(false);
       setShowPaywall(false);
       void syncHistory({ progressSec: 0, completed: true, keepalive: true });
@@ -477,6 +578,15 @@ export default function AcePlayer({
       }
     };
 
+    const handleVolumeChange = () => {
+      setVolume(video.volume);
+      setIsMuted(video.muted || video.volume === 0);
+    };
+
+    const handleRateChange = () => {
+      setPlaybackRate(video.playbackRate);
+    };
+
     const handlePageHide = () => {
       if (video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
@@ -490,6 +600,8 @@ export default function AcePlayer({
     video.addEventListener('ended', handleEnded);
     video.addEventListener('error', handleError);
     video.addEventListener('seeking', handleSeeking);
+    video.addEventListener('volumechange', handleVolumeChange);
+    video.addEventListener('ratechange', handleRateChange);
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
@@ -500,6 +612,8 @@ export default function AcePlayer({
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('error', handleError);
       video.removeEventListener('seeking', handleSeeking);
+      video.removeEventListener('volumechange', handleVolumeChange);
+      video.removeEventListener('ratechange', handleRateChange);
       window.removeEventListener('pagehide', handlePageHide);
     };
   }, [
@@ -525,6 +639,61 @@ export default function AcePlayer({
       document.body.classList.remove('watch-mode-active');
     };
   }, [watchMode]);
+
+  useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName ?? '';
+
+      if (
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        target?.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT'
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === ' ' || key === 'k') {
+        event.preventDefault();
+        togglePlayback();
+        return;
+      }
+
+      if (key === 'arrowleft' || key === 'j') {
+        event.preventDefault();
+        jumpPlayback(-10);
+        return;
+      }
+
+      if (key === 'arrowright' || key === 'l') {
+        event.preventDefault();
+        jumpPlayback(10);
+        return;
+      }
+
+      if (key === 'm') {
+        event.preventDefault();
+        toggleMute();
+        return;
+      }
+
+      if (key === '0') {
+        event.preventDefault();
+        restartPlayback();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+  }, [jumpPlayback, restartPlayback, toggleMute, togglePlayback]);
 
   const previewSeconds = highlightSeconds.filter((sec) => sec >= 0);
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
@@ -587,6 +756,66 @@ export default function AcePlayer({
         </div>
       </div>
 
+      {streamUrl ? (
+        <div className="player-control-dock">
+          <div className="player-control-row">
+            <div className="player-control-cluster">
+              <button className="player-action-button" type="button" onClick={restartPlayback}>
+                {copy.startOver}
+              </button>
+              <button className="player-action-button" type="button" onClick={() => jumpPlayback(-10)}>
+                -10s
+              </button>
+              <button className="player-action-button player-action-button-primary" type="button" onClick={togglePlayback}>
+                {isPlaying ? 'Pause' : copy.watchNow}
+              </button>
+              <button className="player-action-button" type="button" onClick={() => jumpPlayback(10)}>
+                +10s
+              </button>
+            </div>
+            <div className="player-readout">
+              <span>{formatTime(currentTime)} / {formatTime(durationSec)}</span>
+              {!unlocked ? <span>{copy.teaser}: {formatTime(teaserSec)}</span> : null}
+            </div>
+          </div>
+          <div className="player-progress-track" aria-hidden="true">
+            <div
+              className="player-progress-fill"
+              style={{ width: `${durationSec > 0 ? Math.min((currentTime / durationSec) * 100, 100) : 0}%` }}
+            />
+          </div>
+          <div className="player-control-row player-control-row-secondary">
+            <div className="player-control-cluster">
+              <button className="player-action-button" type="button" onClick={toggleMute}>
+                {isMuted || volume === 0 ? 'Unmute' : 'Mute'}
+              </button>
+              <input
+                className="player-volume-slider"
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={isMuted ? 0 : volume}
+                aria-label="Volume"
+                onChange={(event) => updateVolume(Number(event.target.value))}
+              />
+            </div>
+            <div className="player-rate-cluster">
+              {PLAYBACK_RATE_OPTIONS.map((rate) => (
+                <button
+                  key={rate}
+                  className={`player-settings-chip${playbackRate === rate ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => updatePlaybackRate(rate)}
+                >
+                  {rate}x
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {subtitleTracks.length || audioTrackOptions.length ? (
         <div className="player-settings-panel">
           {subtitleTracks.length ? (
@@ -648,7 +877,7 @@ export default function AcePlayer({
                 type="button"
                 onClick={() => {
                   setResumePrompt(null);
-                  seekToTime(resumePrompt);
+                  constrainedSeek(resumePrompt);
                 }}
               >
                 {copy.continueFrom} {formatTime(resumePrompt)}
@@ -660,7 +889,7 @@ export default function AcePlayer({
                   const video = videoRef.current;
                   clearSavedProgress(videoId);
                   setResumePrompt(null);
-                  if (video) seekToTime(0);
+                  if (video) constrainedSeek(0);
                   void syncHistory({ progressSec: 0, keepalive: true });
                 }}
               >
@@ -732,7 +961,7 @@ export default function AcePlayer({
                 type="button"
                 onClick={() => {
                   if (locked) return;
-                  seekToTime(sec);
+                  constrainedSeek(sec);
                 }}
                 disabled={locked}
               >

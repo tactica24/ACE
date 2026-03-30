@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   const profile = await prisma.creatorProfile.findUnique({ where: { userId } });
-  if (!profile) return NextResponse.json({ error: 'Creator profile not found' }, { status: 404 });
+  if (!profile) return NextResponse.json({ error: 'Producer profile not found' }, { status: 404 });
 
   const nextState = {
     phoneVerified: field === 'phoneVerified' ? value : profile.phoneVerified,

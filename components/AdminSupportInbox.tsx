@@ -53,7 +53,7 @@ export default function AdminSupportInbox({ initialTickets }: { initialTickets: 
       {tickets.length === 0 ? (
         <div className="card">
           <h3>Support inbox is clear</h3>
-          <p className="muted">New user and creator contact requests will appear here.</p>
+          <p className="muted">New user and producer contact requests will appear here.</p>
         </div>
       ) : (
         tickets.map((ticket) => (
@@ -98,6 +98,9 @@ function SupportCard({
             href={`mailto:${ticket.user.email}?subject=${encodeURIComponent(`Re: ${ticket.subject}`)}`}
           >
             Email user
+          </a>
+          <a className="btn btn-ghost" href={`/admin/users/${ticket.user.id}`}>
+            Open support tools
           </a>
           <button className="btn btn-ghost" disabled={saving} onClick={() => onSave(ticket.id, 'IN_PROGRESS', notes)}>
             In progress

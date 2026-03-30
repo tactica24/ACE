@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { DEFAULT_FAMILY_BUNDLE_CREDITS, PASS_CREDITS } from '@/lib/commerce';
 import { prisma } from '@/lib/db';
-import { creditWallet } from '@/lib/wallet';
-import { env } from '@/lib/env';
 
 type PaymentRecord = Prisma.PaymentGetPayload<{
   select: {
@@ -21,22 +20,23 @@ function getPaymentMetadata(payment: PaymentRecord) {
   return (payment.metadata as {
     type?: string;
     recipientUserId?: string;
-    credits?: number;
+    credits?: number | string;
     stripeSessionId?: string;
   } | null) ?? null;
 }
 
-async function applyPaymentEntitlement(payment: PaymentRecord) {
+async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: PaymentRecord) {
   const metadata = getPaymentMetadata(payment);
   const type = metadata?.type;
 
   if (type === 'pass') {
+    const credits = Number(metadata?.credits ?? PASS_CREDITS);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    await prisma.subscriptionPass.create({
+    await tx.subscriptionPass.create({
       data: {
         userId: payment.userId,
-        creditsRemaining: 30,
+        creditsRemaining: credits,
         expiresAt
       }
     });
@@ -44,35 +44,40 @@ async function applyPaymentEntitlement(payment: PaymentRecord) {
   }
 
   if (type === 'family') {
-    const credits = Number(metadata?.credits ?? env.ACE_FAMILY_PASS_CREDITS ?? 50);
+    const credits = Number(metadata?.credits ?? DEFAULT_FAMILY_BUNDLE_CREDITS);
     if (metadata?.recipientUserId) {
-      await prisma.wallet.update({
+      await tx.wallet.upsert({
         where: { userId: metadata.recipientUserId },
-        data: { credits: { increment: credits } }
+        update: { credits: { increment: credits } },
+        create: { userId: metadata.recipientUserId, credits }
       });
     }
     return;
   }
 
-  await creditWallet(payment.userId, payment.amountNaira);
+  await tx.wallet.upsert({
+    where: { userId: payment.userId },
+    update: { balanceNaira: { increment: payment.amountNaira } },
+    create: { userId: payment.userId, balanceNaira: payment.amountNaira }
+  });
 }
 
-async function applyReferralEvent(payment: PaymentRecord) {
+async function applyReferralEvent(tx: Prisma.TransactionClient, payment: PaymentRecord) {
   if (!payment.referralCode) {
     return;
   }
 
-  const referral = await prisma.referralLink.findUnique({ where: { code: payment.referralCode } });
+  const referral = await tx.referralLink.findUnique({ where: { code: payment.referralCode } });
   if (!referral) {
     return;
   }
 
-  const existing = await prisma.referralEvent.findFirst({ where: { paymentId: payment.id } });
+  const existing = await tx.referralEvent.findFirst({ where: { paymentId: payment.id } });
   if (existing) {
     return;
   }
 
-  await prisma.referralEvent.create({
+  await tx.referralEvent.create({
     data: {
       referralId: referral.id,
       paymentId: payment.id,
@@ -94,55 +99,62 @@ export async function markPaymentSuccessful({
   feeMinor?: number | null;
   netMinor?: number | null;
 }) {
-  const payment = await prisma.payment.findUnique({
-    where: { reference },
-    select: {
-      id: true,
-      userId: true,
-      reference: true,
-      amountNaira: true,
-      amountMinor: true,
-      currency: true,
-      referralCode: true,
-      status: true,
-      metadata: true
-    }
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`payment:${reference}`}))`;
 
-  if (!payment) {
-    throw new Error('Payment not found');
-  }
+      const payment = await tx.payment.findUnique({
+        where: { reference },
+        select: {
+          id: true,
+          userId: true,
+          reference: true,
+          amountNaira: true,
+          amountMinor: true,
+          currency: true,
+          referralCode: true,
+          status: true,
+          metadata: true
+        }
+      });
 
-  if (payment.status === 'SUCCESS') {
-    return { payment, credited: false };
-  }
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
 
-  const updatedPayment = await prisma.payment.update({
-    where: { reference },
-    data: {
-      status: 'SUCCESS',
-      amountMinor: amountMinor ?? payment.amountMinor,
-      currency: currency ?? payment.currency,
-      feeMinor,
-      netMinor
+      if (payment.status === 'SUCCESS') {
+        return { payment, credited: false };
+      }
+
+      const updatedPayment = await tx.payment.update({
+        where: { reference },
+        data: {
+          status: 'SUCCESS',
+          amountMinor: amountMinor ?? payment.amountMinor,
+          currency: currency ?? payment.currency,
+          feeMinor,
+          netMinor
+        },
+        select: {
+          id: true,
+          userId: true,
+          reference: true,
+          amountNaira: true,
+          amountMinor: true,
+          currency: true,
+          referralCode: true,
+          status: true,
+          metadata: true
+        }
+      });
+
+      await applyPaymentEntitlement(tx, updatedPayment);
+      await applyReferralEvent(tx, updatedPayment);
+
+      return { payment: updatedPayment, credited: true };
     },
-    select: {
-      id: true,
-      userId: true,
-      reference: true,
-      amountNaira: true,
-      amountMinor: true,
-      currency: true,
-      referralCode: true,
-      status: true,
-      metadata: true
-    }
-  });
-
-  await applyPaymentEntitlement(updatedPayment);
-  await applyReferralEvent(updatedPayment);
-
-  return { payment: updatedPayment, credited: true };
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }
 
 export async function markPaymentFailed(reference: string) {

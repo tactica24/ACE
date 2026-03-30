@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import WalletClient from '@/components/WalletClient';
 import { getCurrentUser } from '@/lib/auth';
+import { DEFAULT_FAMILY_BUNDLE_CREDITS, PASS_CREDITS, PASS_PRICE_NAIRA } from '@/lib/commerce';
+import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
+import { env } from '@/lib/env';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatRecordedCharge } from '@/lib/format';
 import { getChargeForNaira, getFamilyPassPriceFromConfig, getRegionalCurrency } from '@/lib/pricing';
-
-const PASS_PRICE_NAIRA = 2500;
 
 function getPaymentLabel(payment: {
   reference: string;
@@ -43,9 +44,9 @@ export default async function WalletPage() {
   }
 
   const wallet = await prisma.wallet.findUnique({ where: { userId: user.sub } });
-  const pass = await prisma.subscriptionPass.findFirst({
+  const pass = await prisma.subscriptionPass.findMany({
     where: { userId: user.sub, expiresAt: { gt: new Date() } },
-    orderBy: { expiresAt: 'desc' }
+    orderBy: { expiresAt: 'asc' }
   });
   const payments = await prisma.payment.findMany({
     where: { userId: user.sub },
@@ -63,6 +64,7 @@ export default async function WalletPage() {
   const financeConfig = await getFinanceConfig();
   const passCharge = getChargeForNaira(requestHeaders, PASS_PRICE_NAIRA);
   const familyPassCharge = getFamilyPassPriceFromConfig(requestHeaders, financeConfig);
+  const familyBundleCredits = Number(env.ACE_FAMILY_PASS_CREDITS ?? DEFAULT_FAMILY_BUNDLE_CREDITS);
 
   return (
     <div className="section">
@@ -74,7 +76,9 @@ export default async function WalletPage() {
         <WalletClient
           balance={wallet?.balanceNaira ?? 0}
           credits={wallet?.credits ?? 0}
-          passCredits={pass?.creditsRemaining ?? 0}
+          passCredits={pass.reduce((total, item) => total + item.creditsRemaining, 0)}
+          passCreditsPerBundle={PASS_CREDITS}
+          familyBundleCredits={familyBundleCredits}
           isDiaspora={region.region === 'DIASPORA'}
           checkoutCurrency={region.currency}
           passChargeLabel={formatRecordedCharge({
@@ -104,8 +108,8 @@ export default async function WalletPage() {
                       <p className="muted">
                         {unlock.source}
                         {unlock.amountNaira > 0
-                          ? ` | ${formatRecordedCharge({
-                              amountMinor: unlock.amountMinor,
+                          ? ` | ${formatCredits(getCreditsForNaira(unlock.amountNaira))} | ${formatRecordedCharge({
+                              amountMinor: unlock.amountMinor ?? unlock.amountNaira * 100,
                               amountNaira: unlock.amountNaira,
                               currency: unlock.currency
                             })}`
@@ -134,11 +138,11 @@ export default async function WalletPage() {
                     </p>
                   </div>
                   <span>
-                    {formatRecordedCharge({
-                      amountMinor: payment.amountMinor,
+                    {`${formatRecordedCharge({
+                      amountMinor: payment.amountMinor ?? payment.amountNaira * 100,
                       amountNaira: payment.amountNaira,
                       currency: payment.currency
-                    })}
+                    })} | ${formatCredits(getCreditsForNaira(payment.amountNaira))}`}
                   </span>
                 </div>
               ))}

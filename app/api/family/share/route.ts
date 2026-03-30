@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail, hasVerifiedPhone } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
 function normalizePhone(phone: string) {
-  return phone.trim();
+  return phone.trim().replace(/(?!^\+)[^\d]/g, '');
 }
 
 export async function POST(req: NextRequest) {
@@ -13,6 +13,9 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!hasVerifiedEmail(auth)) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
+  }
+  if (!hasVerifiedPhone(auth)) {
+    return NextResponse.json({ error: 'Verify your phone number from your account page before sharing family credits or balance.' }, { status: 403 });
   }
 
   const rateLimit = await consumeRateLimit({
@@ -50,11 +53,14 @@ export async function POST(req: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const recipient = await tx.user.findFirst({
         where: { phone: recipientPhone },
-        select: { id: true, name: true, phone: true }
+        select: { id: true, name: true, phone: true, phoneVerified: true }
       });
 
       if (!recipient) {
         throw new Error('That phone number is not linked to an Ace Studio account yet.');
+      }
+      if (!recipient.phoneVerified) {
+        throw new Error('That family member must verify their phone number before receiving shared credits or balance.');
       }
 
       const senderWallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });

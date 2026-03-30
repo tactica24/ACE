@@ -45,7 +45,7 @@ export default function CreatorWithdrawPanel({ balanceNaira, payoutRequests }: C
 
   return (
     <div className="card">
-      <h3>Withdraw from creator wallet</h3>
+      <h3>Withdraw from producer wallet</h3>
       <p className="muted">Available balance: NGN {balanceNaira}</p>
       <form onSubmit={submit} className="form-grid" style={{ marginTop: 16 }}>
         <label className="field">

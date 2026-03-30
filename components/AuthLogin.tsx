@@ -61,7 +61,7 @@ export default function AuthLogin() {
     <form onSubmit={handleSubmit} className="form-grid">
       <input className="input" type="email" placeholder="Email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="input" type="password" placeholder="Password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button className="btn btn-primary" type="submit" disabled={loading}>
+      <button className="btn btn-primary btn-compact" type="submit" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign in'}
       </button>
       {error ? <p className="muted" style={{ margin: 0 }}>{error}</p> : null}

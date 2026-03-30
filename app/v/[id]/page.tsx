@@ -5,6 +5,8 @@ import AcePlayer from '@/components/AcePlayer';
 import LaunchPage from '@/components/LaunchPage';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
+import { getDefaultTierPriceNaira } from '@/lib/commerce';
+import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
@@ -28,6 +30,18 @@ const labelize = (value: string) =>
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+
+function formatRuntime(durationSec: number) {
+  const totalMinutes = Math.max(1, Math.round(durationSec / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) {
+    return `${totalMinutes}m`;
+  }
+
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
 
 export default async function VideoPage({ params }: { params: { id: string } }) {
   const language = await getPreferredUiLanguage();
@@ -68,7 +82,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   const pricingConfig = await getFinanceConfig();
   const regionalPrice = getRegionalPriceFromConfig(headers(), video.priceTier, pricingConfig);
   const posterUrl = getMediaAssetUrl(video.posterKey);
-  const priceLabel = formatCurrencyMinor(regionalPrice.amountMinor, regionalPrice.currency);
+  const priceLabel = `${formatCredits(getCreditsForNaira(regionalPrice.amountNaira ?? getDefaultTierPriceNaira(video.priceTier)))} / ${formatCurrencyMinor(regionalPrice.amountMinor, regionalPrice.currency)}`;
 
   let unlocked = false;
   let initialProgress = 0;
@@ -93,6 +107,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
   const primaryMeta = [
     `Producer: ${video.creator.creator?.displayName ?? video.creator.email}`,
+    video.releaseYear ? `${video.releaseYear}` : null,
+    formatRuntime(video.durationSec),
     labelize(video.videoType),
     ageLabel[video.ageRating] ?? labelize(video.ageRating),
     ...video.genres

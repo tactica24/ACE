@@ -84,7 +84,7 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
       label: 'Neon database',
       status: 'READY',
       summary: 'Database connection is healthy.',
-      detail: `${approvedCount} approved titles, ${pendingCount} pending reviews, ${creatorCount} creator accounts.`
+      detail: `${approvedCount} approved titles, ${pendingCount} pending reviews, ${creatorCount} producer accounts.`
     };
   } catch (error) {
     databaseCheck = {
@@ -117,7 +117,7 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
         label: 'R2 storage',
         status: 'READY',
         summary: 'R2 credentials are working.',
-        detail: 'Creator uploads can write media and posters directly to object storage.'
+        detail: 'Producer uploads can write media and posters directly to object storage.'
       };
     } catch (error) {
       if (isReachableStorageResponse(error)) {
@@ -168,7 +168,7 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
         status: databaseCheck.status === 'READY' && storageCheck.status === 'READY' ? 'READY' : 'ACTION',
         summary:
           databaseCheck.status === 'READY' && storageCheck.status === 'READY'
-            ? 'Creator uploads are ready for moderation and release.'
+            ? 'Producer uploads are ready for moderation and release.'
             : 'Fix database or storage issues before testing moderation.',
         detail:
           databaseCheck.status === 'READY' && storageCheck.status === 'READY'

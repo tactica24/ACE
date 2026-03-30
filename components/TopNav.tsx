@@ -18,7 +18,7 @@ export default async function TopNav() {
       : user.role === 'CREATOR'
         ? 'Studio'
         : user.signupIntent === 'CREATOR'
-          ? 'Creator'
+          ? 'Producer'
           : copy.browse
     : copy.browse;
 
@@ -61,8 +61,8 @@ export default async function TopNav() {
             />
           ) : (
             <>
-              <Link className="btn btn-ghost" href="/auth/login">{copy.signIn}</Link>
-              <Link className="btn btn-primary" href="/auth/register">{copy.createAccount}</Link>
+              <Link className="btn btn-ghost btn-compact" href="/auth/login">{copy.signIn}</Link>
+              <Link className="btn btn-primary btn-compact" href="/auth/register">{copy.createAccount}</Link>
             </>
           )}
         </div>

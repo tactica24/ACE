@@ -73,6 +73,23 @@ export function toFirebaseAuthErrorMessage(error: unknown, fallback: string) {
         return 'That email address is already in use.';
       case 'auth/invalid-email':
         return 'Enter a valid email address.';
+      case 'auth/invalid-phone-number':
+        return 'Enter a valid phone number with country code, for example +234...';
+      case 'auth/missing-phone-number':
+        return 'Add a phone number to your account before starting phone verification.';
+      case 'auth/invalid-verification-code':
+        return 'That SMS code is not valid. Check the code and try again.';
+      case 'auth/code-expired':
+      case 'auth/session-expired':
+        return 'That verification code expired. Request a fresh code and try again.';
+      case 'auth/captcha-check-failed':
+      case 'auth/invalid-app-credential':
+      case 'auth/missing-app-credential':
+        return 'Phone verification could not complete securely. Refresh the page and try again.';
+      case 'auth/provider-already-linked':
+        return 'This account already has a phone number linked. Refresh your account page to confirm the latest status.';
+      case 'auth/credential-already-in-use':
+        return 'That phone number is already linked to another Firebase account.';
       case 'auth/missing-password':
         return 'Enter your password.';
       case 'auth/weak-password':

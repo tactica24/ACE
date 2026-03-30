@@ -1,9 +1,10 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
-import { calculateUnlockSplit, getFinanceConfig, getPlatformWallet } from '@/lib/finance';
-import { debitWallet, usePassCredit as consumePassCredit, useWalletCredit as consumeWalletCredit } from '@/lib/wallet';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { CREDIT_VALUE_NAIRA, getCreditValueNaira, getCreditsForNaira } from '@/lib/credits';
+import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
+import { getBasePriceNairaForTierFromConfig } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
@@ -33,94 +34,151 @@ export async function POST(req: NextRequest) {
   });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
 
-  const existing = await prisma.unlock.findFirst({ where: { userId: auth.sub, videoId } });
-  if (existing) return NextResponse.json({ ok: true, unlocked: true });
-
   const financeConfig = await getFinanceConfig();
-  const price = getRegionalPriceFromConfig(req, video.priceTier, financeConfig);
-  let source: 'PASS' | 'WALLET' = 'WALLET';
-
-  const pass = await consumePassCredit(auth.sub);
-  if (pass) {
-    source = 'PASS';
-  } else {
-    const credit = await consumeWalletCredit(auth.sub);
-    if (credit) {
-      source = 'WALLET';
-    } else {
-      try {
-        await debitWallet(auth.sub, price.amountNaira);
-      } catch {
-        return NextResponse.json({ error: 'Insufficient balance', reason: 'INSUFFICIENT_BALANCE' }, { status: 402 });
-      }
-    }
-  }
-
+  const amountNaira = getBasePriceNairaForTierFromConfig(financeConfig, video.priceTier);
+  const creditsRequired = getCreditsForNaira(amountNaira);
   const referralCode = readReferralCode(req, body?.referralCode);
   const referral = await resolveReferral(referralCode, videoId);
-  await getPlatformWallet();
-  const split = calculateUnlockSplit(price.amountNaira, financeConfig);
+  const split = calculateUnlockSplit(amountNaira, financeConfig);
   const creatorProfileId = video.creator.creator?.id ?? null;
   const creatorNaira = creatorProfileId ? split.creatorNaira : 0;
   const referralNaira = referral ? Math.round(split.platformNaira * (referral.commissionPercent / 100)) : 0;
   const platformNetNaira = Math.max(split.platformNaira - referralNaira, 0);
 
-  await prisma.$transaction(async (tx) => {
-    const unlock = await tx.unlock.create({
-      data: {
-        userId: auth.sub,
-        videoId,
-        amountNaira: price.amountNaira,
-        amountMinor: price.amountMinor,
-        currency: price.currency,
-        source,
-        watermarkText: auth.name?.trim() || auth.email.split('@')[0] || auth.email,
-        referralCode: referral?.code
-      }
-    });
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`unlock:${auth.sub}:${videoId}`}))`;
 
-    await tx.platformWallet.upsert({
-      where: { id: 'ace-platform' },
-      update: { balanceNaira: { increment: platformNetNaira } },
-      create: { id: 'ace-platform', balanceNaira: platformNetNaira }
-    });
-
-    if (creatorProfileId && creatorNaira > 0) {
-      await tx.creatorProfile.update({
-        where: { id: creatorProfileId },
-        data: { earningsBalanceNaira: { increment: creatorNaira } }
-      });
-    }
-
-    await tx.unlockSettlement.create({
-      data: {
-        unlockId: unlock.id,
-        videoId,
-        creatorProfileId,
-        grossNaira: price.amountNaira,
-        creatorNaira,
-        platformNaira: split.platformNaira,
-        gatewayFeeNaira: split.gatewayFeeNaira,
-        taxNaira: split.taxNaira,
-        referralNaira,
-        platformNetNaira: platformNetNaira
-      }
-    });
-
-    if (referral) {
-      await tx.referralEvent.create({
-        data: {
-          referralId: referral.id,
-          unlockId: unlock.id,
-          commissionNaira: referralNaira
+        const existing = await tx.unlock.findFirst({ where: { userId: auth.sub, videoId } });
+        if (existing) {
+          return { unlocked: true, source: existing.source };
         }
-      });
-      await tx.wallet.update({
-        where: { userId: referral.promoterId },
-        data: { balanceNaira: { increment: referralNaira } }
-      });
-    }
-  });
 
-  return NextResponse.json({ ok: true, unlocked: true, source });
+        let source: 'PASS' | 'WALLET' = 'WALLET';
+        const activePasses = await tx.subscriptionPass.findMany({
+          where: { userId: auth.sub, expiresAt: { gt: new Date() }, creditsRemaining: { gt: 0 } },
+          orderBy: { expiresAt: 'asc' }
+        });
+        let remainingCredits = creditsRequired;
+        let passCreditsUsed = 0;
+
+        for (const pass of activePasses) {
+          if (remainingCredits <= 0) {
+            break;
+          }
+
+          const creditsToUse = Math.min(pass.creditsRemaining, remainingCredits);
+          if (creditsToUse <= 0) {
+            continue;
+          }
+
+          await tx.subscriptionPass.update({
+            where: { id: pass.id },
+            data: { creditsRemaining: { decrement: creditsToUse } }
+          });
+          passCreditsUsed += creditsToUse;
+          remainingCredits -= creditsToUse;
+        }
+
+        const wallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
+        const walletCreditsUsed = Math.min(wallet?.credits ?? 0, remainingCredits);
+        remainingCredits -= walletCreditsUsed;
+        const walletBalanceNeeded = getCreditValueNaira(remainingCredits);
+
+        if (walletBalanceNeeded > 0 && (wallet?.balanceNaira ?? 0) < walletBalanceNeeded) {
+          throw new Error('INSUFFICIENT_BALANCE');
+        }
+
+        if (walletCreditsUsed > 0 || walletBalanceNeeded > 0) {
+          if (!wallet) {
+            throw new Error('INSUFFICIENT_BALANCE');
+          }
+
+          await tx.wallet.update({
+            where: { userId: auth.sub },
+            data: {
+              credits: walletCreditsUsed > 0 ? { decrement: walletCreditsUsed } : undefined,
+              balanceNaira: walletBalanceNeeded > 0 ? { decrement: walletBalanceNeeded } : undefined
+            }
+          });
+        }
+
+        source = passCreditsUsed === creditsRequired && walletCreditsUsed === 0 && walletBalanceNeeded === 0 ? 'PASS' : 'WALLET';
+
+        const unlock = await tx.unlock.create({
+          data: {
+            userId: auth.sub,
+            videoId,
+            amountNaira,
+            amountMinor: amountNaira * 100,
+            currency: 'NGN',
+            source,
+            watermarkText: auth.name?.trim() || auth.email.split('@')[0] || auth.email,
+            referralCode: referral?.code
+          }
+        });
+
+        await tx.platformWallet.upsert({
+          where: { id: 'ace-platform' },
+          update: { balanceNaira: { increment: platformNetNaira } },
+          create: { id: 'ace-platform', balanceNaira: platformNetNaira }
+        });
+
+        if (creatorProfileId && creatorNaira > 0) {
+          await tx.creatorProfile.update({
+            where: { id: creatorProfileId },
+            data: { earningsBalanceNaira: { increment: creatorNaira } }
+          });
+        }
+
+        await tx.unlockSettlement.create({
+          data: {
+            unlockId: unlock.id,
+            videoId,
+            creatorProfileId,
+            grossNaira: amountNaira,
+            creatorNaira,
+            platformNaira: split.platformNaira,
+            gatewayFeeNaira: split.gatewayFeeNaira,
+            taxNaira: split.taxNaira,
+            referralNaira,
+            platformNetNaira
+          }
+        });
+
+        if (referral) {
+          await tx.referralEvent.create({
+            data: {
+              referralId: referral.id,
+              unlockId: unlock.id,
+              commissionNaira: referralNaira
+            }
+          });
+          await tx.wallet.upsert({
+            where: { userId: referral.promoterId },
+            update: { balanceNaira: { increment: referralNaira } },
+            create: { userId: referral.promoterId, balanceNaira: referralNaira }
+          });
+        }
+
+        return { unlocked: true, source };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    return NextResponse.json({ ok: true, ...result });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      return NextResponse.json({
+        error: `You need ${creditsRequired} credits or NGN ${amountNaira} in value to unlock this title.`,
+        reason: 'INSUFFICIENT_BALANCE',
+        creditValueNaira: CREDIT_VALUE_NAIRA,
+        creditsRequired,
+        amountNaira
+      }, { status: 402 });
+    }
+
+    return NextResponse.json({ error: 'Unable to unlock this title right now.' }, { status: 500 });
+  }
 }

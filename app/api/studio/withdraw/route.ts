@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (!creator.bankName || !creator.bankAccountName || !creator.bankAccountNumber) {
-    return NextResponse.json({ error: 'Bank details are incomplete on this creator account.' }, { status: 400 });
+    return NextResponse.json({ error: 'Bank details are incomplete on this producer account.' }, { status: 400 });
   }
 
   if (creator.earningsBalanceNaira < amountNaira) {
-    return NextResponse.json({ error: 'Withdrawal amount is above your creator wallet balance.' }, { status: 400 });
+    return NextResponse.json({ error: 'Withdrawal amount is above your producer wallet balance.' }, { status: 400 });
   }
 
   const payout = await prisma.$transaction(async (tx) => {

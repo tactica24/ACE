@@ -52,7 +52,7 @@ export default async function ModerationPage() {
           active="/admin/moderation"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${queueItems.length}` },
             { href: '/admin/settings', label: 'Controls' },

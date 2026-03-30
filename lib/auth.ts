@@ -25,6 +25,7 @@ export type AuthTokenPayload = {
   phone: string;
   firebaseUid: string;
   emailVerified?: boolean;
+  phoneVerified?: boolean;
 };
 
 export const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
@@ -43,6 +44,7 @@ type DbAuthUser = {
   name: string | null;
   email: string;
   phone: string;
+  phoneVerified: boolean;
   role: RoleValue;
   signupIntent: SignupIntentValue;
   creatorAccessStatus: CreatorAccessStatusValue;
@@ -60,7 +62,7 @@ function normalizeEmail(email?: string | null) {
 }
 
 function normalizePhone(phone?: string | null) {
-  return phone?.trim() ?? '';
+  return phone?.trim().replace(/(?!^\+)[^\d]/g, '') ?? '';
 }
 
 function normalizeName(name?: string | null) {
@@ -143,7 +145,8 @@ function toAuthPayload(user: DbAuthUser, decodedToken?: DecodedIdToken): AuthTok
     email: user.email,
     phone: user.phone,
     firebaseUid: user.firebaseUid,
-    emailVerified: decodedToken?.email_verified ?? false
+    emailVerified: decodedToken?.email_verified ?? false,
+    phoneVerified: Boolean(decodedToken?.phone_number && normalizePhone(decodedToken.phone_number) === user.phone) || user.phoneVerified
   };
 }
 
@@ -188,6 +191,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       name: true,
       email: true,
       phone: true,
+      phoneVerified: true,
       role: true,
       signupIntent: true,
       creatorAccessStatus: true
@@ -203,6 +207,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         name: true,
         email: true,
         phone: true,
+        phoneVerified: true,
         role: true,
         signupIntent: true,
         creatorAccessStatus: true
@@ -219,6 +224,14 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       throw new Error('A phone number is required to complete account setup.');
     }
 
+    const existingPhoneUser = await prisma.user.findFirst({
+      where: { phone },
+      select: { id: true }
+    });
+    if (existingPhoneUser) {
+      throw new Error('That phone number is already linked to another Ace Studio account.');
+    }
+
     const signupIntent = requestedSignupIntent ?? 'VIEWER';
     const creatorAccessStatus: CreatorAccessStatusValue = signupIntent === 'CREATOR' ? 'REQUESTED' : 'NONE';
 
@@ -228,6 +241,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         name,
         email,
         phone,
+        phoneVerified: false,
         passwordHash: FIREBASE_PASSWORD_SENTINEL,
         signupIntent,
         creatorAccessStatus,
@@ -239,6 +253,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
         name: true,
         email: true,
         phone: true,
+        phoneVerified: true,
         role: true,
         signupIntent: true,
         creatorAccessStatus: true
@@ -250,6 +265,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       name?: string | null;
       email?: string;
       phone?: string;
+      phoneVerified?: boolean;
       signupIntent?: SignupIntentValue;
       creatorAccessStatus?: CreatorAccessStatusValue;
     } = {};
@@ -271,7 +287,20 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
       updateData.email = email;
     }
     if (phone && user.phone !== phone) {
+      const existingPhoneUser = await prisma.user.findFirst({
+        where: {
+          phone,
+          NOT: { id: user.id }
+        },
+        select: { id: true }
+      });
+      if (existingPhoneUser) {
+        throw new Error('That phone number is already linked to another Ace Studio account.');
+      }
       updateData.phone = phone;
+    }
+    if (decodedToken.phone_number && (!user.phoneVerified || user.phone !== phone)) {
+      updateData.phoneVerified = true;
     }
     if (requestedSignupIntent && user.signupIntent !== requestedSignupIntent) {
       updateData.signupIntent = requestedSignupIntent;
@@ -290,6 +319,7 @@ async function syncUserRecord(decodedToken: DecodedIdToken, options: SyncOptions
           name: true,
           email: true,
           phone: true,
+          phoneVerified: true,
           role: true,
           signupIntent: true,
           creatorAccessStatus: true
@@ -430,6 +460,10 @@ export async function requireAuthFromRequest(req: NextRequest) {
 
 export function hasVerifiedEmail(auth: Pick<AuthTokenPayload, 'emailVerified'> | null | undefined) {
   return Boolean(auth?.emailVerified);
+}
+
+export function hasVerifiedPhone(auth: Pick<AuthTokenPayload, 'phoneVerified'> | null | undefined) {
+  return Boolean(auth?.phoneVerified);
 }
 
 export function createStreamToken(payload: {

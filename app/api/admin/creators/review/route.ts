@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const userId = typeof body.userId === 'string' ? body.userId : '';
 
   if (!userId) {
-    return NextResponse.json({ error: 'Creator account is required.' }, { status: 400 });
+    return NextResponse.json({ error: 'Producer account is required.' }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (!user || user.signupIntent !== 'CREATOR' || !user.creator) {
-    return NextResponse.json({ error: 'Creator profile not found.' }, { status: 404 });
+    return NextResponse.json({ error: 'Producer profile not found.' }, { status: 404 });
   }
 
   if (
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     !user.creator.bankName ||
     !user.creator.bankAccountNumber
   ) {
-    return NextResponse.json({ error: 'Complete the creator profile before approval.' }, { status: 400 });
+    return NextResponse.json({ error: 'Complete the producer profile before approval.' }, { status: 400 });
   }
 
   await prisma.$transaction([

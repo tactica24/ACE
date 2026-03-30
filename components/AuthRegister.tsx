@@ -87,16 +87,16 @@ export default function AuthRegister({
               Viewer
             </button>
             <button className={signupIntent === 'CREATOR' ? 'btn btn-primary' : 'btn btn-ghost'} type="button" onClick={() => setSignupIntent('CREATOR')}>
-              Film creator
+              Producer
             </button>
           </div>
           <p className="muted" style={{ margin: 0 }}>
-            {signupIntent === 'CREATOR' ? 'Creator account' : 'Viewer account'}
+            {signupIntent === 'CREATOR' ? 'Producer account' : 'Viewer account'}
           </p>
         </div>
       )}
       <input className="input" type="password" placeholder="Password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button className="btn btn-primary" type="submit" disabled={loading}>
+      <button className="btn btn-primary btn-compact" type="submit" disabled={loading}>
         {loading ? 'Creating...' : submitLabel}
       </button>
       <p className="muted" style={{ margin: 0 }}>{helperText}</p>

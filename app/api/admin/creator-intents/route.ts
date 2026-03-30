@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const creatorAccessStatus = typeof body.creatorAccessStatus === 'string' ? body.creatorAccessStatus : '';
 
   if (!userId || !validStatuses.has(creatorAccessStatus)) {
-    return NextResponse.json({ error: 'Invalid creator access update.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid producer access update.' }, { status: 400 });
   }
 
   const user = await prisma.user.update({

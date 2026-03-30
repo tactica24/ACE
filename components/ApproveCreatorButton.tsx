@@ -23,12 +23,12 @@ export default function ApproveCreatorButton({ userId, approved, className = 'bt
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error ?? 'Unable to approve creator.');
+        throw new Error(data.error ?? 'Unable to approve producer.');
       }
-      setMessage('Creator approved.');
+      setMessage('Producer approved.');
       window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to approve creator.');
+      setMessage(error instanceof Error ? error.message : 'Unable to approve producer.');
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export default function ApproveCreatorButton({ userId, approved, className = 'bt
   return (
     <div className="stack-list" style={{ gap: 8 }}>
       <button type="button" className={className} onClick={approve} disabled={loading || approved}>
-        {approved ? 'Creator approved' : loading ? 'Approving...' : 'Approve creator'}
+        {approved ? 'Producer approved' : loading ? 'Approving...' : 'Approve producer'}
       </button>
       {message ? <span className="muted">{message}</span> : null}
     </div>

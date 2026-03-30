@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest, getCurrentUser } from '@/lib/auth';
+import { alignNairaToCreditValue } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 
 function toInt(value: unknown, fallback: number) {
@@ -17,9 +18,9 @@ export async function POST(req: NextRequest) {
   const config = await prisma.financeConfig.upsert({
     where: { id: 'default' },
     update: {
-      snackNaira: toInt(body.snackNaira, 100),
-      standardNaira: toInt(body.standardNaira, 200),
-      premiereNaira: toInt(body.premiereNaira, 500),
+      snackNaira: alignNairaToCreditValue(toInt(body.snackNaira, 100)),
+      standardNaira: alignNairaToCreditValue(toInt(body.standardNaira, 200)),
+      premiereNaira: alignNairaToCreditValue(toInt(body.premiereNaira, 500)),
       snackUsdMinor: toInt(body.snackUsdMinor, 149),
       standardUsdMinor: toInt(body.standardUsdMinor, 199),
       premiereUsdMinor: toInt(body.premiereUsdMinor, 249),
@@ -43,9 +44,9 @@ export async function POST(req: NextRequest) {
       platformSharePercent: 29.5,
       gatewayFeePercent: 3,
       taxPercent: 7.5,
-      snackNaira: toInt(body.snackNaira, 100),
-      standardNaira: toInt(body.standardNaira, 200),
-      premiereNaira: toInt(body.premiereNaira, 500),
+      snackNaira: alignNairaToCreditValue(toInt(body.snackNaira, 100)),
+      standardNaira: alignNairaToCreditValue(toInt(body.standardNaira, 200)),
+      premiereNaira: alignNairaToCreditValue(toInt(body.premiereNaira, 500)),
       snackUsdMinor: toInt(body.snackUsdMinor, 149),
       standardUsdMinor: toInt(body.standardUsdMinor, 199),
       premiereUsdMinor: toInt(body.premiereUsdMinor, 249),

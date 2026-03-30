@@ -77,12 +77,12 @@ export default function AdminCreatorProfileEditor({ userId, initialValues }: Adm
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error ?? 'Unable to update creator profile.');
+        throw new Error(data.error ?? 'Unable to update producer profile.');
       }
-      setMessage('Creator profile saved.');
+      setMessage('Producer profile saved.');
       window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update creator profile.');
+      setMessage(error instanceof Error ? error.message : 'Unable to update producer profile.');
     } finally {
       setSaving(false);
     }
@@ -132,7 +132,7 @@ export default function AdminCreatorProfileEditor({ userId, initialValues }: Adm
       <p className="muted">{form.idCardUrl ? 'ID file is on record.' : 'No ID file has been uploaded yet.'}</p>
       <div className="form-actions">
         <button className="btn btn-primary" type="submit" disabled={saving || uploading}>
-          {saving ? 'Saving...' : uploading ? 'Uploading...' : 'Save creator profile'}
+          {saving ? 'Saving...' : uploading ? 'Uploading...' : 'Save producer profile'}
         </button>
         {message ? <p className="muted form-message">{message}</p> : null}
       </div>

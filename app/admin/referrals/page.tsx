@@ -30,7 +30,7 @@ export default async function ReferralsPage() {
           active="/admin/referrals"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },

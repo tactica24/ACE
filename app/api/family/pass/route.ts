@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail, hasVerifiedPhone } from '@/lib/auth';
+import { DEFAULT_FAMILY_BUNDLE_CREDITS } from '@/lib/commerce';
 import { getFamilyPassPrice } from '@/lib/pricing';
 import { env } from '@/lib/env';
 import { getStripe } from '@/lib/stripe';
@@ -14,6 +15,9 @@ export async function POST(req: NextRequest) {
   if (!hasVerifiedEmail(auth)) {
     return NextResponse.json({ error: EMAIL_VERIFICATION_REQUIRED_MESSAGE }, { status: 403 });
   }
+  if (!hasVerifiedPhone(auth)) {
+    return NextResponse.json({ error: 'Verify your phone number from your account page before buying a family bundle.' }, { status: 403 });
+  }
 
   const rateLimit = await consumeRateLimit({
     key: `family-pass:${getRateLimitIdentity(req, auth.sub)}`,
@@ -25,13 +29,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const recipientPhone = body.recipientPhone as string | undefined;
+  const recipientPhone = typeof body.recipientPhone === 'string' ? body.recipientPhone.trim().replace(/(?!^\+)[^\d]/g, '') : undefined;
   if (!recipientPhone) return NextResponse.json({ error: 'Missing recipientPhone' }, { status: 400 });
 
   const recipient = await prisma.user.findFirst({ where: { phone: recipientPhone } });
   if (!recipient) return NextResponse.json({ error: 'Recipient not found' }, { status: 404 });
+  if (!recipient.phoneVerified) {
+    return NextResponse.json({ error: 'Recipient must verify their phone number before receiving a family bundle.' }, { status: 403 });
+  }
 
-  const credits = Number(env.ACE_FAMILY_PASS_CREDITS ?? 50);
+  const credits = Number(env.ACE_FAMILY_PASS_CREDITS ?? DEFAULT_FAMILY_BUNDLE_CREDITS);
   const price = await getFamilyPassPrice(req);
   if (price.region === 'NG' || price.amountMinor <= 0) {
     return NextResponse.json({ error: 'Family pass is only available for diaspora purchases.' }, { status: 400 });

@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     genres,
     priceTier,
     rightsTier,
+    releaseYear,
     teaserSec,
     durationSec,
     tags,
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
     genres?: string[];
     priceTier?: string;
     rightsTier?: string;
+    releaseYear?: number;
     teaserSec?: number;
     durationSec?: number;
     tags?: string[];
@@ -107,6 +109,12 @@ export async function POST(req: NextRequest) {
 
   const safeTeaserSec = Math.max(0, Math.floor(Number(teaserSec ?? 0)));
   const safeDurationSec = Math.max(0, Math.floor(Number(durationSec ?? 0)));
+  const currentYear = new Date().getFullYear() + 2;
+  const parsedReleaseYear = Math.floor(Number(releaseYear ?? 0));
+  const safeReleaseYear =
+    Number.isFinite(parsedReleaseYear) && parsedReleaseYear >= 1900 && parsedReleaseYear <= currentYear
+      ? parsedReleaseYear
+      : null;
 
   if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !safeDurationSec || !safeR2Key) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -150,6 +158,7 @@ export async function POST(req: NextRequest) {
       priceTier,
       rightsTier,
       status: pendingStatus,
+      releaseYear: safeReleaseYear,
       teaserSec: safeTeaserSec,
       durationSec: safeDurationSec,
       tags: safeTags,

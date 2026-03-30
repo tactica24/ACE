@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
+import { PASS_CREDITS, PASS_PRICE_NAIRA } from '@/lib/commerce';
 import { initializeTransaction } from '@/lib/paystack';
 import { v4 as uuid } from 'uuid';
 import { getChargeForNaira } from '@/lib/pricing';
@@ -8,8 +9,6 @@ import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-
-const PASS_PRICE = 2500;
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -30,18 +29,18 @@ export async function POST(req: NextRequest) {
   const referralCode = readReferralCode(req);
   const referral = await resolveReferral(referralCode);
   const reference = `ace_pass_${uuid()}`;
-  const charge = getChargeForNaira(req, PASS_PRICE);
+  const charge = getChargeForNaira(req, PASS_PRICE_NAIRA);
   const useStripe = charge.currency !== 'NGN';
   await prisma.payment.create({
     data: {
       userId: auth.sub,
       reference,
-      amountNaira: PASS_PRICE,
+      amountNaira: PASS_PRICE_NAIRA,
       amountMinor: charge.amountMinor,
       currency: charge.currency,
       gateway: useStripe ? 'STRIPE' : 'PAYSTACK',
       referralCode: referral?.code,
-      metadata: { type: 'pass' }
+      metadata: { type: 'pass', credits: PASS_CREDITS }
     }
   });
 
@@ -60,13 +59,13 @@ export async function POST(req: NextRequest) {
         {
           price_data: {
             currency: charge.currency.toLowerCase(),
-            product_data: { name: 'Ace Studio Hybrid Pass' },
+            product_data: { name: `Ace Studio Hybrid Pass (${PASS_CREDITS} credits)` },
             unit_amount: charge.amountMinor
           },
           quantity: 1
         }
       ],
-      metadata: { userId: user.id, type: 'pass', reference },
+      metadata: { userId: user.id, type: 'pass', reference, credits: `${PASS_CREDITS}` },
       success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,
       cancel_url: `${env.ACE_APP_BASE_URL}/wallet`
     });
@@ -76,17 +75,17 @@ export async function POST(req: NextRequest) {
     await prisma.payment.update({
       where: { reference },
       data: {
-        metadata: { type: 'pass', stripeSessionId: session.id }
+        metadata: { type: 'pass', credits: PASS_CREDITS, stripeSessionId: session.id }
       }
     });
     return NextResponse.json({ authorizationUrl: session.url, reference });
   }
 
   const paystack = await initializeTransaction({
-    amountNaira: PASS_PRICE,
+    amountNaira: PASS_PRICE_NAIRA,
     email: user.email,
     reference,
-    metadata: { userId: user.id, type: 'pass', referralCode: referral?.code ?? null }
+    metadata: { userId: user.id, type: 'pass', credits: PASS_CREDITS, referralCode: referral?.code ?? null }
   });
 
   return NextResponse.json({ authorizationUrl: paystack.data.authorization_url, reference });

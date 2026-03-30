@@ -14,7 +14,7 @@ export default async function InfrastructureReadiness() {
         <div>
           <h3>Infrastructure readiness</h3>
           <p className="muted">
-            This confirms the creator upload, admin approval, homepage publishing, and playback path for your current setup.
+            This confirms the producer upload, admin approval, homepage publishing, and playback path for your current setup.
           </p>
         </div>
         <div className="detail-badges">

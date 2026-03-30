@@ -45,7 +45,7 @@ export default function BrowseCatalog({ videos }: { videos: BrowseCatalogVideo[]
         <div className="browse-sidebar-section">
           <h3 style={{ marginBottom: 8 }}>Find something fast</h3>
           <p className="muted" style={{ marginTop: 0 }}>
-            Search by title, genre, mood, or category without losing sight of the catalog.
+            Search by title, genre, mood, or category.
           </p>
           <input
             className="input"

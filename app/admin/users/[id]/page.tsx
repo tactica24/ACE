@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AdminCommerceSupportPanel from '@/components/AdminCommerceSupportPanel';
 import AdminCreatorProfileEditor from '@/components/AdminCreatorProfileEditor';
 import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireAdminUser } from '@/lib/auth-page';
+import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
+import { formatRecordedCharge } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +36,15 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
         orderBy: { createdAt: 'desc' },
         take: 20
       },
+      supportActionsReceived: {
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          adminUser: {
+            select: { email: true }
+          }
+        }
+      },
       payments: {
         orderBy: { createdAt: 'desc' },
         take: 20
@@ -54,13 +66,13 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
   return (
     <DashboardShell
       title={user.creator?.displayName ?? user.name ?? user.email}
-      description="Admin support view for creator corrections, approvals, finance tracing, and issue resolution."
+      description="Admin support view for producer corrections, approvals, finance tracing, and issue resolution."
       sideNav={
         <SideNav
           active="/admin/users"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },
@@ -86,19 +98,20 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <span className="muted">Phone: {user.phone}</span>
             <span className="muted">Role: {user.role}</span>
             <span className="muted">Signup intent: {user.signupIntent}</span>
-            <span className="muted">Creator access: {user.creatorAccessStatus}</span>
-            <span className="muted">Viewer wallet: NGN {user.wallet?.balanceNaira ?? 0}</span>
-            <span className="muted">Viewer credits: {user.wallet?.credits ?? 0}</span>
+            <span className="muted">Producer access: {user.creatorAccessStatus}</span>
+            <span className="muted">Viewer wallet: {formatRecordedCharge({ amountMinor: (user.wallet?.balanceNaira ?? 0) * 100, amountNaira: user.wallet?.balanceNaira ?? 0, currency: 'NGN' })}</span>
+            <span className="muted">Wallet value: {formatCredits(getCreditsForNaira(user.wallet?.balanceNaira ?? 0))}</span>
+            <span className="muted">Viewer credits: {formatCredits(user.wallet?.credits ?? 0)}</span>
           </div>
         </div>
 
         <div className="card">
-          <h3>Creator account</h3>
+          <h3>Producer account</h3>
           {user.creator ? (
             <div className="stack-list">
-              <span className="muted">Creator number: {user.creator.creatorNumber ?? 'Pending'}</span>
+              <span className="muted">Producer number: {user.creator.creatorNumber ?? 'Pending'}</span>
               <span className="muted">Display name: {user.creator.displayName}</span>
-              <span className="muted">Creator wallet: NGN {user.creator.earningsBalanceNaira}</span>
+              <span className="muted">Producer wallet: {formatRecordedCharge({ amountMinor: user.creator.earningsBalanceNaira * 100, amountNaira: user.creator.earningsBalanceNaira, currency: 'NGN' })}</span>
               <span className="muted">Verified: {user.creator.verified ? 'Yes' : 'No'}</span>
               <span className="muted">Address: {user.creator.address ?? 'Not provided'}</span>
               <span className="muted">ID number: {user.creator.idCardNumber ?? 'Not provided'}</span>
@@ -108,13 +121,13 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
               <ApproveCreatorButton userId={user.id} approved={user.role === 'CREATOR'} />
             </div>
           ) : (
-            <p className="muted">No creator profile on this account yet.</p>
+            <p className="muted">No producer profile on this account yet.</p>
           )}
         </div>
 
         {(user.signupIntent === 'CREATOR' || user.creator) ? (
           <div className="card">
-            <h3>Edit creator onboarding</h3>
+            <h3>Edit producer onboarding</h3>
             <AdminCreatorProfileEditor
               userId={user.id}
               initialValues={{
@@ -140,7 +153,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     <strong>{payment.reference}</strong>
                     <p className="muted">{payment.gateway} | {payment.status} | {payment.createdAt.toISOString().slice(0, 10)}</p>
                   </div>
-                  <span>NGN {payment.amountNaira}</span>
+                  <span>{`${formatRecordedCharge({ amountMinor: payment.amountMinor ?? payment.amountNaira * 100, amountNaira: payment.amountNaira, currency: payment.currency })} | ${formatCredits(getCreditsForNaira(payment.amountNaira))}`}</span>
                 </div>
               ))}
             </div>
@@ -157,9 +170,9 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                 <div key={unlock.id} className="stack-row">
                   <div>
                     <strong>{unlock.video.title}</strong>
-                    <p className="muted">{unlock.createdAt.toISOString().slice(0, 10)} | {unlock.source}</p>
+                    <p className="muted">{unlock.createdAt.toISOString().slice(0, 10)} | {unlock.source} | {formatCredits(getCreditsForNaira(unlock.amountNaira))}</p>
                   </div>
-                  <span>NGN {unlock.amountNaira}</span>
+                  <span>{formatRecordedCharge({ amountMinor: unlock.amountMinor ?? unlock.amountNaira * 100, amountNaira: unlock.amountNaira, currency: unlock.currency })}</span>
                 </div>
               ))}
             </div>
@@ -167,6 +180,35 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <p className="muted">No unlocks recorded yet.</p>
           )}
         </div>
+
+        <AdminCommerceSupportPanel
+          userId={user.id}
+          wallet={{
+            balanceNaira: user.wallet?.balanceNaira ?? 0,
+            credits: user.wallet?.credits ?? 0
+          }}
+          recentPayments={user.payments.map((payment) => ({
+            id: payment.id,
+            reference: payment.reference,
+            gateway: payment.gateway,
+            status: payment.status,
+            amountNaira: payment.amountNaira,
+            amountMinor: payment.amountMinor,
+            currency: payment.currency,
+            createdAt: payment.createdAt.toISOString().slice(0, 10)
+          }))}
+          initialActions={user.supportActionsReceived.map((action) => ({
+            id: action.id,
+            actionType: action.actionType,
+            amountNairaDelta: action.amountNairaDelta,
+            creditsDelta: action.creditsDelta,
+            resultingBalanceNaira: action.resultingBalanceNaira,
+            resultingCredits: action.resultingCredits,
+            note: action.note,
+            createdAt: action.createdAt.toISOString().slice(0, 10),
+            adminEmail: action.adminUser.email
+          }))}
+        />
 
         <div className="card">
           <h3>Recent support requests</h3>
@@ -188,7 +230,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
         </div>
 
         <div className="card">
-          <h3>Recent creator earnings statements</h3>
+          <h3>Recent producer earnings statements</h3>
           {creatorSettlements.length ? (
             <div className="stack-list">
               {creatorSettlements.map((settlement) => (
@@ -197,17 +239,17 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     <strong>{settlement.video.title}</strong>
                     <p className="muted">{settlement.createdAt.toISOString().slice(0, 10)}</p>
                   </div>
-                  <span>Creator NGN {settlement.creatorNaira}</span>
+                  <span>Producer NGN {settlement.creatorNaira}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="muted">No creator settlement records yet.</p>
+            <p className="muted">No producer settlement records yet.</p>
           )}
         </div>
 
         <div className="card">
-          <h3>Creator payout requests</h3>
+          <h3>Producer payout requests</h3>
           {user.creator?.payoutRequests.length ? (
             <div className="stack-list">
               {user.creator.payoutRequests.map((request) => (
@@ -221,7 +263,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
               ))}
             </div>
           ) : (
-            <p className="muted">No creator payout requests yet.</p>
+            <p className="muted">No producer payout requests yet.</p>
           )}
         </div>
       </div>

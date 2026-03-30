@@ -43,7 +43,7 @@ export default function FinanceSettingsForm({ initialConfig }: { initialConfig: 
       <h3>Split controls</h3>
       <div className="field-grid field-grid-2">
         <label className="field">
-          <span className="field-label">Creator %</span>
+          <span className="field-label">Producer %</span>
           <input className="input" type="number" step="0.1" value={config.creatorSharePercent} onChange={(event) => update('creatorSharePercent', Number(event.target.value || 0))} />
         </label>
         <label className="field">

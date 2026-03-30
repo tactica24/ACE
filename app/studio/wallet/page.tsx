@@ -25,7 +25,7 @@ export default async function StudioWalletPage() {
 
   return (
     <DashboardShell
-      title="Creator wallet"
+      title="Producer wallet"
       description="Track your earnings wallet and every unlock inflow credited to your account."
       sideNav={
         <SideNav
@@ -43,9 +43,9 @@ export default async function StudioWalletPage() {
     >
       <div className="grid">
         <div className="card">
-          <h3>Creator wallet balance</h3>
+          <h3>Producer wallet balance</h3>
           <p className="hero-title" style={{ fontSize: '2rem' }}>NGN {creatorProfile?.earningsBalanceNaira ?? 0}</p>
-          <p className="muted">Creator number: {creatorProfile?.creatorNumber ?? 'Pending'}</p>
+          <p className="muted">Producer number: {creatorProfile?.creatorNumber ?? 'Pending'}</p>
         </div>
         <CreatorWithdrawPanel
           balanceNaira={creatorProfile?.earningsBalanceNaira ?? 0}
@@ -72,7 +72,7 @@ export default async function StudioWalletPage() {
               ))}
             </div>
           ) : (
-            <p className="muted">Your creator inflows will appear here after viewers unlock your titles.</p>
+            <p className="muted">Your producer inflows will appear here after viewers unlock your titles.</p>
           )}
         </div>
       </div>

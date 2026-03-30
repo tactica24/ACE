@@ -59,6 +59,10 @@ export default async function LibraryPage() {
                   <strong>{video.createdAt.toISOString().slice(0, 10)}</strong>
                 </div>
                 <div className="detail-card">
+                  <span className="detail-label">Production year</span>
+                  <strong>{video.releaseYear ?? 'Not set'}</strong>
+                </div>
+                <div className="detail-card">
                   <span className="detail-label">Category</span>
                   <strong>{video.category}</strong>
                 </div>
@@ -88,7 +92,7 @@ export default async function LibraryPage() {
         </div>
       ) : (
         <div className="card empty-state">
-          <h3>No creator uploads yet</h3>
+          <h3>No producer uploads yet</h3>
           <p className="muted">Your releases will appear here after you submit them for moderation.</p>
         </div>
       )}

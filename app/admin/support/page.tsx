@@ -44,13 +44,13 @@ export default async function AdminSupportPage() {
   return (
     <DashboardShell
       title="Support inbox"
-      description="Handle viewer and creator support requests directly from the admin dashboard."
+      description="Handle viewer and producer support requests directly from the admin dashboard."
       sideNav={
         <SideNav
           active="/admin/support"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },

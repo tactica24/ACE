@@ -2,13 +2,22 @@ import Link from 'next/link';
 import AnalyticsTicker from '@/components/AnalyticsTicker';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireCreatorUser } from '@/lib/auth-page';
+import { prisma } from '@/lib/db';
 
 export default async function StudioPage() {
-  await requireCreatorUser('/studio');
+  const user = await requireCreatorUser('/studio');
+  const creatorProfile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.sub },
+    select: {
+      creatorNumber: true,
+      displayName: true,
+      verified: true
+    }
+  });
 
   return (
     <DashboardShell
-      title="Creator studio"
+      title="Producer studio"
       description="Manage onboarding, uploads, contracts, and release status from one place."
       sideNav={
         <SideNav
@@ -28,14 +37,24 @@ export default async function StudioPage() {
       <AnalyticsTicker />
 
       <div className="grid">
+        <div className="card">
+          <h3>Studio identity</h3>
+          <div className="stack-list" style={{ gap: 8 }}>
+            <p className="muted" style={{ margin: 0 }}>Registered name: {user.name ?? 'Not set yet'}</p>
+            <p className="muted" style={{ margin: 0 }}>Display name: {creatorProfile?.displayName ?? user.name ?? 'Pending onboarding'}</p>
+            <p className="muted" style={{ margin: 0 }}>Producer number: {creatorProfile?.creatorNumber ?? 'Pending assignment'}</p>
+            <p className="muted" style={{ margin: 0 }}>Email: {user.email}</p>
+            <p className="muted" style={{ margin: 0 }}>Verification status: {creatorProfile?.verified ? 'Verified producer' : 'Awaiting review'}</p>
+          </div>
+        </div>
         <div className="card card-soft">
-          <h3>Creator verification</h3>
+          <h3>Producer verification</h3>
           <p className="muted">Complete your profile so payouts, moderation, and catalog attribution stay accurate.</p>
           <Link className="btn btn-ghost" href="/studio/onboarding">Open onboarding</Link>
         </div>
         <div className="card card-soft">
-          <h3>Creator wallet</h3>
-          <p className="muted">Track every credited unlock and your current creator balance in one place.</p>
+          <h3>Producer wallet</h3>
+          <p className="muted">Track every credited unlock and your current producer balance in one place.</p>
           <Link className="btn btn-ghost" href="/studio/wallet">Open wallet</Link>
         </div>
         <div className="card card-soft">

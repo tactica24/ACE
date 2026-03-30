@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       rightsTier: true,
       teaserSec: true,
       durationSec: true,
+      releaseYear: true,
       highlightSeconds: true,
       posterKey: true,
       creatorId: true,
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       rightsTier: video.rightsTier,
       teaserSec: video.teaserSec,
       durationSec: video.durationSec,
+      releaseYear: video.releaseYear,
       highlightSeconds: video.highlightSeconds,
       posterKey: video.posterKey,
       creatorId: video.creatorId

@@ -94,7 +94,7 @@ export default function CreatorApply({ lockedName, initialProfile }: CreatorAppl
     <form onSubmit={handleSubmit} className="form-grid">
       <div className="form-section">
         <div>
-          <h3 className="form-section-title">Identity</h3>
+          <h3 className="form-section-title">Producer identity</h3>
           <p className="muted form-section-copy">Your registered name is locked here and will also be used for your payout account name.</p>
         </div>
         <div className="field-grid field-grid-2">
@@ -164,7 +164,7 @@ export default function CreatorApply({ lockedName, initialProfile }: CreatorAppl
 
       <div className="form-actions">
         <button className="btn btn-primary" type="submit" disabled={loading || uploading || !lockedName}>
-          {loading ? 'Submitting profile...' : uploading ? 'Uploading ID...' : 'Submit creator profile'}
+          {loading ? 'Submitting profile...' : uploading ? 'Uploading ID...' : 'Submit producer profile'}
         </button>
         {message ? <p className="muted form-message">{message}</p> : null}
       </div>

@@ -55,14 +55,14 @@ export default async function CreatorIntakePage() {
 
   return (
     <DashboardShell
-      title="Creator intake"
-      description="Review completed creator onboarding profiles, correct any mistakes, and approve studio access once."
+      title="Producer intake"
+      description="Review completed producer onboarding profiles, correct any mistakes, and approve studio access once."
       sideNav={
         <SideNav
           active="/admin/intake"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },

@@ -4,7 +4,7 @@ export const supportCategoryLabels: Record<SupportTicketCategoryValue, string> =
   PAYMENT: 'Payment challenge',
   ACCOUNT_ACCESS: 'Account access',
   CATALOG_HELP: 'Catalog or viewing help',
-  CREATOR_ONBOARDING: 'Creator onboarding',
+  CREATOR_ONBOARDING: 'Producer onboarding',
   VIDEO_UPLOAD: 'Video upload issue',
   CONTRACTS: 'Contracts or rights',
   OTHER: 'Other'

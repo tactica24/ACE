@@ -53,7 +53,7 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
         <div className="container" style={{ maxWidth: 560 }}>
           <StatusCard
             title="Admin account detected"
-            description="This account already has admin access. Review creator applications and approvals from the admin dashboard."
+            description="This account already has admin access. Review producer applications and approvals from the admin dashboard."
             primaryHref="/admin"
             primaryLabel="Open admin dashboard"
             secondaryHref="/account"
@@ -69,10 +69,10 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
       <div className="section">
         <div className="container" style={{ maxWidth: 560 }}>
           <StatusCard
-            title="Creator access is active"
-            description="This account already has creator access and can go straight into the studio."
+            title="Producer access is active"
+            description="This account already has producer access and can go straight into the studio."
             primaryHref="/studio"
-            primaryLabel="Open creator studio"
+            primaryLabel="Open producer studio"
             secondaryHref="/account"
             secondaryLabel="Open account"
           />
@@ -93,19 +93,19 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
               {!user.emailVerified
                 ? 'Verify your email to continue'
                 : waitingForReview
-                  ? 'Creator profile under review'
-                  : 'Continue creator onboarding'}
+                  ? 'Producer profile under review'
+                  : 'Continue producer onboarding'}
             </h2>
             <p className="muted">
               {!user.emailVerified
-                ? 'Open the verification email we sent, then sign in again to continue your creator onboarding.'
+                ? 'Open the verification email we sent, then sign in again to continue your producer onboarding.'
                 : waitingForReview
                   ? 'Your profile has been submitted. Admin will review it once, approve it, and then unlock your studio upload access.'
-                  : 'Your email is verified. Complete your onboarding form once so admin can review and approve your creator access.'}
+                  : 'Your email is verified. Complete your onboarding form once so admin can review and approve your producer access.'}
             </p>
             {submitted || verificationSent ? (
               <p className="muted">
-                {submitted ? 'Your creator profile is in the admin review queue.' : 'Your account has been created successfully.'}
+                {submitted ? 'Your producer profile is in the admin review queue.' : 'Your account has been created successfully.'}
               </p>
             ) : null}
             <div className="action-list" style={{ marginTop: 16 }}>
@@ -123,14 +123,14 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
     <div className="section">
       <div className="container" style={{ maxWidth: 560 }}>
         <div className="card">
-          <h2>Create your creator account</h2>
+          <h2>Create your producer account</h2>
           <p className="muted">
-            Start your creator account here. After email verification, you complete onboarding once and admin reviews that profile before studio access is opened.
+            Start your producer account here. After email verification, you complete onboarding once and admin reviews that profile before studio access is opened.
           </p>
           <AuthRegister
             initialSignupIntent="CREATOR"
             lockSignupIntent
-            submitLabel="Create creator account"
+            submitLabel="Create producer account"
             helperText="We will send a verification email after signup."
           />
           <p className="muted" style={{ marginTop: 12 }}>

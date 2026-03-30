@@ -297,7 +297,7 @@ export default async function AdminPage() {
           active="/admin"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake', count: `${creatorRequests}` },
+            { href: '/admin/intake', label: 'Producer intake', count: `${creatorRequests}` },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation', count: `${pendingModeration}` },
             { href: '/admin/settings', label: 'Controls' },
@@ -373,10 +373,10 @@ export default async function AdminPage() {
           </span>
         </div>
         <div className="metric-card">
-          <span className="muted">Creator approvals</span>
+          <span className="muted">Producer approvals</span>
           <strong>{creatorVerificationBacklog}</strong>
           <span className={creatorVerificationBacklog > 0 ? 'trend-warn' : 'trend-up'}>
-            {creatorVerificationBacklog > 0 ? 'Profiles waiting for admin approval' : 'Creator approvals are current'}
+            {creatorVerificationBacklog > 0 ? 'Profiles waiting for admin approval' : 'Producer approvals are current'}
           </span>
         </div>
         <div className="metric-card">
@@ -433,7 +433,7 @@ export default async function AdminPage() {
               <strong>{failedPayments}</strong>
             </div>
             <div className="detail-card">
-              <span className="detail-label">Creator approvals</span>
+              <span className="detail-label">Producer approvals</span>
               <strong>{creatorVerificationBacklog}</strong>
             </div>
             <div className="detail-card">
@@ -540,17 +540,17 @@ export default async function AdminPage() {
               ))}
             </div>
           ) : (
-            <p className="muted">Uploads will appear here as creators submit titles.</p>
+            <p className="muted">Uploads will appear here as producers submit titles.</p>
           )}
         </div>
 
         <div className="card">
           <h3>Immediate actions</h3>
           <div className="action-list">
-            <Link className="btn btn-ghost" href="/admin/intake">Review creator requests</Link>
+            <Link className="btn btn-ghost" href="/admin/intake">Review producer requests</Link>
             <Link className="btn btn-ghost" href="/admin/finance">Open finance console</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
-            <Link className="btn btn-ghost" href="/admin/users">Open creator accounts</Link>
+            <Link className="btn btn-ghost" href="/admin/users">Open producer accounts</Link>
             <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
             <Link className="btn btn-ghost" href="/admin/node">Inspect infrastructure</Link>
           </div>
@@ -578,7 +578,7 @@ export default async function AdminPage() {
         </div>
 
         <div className="card">
-          <h3>Creator approval queue</h3>
+          <h3>Producer approval queue</h3>
           {creatorVerificationQueue.length ? (
             <div className="stack-list">
               {creatorVerificationQueue.map((creator) => (
@@ -597,7 +597,7 @@ export default async function AdminPage() {
               ))}
             </div>
           ) : (
-            <p className="muted">Creator approval backlog is clear.</p>
+            <p className="muted">Producer approval backlog is clear.</p>
           )}
         </div>
       </div>

@@ -29,9 +29,14 @@ export async function POST(req: NextRequest) {
   const ageRating = typeof body.ageRating === 'string' ? body.ageRating.trim() : 'ALL';
   const priceTier = typeof body.priceTier === 'string' ? body.priceTier.trim() : 'STANDARD';
   const rightsTier = typeof body.rightsTier === 'string' ? body.rightsTier.trim() : 'SHARED';
+  const releaseYear = Math.floor(Number(body.releaseYear ?? 0));
   const originalLanguage = typeof body.originalLanguage === 'string' ? body.originalLanguage.trim().toLowerCase() : 'en';
   const genres = normalizeList(body.genres);
   const contentWarnings = normalizeList(body.contentWarnings);
+  const safeReleaseYear =
+    Number.isFinite(releaseYear) && releaseYear >= 1900 && releaseYear <= new Date().getFullYear() + 2
+      ? releaseYear
+      : null;
 
   if (!videoId || !title || !description) {
     return NextResponse.json({ error: 'Title, description, and video id are required.' }, { status: 400 });
@@ -60,6 +65,7 @@ export async function POST(req: NextRequest) {
       ageRating: ageRating as (typeof AGE_RATINGS)[number],
       priceTier: priceTier as (typeof PRICE_TIERS)[number],
       rightsTier: rightsTier as (typeof RIGHTS_TIERS)[number],
+      releaseYear: safeReleaseYear,
       originalLanguage,
       genres,
       contentWarnings
@@ -73,6 +79,7 @@ export async function POST(req: NextRequest) {
       ageRating: true,
       priceTier: true,
       rightsTier: true,
+      releaseYear: true,
       originalLanguage: true,
       genres: true,
       contentWarnings: true

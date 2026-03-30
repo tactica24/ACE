@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     auth.role !== 'ADMIN' &&
     !(auth.signupIntent === 'CREATOR' && auth.creatorAccessStatus === 'REQUESTED')
   ) {
-    return NextResponse.json({ error: 'This creator onboarding form is not available for this account.' }, { status: 403 });
+    return NextResponse.json({ error: 'This producer onboarding form is not available for this account.' }, { status: 403 });
   }
 
   const body = await req.json();
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const bankAccountNumber = typeof body.bankAccountNumber === 'string' ? body.bankAccountNumber.trim() : '';
   const bankAccountName = displayName;
 
-  if (!displayName) return NextResponse.json({ error: 'Complete your account name before creator onboarding.' }, { status: 400 });
+  if (!displayName) return NextResponse.json({ error: 'Complete your account name before producer onboarding.' }, { status: 400 });
   if (!address) return NextResponse.json({ error: 'Address is required.' }, { status: 400 });
   if (!idCardNumber) return NextResponse.json({ error: 'Government ID number is required.' }, { status: 400 });
   if (!idCardUrl) return NextResponse.json({ error: 'Upload your ID card image before submitting.' }, { status: 400 });

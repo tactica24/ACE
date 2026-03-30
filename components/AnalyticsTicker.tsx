@@ -70,7 +70,7 @@ export default function AnalyticsTicker() {
       </div>
       <div className="card">
         <div className="stat">
-          <span className="muted">Creator wallet</span>
+          <span className="muted">Producer wallet</span>
           <strong>NGN {data?.walletBalance ?? '--'}</strong>
         </div>
       </div>

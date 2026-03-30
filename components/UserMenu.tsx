@@ -104,7 +104,7 @@ export default function UserMenu({
             ) : null}
             {showCreatorStatus ? (
               <Link className="user-menu-link" href="/creator" onClick={() => setOpen(false)}>
-                Creator status
+                Producer status
               </Link>
             ) : null}
           </div>

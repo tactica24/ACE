@@ -18,9 +18,9 @@ export default async function StudioOnboardingPage() {
   return (
     <div className="section">
       <div className="container" style={{ maxWidth: 760 }}>
-        <div className="pill">Creator onboarding</div>
-        <h1 className="hero-title" style={{ marginTop: 12 }}>Create your studio profile</h1>
-        <p className="muted">Complete this profile once. After submission, admin reviews it and unlocks your creator studio.</p>
+        <div className="pill">Producer onboarding</div>
+        <h1 className="hero-title" style={{ marginTop: 12 }}>Create your producer profile</h1>
+        <p className="muted">Complete this profile once. After submission, admin reviews it and unlocks your producer studio.</p>
         <CreatorApply
           lockedName={user.name ?? ''}
           initialProfile={{

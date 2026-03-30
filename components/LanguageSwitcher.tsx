@@ -28,7 +28,7 @@ export default function LanguageSwitcher({
   return (
     <label className="language-switcher" aria-label={copy.uiLanguage}>
       <select
-        className="language-switcher-select"
+        className="language-switcher-select language-switcher-select-compact"
         value={language}
         onChange={(event) => {
           void changeLanguage(event.target.value);

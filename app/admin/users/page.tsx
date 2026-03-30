@@ -63,13 +63,13 @@ export default async function UsersPage() {
   return (
     <DashboardShell
       title="User directory"
-      description="Manage roles, creator approvals, and account corrections across Ace Studio."
+      description="Manage roles, producer approvals, and account corrections across Ace Studio."
       sideNav={
         <SideNav
           active="/admin/users"
           items={[
             { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Creator intake' },
+            { href: '/admin/intake', label: 'Producer intake' },
             { href: '/admin/finance', label: 'Finance' },
             { href: '/admin/moderation', label: 'Moderation' },
             { href: '/admin/support', label: 'Support' },

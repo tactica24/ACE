@@ -47,7 +47,7 @@ export default function CreatorPayoutAdmin({ initialRequests }: { initialRequest
 
   return (
     <div className="card">
-      <h3>Creator payout requests</h3>
+      <h3>Producer payout requests</h3>
       {requests.length ? (
         <div className="stack-list">
           {requests.map((request) => (
@@ -83,7 +83,7 @@ export default function CreatorPayoutAdmin({ initialRequests }: { initialRequest
           ))}
         </div>
       ) : (
-        <p className="muted">Creator withdrawal requests will appear here as soon as creators start cashing out.</p>
+        <p className="muted">Producer withdrawal requests will appear here as soon as producers start cashing out.</p>
       )}
     </div>
   );

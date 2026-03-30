@@ -100,6 +100,16 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  REFUNDED
+  REVERSED
+}
+
+enum AdminSupportActionType {
+  PAYMENT_VERIFY
+  PAYMENT_STATUS_UPDATE
+  WALLET_ADJUSTMENT
+  CREDIT_ADJUSTMENT
+  SUPPORT_COMPENSATION
 }
 
 enum Gateway {
@@ -137,7 +147,8 @@ model User {
   firebaseUid  String?         @unique
   name         String?
   email        String          @unique
-  phone        String
+  phone        String          @unique
+  phoneVerified Boolean        @default(false)
   passwordHash String
   role         Role            @default(USER)
   signupIntent SignupIntent    @default(VIEWER)
@@ -159,6 +170,8 @@ model User {
   watchHistory WatchHistory[]
   streamSessions StreamSession[]
   offlinePackages OfflinePackage[] @relation("OfflinePackageOwner")
+  supportActionsReceived AdminSupportAction[] @relation("SupportActionUser")
+  supportActionsPerformed AdminSupportAction[] @relation("SupportActionAdmin")
 }
 
 model Wallet {
@@ -214,6 +227,7 @@ model Video {
   priceTier   PriceTier
   rightsTier  RightsTier
   status      VideoStatus @default(DRAFT)
+  releaseYear Int?
   durationSec Int
   teaserSec   Int
   highlightSeconds Int[]   @default([])
@@ -323,6 +337,7 @@ model Unlock {
   user          User         @relation(fields: [userId], references: [id])
   video         Video        @relation(fields: [videoId], references: [id])
   settlement    UnlockSettlement?
+  @@unique([userId, videoId])
   @@index([userId])
   @@index([videoId])
 }
@@ -404,6 +419,7 @@ model Payment {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   user        User          @relation(fields: [userId], references: [id])
+  supportActions AdminSupportAction[]
 }
 
 model ReferralLink {
@@ -427,6 +443,27 @@ model ReferralEvent {
   commissionNaira Int    @default(0)
   createdAt    DateTime  @default(now())
   referral     ReferralLink @relation(fields: [referralId], references: [id])
+}
+
+model AdminSupportAction {
+  id                   String                 @id @default(cuid())
+  adminUserId          String
+  userId               String
+  paymentId            String?
+  actionType           AdminSupportActionType
+  amountNairaDelta     Int                    @default(0)
+  creditsDelta         Int                    @default(0)
+  resultingBalanceNaira Int?
+  resultingCredits     Int?
+  note                 String
+  createdAt            DateTime               @default(now())
+  adminUser            User                   @relation("SupportActionAdmin", fields: [adminUserId], references: [id])
+  user                 User                   @relation("SupportActionUser", fields: [userId], references: [id])
+  payment              Payment?               @relation(fields: [paymentId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([paymentId, createdAt])
 }
 
 model FamilyLink {

@@ -10,6 +10,7 @@ export type CatalogVideo = {
   posterKey: string | null;
   genres: string[];
   durationSec: number;
+  releaseYear: number | null;
   videoType: string;
   ageRating: string;
   category: string;

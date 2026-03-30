@@ -15,6 +15,7 @@ type Item = {
     ageRating?: string;
     rightsTier?: string;
     priceTier?: string;
+    releaseYear?: number | null;
     originalLanguage?: string | null;
     genres?: string[];
     contentWarnings?: string[];
@@ -36,6 +37,7 @@ type VideoDraft = {
   ageRating: string;
   priceTier: string;
   rightsTier: string;
+  releaseYear: string;
   originalLanguage: string;
   genres: string;
   contentWarnings: string;
@@ -73,6 +75,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       ageRating: item.video.ageRating ?? 'ALL',
       priceTier: item.video.priceTier ?? 'STANDARD',
       rightsTier: item.video.rightsTier ?? 'SHARED',
+      releaseYear: item.video.releaseYear ? String(item.video.releaseYear) : '',
       originalLanguage: item.video.originalLanguage ?? 'en',
       genres: (item.video.genres ?? []).join(', '),
       contentWarnings: (item.video.contentWarnings ?? []).join(', ')
@@ -90,6 +93,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
           ageRating: 'ALL',
           priceTier: 'STANDARD',
           rightsTier: 'SHARED',
+          releaseYear: '',
           originalLanguage: 'en',
           genres: '',
           contentWarnings: ''
@@ -175,7 +179,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     return (
       <div className="card empty-state">
         <h3>No titles are waiting for review</h3>
-        <p className="muted">New creator submissions will appear here automatically.</p>
+        <p className="muted">New producer submissions will appear here automatically.</p>
       </div>
     );
   }
@@ -210,8 +214,8 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
 
               <div className="detail-grid">
                 <div className="detail-card">
-                  <span className="detail-label">Creator</span>
-                  <strong>{item.video.creatorName ?? 'Unknown creator'}</strong>
+                  <span className="detail-label">Producer</span>
+                  <strong>{item.video.creatorName ?? 'Unknown producer'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Category</span>
@@ -228,6 +232,10 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <div className="detail-card">
                   <span className="detail-label">Rights</span>
                   <strong>{labelize(item.video.rightsTier)}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Production year</span>
+                  <strong>{item.video.releaseYear ?? 'Not set'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Price tier</span>
@@ -298,6 +306,10 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                       <option value="SHARED">Shared</option>
                       <option value="EXCLUSIVE">Exclusive</option>
                     </select>
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Production year</span>
+                    <input className="input" type="number" min={1900} max={new Date().getFullYear() + 2} value={getDraft(item).releaseYear} onChange={(event) => updateDraft(item.video.id, 'releaseYear', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Original language</span>

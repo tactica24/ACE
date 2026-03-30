@@ -9,14 +9,19 @@ export async function GET(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const wallet = await prisma.wallet.findUnique({ where: { userId: auth.sub } });
-  const pass = await prisma.subscriptionPass.findFirst({
+  const passes = await prisma.subscriptionPass.findMany({
     where: { userId: auth.sub, expiresAt: { gt: new Date() } },
-    orderBy: { expiresAt: 'desc' }
+    orderBy: { expiresAt: 'asc' }
   });
 
   return NextResponse.json({
     balanceNaira: wallet?.balanceNaira ?? 0,
     credits: wallet?.credits ?? 0,
-    pass: pass ? { creditsRemaining: pass.creditsRemaining, expiresAt: pass.expiresAt } : null
+    pass: passes.length
+      ? {
+          creditsRemaining: passes.reduce((total, pass) => total + pass.creditsRemaining, 0),
+          expiresAt: passes[0]?.expiresAt ?? null
+        }
+      : null
   });
 }

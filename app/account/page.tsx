@@ -38,12 +38,13 @@ export default async function AccountPage() {
               email={user.email}
               phone={user.phone}
               initialEmailVerified={Boolean(user.emailVerified)}
+              initialPhoneVerified={Boolean(user.phoneVerified)}
             />
             <p className="muted">Wallet balance: NGN {wallet?.balanceNaira ?? 0}</p>
-            <p className="muted">Account type: {user.signupIntent === 'CREATOR' ? 'Film creator' : 'Viewer'}</p>
+            <p className="muted">Account type: {user.signupIntent === 'CREATOR' ? 'Producer' : 'Viewer'}</p>
             {user.signupIntent === 'CREATOR' && user.role === 'USER' ? (
               <p className="muted">
-                Creator onboarding status:{' '}
+                Producer onboarding status:{' '}
                 {!user.emailVerified
                   ? 'Verify email'
                   : user.creatorAccessStatus === 'REQUESTED'

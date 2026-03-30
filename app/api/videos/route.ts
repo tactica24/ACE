@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       rightsTier: true,
       teaserSec: true,
       durationSec: true,
+      releaseYear: true,
       highlightSeconds: true,
       posterKey: true
     },

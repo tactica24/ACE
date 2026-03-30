@@ -46,7 +46,7 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
               <th>Intent</th>
               <th>Account</th>
               <th>Approval</th>
-              <th>Creator profile</th>
+              <th>Producer profile</th>
               <th>Joined</th>
             </tr>
           </thead>
@@ -85,14 +85,14 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                       className="btn btn-primary"
                     />
                   ) : (
-                    <span className="muted">No creator profile</span>
+                    <span className="muted">No producer profile</span>
                   )}
                 </td>
                 <td>
                   {user.creator ? (
                     <div className="stack-list" style={{ gap: 6, minWidth: 220 }}>
                       <strong>{user.creator.displayName}</strong>
-                      <span className="muted">{user.creator.creatorNumber || 'No creator number yet'}</span>
+                      <span className="muted">{user.creator.creatorNumber || 'No producer number yet'}</span>
                       <span className="muted">Earnings wallet: NGN {user.creator.earningsBalanceNaira ?? 0}</span>
                       <span className="muted">{user.creator.address || 'No address on file'}</span>
                       <span className="muted">{user.creator.idCardNumber || 'No ID number on file'}</span>

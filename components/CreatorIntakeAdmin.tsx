@@ -28,8 +28,8 @@ export default function CreatorIntakeAdmin({ initialUsers }: { initialUsers: Cre
     <div className="grid">
       {users.length === 0 ? (
         <div className="card">
-          <h3>No creator requests yet</h3>
-          <p className="muted">Submitted creator onboarding profiles will appear here for one-time admin review.</p>
+          <h3>No producer requests yet</h3>
+          <p className="muted">Submitted producer onboarding profiles will appear here for one-time admin review.</p>
         </div>
       ) : (
         users.map((user) => (

@@ -1,4 +1,5 @@
-﻿import { env } from './env';
+import crypto from 'node:crypto';
+import { env } from './env';
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
 
@@ -48,4 +49,17 @@ export async function verifyTransaction(reference: string) {
   }>;
 }
 
+export function verifyPaystackWebhookSignature(rawBody: string, signature: string | null) {
+  if (!signature || !env.PAYSTACK_SECRET_KEY) {
+    return false;
+  }
 
+  const expected = crypto.createHmac('sha512', env.PAYSTACK_SECRET_KEY).update(rawBody).digest('hex');
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(signature);
+  if (expectedBuffer.length !== receivedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+}

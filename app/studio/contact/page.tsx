@@ -14,7 +14,7 @@ export default async function StudioContactPage() {
 
   return (
     <DashboardShell
-      title="Creator contact"
+      title="Producer contact"
       description="Reach the support team directly for onboarding, upload, contracts, and operational issues."
       sideNav={
         <SideNav
@@ -35,13 +35,13 @@ export default async function StudioContactPage() {
           <SupportContactForm
             categories={creatorSupportCategories}
             title="Contact support"
-            description="Raise creator-specific issues so our team can resolve onboarding, upload, or contract blockers quickly."
+            description="Raise producer-specific issues so our team can resolve onboarding, upload, or contract blockers quickly."
           />
         </div>
         <div className="card">
-          <h3>Recent creator support requests</h3>
+          <h3>Recent producer support requests</h3>
           {tickets.length === 0 ? (
-            <p className="muted">No creator support requests yet.</p>
+            <p className="muted">No producer support requests yet.</p>
           ) : (
             <div className="stack-list">
               {tickets.map((ticket) => (

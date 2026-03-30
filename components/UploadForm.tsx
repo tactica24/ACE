@@ -14,6 +14,7 @@ type UploadState = {
   description: string;
   priceTier: string;
   rightsTier: string;
+  releaseYear: number;
   teaserSec: number;
   durationSec: number;
   videoType: string;
@@ -54,6 +55,7 @@ const initialState: UploadState = {
   description: '',
   priceTier: 'STANDARD',
   rightsTier: 'SHARED',
+  releaseYear: new Date().getFullYear(),
   teaserSec: 300,
   durationSec: 1800,
   videoType: 'FEATURE',
@@ -320,6 +322,7 @@ export default function UploadForm() {
           teaserSec: form.teaserSec,
           durationSec: form.durationSec,
           tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          releaseYear: form.releaseYear,
           highlightSeconds: form.highlightSeconds
             .split(',')
             .map((value) => parseInt(value.trim(), 10))
@@ -379,7 +382,7 @@ export default function UploadForm() {
           <span className="field-label">Synopsis</span>
           <textarea className="input" value={form.description} onChange={(event) => updateField('description', event.target.value)} rows={4} required />
         </label>
-        <div className="field-grid field-grid-2">
+        <div className="field-grid field-grid-3">
           <label className="field">
             <span className="field-label">Movie type</span>
             <select className="input" value={form.videoType} onChange={(event) => updateField('videoType', event.target.value)}>
@@ -399,6 +402,10 @@ export default function UploadForm() {
               <option value="PG16">16+</option>
               <option value="PG18">18+</option>
             </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Production year</span>
+            <input className="input" type="number" min={1900} max={new Date().getFullYear() + 2} value={form.releaseYear} onChange={(event) => updateField('releaseYear', parseInt(event.target.value || '0', 10))} />
           </label>
         </div>
         <div className="field-grid field-grid-2">

@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { getDefaultTierPriceNaira } from './commerce';
+import { alignNairaToCreditValue } from './credits';
 import { getGeoContext, getGeoContextFromHeaders } from './geo';
 import { env } from './env';
 import { getFinanceConfig } from './finance';
@@ -87,6 +89,12 @@ function getAmountMinorForTier(
   return config.premiereCadMinor;
 }
 
+export function getBasePriceNairaForTierFromConfig(config: PricingConfigValues, tier: PriceTierValue) {
+  if (tier === 'SNACK') return alignNairaToCreditValue(config.snackNaira ?? getDefaultTierPriceNaira('SNACK'));
+  if (tier === 'STANDARD') return alignNairaToCreditValue(config.standardNaira ?? getDefaultTierPriceNaira('STANDARD'));
+  return alignNairaToCreditValue(config.premiereNaira ?? getDefaultTierPriceNaira('PREMIERE'));
+}
+
 function getFamilyPassMinor(config: PricingConfigValues, currency: 'USD' | 'EUR' | 'GBP' | 'CAD') {
   if (currency === 'EUR') return config.familyPassEurMinor;
   if (currency === 'GBP') return config.familyPassGbpMinor;
@@ -130,10 +138,7 @@ export function getRegionalPriceFromConfig(
 ): RegionalPrice {
   const { currency, region } = getRegionalCurrency(req);
   const amountMinor = getAmountMinorForTier(config, tier, currency as 'NGN' | 'USD' | 'EUR' | 'GBP' | 'CAD');
-  const amountNaira =
-    currency === 'NGN'
-      ? Math.round(amountMinor / 100)
-      : Math.round((amountMinor / 100) * getFxRate(currency));
+  const amountNaira = getBasePriceNairaForTierFromConfig(config, tier);
 
   return {
     currency,
