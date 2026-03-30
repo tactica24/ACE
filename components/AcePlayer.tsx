@@ -255,13 +255,6 @@ export default function AcePlayer({
     constrainedSeek(videoElement.currentTime + deltaSec);
   }, [constrainedSeek]);
 
-  const restartPlayback = useCallback(() => {
-    clearSavedProgress(videoId);
-    setResumePrompt(null);
-    constrainedSeek(0);
-    void syncHistory({ progressSec: 0, keepalive: true });
-  }, [constrainedSeek, syncHistory, videoId]);
-
   const togglePlayback = useCallback(() => {
     const videoElement = videoRef.current;
     if (!videoElement) {
@@ -366,6 +359,13 @@ export default function AcePlayer({
       historyInFlightRef.current = false;
     }
   }, [isAuthenticated, videoId]);
+
+  const restartPlayback = useCallback(() => {
+    clearSavedProgress(videoId);
+    setResumePrompt(null);
+    constrainedSeek(0);
+    void syncHistory({ progressSec: 0, keepalive: true });
+  }, [constrainedSeek, syncHistory, videoId]);
 
   const unlockVideo = useCallback(async ({
     resumeAt,
