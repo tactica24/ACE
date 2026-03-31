@@ -37,6 +37,19 @@ type HomeRow = {
   items: HomeVideo[];
 };
 
+function formatRuntime(durationSec?: number | null) {
+  if (!durationSec || durationSec <= 0) return null;
+
+  const hours = Math.floor(durationSec / 3600);
+  const minutes = Math.max(1, Math.round((durationSec % 3600) / 60));
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
+}
+
 function dedupeVideos(videos: HomeVideo[]) {
   const seen = new Set<string>();
   return videos.filter((video) => {
@@ -197,6 +210,7 @@ export default async function HomePage() {
   const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
   const rows = buildRows({ videos, continueWatching, unlockedVideos, language });
+  const featuredRuntime = formatRuntime(featured?.durationSec);
 
   return (
     <div className="viewer-home">
@@ -209,10 +223,10 @@ export default async function HomePage() {
             <div className="home-hero-copy">
               <span className="home-kicker">{continueWatching.length ? copy.watchStory : copy.nowStreaming}</span>
               <h1 className="home-title">
-                {featured?.title ?? 'A premium home for bold films, series, and originals'}
+                {featured?.title ?? 'Stream bold films and series on ACE Studio'}
               </h1>
               <p className="home-summary">
-                {featured?.description ?? 'Discover premium storytelling with regional pricing, multilingual discovery, and a polished viewing experience on every screen.'}
+                {featured?.description ?? 'Discover standout stories from the ACE Studio catalog.'}
               </p>
               <div className="home-actions">
                 <Link className="btn btn-primary" href={featured ? `/v/${featured.id}` : '/auth/register'}>
@@ -225,6 +239,26 @@ export default async function HomePage() {
                   <span className="badge">{featured.category}</span>
                   <span className="badge">{featured.videoType}</span>
                   <span className="badge">{featured.ageRating}</span>
+                </div>
+              ) : null}
+              {featured ? (
+                <div className="home-feature-band">
+                  <div className="home-feature-stat">
+                    <span className="home-feature-label">Featured now</span>
+                    <strong>{featured.category}</strong>
+                  </div>
+                  {featured.releaseYear ? (
+                    <div className="home-feature-stat">
+                      <span className="home-feature-label">Year</span>
+                      <strong>{featured.releaseYear}</strong>
+                    </div>
+                  ) : null}
+                  {featuredRuntime ? (
+                    <div className="home-feature-stat">
+                      <span className="home-feature-label">Runtime</span>
+                      <strong>{featuredRuntime}</strong>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

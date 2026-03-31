@@ -1447,6 +1447,39 @@ body.watch-mode-active .video-page-player {
   flex-wrap: wrap;
 }
 
+.home-feature-band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+  max-width: 700px;
+}
+
+.home-feature-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(9, 15, 28, 0.82), rgba(8, 12, 22, 0.66)),
+    radial-gradient(circle at top right, rgba(242, 191, 110, 0.1), transparent 38%);
+  backdrop-filter: blur(14px);
+}
+
+.home-feature-label {
+  color: #9bb8df;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-feature-stat strong {
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+
 .home-shelves {
   padding: 22px 0 76px;
   margin-top: -32px;
@@ -1587,6 +1620,12 @@ body.watch-mode-active .video-page-player {
 
   .home-hero-copy {
     width: 100%;
+  }
+
+  .home-feature-band,
+  .field-grid-2,
+  .field-grid-3 {
+    grid-template-columns: 1fr;
   }
 
   .home-carousel {

@@ -11,6 +11,7 @@ export default async function TopNav() {
   const user = await getCurrentUser();
   const language = await getPreferredUiLanguage();
   const copy = getUiCopy(language);
+  const homeHref = '/';
   const primaryHref = user ? getPrimaryAppPath(user) : '/browse';
   const primaryLabel = user
     ? user.role === 'ADMIN'
@@ -25,7 +26,7 @@ export default async function TopNav() {
   return (
     <nav className="nav">
       <div className="container nav-inner">
-        <Link className="brand" href={primaryHref}>
+        <Link className="brand" href={homeHref}>
           <span className="brand-mark brand-mark-image">
             <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={38} height={38} priority />
           </span>
@@ -34,6 +35,7 @@ export default async function TopNav() {
           </span>
         </Link>
         <div className="nav-links">
+          <Link href={homeHref}>Home</Link>
           <Link href={primaryHref}>{primaryLabel}</Link>
           {user?.role === 'USER' ? <Link href="/wallet">{copy.wallet}</Link> : null}
         </div>
