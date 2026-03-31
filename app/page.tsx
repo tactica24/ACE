@@ -251,30 +251,6 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <aside className="home-hero-panel">
-              <div className="home-hero-panel-block">
-                <span className="home-trust-label">Watching with Ace</span>
-                <h2 style={{ margin: '6px 0 0' }}>Premium viewing, designed for audiences across countries, currencies, and languages.</h2>
-                <p className="muted" style={{ margin: 0 }}>
-                  Localized pricing, progress sync, pass-first unlocks, and easy playback controls keep watching simple on every screen.
-                </p>
-              </div>
-              <div className="home-hero-panel-metrics">
-                <div className="home-hero-panel-metric">
-                  <span className="home-trust-label">Current region</span>
-                  <strong>{regionalCurrency.currency}</strong>
-                </div>
-                <div className="home-hero-panel-metric">
-                  <span className="home-trust-label">Featured price</span>
-                  <strong>{featuredPrice ? formatCurrencyMinor(featuredPrice.amountMinor, featuredPrice.currency) : 'Ready'}</strong>
-                </div>
-              </div>
-              <div className="home-language-cloud">
-                {UI_LANGUAGE_OPTIONS.map((option) => (
-                  <span key={option.code} className="home-language-pill">{option.label}</span>
-                ))}
-              </div>
-            </aside>
           </div>
         </div>
       </section>
