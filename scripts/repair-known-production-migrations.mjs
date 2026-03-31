@@ -8,6 +8,10 @@ const repairTargets = [
   {
     migrationName: '202603300001_admin_support_hardening',
     repairFile: 'scripts/repair-admin-support-hardening-migration.sql'
+  },
+  {
+    migrationName: '202603300003_user_phone_verification',
+    repairFile: 'scripts/repair-user-phone-verification-migration.sql'
   }
 ];
 

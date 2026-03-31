@@ -66,33 +66,75 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-WITH ranked_users AS (
-  SELECT
-    id,
-    phone,
-    ROW_NUMBER() OVER (
-      PARTITION BY phone
-      ORDER BY
-        "phoneVerified" DESC,
-        ("firebaseUid" IS NOT NULL) DESC,
-        CASE "role" WHEN 'ADMIN' THEN 2 WHEN 'CREATOR' THEN 1 ELSE 0 END DESC,
-        "createdAt" ASC,
-        id ASC
-    ) AS duplicate_rank
-  FROM "User"
-),
-duplicate_users AS (
-  SELECT
-    id,
-    phone
-  FROM ranked_users
-  WHERE duplicate_rank > 1
-)
-UPDATE "User" AS u
-SET phone = CONCAT(duplicate_users.phone, '__dedup__', u.id)
-FROM duplicate_users
-WHERE u.id = duplicate_users.id
-  AND u.phone = duplicate_users.phone;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'User'
+      AND column_name = 'phoneVerified'
+  ) THEN
+    EXECUTE $dedupe$
+      WITH ranked_users AS (
+        SELECT
+          id,
+          phone,
+          ROW_NUMBER() OVER (
+            PARTITION BY phone
+            ORDER BY
+              "phoneVerified" DESC,
+              ("firebaseUid" IS NOT NULL) DESC,
+              CASE "role" WHEN 'ADMIN' THEN 2 WHEN 'CREATOR' THEN 1 ELSE 0 END DESC,
+              "createdAt" ASC,
+              id ASC
+          ) AS duplicate_rank
+        FROM "User"
+      ),
+      duplicate_users AS (
+        SELECT
+          id,
+          phone
+        FROM ranked_users
+        WHERE duplicate_rank > 1
+      )
+      UPDATE "User" AS u
+      SET phone = CONCAT(duplicate_users.phone, '__dedup__', u.id)
+      FROM duplicate_users
+      WHERE u.id = duplicate_users.id
+        AND u.phone = duplicate_users.phone
+    $dedupe$;
+  ELSE
+    EXECUTE $dedupe$
+      WITH ranked_users AS (
+        SELECT
+          id,
+          phone,
+          ROW_NUMBER() OVER (
+            PARTITION BY phone
+            ORDER BY
+              ("firebaseUid" IS NOT NULL) DESC,
+              CASE "role" WHEN 'ADMIN' THEN 2 WHEN 'CREATOR' THEN 1 ELSE 0 END DESC,
+              "createdAt" ASC,
+              id ASC
+          ) AS duplicate_rank
+        FROM "User"
+      ),
+      duplicate_users AS (
+        SELECT
+          id,
+          phone
+        FROM ranked_users
+        WHERE duplicate_rank > 1
+      )
+      UPDATE "User" AS u
+      SET phone = CONCAT(duplicate_users.phone, '__dedup__', u.id)
+      FROM duplicate_users
+      WHERE u.id = duplicate_users.id
+        AND u.phone = duplicate_users.phone
+    $dedupe$;
+  END IF;
+END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "User_phone_key" ON "User"("phone");
 CREATE UNIQUE INDEX IF NOT EXISTS "Unlock_userId_videoId_key" ON "Unlock"("userId", "videoId");
