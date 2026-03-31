@@ -4,6 +4,10 @@ const repairTargets = [
   {
     migrationName: '202603170001_tv_pairing',
     repairFile: 'scripts/repair-tv-pairing-migration.sql'
+  },
+  {
+    migrationName: '202603300001_admin_support_hardening',
+    repairFile: 'scripts/repair-admin-support-hardening-migration.sql'
   }
 ];
 
