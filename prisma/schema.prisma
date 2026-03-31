@@ -353,14 +353,24 @@ model SubscriptionPass {
 }
 
 model Contract {
-  id          String     @id @default(cuid())
-  creatorId   String
-  videoId     String
-  rightsTier  RightsTier
-  contractText String
-  createdAt   DateTime   @default(now())
-  creator     CreatorProfile @relation(fields: [creatorId], references: [id])
-  video       Video      @relation(fields: [videoId], references: [id])
+  id                 String         @id @default(cuid())
+  creatorId          String
+  videoId            String
+  rightsTier         RightsTier
+  contractText       String
+  documentHtml       String?
+  producerLegalName  String?
+  producerSignedName String?
+  producerAccepted   Boolean        @default(false)
+  effectiveDate      DateTime?
+  producerSignedAt   DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  creator            CreatorProfile @relation(fields: [creatorId], references: [id])
+  video              Video          @relation(fields: [videoId], references: [id])
+
+  @@index([creatorId, createdAt])
+  @@index([videoId, createdAt])
 }
 
 model ModerationItem {

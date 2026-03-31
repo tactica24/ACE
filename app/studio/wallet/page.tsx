@@ -35,7 +35,7 @@ export default async function StudioWalletPage() {
             { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contracts', label: 'Documents' },
             { href: '/studio/contact', label: 'Contact' }
           ]}
         />

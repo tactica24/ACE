@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
 
   const contracts = await prisma.contract.findMany({
     where: { creatorId: creator.id },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    include: {
+      video: {
+        select: { title: true }
+      }
+    }
   });
 
   return NextResponse.json({ contracts });

@@ -13,6 +13,10 @@ export default async function LibraryPage() {
     where: { creatorId: user.sub },
     orderBy: { createdAt: 'desc' },
     include: {
+      contracts: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      },
       _count: {
         select: { subtitleTracks: true }
       }
@@ -33,7 +37,7 @@ export default async function LibraryPage() {
             { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contracts', label: 'Documents' },
             { href: '/studio/contact', label: 'Contact' }
           ]}
         />
@@ -86,6 +90,17 @@ export default async function LibraryPage() {
                   <span className="detail-label">Subtitles</span>
                   <strong>{video._count.subtitleTracks}</strong>
                 </div>
+              </div>
+              <div className="action-list">
+                {video.contracts[0]?.producerAccepted ? (
+                  <a className="btn btn-ghost" href={`/api/studio/contracts/${video.contracts[0].id}/download`}>
+                    Download document
+                  </a>
+                ) : (
+                  <Link className="btn btn-primary" href={`/studio/upload?contractVideoId=${video.id}`}>
+                    Review document
+                  </Link>
+                )}
               </div>
             </div>
           ))}

@@ -6,6 +6,7 @@ import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireAdminUser } from '@/lib/auth-page';
+import { formatContractDate } from '@/lib/contracts';
 import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { formatRecordedCharge } from '@/lib/format';
@@ -21,6 +22,15 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       wallet: true,
       creator: {
         include: {
+          contracts: {
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            include: {
+              video: {
+                select: { title: true }
+              }
+            }
+          },
           payoutRequests: {
             orderBy: { requestedAt: 'desc' },
             take: 10
@@ -122,6 +132,34 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             </div>
           ) : (
             <p className="muted">No producer profile on this account yet.</p>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Producer documents</h3>
+          {user.creator?.contracts.length ? (
+            <div className="stack-list">
+              {user.creator.contracts.map((contract) => (
+                <div key={contract.id} className="stack-row">
+                  <div>
+                    <strong>{contract.video.title}</strong>
+                    <p className="muted">
+                      Producer number: {user.creator?.creatorNumber ?? 'Pending'} | {contract.rightsTier}
+                    </p>
+                    <p className="muted">
+                      {contract.producerAccepted
+                        ? `Signed by ${contract.producerSignedName ?? 'producer'} on ${formatContractDate(contract.effectiveDate ?? contract.producerSignedAt)}`
+                        : 'Awaiting producer signature'}
+                    </p>
+                  </div>
+                  <a className="btn btn-ghost" href={`/api/studio/contracts/${contract.id}/download`}>
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No stored producer documents yet.</p>
           )}
         </div>
 

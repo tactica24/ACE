@@ -829,6 +829,58 @@ button {
   transition: width 0.18s ease;
 }
 
+.contract-review-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.contract-review-sidebar {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: 96px;
+}
+
+.contract-checkbox {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(88, 217, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.contract-checkbox input {
+  margin-top: 3px;
+}
+
+.contract-preview-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.contract-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.contract-document-frame {
+  width: 100%;
+  min-height: 720px;
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid rgba(88, 217, 255, 0.12);
+  background: linear-gradient(180deg, rgba(241, 236, 226, 0.94), rgba(226, 219, 206, 0.98));
+  padding: 22px;
+  display: block;
+}
+
 .detail-grid {
   display: grid;
   gap: 14px;
@@ -1346,20 +1398,17 @@ body.watch-mode-active .video-page-player {
 
 .home-hero-inner {
   width: 100%;
-  padding: 72px 0 54px;
+  padding: 88px 0 64px;
 }
 
 .home-hero-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-  gap: 28px;
-  align-items: end;
+  display: block;
 }
 
 .home-hero-copy {
-  width: min(620px, 100%);
+  width: min(760px, 100%);
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .home-kicker {
@@ -1374,141 +1423,28 @@ body.watch-mode-active .video-page-player {
   margin: 0;
   font-family: var(--font-space), system-ui, sans-serif;
   font-size: clamp(2.8rem, 5vw, 5rem);
-  line-height: 0.95;
+  line-height: 0.92;
 }
 
 .home-summary {
   margin: 0;
-  max-width: 58ch;
+  max-width: 62ch;
   color: #d9dee9;
-  font-size: 1.02rem;
-  line-height: 1.65;
+  font-size: 1.04rem;
+  line-height: 1.7;
 }
 
 .home-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  padding-top: 4px;
 }
 
 .home-badges {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.home-trust-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 10px;
-}
-
-.home-trust-card,
-.home-hero-panel {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background:
-    linear-gradient(180deg, rgba(9, 15, 28, 0.92), rgba(8, 12, 22, 0.82)),
-    radial-gradient(circle at top right, rgba(242, 191, 110, 0.12), transparent 38%);
-  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(20px);
-}
-
-.home-trust-card {
-  display: grid;
-  gap: 6px;
-  min-height: 122px;
-  padding: 18px;
-  border-radius: 20px;
-}
-
-.home-trust-card strong {
-  font-size: 1.08rem;
-  letter-spacing: -0.02em;
-}
-
-.home-trust-label {
-  color: #9bb8df;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.home-hero-panel {
-  display: grid;
-  gap: 18px;
-  align-self: stretch;
-  padding: 22px;
-  border-radius: 28px;
-  position: relative;
-  overflow: hidden;
-}
-
-.home-hero-panel::before {
-  content: '';
-  position: absolute;
-  inset: -20% auto auto 58%;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(106, 182, 255, 0.2), transparent 68%);
-  pointer-events: none;
-}
-
-.home-hero-panel > * {
-  position: relative;
-  z-index: 1;
-}
-
-.home-hero-panel-block {
-  display: grid;
-  gap: 10px;
-}
-
-.home-hero-panel-block h2 {
-  font-family: var(--font-space), system-ui, sans-serif;
-  font-size: clamp(1.4rem, 2vw, 2.2rem);
-  line-height: 1.02;
-}
-
-.home-hero-panel-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.home-hero-panel-metric {
-  display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.home-hero-panel-metric strong {
-  font-size: 1.22rem;
-  letter-spacing: -0.02em;
-}
-
-.home-language-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.home-language-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: #e5edf9;
-  font-size: 0.82rem;
-  font-weight: 600;
 }
 
 .home-shelves {
@@ -1649,15 +1585,8 @@ body.watch-mode-active .video-page-player {
     min-height: 64vh;
   }
 
-  .home-hero-layout,
-  .home-trust-grid,
-  .home-hero-panel-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .home-hero-panel {
-    padding: 18px;
-    border-radius: 22px;
+  .home-hero-copy {
+    width: 100%;
   }
 
   .home-carousel {
@@ -1820,6 +1749,7 @@ body.watch-mode-active .video-page-player {
 
   .section-heading,
   .browse-layout,
+  .contract-review-shell,
   .tv-layout,
   .detail-hero,
   .moderation-card,
@@ -1835,6 +1765,10 @@ body.watch-mode-active .video-page-player {
 
   .hero-showcase {
     grid-template-columns: 1fr;
+  }
+
+  .contract-review-sidebar {
+    position: static;
   }
 }
 
@@ -1862,5 +1796,9 @@ body.watch-mode-active .video-page-player {
     top: auto;
     bottom: 70px;
     max-width: none;
+  }
+
+  .contract-document-frame {
+    padding: 12px;
   }
 }

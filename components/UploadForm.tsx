@@ -337,8 +337,11 @@ export default function UploadForm() {
       if (!create.ok) {
         throw new Error(data.error || 'Unable to save release');
       }
+      if (!data.videoId) {
+        throw new Error('Release saved, but the contract page could not be opened. Please retry from your library.');
+      }
 
-      window.location.href = '/studio/library';
+      window.location.href = `/studio/upload?contractVideoId=${encodeURIComponent(data.videoId)}`;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upload failed');
       setUploadLabel(null);
@@ -618,7 +621,7 @@ export default function UploadForm() {
 
       <div className="form-actions">
         <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? 'Submitting release...' : 'Submit for approval'}
+          {loading ? 'Submitting release...' : 'Upload and continue to contract'}
         </button>
         {message ? <p className="muted form-message">{message}</p> : null}
       </div>

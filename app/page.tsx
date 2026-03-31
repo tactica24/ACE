@@ -8,11 +8,10 @@ import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
-import { getRegionalCurrency, getRegionalPriceFromConfig } from '@/lib/pricing';
-import { UI_LANGUAGE_OPTIONS, getUiCopy } from '@/lib/ui-language';
+import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
 
@@ -195,10 +194,8 @@ export default async function HomePage() {
 
   const requestHeaders = headers();
   const pricingConfig = await getFinanceConfig();
-  const regionalCurrency = getRegionalCurrency(requestHeaders);
   const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
-  const featuredPrice = featured ? getRegionalPriceFromConfig(requestHeaders, featured.priceTier, pricingConfig) : null;
   const rows = buildRows({ videos, continueWatching, unlockedVideos, language });
 
   return (
@@ -230,27 +227,7 @@ export default async function HomePage() {
                   <span className="badge">{featured.ageRating}</span>
                 </div>
               ) : null}
-              <div className="home-trust-grid">
-                <div className="home-trust-card">
-                  <span className="home-trust-label">Local checkout</span>
-                  <strong>{regionalCurrency.currency}</strong>
-                  <p className="muted" style={{ margin: 0 }}>
-                    {featuredPrice ? formatCurrencyMinor(featuredPrice.amountMinor, featuredPrice.currency) : 'Regional pricing enabled'}
-                  </p>
-                </div>
-                <div className="home-trust-card">
-                  <span className="home-trust-label">Playback flow</span>
-                  <strong>Resume beautifully</strong>
-                  <p className="muted" style={{ margin: 0 }}>Progress, unlocks, and wallet state stay with the account.</p>
-                </div>
-                <div className="home-trust-card">
-                  <span className="home-trust-label">Global audience</span>
-                  <strong>{UI_LANGUAGE_OPTIONS.length} interface languages</strong>
-                  <p className="muted" style={{ margin: 0 }}>Designed for multilingual discovery, captions, and family viewing.</p>
-                </div>
-              </div>
             </div>
-
           </div>
         </div>
       </section>

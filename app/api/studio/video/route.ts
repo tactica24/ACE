@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
-import { generateContract, type RightsTierValue } from '@/lib/contracts';
+import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
@@ -183,23 +183,6 @@ export async function POST(req: NextRequest) {
     data: {
       videoId: video.id,
       status: 'PENDING'
-    }
-  });
-
-  const payoutSplit = rightsTier === 'EXCLUSIVE' ? creatorProfile.payoutSplitExclusive : creatorProfile.payoutSplitStandard;
-  const contractText = generateContract({
-    creatorName: creatorProfile.displayName,
-    videoTitle: video.title,
-    rightsTier,
-    payoutSplit
-  });
-
-  await prisma.contract.create({
-    data: {
-      creatorId: creatorProfile.id,
-      videoId: video.id,
-      rightsTier,
-      contractText
     }
   });
 

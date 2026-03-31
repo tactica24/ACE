@@ -15,7 +15,7 @@ export default async function StudioContactPage() {
   return (
     <DashboardShell
       title="Producer contact"
-      description="Reach the support team directly for onboarding, upload, contracts, and operational issues."
+      description="Reach the support team directly for onboarding, upload, documents, and operational issues."
       sideNav={
         <SideNav
           active="/studio/contact"
@@ -24,7 +24,7 @@ export default async function StudioContactPage() {
             { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contracts', label: 'Documents' },
             { href: '/studio/contact', label: 'Contact' }
           ]}
         />
@@ -35,7 +35,7 @@ export default async function StudioContactPage() {
           <SupportContactForm
             categories={creatorSupportCategories}
             title="Contact support"
-            description="Raise producer-specific issues so our team can resolve onboarding, upload, or contract blockers quickly."
+            description="Raise producer-specific issues so our team can resolve onboarding, upload, or document blockers quickly."
           />
         </div>
         <div className="card">

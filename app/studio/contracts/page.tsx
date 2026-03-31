@@ -1,18 +1,28 @@
+import Link from 'next/link';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { formatContractDate } from '@/lib/contracts';
 
 export default async function ContractsPage() {
   const user = await requireCreatorUser('/studio/contracts');
   const creator = await prisma.creatorProfile.findUnique({ where: { userId: user.sub } });
   const contracts = creator
-    ? await prisma.contract.findMany({ where: { creatorId: creator.id }, orderBy: { createdAt: 'desc' } })
+    ? await prisma.contract.findMany({
+        where: { creatorId: creator.id },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          video: {
+            select: { title: true }
+          }
+        }
+      })
     : [];
 
   return (
     <DashboardShell
-      title="Auto-contracts"
-      description="Digital license agreements generated on upload."
+      title="Producer documents"
+      description="Signed distribution records for each uploaded title, stored under your producer profile."
       sideNav={
         <SideNav
           active="/studio/contracts"
@@ -21,7 +31,7 @@ export default async function ContractsPage() {
             { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contracts', label: 'Documents' },
             { href: '/studio/contact', label: 'Contact' }
           ]}
         />
@@ -29,14 +39,37 @@ export default async function ContractsPage() {
     >
       <div className="card">
         {contracts.length === 0 ? (
-          <p className="muted">No contracts yet. Upload a video to generate a license agreement.</p>
+          <p className="muted">No producer documents yet. Upload a title, then sign the agreement that appears after upload.</p>
         ) : (
-          contracts.map((contract) => (
-            <div key={contract.id} style={{ marginBottom: 24 }}>
-              <strong>Contract for video {contract.videoId}</strong>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>{contract.contractText}</pre>
-            </div>
-          ))
+          <div className="stack-list">
+            {contracts.map((contract) => (
+              <div key={contract.id} className="detail-card">
+                <div className="stack-row">
+                  <div>
+                    <strong>{contract.video.title}</strong>
+                    <p className="muted" style={{ margin: '6px 0 0' }}>
+                      Producer number: {creator?.creatorNumber ?? 'Pending'} | Rights: {contract.rightsTier}
+                    </p>
+                    <p className="muted" style={{ margin: '6px 0 0' }}>
+                      {contract.producerAccepted
+                        ? `Signed by ${contract.producerSignedName ?? 'producer'} on ${formatContractDate(contract.effectiveDate ?? contract.producerSignedAt)}`
+                        : 'Awaiting producer signature'}
+                    </p>
+                  </div>
+                  <div className="action-list">
+                    {!contract.producerAccepted ? (
+                      <Link className="btn btn-ghost" href={`/studio/upload?contractVideoId=${contract.videoId}`}>
+                        Finish signing
+                      </Link>
+                    ) : null}
+                    <a className="btn btn-primary" href={`/api/studio/contracts/${contract.id}/download`}>
+                      Download document
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </DashboardShell>

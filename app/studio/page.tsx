@@ -18,7 +18,7 @@ export default async function StudioPage() {
   return (
     <DashboardShell
       title="Producer studio"
-      description="Manage onboarding, uploads, contracts, and release status from one place."
+      description="Manage onboarding, uploads, signed documents, and release status from one place."
       sideNav={
         <SideNav
           active="/studio"
@@ -27,7 +27,7 @@ export default async function StudioPage() {
             { href: '/studio/wallet', label: 'Wallet' },
             { href: '/studio/upload', label: 'Upload' },
             { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Contracts' },
+            { href: '/studio/contracts', label: 'Documents' },
             { href: '/studio/contact', label: 'Contact' }
           ]}
         />
@@ -64,7 +64,7 @@ export default async function StudioPage() {
             <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>
             <Link className="btn btn-ghost" href="/studio/library">Open library</Link>
-            <Link className="btn btn-ghost" href="/studio/contracts">View contracts</Link>
+            <Link className="btn btn-ghost" href="/studio/contracts">View documents</Link>
             <Link className="btn btn-ghost" href="/studio/contact">Contact support</Link>
           </div>
         </div>
