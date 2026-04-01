@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
 
   const formattedItems: ModerationQueueItem[] = items.map((item) => ({
     id: item.id,
+    hasModerationRecord: true,
     status: item.status,
     notes: item.notes,
     video: {
@@ -25,7 +26,17 @@ export async function GET(req: NextRequest) {
       title: item.video.title,
       description: item.video.description,
       category: item.video.category,
-      status: item.video.status
+      status: item.video.status,
+      videoType: item.video.videoType,
+      ageRating: item.video.ageRating,
+      rightsTier: item.video.rightsTier,
+      priceTier: item.video.priceTier,
+      releaseYear: item.video.releaseYear,
+      originalLanguage: item.video.originalLanguage,
+      genres: item.video.genres,
+      contentWarnings: item.video.contentWarnings,
+      posterKey: item.video.posterKey,
+      createdAt: item.video.createdAt.toISOString()
     }
   }));
 
