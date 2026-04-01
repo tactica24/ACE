@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import AdminOpsPanel from '@/components/AdminOpsPanel';
+import AdminWorkspacePanel from '@/components/AdminWorkspacePanel';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import InfrastructureReadiness from '@/components/InfrastructureReadiness';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getNodeHealth } from '@/lib/metrics';
@@ -25,6 +27,8 @@ export default async function AdminPage() {
   let failedPayments = 0;
   let totalRevenue = 0;
   let platformBalance = 0;
+  let platformNetSettled = 0;
+  let producerEarningsHeld = 0;
   let creatorVerificationBacklog = 0;
   let safetySensitiveTitles = 0;
   let recentTitles: Array<{ id: string; title: string; status: string; createdAt: Date }> = [];
@@ -60,7 +64,7 @@ export default async function AdminPage() {
   };
 
   try {
-    const [paymentsAggregate, recentUnlocks, watchHistoryUsers, failedPaymentsCount, safetySnapshot] = await Promise.all([
+    const [paymentsAggregate, recentUnlocks, watchHistoryUsers, failedPaymentsCount, safetySnapshot, settlementAggregate, producerWalletAggregate] = await Promise.all([
       prisma.payment.aggregate({
         where: { status: 'SUCCESS' },
         _sum: { amountNaira: true },
@@ -90,6 +94,16 @@ export default async function AdminPage() {
         where: { status: 'APPROVED' },
         take: 120,
         select: { ageRating: true, contentWarnings: true }
+      }),
+      prisma.unlockSettlement.aggregate({
+        _sum: {
+          platformNetNaira: true
+        }
+      }),
+      prisma.creatorProfile.aggregate({
+        _sum: {
+          earningsBalanceNaira: true
+        }
       })
     ]);
 
@@ -237,6 +251,8 @@ export default async function AdminPage() {
     failedPayments = failedPaymentsCount;
     totalRevenue = paymentsAggregate._sum.amountNaira ?? 0;
     platformBalance = platformWallet?.balanceNaira ?? 0;
+    platformNetSettled = settlementAggregate._sum.platformNetNaira ?? 0;
+    producerEarningsHeld = producerWalletAggregate._sum.earningsBalanceNaira ?? 0;
     recentTitles = recentTitlesData;
     recentPayments = recentPaymentsData;
     recentFailedPayments = recentFailedPaymentsData.map((payment) => ({
@@ -295,17 +311,7 @@ export default async function AdminPage() {
       sideNav={
         <SideNav
           active="/admin"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake', count: `${creatorRequests}` },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation', count: `${pendingModeration}` },
-            { href: '/admin/settings', label: 'Controls' },
-            { href: '/admin/support', label: 'Support', count: `${openSupport}` },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems({ creatorRequests, pendingModeration, openSupport })}
         />
       }
       actions={
@@ -319,6 +325,13 @@ export default async function AdminPage() {
       <div className="grid">
         <InfrastructureReadiness />
       </div>
+
+      <AdminWorkspacePanel
+        creatorRequests={creatorRequests}
+        pendingModeration={pendingModeration}
+        openSupport={openSupport}
+        platformBalance={platformBalance}
+      />
 
       <div className="metric-grid">
         <div className="metric-card">
@@ -361,9 +374,19 @@ export default async function AdminPage() {
           <span className="trend-up">Gross successful payments</span>
         </div>
         <div className="metric-card">
-          <span className="muted">Platform balance</span>
+          <span className="muted">App commission wallet</span>
           <strong>NGN {platformBalance}</strong>
-          <span className="trend-up">Current platform wallet</span>
+          <span className="trend-up">Platform net after deductions</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Settled platform net</span>
+          <strong>NGN {platformNetSettled}</strong>
+          <span className="trend-up">Recorded commission share from unlocks</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Producer balances held</span>
+          <strong>NGN {producerEarningsHeld}</strong>
+          <span className="trend-up">Outstanding producer earnings</span>
         </div>
         <div className="metric-card">
           <span className="muted">Open support</span>
@@ -388,6 +411,36 @@ export default async function AdminPage() {
 
       <div className="grid">
         <AdminOpsPanel initialSummary={reconciliationSummary} />
+
+        <div className="card">
+          <h3>Control lanes</h3>
+          <div className="action-list">
+            <Link className="btn btn-primary" href="/admin/users">User control center</Link>
+            <Link className="btn btn-ghost" href="/admin/support">Support interventions</Link>
+            <Link className="btn btn-ghost" href="/admin/finance">Commission wallet</Link>
+            <Link className="btn btn-ghost" href="/admin/moderation">Catalog moderation</Link>
+            <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
+            <Link className="btn btn-ghost" href="/admin/settings">Pricing and launch controls</Link>
+          </div>
+          <div className="detail-grid" style={{ marginTop: 14 }}>
+            <div className="detail-card">
+              <span className="detail-label">Support waiting</span>
+              <strong>{openSupport}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Pending moderation</span>
+              <strong>{pendingModeration}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Producer approvals</span>
+              <strong>{creatorVerificationBacklog}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Commission wallet</span>
+              <strong>NGN {platformBalance}</strong>
+            </div>
+          </div>
+        </div>
 
         <div className="card">
           <h3>Realtime platform health</h3>
@@ -512,7 +565,7 @@ export default async function AdminPage() {
                 <div key={session.id} className="stack-row">
                   <div>
                     <strong>{session.videoTitle}</strong>
-                    <p className="muted">{session.userEmail} · {session.deviceSessionId.slice(0, 8)}</p>
+                    <p className="muted">{session.userEmail} | {session.deviceSessionId.slice(0, 8)}</p>
                   </div>
                   <span className="muted">{session.lastSeenAt.toISOString().slice(11, 16)} UTC</span>
                 </div>
@@ -566,7 +619,7 @@ export default async function AdminPage() {
                 <div key={ticket.id} className="stack-row">
                   <div>
                     <strong>{ticket.subject}</strong>
-                    <p className="muted">{ticket.category} · {ticket.userEmail} · {ticket.userPhone}</p>
+                    <p className="muted">{ticket.category} | {ticket.userEmail} | {ticket.userPhone}</p>
                   </div>
                   <span className={`status-chip ${ticket.status === 'RESOLVED' ? 'status-live' : 'status-review'}`}>{ticket.status}</span>
                 </div>
@@ -585,9 +638,9 @@ export default async function AdminPage() {
                 <div key={creator.id} className="stack-row">
                   <div>
                     <strong>{creator.displayName}</strong>
-                    <p className="muted">{creator.email} · {creator.phone}</p>
+                    <p className="muted">{creator.email} | {creator.phone}</p>
                     <p className="muted">
-                      Identity {creator.idVerified ? 'ok' : 'pending'} · NIN {creator.ninVerified ? 'ok' : 'pending'} · Bank {creator.bankVerified ? 'ok' : 'pending'}
+                      Identity {creator.idVerified ? 'ok' : 'pending'} | NIN {creator.ninVerified ? 'ok' : 'pending'} | Bank {creator.bankVerified ? 'ok' : 'pending'}
                     </p>
                   </div>
                   <span className={`status-chip ${creator.verified ? 'status-live' : 'status-review'}`}>

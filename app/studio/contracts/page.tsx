@@ -3,6 +3,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { formatContractDate } from '@/lib/contracts';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function ContractsPage() {
   const user = await requireCreatorUser('/studio/contracts');
@@ -26,17 +27,36 @@ export default async function ContractsPage() {
       sideNav={
         <SideNav
           active="/studio/contracts"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
       }
+      actions={
+        <div className="action-list">
+          <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
+          <Link className="btn btn-ghost" href="/studio/library">Release library</Link>
+          <Link className="btn btn-ghost" href="/studio/contact">Support</Link>
+        </div>
+      }
     >
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Stored documents</span>
+          <strong>{contracts.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Signed</span>
+          <strong>{contracts.filter((contract) => contract.producerAccepted).length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Awaiting signature</span>
+          <strong>{contracts.filter((contract) => !contract.producerAccepted).length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Producer number</span>
+          <strong>{creator?.creatorNumber ?? 'Pending'}</strong>
+        </div>
+      </div>
+
       <div className="card">
         {contracts.length === 0 ? (
           <p className="muted">No producer documents yet. Upload a title, then sign the agreement that appears after upload.</p>

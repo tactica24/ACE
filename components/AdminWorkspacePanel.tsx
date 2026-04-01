@@ -1,0 +1,81 @@
+import Link from 'next/link';
+
+export default function AdminWorkspacePanel({
+  creatorRequests,
+  pendingModeration,
+  openSupport,
+  platformBalance
+}: {
+  creatorRequests: number;
+  pendingModeration: number;
+  openSupport: number;
+  platformBalance: number;
+}) {
+  return (
+    <div className="workspace-grid">
+      <div className="card workspace-card">
+        <div className="stack-list" style={{ gap: 8 }}>
+          <span className="badge">People</span>
+          <h3>Users and producers</h3>
+          <p className="muted">Open accounts, correct producer access, edit onboarding, and remove safe-to-delete records.</p>
+        </div>
+        <div className="workspace-links">
+          <Link className="btn btn-primary" href="/admin/users">User control center</Link>
+          <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
+        </div>
+        <div className="workspace-kpis">
+          <span className="muted">Pending producer approvals</span>
+          <strong>{creatorRequests}</strong>
+        </div>
+      </div>
+
+      <div className="card workspace-card">
+        <div className="stack-list" style={{ gap: 8 }}>
+          <span className="badge">Catalog</span>
+          <h3>Titles and moderation</h3>
+          <p className="muted">Review uploads, fix metadata, remove sample titles, and keep the storefront clean.</p>
+        </div>
+        <div className="workspace-links">
+          <Link className="btn btn-primary" href="/admin/moderation">Moderation queue</Link>
+          <Link className="btn btn-ghost" href="/admin/settings">Pricing controls</Link>
+        </div>
+        <div className="workspace-kpis">
+          <span className="muted">Titles waiting now</span>
+          <strong>{pendingModeration}</strong>
+        </div>
+      </div>
+
+      <div className="card workspace-card">
+        <div className="stack-list" style={{ gap: 8 }}>
+          <span className="badge">Money</span>
+          <h3>Commission and payouts</h3>
+          <p className="muted">Track app commission, unlock settlements, producer balances, and payout approvals.</p>
+        </div>
+        <div className="workspace-links">
+          <Link className="btn btn-primary" href="/admin/finance">Finance console</Link>
+          <Link className="btn btn-ghost" href="/admin/referrals">Referral pipeline</Link>
+        </div>
+        <div className="workspace-kpis">
+          <span className="muted">Commission wallet</span>
+          <strong>NGN {platformBalance}</strong>
+        </div>
+      </div>
+
+      <div className="card workspace-card">
+        <div className="stack-list" style={{ gap: 8 }}>
+          <span className="badge">Operations</span>
+          <h3>Support and platform controls</h3>
+          <p className="muted">Assist viewers, follow payment incidents, tune launch settings, and monitor infrastructure.</p>
+        </div>
+        <div className="workspace-links">
+          <Link className="btn btn-primary" href="/admin/support">Support inbox</Link>
+          <Link className="btn btn-ghost" href="/admin/node">Infrastructure</Link>
+        </div>
+        <div className="workspace-kpis">
+          <span className="muted">Open support cases</span>
+          <strong>{openSupport}</strong>
+        </div>
+      </div>
+    </div>
+  );
+}

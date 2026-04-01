@@ -1,6 +1,7 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import InfrastructureReadiness from '@/components/InfrastructureReadiness';
 import NodeMonitor from '@/components/NodeMonitor';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 
 export default async function NodePage() {
@@ -13,16 +14,7 @@ export default async function NodePage() {
       sideNav={
         <SideNav
           active="/admin/node"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems()}
         />
       }
     >

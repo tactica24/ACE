@@ -1,5 +1,6 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminSupportInbox, { type AdminSupportTicketRow } from '@/components/AdminSupportInbox';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
@@ -48,20 +49,41 @@ export default async function AdminSupportPage() {
       sideNav={
         <SideNav
           active="/admin/support"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems({
+            creatorRequests: tickets.filter((ticket) => ticket.user.signupIntent === 'CREATOR' && ticket.user.role === 'USER').length,
+            openSupport: tickets.filter((ticket) => ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS').length
+          })}
         />
       }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#support-queue">Open queue</a>
+          <a className="btn btn-ghost" href="/admin/users">User accounts</a>
+          <a className="btn btn-ghost" href="/admin/finance">Payment rescue</a>
+        </div>
+      }
     >
-      <AdminSupportInbox initialTickets={initialTickets} />
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Open</span>
+          <strong>{initialTickets.filter((ticket) => ticket.status === 'OPEN').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">In progress</span>
+          <strong>{initialTickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Resolved</span>
+          <strong>{initialTickets.filter((ticket) => ticket.status === 'RESOLVED').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Producer tickets</span>
+          <strong>{initialTickets.filter((ticket) => ticket.user.signupIntent === 'CREATOR').length}</strong>
+        </div>
+      </div>
+      <div id="support-queue">
+        <AdminSupportInbox initialTickets={initialTickets} />
+      </div>
     </DashboardShell>
   );
 }

@@ -1,4 +1,4 @@
-import { PrismaClient, PriceTier, RightsTier, VideoStatus, Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { getFirebaseAdminAuth, hasFirebaseAdminConfig } from '@/lib/firebase-admin';
 
@@ -92,7 +92,7 @@ async function main() {
     }
   });
 
-  const creator = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: creatorEmail },
     update: {
       role: Role.CREATOR,
@@ -128,51 +128,6 @@ async function main() {
       wallet: { create: { balanceNaira: 2000, credits: 5 } }
     }
   });
-
-  const videos = await prisma.video.findMany({ where: { creatorId: creator.id } });
-  if (videos.length === 0) {
-    await prisma.video.createMany({
-      data: [
-        {
-          creatorId: creator.id,
-          title: 'Lagos After Dark',
-          description: 'A neon-lit thriller through the backstreets of Lagos.',
-          videoType: 'FEATURE',
-          ageRating: 'PG16',
-          category: 'Thriller',
-          genres: ['thriller', 'noir', 'crime'],
-          priceTier: PriceTier.PREMIERE,
-          rightsTier: RightsTier.EXCLUSIVE,
-          status: VideoStatus.APPROVED,
-          durationSec: 5400,
-          teaserSec: 300,
-          highlightSeconds: [45, 120, 210],
-          r2Key: 'samples/lagos-after-dark.mp4',
-          posterKey: 'samples/lagos-after-dark.jpg',
-          tags: ['thriller', 'lagos', 'noir']
-        },
-        {
-          creatorId: creator.id,
-          title: 'Street Food Stories',
-          description: "Short documentary series on Nigeria's tastiest corners.",
-          videoType: 'SERIES',
-          ageRating: 'ALL',
-          category: 'Documentary',
-          genres: ['docu', 'food', 'series'],
-          priceTier: PriceTier.STANDARD,
-          rightsTier: RightsTier.SHARED,
-          status: VideoStatus.APPROVED,
-          durationSec: 1800,
-          teaserSec: 180,
-          highlightSeconds: [30, 90, 150],
-          r2Key: 'samples/street-food-stories.mp4',
-          posterKey: 'samples/street-food-stories.jpg',
-          tags: ['docu', 'food', 'series']
-        }
-      ]
-    });
-  }
-
   console.log('Seed complete', {
     adminEmail,
     creatorEmail,

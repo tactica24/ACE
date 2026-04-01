@@ -1,5 +1,6 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorVerificationAdmin, { type CreatorRow } from '@/components/CreatorVerificationAdmin';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
@@ -21,14 +22,22 @@ export default async function UsersPage() {
   await requireAdminUser('/admin/users');
 
   let users: UserWithCreator[] = [];
+  let openSupport = 0;
+  let creatorRequests = 0;
   try {
-    users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: { creator: true }
-    });
+    [users, openSupport, creatorRequests] = await Promise.all([
+      prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 80,
+        include: { creator: true }
+      }),
+      prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+      prisma.user.count({ where: { signupIntent: 'CREATOR', creatorAccessStatus: 'SUBMITTED', role: 'USER' } })
+    ]);
   } catch {
     users = [];
+    openSupport = 0;
+    creatorRequests = 0;
   }
 
   const initialUsers: CreatorRow[] = users.map((user: UserWithCreator) => ({
@@ -67,20 +76,39 @@ export default async function UsersPage() {
       sideNav={
         <SideNav
           active="/admin/users"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems({ creatorRequests, openSupport })}
         />
       }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#account-directory">Account directory</a>
+          <a className="btn btn-ghost" href="/admin/intake">Producer approvals</a>
+          <a className="btn btn-ghost" href="/admin/support">Support inbox</a>
+        </div>
+      }
     >
-      <CreatorVerificationAdmin initialUsers={initialUsers} />
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Accounts loaded</span>
+          <strong>{initialUsers.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Producer profiles</span>
+          <strong>{initialUsers.filter((user) => user.creator).length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Pending producer approvals</span>
+          <strong>{creatorRequests}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Open support cases</span>
+          <strong>{openSupport}</strong>
+        </div>
+      </div>
+
+      <div id="account-directory">
+        <CreatorVerificationAdmin initialUsers={initialUsers} />
+      </div>
     </DashboardShell>
   );
 }

@@ -1,6 +1,7 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorPayoutAdmin from '@/components/CreatorPayoutAdmin';
 import FinanceSettingsForm from '@/components/FinanceSettingsForm';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminFinancePage() {
   await requireAdminUser('/admin/finance');
 
-  const [config, platformWallet, topMovies, recentSettlements, creators, payoutRequests] = await Promise.all([
+  const [config, platformWallet, topMovies, recentSettlements, creators, payoutRequests, settlementAggregate] = await Promise.all([
     prisma.financeConfig.upsert({
       where: { id: 'default' },
       update: {},
@@ -48,6 +49,15 @@ export default async function AdminFinancePage() {
           }
         }
       }
+    }),
+    prisma.unlockSettlement.aggregate({
+      _sum: {
+        grossNaira: true,
+        creatorNaira: true,
+        platformNetNaira: true,
+        gatewayFeeNaira: true,
+        taxNaira: true
+      }
     })
   ]);
 
@@ -70,24 +80,32 @@ export default async function AdminFinancePage() {
       sideNav={
         <SideNav
           active="/admin/finance"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems()}
         />
+      }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#payout-queue">Payout approvals</a>
+          <a className="btn btn-ghost" href="#finance-settings">Split controls</a>
+          <a className="btn btn-ghost" href="/admin/users">Producer accounts</a>
+        </div>
       }
     >
       <div className="metric-grid">
         <div className="metric-card">
-          <span className="muted">Ace Studio wallet</span>
+          <span className="muted">App commission wallet</span>
           <strong>NGN {platformWallet.balanceNaira}</strong>
-          <span className="trend-up">App-recorded net platform balance</span>
+          <span className="trend-up">Live wallet after deductions</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Settled platform net</span>
+          <strong>NGN {settlementAggregate._sum.platformNetNaira ?? 0}</strong>
+          <span className="trend-up">Commission share recorded from unlocks</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Gross unlock revenue</span>
+          <strong>NGN {settlementAggregate._sum.grossNaira ?? 0}</strong>
+          <span className="trend-up">Before payout and fee deductions</span>
         </div>
         <div className="metric-card">
           <span className="muted">Producer split</span>
@@ -105,6 +123,16 @@ export default async function AdminFinancePage() {
           <span className="trend-up">Global default</span>
         </div>
         <div className="metric-card">
+          <span className="muted">Gateway fees booked</span>
+          <strong>NGN {settlementAggregate._sum.gatewayFeeNaira ?? 0}</strong>
+          <span className="trend-up">Recorded payment cost deductions</span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Tax booked</span>
+          <strong>NGN {settlementAggregate._sum.taxNaira ?? 0}</strong>
+          <span className="trend-up">Recorded tax deductions</span>
+        </div>
+        <div className="metric-card">
           <span className="muted">Pending payouts</span>
           <strong>{payoutRequests.filter((request) => request.status === 'PENDING').length}</strong>
           <span className="trend-up">Producer withdrawal approvals waiting</span>
@@ -112,29 +140,33 @@ export default async function AdminFinancePage() {
       </div>
 
       <div className="grid">
-        <FinanceSettingsForm
-          initialConfig={{
-            creatorSharePercent: config.creatorSharePercent,
-            platformSharePercent: config.platformSharePercent,
-            gatewayFeePercent: config.gatewayFeePercent,
-            taxPercent: config.taxPercent
-          }}
-        />
+        <div id="finance-settings">
+          <FinanceSettingsForm
+            initialConfig={{
+              creatorSharePercent: config.creatorSharePercent,
+              platformSharePercent: config.platformSharePercent,
+              gatewayFeePercent: config.gatewayFeePercent,
+              taxPercent: config.taxPercent
+            }}
+          />
+        </div>
 
-        <CreatorPayoutAdmin
-          initialRequests={payoutRequests.map((request) => ({
-            id: request.id,
-            creatorName: request.creatorProfile.displayName,
-            creatorEmail: request.creatorProfile.user.email,
-            amountNaira: request.amountNaira,
-            bankName: request.bankName,
-            bankAccountName: request.bankAccountName,
-            bankAccountNumber: request.bankAccountNumber,
-            status: request.status,
-            requestedAt: request.requestedAt.toISOString().slice(0, 10),
-            adminNote: request.adminNote
-          }))}
-        />
+        <div id="payout-queue">
+          <CreatorPayoutAdmin
+            initialRequests={payoutRequests.map((request) => ({
+              id: request.id,
+              creatorName: request.creatorProfile.displayName,
+              creatorEmail: request.creatorProfile.user.email,
+              amountNaira: request.amountNaira,
+              bankName: request.bankName,
+              bankAccountName: request.bankAccountName,
+              bankAccountNumber: request.bankAccountNumber,
+              status: request.status,
+              requestedAt: request.requestedAt.toISOString().slice(0, 10),
+              adminNote: request.adminNote
+            }))}
+          />
+        </div>
 
         <div className="card">
           <h3>Top movie impact</h3>

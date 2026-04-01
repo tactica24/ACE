@@ -5,6 +5,7 @@ import { getMediaAssetUrl } from '@/lib/media';
 
 type Item = {
   id: string;
+  hasModerationRecord: boolean;
   video: {
     id: string;
     title: string;
@@ -142,6 +143,14 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   };
 
   const handleAction = async (item: Item, action: 'approve' | 'reject' | 'remove') => {
+    if ((action === 'approve' || action === 'reject') && !item.hasModerationRecord) {
+      setErrors((prev) => ({
+        ...prev,
+        [item.video.id]: 'This title has no moderation record yet. Use "Remove from catalog" to take it off the homepage.'
+      }));
+      return;
+    }
+
     const endpoint = action === 'remove' ? '/api/admin/videos/delete' : `/api/admin/moderation/${action}`;
     const reason = (reasons[item.video.id] ?? '').trim();
 
@@ -343,9 +352,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     Approve title
                   </button>
                 ) : null}
-                <button className="btn btn-ghost" onClick={() => handleAction(item, 'reject')}>
-                  Reject title
-                </button>
+                {item.hasModerationRecord ? (
+                  <button className="btn btn-ghost" onClick={() => handleAction(item, 'reject')}>
+                    Reject title
+                  </button>
+                ) : null}
                 <button className="btn btn-ghost" onClick={() => handleAction(item, 'remove')}>
                   Remove from catalog
                 </button>

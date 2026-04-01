@@ -3,6 +3,7 @@ import StudioContractReview from '@/components/StudioContractReview';
 import UploadForm from '@/components/UploadForm';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function UploadPage({
   searchParams
@@ -51,14 +52,7 @@ export default async function UploadPage({
       sideNav={
         <SideNav
           active="/studio/upload"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
       }
     >

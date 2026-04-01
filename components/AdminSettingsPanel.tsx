@@ -97,7 +97,7 @@ export default function AdminSettingsPanel({
 
   return (
     <div className="grid">
-      <div className="card">
+      <div className="card" id="site-controls">
         <h3>Public launch controls</h3>
         <div className="detail-grid">
           <label className="field">
@@ -140,7 +140,7 @@ export default function AdminSettingsPanel({
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" id="pricing-controls">
         <h3>Catalog pricing controls</h3>
         <p className="muted">Change tier prices here without editing code. Producers can still choose tiers per title, and admins can adjust a specific title in moderation before approval.</p>
         <div className="detail-grid">

@@ -3,6 +3,7 @@ import SupportContactForm from '@/components/SupportContactForm';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { creatorSupportCategories, supportCategoryLabels, supportStatusLabels } from '@/lib/support';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioContactPage() {
   const user = await requireCreatorUser('/studio/contact');
@@ -19,19 +20,38 @@ export default async function StudioContactPage() {
       sideNav={
         <SideNav
           active="/studio/contact"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
       }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#contact-form">New support request</a>
+          <a className="btn btn-ghost" href="/studio/contracts">Documents</a>
+          <a className="btn btn-ghost" href="/studio/library">Library</a>
+        </div>
+      }
     >
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Total tickets</span>
+          <strong>{tickets.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Open</span>
+          <strong>{tickets.filter((ticket) => ticket.status === 'OPEN').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">In progress</span>
+          <strong>{tickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Resolved</span>
+          <strong>{tickets.filter((ticket) => ticket.status === 'RESOLVED').length}</strong>
+        </div>
+      </div>
+
       <div className="grid">
-        <div className="card">
+        <div className="card" id="contact-form">
           <SupportContactForm
             categories={creatorSupportCategories}
             title="Contact support"

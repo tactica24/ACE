@@ -1,5 +1,6 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminSettingsPanel from '@/components/AdminSettingsPanel';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { getFinanceConfig } from '@/lib/finance';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -27,18 +28,15 @@ export default async function AdminSettingsPage() {
       sideNav={
         <SideNav
           active="/admin/settings"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/settings', label: 'Controls' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems()}
         />
+      }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#site-controls">Launch controls</a>
+          <a className="btn btn-ghost" href="#pricing-controls">Pricing controls</a>
+          <a className="btn btn-ghost" href="/admin/moderation">Moderation</a>
+        </div>
       }
     >
       <AdminSettingsPanel

@@ -1,40 +1,61 @@
 import Link from 'next/link';
 import AnalyticsTicker from '@/components/AnalyticsTicker';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import StudioWorkspacePanel from '@/components/StudioWorkspacePanel';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioPage() {
   const user = await requireCreatorUser('/studio');
-  const creatorProfile = await prisma.creatorProfile.findUnique({
-    where: { userId: user.sub },
-    select: {
-      creatorNumber: true,
-      displayName: true,
-      verified: true
-    }
-  });
+  const [creatorProfile, videos] = await Promise.all([
+    prisma.creatorProfile.findUnique({
+      where: { userId: user.sub },
+      select: {
+        creatorNumber: true,
+        displayName: true,
+        verified: true,
+        earningsBalanceNaira: true
+      }
+    }),
+    prisma.video.findMany({
+      where: { creatorId: user.sub },
+      select: { id: true, status: true }
+    })
+  ]);
+  const unsignedContracts = videos.length
+    ? await prisma.contract.count({
+        where: {
+          videoId: { in: videos.map((video) => video.id) },
+          producerAccepted: false
+        }
+      })
+    : 0;
+  const liveTitles = videos.filter((video) => video.status === 'APPROVED').length;
+  const pendingTitles = videos.filter((video) => video.status !== 'APPROVED').length;
 
   return (
     <DashboardShell
       title="Producer studio"
-      description="Manage onboarding, uploads, signed documents, and release status from one place."
+      description="Manage onboarding, uploads, documents, moderation status, and producer earnings from one organized workspace."
       sideNav={
         <SideNav
           active="/studio"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
       }
       actions={<Link className="btn btn-primary" href="/studio/upload">Upload a title</Link>}
     >
       <AnalyticsTicker />
+
+      <StudioWorkspacePanel
+        verified={creatorProfile?.verified ?? false}
+        libraryCount={videos.length}
+        pendingTitles={pendingTitles}
+        liveTitles={liveTitles}
+        walletBalance={creatorProfile?.earningsBalanceNaira ?? 0}
+        unsignedContracts={unsignedContracts}
+      />
 
       <div className="grid">
         <div className="card">
@@ -49,7 +70,7 @@ export default async function StudioPage() {
         </div>
         <div className="card card-soft">
           <h3>Producer verification</h3>
-          <p className="muted">Complete your profile so payouts, moderation, and catalog attribution stay accurate.</p>
+          <p className="muted">Complete your profile once so payouts, moderation, and catalog attribution stay accurate.</p>
           <Link className="btn btn-ghost" href="/studio/onboarding">Open onboarding</Link>
         </div>
         <div className="card card-soft">
@@ -59,7 +80,7 @@ export default async function StudioPage() {
         </div>
         <div className="card card-soft">
           <h3>Release workflow</h3>
-          <p className="muted">Upload the title, set category and age rating, add content advisories, then attach subtitle files for every language you want households to switch to.</p>
+          <p className="muted">Upload the title, review the contract, check moderation status, and keep your library ready for viewers.</p>
           <div className="action-list">
             <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>

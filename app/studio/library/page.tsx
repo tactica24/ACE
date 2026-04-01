@@ -6,6 +6,7 @@ import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function LibraryPage() {
   const user = await requireCreatorUser('/studio/library');
@@ -32,18 +33,30 @@ export default async function LibraryPage() {
       sideNav={
         <SideNav
           active="/studio/library"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
       }
       actions={<Link className="btn btn-primary" href="/studio/upload">Upload another title</Link>}
     >
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Total titles</span>
+          <strong>{videos.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Approved</span>
+          <strong>{videos.filter((video) => video.status === 'APPROVED').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Pending or draft</span>
+          <strong>{videos.filter((video) => video.status !== 'APPROVED').length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Unsigned contracts</span>
+          <strong>{videos.filter((video) => !video.contracts[0]?.producerAccepted).length}</strong>
+        </div>
+      </div>
+
       {videos.length ? (
         <div className="library-grid">
           {videos.map((video) => (

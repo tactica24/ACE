@@ -1,5 +1,6 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorIntakeAdmin, { type CreatorIntentRow } from '@/components/CreatorIntakeAdmin';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 
@@ -60,20 +61,38 @@ export default async function CreatorIntakePage() {
       sideNav={
         <SideNav
           active="/admin/intake"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems({ creatorRequests: initialUsers.length })}
         />
       }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#producer-intake">Review applicants</a>
+          <a className="btn btn-ghost" href="/admin/users">All accounts</a>
+          <a className="btn btn-ghost" href="/admin/support">Support inbox</a>
+        </div>
+      }
     >
-      <CreatorIntakeAdmin initialUsers={initialUsers} />
+      <div className="detail-grid" style={{ marginBottom: 20 }}>
+        <div className="detail-card">
+          <span className="detail-label">Pending applicants</span>
+          <strong>{initialUsers.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Email verified</span>
+          <strong>{initialUsers.filter((user) => user.emailVerified).length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Missing bank details</span>
+          <strong>{initialUsers.filter((user) => !user.creatorProfile?.bankAccountNumber).length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Missing ID record</span>
+          <strong>{initialUsers.filter((user) => !user.creatorProfile?.idCardNumber).length}</strong>
+        </div>
+      </div>
+      <div id="producer-intake">
+        <CreatorIntakeAdmin initialUsers={initialUsers} />
+      </div>
     </DashboardShell>
   );
 }

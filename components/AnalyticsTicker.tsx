@@ -43,36 +43,31 @@ export default function AnalyticsTicker() {
   }, []);
 
   return (
-    <div className="grid">
-      <div className="card">
-        <div className="stat">
-          <span className="muted">Unlocks today</span>
-          <strong>{data?.unlocksToday ?? '--'}</strong>
-        </div>
+    <div className="metric-grid">
+      <div className="metric-card">
+        <span className="muted">Unlocks today</span>
+        <strong>{data?.unlocksToday ?? '--'}</strong>
+        <span className="trend-up">Daily storefront activity</span>
       </div>
-      <div className="card">
-        <div className="stat">
-          <span className="muted">Revenue today</span>
-          <strong>NGN {data?.revenueToday ?? '--'}</strong>
-        </div>
+      <div className="metric-card">
+        <span className="muted">Revenue today</span>
+        <strong>NGN {data?.revenueToday ?? '--'}</strong>
+        <span className="trend-up">Daily credited revenue</span>
       </div>
-      <div className="card">
-        <div className="stat">
-          <span className="muted">Total unlocks</span>
-          <strong>{data?.totalUnlocks ?? '--'}</strong>
-        </div>
+      <div className="metric-card">
+        <span className="muted">Total unlocks</span>
+        <strong>{data?.totalUnlocks ?? '--'}</strong>
+        <span className="trend-up">All-time release opens</span>
       </div>
-      <div className="card">
-        <div className="stat">
-          <span className="muted">Total revenue</span>
-          <strong>NGN {data?.totalRevenue ?? '--'}</strong>
-        </div>
+      <div className="metric-card">
+        <span className="muted">Total revenue</span>
+        <strong>NGN {data?.totalRevenue ?? '--'}</strong>
+        <span className="trend-up">All-time credited revenue</span>
       </div>
-      <div className="card">
-        <div className="stat">
-          <span className="muted">Producer wallet</span>
-          <strong>NGN {data?.walletBalance ?? '--'}</strong>
-        </div>
+      <div className="metric-card">
+        <span className="muted">Producer wallet</span>
+        <strong>NGN {data?.walletBalance ?? '--'}</strong>
+        <span className="trend-up">Current available balance</span>
       </div>
     </div>
   );

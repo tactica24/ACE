@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 
@@ -32,10 +33,100 @@ export type CreatorRow = {
 };
 
 export default function CreatorVerificationAdmin({ initialUsers }: { initialUsers: CreatorRow[] }) {
-  const users = initialUsers;
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [producerFilter, setProducerFilter] = useState('ALL');
+  const producerProfiles = initialUsers.filter((user) => user.creator).length;
+  const pendingReview = initialUsers.filter((user) => user.creatorAccessStatus === 'SUBMITTED').length;
+  const admins = initialUsers.filter((user) => user.role === 'ADMIN').length;
+
+  const users = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return initialUsers.filter((user) => {
+      if (roleFilter !== 'ALL' && user.role !== roleFilter) {
+        return false;
+      }
+
+      if (producerFilter === 'WITH_PROFILE' && !user.creator) {
+        return false;
+      }
+
+      if (producerFilter === 'PENDING_REVIEW' && user.creatorAccessStatus !== 'SUBMITTED') {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const searchText = [
+        user.email,
+        user.phone,
+        user.role,
+        user.signupIntent,
+        user.creatorAccessStatus,
+        user.creator?.displayName,
+        user.creator?.creatorNumber
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchText.includes(normalizedQuery);
+    });
+  }, [initialUsers, producerFilter, query, roleFilter]);
 
   return (
     <div className="card">
+      <div className="detail-grid" style={{ marginBottom: 18 }}>
+        <div className="detail-card">
+          <span className="detail-label">Visible accounts</span>
+          <strong>{users.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Producer profiles</span>
+          <strong>{producerProfiles}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Pending producer review</span>
+          <strong>{pendingReview}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Admins</span>
+          <strong>{admins}</strong>
+        </div>
+      </div>
+
+      <div className="field-grid field-grid-3" style={{ marginBottom: 18 }}>
+        <label className="field">
+          <span className="field-label">Search accounts</span>
+          <input
+            className="input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Email, phone, producer number"
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Role filter</span>
+          <select className="input" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+            <option value="ALL">All roles</option>
+            <option value="USER">Users</option>
+            <option value="CREATOR">Creators</option>
+            <option value="ADMIN">Admins</option>
+          </select>
+        </label>
+        <label className="field">
+          <span className="field-label">Producer state</span>
+          <select className="input" value={producerFilter} onChange={(event) => setProducerFilter(event.target.value)}>
+            <option value="ALL">All accounts</option>
+            <option value="WITH_PROFILE">With producer profile</option>
+            <option value="PENDING_REVIEW">Pending producer review</option>
+          </select>
+        </label>
+      </div>
+
       <div className="table-wrap">
         <table className="table">
           <thead>

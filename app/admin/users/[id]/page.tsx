@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AdminAccountControlPanel from '@/components/AdminAccountControlPanel';
 import AdminCommerceSupportPanel from '@/components/AdminCommerceSupportPanel';
 import AdminCreatorProfileEditor from '@/components/AdminCreatorProfileEditor';
 import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { formatContractDate } from '@/lib/contracts';
 import { formatCredits, getCreditsForNaira } from '@/lib/credits';
@@ -14,7 +16,7 @@ import { formatRecordedCharge } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUserDetailPage({ params }: { params: { id: string } }) {
-  await requireAdminUser(`/admin/users/${params.id}`);
+  const adminUser = await requireAdminUser(`/admin/users/${params.id}`);
 
   const user = await prisma.user.findUnique({
     where: { id: params.id },
@@ -80,16 +82,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       sideNav={
         <SideNav
           active="/admin/users"
-          items={[
-            { href: '/admin', label: 'Overview' },
-            { href: '/admin/intake', label: 'Producer intake' },
-            { href: '/admin/finance', label: 'Finance' },
-            { href: '/admin/moderation', label: 'Moderation' },
-            { href: '/admin/support', label: 'Support' },
-            { href: '/admin/node', label: 'Infrastructure' },
-            { href: '/admin/referrals', label: 'Referrals' },
-            { href: '/admin/users', label: 'Users' }
-          ]}
+          items={getAdminNavItems()}
         />
       }
       actions={
@@ -114,6 +107,16 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <span className="muted">Viewer credits: {formatCredits(user.wallet?.credits ?? 0)}</span>
           </div>
         </div>
+
+        <AdminAccountControlPanel
+          userId={user.id}
+          email={user.email}
+          role={user.role}
+          signupIntent={user.signupIntent}
+          creatorAccessStatus={user.creatorAccessStatus}
+          hasCreatorProfile={Boolean(user.creator)}
+          isCurrentAdmin={adminUser.sub === user.id}
+        />
 
         <div className="card">
           <h3>Producer account</h3>

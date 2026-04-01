@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { type SupportTicketStatusValue } from '@/lib/media-types';
 import { supportCategoryLabels, supportStatusLabels } from '@/lib/support';
 
@@ -24,6 +24,41 @@ export type AdminSupportTicketRow = {
 export default function AdminSupportInbox({ initialTickets }: { initialTickets: AdminSupportTicketRow[] }) {
   const [tickets, setTickets] = useState(initialTickets);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | SupportTicketStatusValue>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | keyof typeof supportCategoryLabels>('ALL');
+
+  const filteredTickets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return tickets.filter((ticket) => {
+      if (statusFilter !== 'ALL' && ticket.status !== statusFilter) {
+        return false;
+      }
+
+      if (categoryFilter !== 'ALL' && ticket.category !== categoryFilter) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const searchText = [
+        ticket.subject,
+        ticket.message,
+        ticket.user.email,
+        ticket.user.phone,
+        ticket.user.role,
+        ticket.category,
+        ticket.status
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchText.includes(normalizedQuery);
+    });
+  }, [categoryFilter, query, statusFilter, tickets]);
 
   const saveTicket = async (ticketId: string, status: SupportTicketStatusValue, adminNotes: string) => {
     setSavingId(ticketId);
@@ -50,13 +85,50 @@ export default function AdminSupportInbox({ initialTickets }: { initialTickets: 
 
   return (
     <div className="grid">
-      {tickets.length === 0 ? (
+      <div className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="field-grid field-grid-3">
+          <label className="field">
+            <span className="field-label">Search support</span>
+            <input
+              className="input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Subject, user email, phone, message"
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Status</span>
+            <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'ALL' | SupportTicketStatusValue)}>
+              <option value="ALL">All statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="IN_PROGRESS">In progress</option>
+              <option value="RESOLVED">Resolved</option>
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Category</span>
+            <select className="input" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as 'ALL' | keyof typeof supportCategoryLabels)}>
+              <option value="ALL">All categories</option>
+              {Object.entries(supportCategoryLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="action-list" style={{ marginTop: 12 }}>
+          <span className="badge">{filteredTickets.length} visible</span>
+          <span className="badge">{tickets.filter((ticket) => ticket.status === 'OPEN').length} open</span>
+          <span className="badge">{tickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length} in progress</span>
+        </div>
+      </div>
+
+      {filteredTickets.length === 0 ? (
         <div className="card">
-          <h3>Support inbox is clear</h3>
-          <p className="muted">New user and producer contact requests will appear here.</p>
+          <h3>No tickets match this view</h3>
+          <p className="muted">Adjust the filters or wait for new viewer and producer requests.</p>
         </div>
       ) : (
-        tickets.map((ticket) => (
+        filteredTickets.map((ticket) => (
           <SupportCard key={ticket.id} ticket={ticket} saving={savingId === ticket.id} onSave={saveTicket} />
         ))
       )}

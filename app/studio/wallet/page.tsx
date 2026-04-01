@@ -2,6 +2,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorWithdrawPanel from '@/components/CreatorWithdrawPanel';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioWalletPage() {
   const user = await requireCreatorUser('/studio/wallet');
@@ -30,33 +31,35 @@ export default async function StudioWalletPage() {
       sideNav={
         <SideNav
           active="/studio/wallet"
-          items={[
-            { href: '/studio', label: 'Overview' },
-            { href: '/studio/wallet', label: 'Wallet' },
-            { href: '/studio/upload', label: 'Upload' },
-            { href: '/studio/library', label: 'Library' },
-            { href: '/studio/contracts', label: 'Documents' },
-            { href: '/studio/contact', label: 'Contact' }
-          ]}
+          items={getStudioNavItems()}
         />
+      }
+      actions={
+        <div className="action-list">
+          <a className="btn btn-primary" href="#withdrawals">Withdrawal requests</a>
+          <a className="btn btn-ghost" href="/studio/library">Release library</a>
+          <a className="btn btn-ghost" href="/studio/contact">Support</a>
+        </div>
       }
     >
       <div className="grid">
         <div className="card">
           <h3>Producer wallet balance</h3>
-          <p className="hero-title" style={{ fontSize: '2rem' }}>NGN {creatorProfile?.earningsBalanceNaira ?? 0}</p>
+          <p className="studio-figure">NGN {creatorProfile?.earningsBalanceNaira ?? 0}</p>
           <p className="muted">Producer number: {creatorProfile?.creatorNumber ?? 'Pending'}</p>
         </div>
-        <CreatorWithdrawPanel
-          balanceNaira={creatorProfile?.earningsBalanceNaira ?? 0}
-          payoutRequests={(creatorProfile?.payoutRequests ?? []).map((request) => ({
-            id: request.id,
-            amountNaira: request.amountNaira,
-            status: request.status,
-            adminNote: request.adminNote,
-            requestedAt: request.requestedAt.toISOString().slice(0, 10)
-          }))}
-        />
+        <div id="withdrawals">
+          <CreatorWithdrawPanel
+            balanceNaira={creatorProfile?.earningsBalanceNaira ?? 0}
+            payoutRequests={(creatorProfile?.payoutRequests ?? []).map((request) => ({
+              id: request.id,
+              amountNaira: request.amountNaira,
+              status: request.status,
+              adminNote: request.adminNote,
+              requestedAt: request.requestedAt.toISOString().slice(0, 10)
+            }))}
+          />
+        </div>
         <div className="card">
           <h3>Recent inflows</h3>
           {settlements.length ? (

@@ -436,6 +436,16 @@ button {
   border-color: rgba(255, 255, 255, 0.24);
 }
 
+.btn-danger {
+  background: rgba(126, 32, 32, 0.22);
+  border: 1px solid rgba(255, 109, 109, 0.26);
+  color: #ffd8d8;
+}
+
+.btn-danger:hover {
+  border-color: rgba(255, 109, 109, 0.42);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -635,7 +645,7 @@ button {
 }
 
 .side-link {
-  padding: 10px 14px;
+  padding: 10px 13px;
   border-radius: 12px;
   font-weight: 600;
   color: var(--ink-soft);
@@ -643,6 +653,7 @@ button {
   justify-content: space-between;
   background: rgba(255,255,255,0.02);
   border: 1px solid transparent;
+  font-size: 0.9rem;
 }
 
 .side-link.active {
@@ -686,6 +697,13 @@ button {
   display: grid;
   gap: 20px;
   min-width: 0;
+}
+
+.dashboard-main .card h3,
+.dashboard-main .workspace-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
 }
 
 .section-heading {
@@ -1068,6 +1086,52 @@ button {
   gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.admin-control-danger {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 109, 109, 0.18);
+  background: rgba(90, 18, 18, 0.18);
+}
+
+.workspace-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.workspace-card {
+  display: grid;
+  gap: 14px;
+}
+
+.workspace-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.workspace-kpis {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-kpis strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.studio-figure {
+  margin: 0;
+  font-size: clamp(1.7rem, 2.2vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .offline-card {
@@ -1712,11 +1776,13 @@ body.watch-mode-active .video-page-player {
 
 .dashboard-title {
   margin: 12px 0 6px;
-  font-size: clamp(2rem, 3vw, 3rem);
+  font-size: clamp(1.7rem, 2.5vw, 2.35rem);
+  letter-spacing: -0.03em;
 }
 
 .dashboard-subtitle {
   max-width: 680px;
+  font-size: 0.96rem;
 }
 
 .dashboard-links {
@@ -1759,7 +1825,7 @@ body.watch-mode-active .video-page-player {
 }
 
 .metric-card strong {
-  font-size: 1.8rem;
+  font-size: 1.55rem;
   letter-spacing: -0.03em;
 }
 
