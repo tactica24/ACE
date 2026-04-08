@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getStoredSignatureDataUrl } from '@/lib/contract-signatures';
 import { buildContractDocument, type RightsTierValue } from '@/lib/contracts';
 import { prisma } from '@/lib/db';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,21 +17,24 @@ export async function POST(req: NextRequest) {
   const {
     videoId,
     producerSignedName,
+    producerSignatureKey,
     effectiveDate,
     agreed
   } = body as {
     videoId?: string;
     producerSignedName?: string;
+    producerSignatureKey?: string;
     effectiveDate?: string;
     agreed?: boolean;
   };
 
   const safeVideoId = videoId?.trim();
   const safeSignedName = producerSignedName?.trim();
+  const safeProducerSignatureKey = producerSignatureKey?.trim();
   const safeEffectiveDate = effectiveDate?.trim();
 
-  if (!safeVideoId || !safeSignedName || !safeEffectiveDate || !agreed) {
-    return NextResponse.json({ error: 'Video, signature name, agreement date, and acceptance are required.' }, { status: 400 });
+  if (!safeVideoId || !safeSignedName || !safeProducerSignatureKey || !safeEffectiveDate || !agreed) {
+    return NextResponse.json({ error: 'Video, signature name, signature image, agreement date, and acceptance are required.' }, { status: 400 });
   }
 
   const signedDate = new Date(safeEffectiveDate);
@@ -57,6 +62,11 @@ export async function POST(req: NextRequest) {
   const payoutSplit = video.rightsTier === 'EXCLUSIVE'
     ? creatorProfile.payoutSplitExclusive
     : creatorProfile.payoutSplitStandard;
+  const siteSettings = await getSiteSettings();
+  const [platformSignatureImageUrl, producerSignatureImageUrl] = await Promise.all([
+    getStoredSignatureDataUrl(siteSettings.platformSignatureKey),
+    getStoredSignatureDataUrl(safeProducerSignatureKey)
+  ]);
 
   const document = buildContractDocument({
     effectiveDate: signedDate,
@@ -64,6 +74,8 @@ export async function POST(req: NextRequest) {
     producerNumber: creatorProfile.creatorNumber,
     producerSignedName: safeSignedName,
     producerSignedDate: signedDate,
+    producerSignatureImageUrl,
+    platformSignatureImageUrl,
     videoTitle: video.title,
     rightsTier: video.rightsTier as RightsTierValue,
     payoutSplit
@@ -86,6 +98,8 @@ export async function POST(req: NextRequest) {
           documentHtml: document.html,
           producerLegalName: safeSignedName,
           producerSignedName: safeSignedName,
+          platformSignatureKey: siteSettings.platformSignatureKey,
+          producerSignatureKey: safeProducerSignatureKey,
           producerAccepted: true,
           effectiveDate: signedDate,
           producerSignedAt: new Date()
@@ -100,6 +114,8 @@ export async function POST(req: NextRequest) {
           documentHtml: document.html,
           producerLegalName: safeSignedName,
           producerSignedName: safeSignedName,
+          platformSignatureKey: siteSettings.platformSignatureKey,
+          producerSignatureKey: safeProducerSignatureKey,
           producerAccepted: true,
           effectiveDate: signedDate,
           producerSignedAt: new Date()

@@ -2,6 +2,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminSettingsPanel from '@/components/AdminSettingsPanel';
 import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
+import { getStoredSignatureDataUrl } from '@/lib/contract-signatures';
 import { getFinanceConfig } from '@/lib/finance';
 import { getSiteSettings } from '@/lib/site-settings';
 
@@ -18,13 +19,13 @@ function toDateTimeLocalValue(value: Date | null) {
 
 export default async function AdminSettingsPage() {
   await requireAdminUser('/admin/settings');
-  const finance = await getFinanceConfig();
-  const site = await getSiteSettings();
+  const [finance, site] = await Promise.all([getFinanceConfig(), getSiteSettings()]);
+  const platformSignaturePreviewUrl = await getStoredSignatureDataUrl(site.platformSignatureKey);
 
   return (
     <DashboardShell
       title="Admin controls"
-      description="Change public launch mode, countdown messaging, and catalog pricing without editing code."
+      description="Change launch messaging, contract signing presentation, and catalog pricing without editing code."
       sideNav={
         <SideNav
           active="/admin/settings"
@@ -33,7 +34,7 @@ export default async function AdminSettingsPage() {
       }
       actions={
         <div className="action-list">
-          <a className="btn btn-primary" href="#site-controls">Launch controls</a>
+          <a className="btn btn-primary" href="#site-controls">Launch and contract controls</a>
           <a className="btn btn-ghost" href="#pricing-controls">Pricing controls</a>
           <a className="btn btn-ghost" href="/admin/moderation">Moderation</a>
         </div>
@@ -67,7 +68,9 @@ export default async function AdminSettingsPage() {
           launchMessage: site.launchMessage,
           launchCountdownAt: toDateTimeLocalValue(site.launchCountdownAt),
           launchCtaLabel: site.launchCtaLabel ?? '',
-          launchCtaHref: site.launchCtaHref ?? ''
+          launchCtaHref: site.launchCtaHref ?? '',
+          platformSignatureKey: site.platformSignatureKey ?? '',
+          platformSignaturePreviewUrl
         }}
       />
     </DashboardShell>

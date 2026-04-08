@@ -8,7 +8,8 @@ export async function getSiteSettings() {
       id: 'default',
       homePageMode: 'LIVE',
       launchTitle: 'ACE is launching soon',
-      launchMessage: 'We are getting the catalog, producers, and launch details ready.'
+      launchMessage: 'We are getting the catalog, producers, and launch details ready.',
+      platformSignatureKey: null
     }
   });
 }

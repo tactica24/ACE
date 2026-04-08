@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
-import { buildContractDocument, createContractDownloadFileName, type RightsTierValue } from '@/lib/contracts';
+import { getStoredSignatureAsset } from '@/lib/contract-signatures';
+import { buildContractPdf } from '@/lib/contract-pdf';
+import { createContractDownloadFileName, type RightsTierValue } from '@/lib/contracts';
 import { prisma } from '@/lib/db';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,23 +48,31 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const fallbackDocument = buildContractDocument({
+  const siteSettings = await getSiteSettings();
+  const [platformSignatureAsset, producerSignatureAsset] = await Promise.all([
+    getStoredSignatureAsset(contract.platformSignatureKey ?? siteSettings.platformSignatureKey),
+    getStoredSignatureAsset(contract.producerSignatureKey)
+  ]);
+
+  const fileName = createContractDownloadFileName(contract.video.title, contract.creator.creatorNumber);
+  const pdf = buildContractPdf({
     effectiveDate: contract.effectiveDate ?? contract.createdAt,
     producerDisplayName: contract.producerLegalName ?? contract.creator.displayName ?? contract.creator.user.name ?? contract.creator.user.email,
     producerNumber: contract.creator.creatorNumber,
     producerSignedName: contract.producerSignedName,
     producerSignedDate: contract.producerSignedAt ?? contract.effectiveDate,
+    platformSignatureImageUrl: platformSignatureAsset?.dataUrl ?? null,
+    producerSignatureImageUrl: producerSignatureAsset?.dataUrl ?? null,
     videoTitle: contract.video.title,
     rightsTier: contract.video.rightsTier as RightsTierValue,
-    payoutSplit: contract.rightsTier === 'EXCLUSIVE' ? contract.creator.payoutSplitExclusive : contract.creator.payoutSplitStandard
+    payoutSplit: contract.rightsTier === 'EXCLUSIVE' ? contract.creator.payoutSplitExclusive : contract.creator.payoutSplitStandard,
+    platformSignatureJpeg: platformSignatureAsset?.contentType === 'image/jpeg' ? platformSignatureAsset.buffer : null,
+    producerSignatureJpeg: producerSignatureAsset?.contentType === 'image/jpeg' ? producerSignatureAsset.buffer : null
   });
 
-  const documentHtml = contract.documentHtml ?? fallbackDocument.html;
-  const fileName = createContractDownloadFileName(contract.video.title, contract.creator.creatorNumber);
-
-  return new NextResponse(documentHtml, {
+  return new NextResponse(pdf, {
     headers: {
-      'Content-Type': 'application/msword; charset=utf-8',
+      'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${fileName}"`,
       'Cache-Control': 'private, no-store'
     }

@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { buildContractDocument, formatContractDate, type RightsTierValue } from '@/lib/contracts';
+import { prepareSignatureUpload, uploadContractSignatureAsset } from '@/lib/signature-upload-client';
 
 type StudioContractReviewProps = {
   videoId: string;
@@ -11,13 +12,15 @@ type StudioContractReviewProps = {
   payoutSplit: number;
   producerName: string;
   producerNumber?: string | null;
+  platformSignaturePreviewUrl?: string | null;
   initialContract?: {
     id: string;
     producerAccepted: boolean;
     producerSignedName: string | null;
+    producerSignatureKey: string | null;
+    producerSignaturePreviewUrl?: string | null;
     effectiveDate: string | null;
     producerSignedAt: string | null;
-    documentHtml: string | null;
   } | null;
 };
 
@@ -41,12 +44,16 @@ export default function StudioContractReview({
   payoutSplit,
   producerName,
   producerNumber,
+  platformSignaturePreviewUrl,
   initialContract
 }: StudioContractReviewProps) {
   const [agreed, setAgreed] = useState(initialContract?.producerAccepted ?? false);
   const [signedName, setSignedName] = useState(initialContract?.producerSignedName ?? producerName);
   const [effectiveDate, setEffectiveDate] = useState(toDateInputValue(initialContract?.effectiveDate));
+  const [producerSignatureKey, setProducerSignatureKey] = useState(initialContract?.producerSignatureKey ?? '');
+  const [producerSignaturePreviewUrl, setProducerSignaturePreviewUrl] = useState(initialContract?.producerSignaturePreviewUrl ?? null);
   const [loading, setLoading] = useState(false);
+  const [signatureUploading, setSignatureUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [savedContract, setSavedContract] = useState(initialContract);
 
@@ -58,12 +65,47 @@ export default function StudioContractReview({
         producerNumber,
         producerSignedName: signedName,
         producerSignedDate: effectiveDate,
+        producerSignatureImageUrl: producerSignaturePreviewUrl,
+        platformSignatureImageUrl: platformSignaturePreviewUrl,
         videoTitle,
         rightsTier,
         payoutSplit
       }),
-    [effectiveDate, payoutSplit, producerName, producerNumber, rightsTier, signedName, videoTitle]
+    [
+      effectiveDate,
+      payoutSplit,
+      platformSignaturePreviewUrl,
+      producerName,
+      producerNumber,
+      producerSignaturePreviewUrl,
+      rightsTier,
+      signedName,
+      videoTitle
+    ]
   );
+
+  const handleSignatureUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setSignatureUploading(true);
+    setMessage(null);
+
+    try {
+      const prepared = await prepareSignatureUpload(file);
+      const uploaded = await uploadContractSignatureAsset(prepared.blob, prepared.filename, 'producer');
+      setProducerSignatureKey(uploaded.key);
+      setProducerSignaturePreviewUrl(prepared.previewUrl);
+      setMessage('Producer signature uploaded. Review the preview, then sign the agreement.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to upload your signature image.');
+    } finally {
+      setSignatureUploading(false);
+      event.target.value = '';
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -78,6 +120,11 @@ export default function StudioContractReview({
       return;
     }
 
+    if (!producerSignatureKey.trim()) {
+      setMessage('Upload the producer signature image before submitting.');
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
@@ -88,6 +135,7 @@ export default function StudioContractReview({
         body: JSON.stringify({
           videoId,
           producerSignedName: signedName.trim(),
+          producerSignatureKey,
           effectiveDate,
           agreed
         })
@@ -102,11 +150,12 @@ export default function StudioContractReview({
         id: data.contractId,
         producerAccepted: true,
         producerSignedName: signedName.trim(),
+        producerSignatureKey,
+        producerSignaturePreviewUrl,
         effectiveDate,
-        producerSignedAt: data.producerSignedAt ?? effectiveDate,
-        documentHtml: data.documentHtml ?? preview.html
+        producerSignedAt: data.producerSignedAt ?? effectiveDate
       });
-      setMessage('Contract signed and stored. You can download the document now.');
+      setMessage('Contract signed and stored as a PDF-ready document. You can download it now.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save the signed contract.');
     } finally {
@@ -121,12 +170,13 @@ export default function StudioContractReview({
       <div className="contract-review-sidebar card">
         <span className="detail-label">Final step</span>
         <h3 style={{ marginTop: 8 }}>Review and sign your distribution agreement</h3>
-        <p className="muted">
-          This agreement is stored with your producer number and attached to this upload after you submit it.
+        <p className="muted" style={{ margin: 0 }}>
+          Upload a clean signature on white paper, confirm the producer name and date, and ACE Studio will store the finished agreement as a PDF.
         </p>
+
         <div className="detail-grid">
           <div className="detail-card">
-            <span className="detail-label">Title</span>
+            <span className="detail-label">Content title</span>
             <strong>{videoTitle}</strong>
           </div>
           <div className="detail-card">
@@ -138,7 +188,7 @@ export default function StudioContractReview({
             <strong>{savedContract?.producerAccepted ? 'Signed' : 'Awaiting signature'}</strong>
           </div>
           <div className="detail-card">
-            <span className="detail-label">Effective date</span>
+            <span className="detail-label">Agreement date</span>
             <strong>{formatContractDate(effectiveDate)}</strong>
           </div>
         </div>
@@ -166,6 +216,36 @@ export default function StudioContractReview({
             />
           </label>
 
+          <label className="field">
+            <span className="field-label">Producer signature upload</span>
+            <input
+              className="input"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleSignatureUpload}
+              disabled={signatureUploading}
+            />
+            <span className="field-hint">Use a neat signature on white paper. It will appear above your signature line in the document and PDF.</span>
+          </label>
+
+          <div className="signature-upload-card">
+            <div>
+              <strong>Signature preview</strong>
+              <p className="muted" style={{ margin: '6px 0 0' }}>
+                {producerSignatureKey
+                  ? 'This signature will be printed above your name on the agreement.'
+                  : 'Upload your signature image to place it in the document before signing.'}
+              </p>
+            </div>
+            <div className="signature-upload-preview">
+              {producerSignaturePreviewUrl ? (
+                <img src={producerSignaturePreviewUrl} alt="Producer signature preview" />
+              ) : (
+                <span>{signedName.trim() || producerName}</span>
+              )}
+            </div>
+          </div>
+
           <label className="contract-checkbox">
             <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} />
             <span>
@@ -174,12 +254,12 @@ export default function StudioContractReview({
           </label>
 
           <div className="action-list">
-            <button className="btn btn-primary" type="submit" disabled={loading}>
-              {loading ? 'Saving signature...' : savedContract?.producerAccepted ? 'Update signed contract' : 'Agree and sign'}
+            <button className="btn btn-primary" type="submit" disabled={loading || signatureUploading}>
+              {loading ? 'Saving signature...' : signatureUploading ? 'Uploading signature...' : savedContract?.producerAccepted ? 'Update signed contract' : 'Agree and sign'}
             </button>
             {downloadHref ? (
               <a className="btn btn-ghost" href={downloadHref}>
-                Download document
+                Download PDF
               </a>
             ) : null}
             <Link className="btn btn-ghost" href="/studio/library">Back to library</Link>
@@ -191,12 +271,12 @@ export default function StudioContractReview({
       <div className="contract-preview-panel">
         <div className="contract-preview-header">
           <span className="detail-label">Document preview</span>
-          <strong>Microsoft Word compatible download</strong>
+          <strong>PDF contract preview</strong>
         </div>
         <iframe
           className="contract-document-frame"
           title="Contract document preview"
-          srcDoc={savedContract?.documentHtml ?? preview.html}
+          srcDoc={preview.html}
         />
       </div>
     </div>

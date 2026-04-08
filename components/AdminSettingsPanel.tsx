@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
+import { prepareSignatureUpload, uploadContractSignatureAsset } from '@/lib/signature-upload-client';
 
 type FinanceSettings = {
   snackNaira: number;
@@ -31,6 +32,8 @@ type SiteSettings = {
   launchCountdownAt: string;
   launchCtaLabel: string;
   launchCtaHref: string;
+  platformSignatureKey: string;
+  platformSignaturePreviewUrl: string | null;
 };
 
 const pricingFields: Array<{ key: keyof FinanceSettings; label: string }> = [
@@ -66,19 +69,29 @@ export default function AdminSettingsPanel({
   const [site, setSite] = useState(initialSite);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [saving, setSaving] = useState<'site' | 'finance' | null>(null);
+  const [signatureUploading, setSignatureUploading] = useState(false);
 
   const saveSite = async () => {
     setSaving('site');
     setFeedback(null);
+    const sitePayload = {
+      homePageMode: site.homePageMode,
+      launchTitle: site.launchTitle,
+      launchMessage: site.launchMessage,
+      launchCountdownAt: site.launchCountdownAt,
+      launchCtaLabel: site.launchCtaLabel,
+      launchCtaHref: site.launchCtaHref,
+      platformSignatureKey: site.platformSignatureKey
+    };
     const res = await fetch('/api/admin/settings/site', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(site)
+      body: JSON.stringify(sitePayload)
     });
     const data = await res.json().catch(() => ({}));
     setSaving(null);
-    setFeedback(res.ok ? 'Launch settings saved.' : data.error || 'Launch settings could not be saved.');
+    setFeedback(res.ok ? 'Launch and contract settings saved.' : data.error || 'Launch and contract settings could not be saved.');
   };
 
   const saveFinance = async () => {
@@ -95,10 +108,36 @@ export default function AdminSettingsPanel({
     setFeedback(res.ok ? 'Pricing settings saved.' : data.error || 'Pricing settings could not be saved.');
   };
 
+  const handleSignatureUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setSignatureUploading(true);
+    setFeedback(null);
+
+    try {
+      const prepared = await prepareSignatureUpload(file);
+      const uploaded = await uploadContractSignatureAsset(prepared.blob, prepared.filename, 'platform');
+      setSite((current) => ({
+        ...current,
+        platformSignatureKey: uploaded.key,
+        platformSignaturePreviewUrl: prepared.previewUrl
+      }));
+      setFeedback('ACE Studio signature uploaded. Save launch and contract settings to use it on new documents.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Unable to upload the ACE Studio signature.');
+    } finally {
+      setSignatureUploading(false);
+      event.target.value = '';
+    }
+  };
+
   return (
     <div className="grid">
       <div className="card" id="site-controls">
-        <h3>Public launch controls</h3>
+        <h3>Public launch and contract controls</h3>
         <div className="detail-grid">
           <label className="field">
             <span className="field-label">Homepage mode</span>
@@ -127,6 +166,26 @@ export default function AdminSettingsPanel({
             <span className="field-label">CTA link</span>
             <input className="input" value={site.launchCtaHref} onChange={(event) => setSite((current) => ({ ...current, launchCtaHref: event.target.value }))} />
           </label>
+          <label className="field">
+            <span className="field-label">ACE Studio signature</span>
+            <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSignatureUpload} disabled={signatureUploading} />
+            <span className="field-hint">Upload a clean signature on white paper. It will be flattened to JPEG for the contract preview and PDF.</span>
+          </label>
+        </div>
+        <div className="signature-upload-card" style={{ marginTop: 16 }}>
+          <div>
+            <strong>Contract signature preview</strong>
+            <p className="muted" style={{ margin: '6px 0 0' }}>
+              {site.platformSignatureKey ? 'This signature will be placed above the ACE Studio line on new signed documents.' : 'No ACE Studio signature has been uploaded yet. The document will fall back to the typed ACE Studio name until you upload one.'}
+            </p>
+          </div>
+          <div className="signature-upload-preview">
+            {site.platformSignaturePreviewUrl ? (
+              <img src={site.platformSignaturePreviewUrl} alt="ACE Studio signature preview" />
+            ) : (
+              <span>ACE Studio</span>
+            )}
+          </div>
         </div>
         {site.launchCountdownAt ? (
           <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -134,8 +193,8 @@ export default function AdminSettingsPanel({
           </p>
         ) : null}
         <div className="moderation-actions" style={{ marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={saveSite} disabled={saving === 'site'}>
-            {saving === 'site' ? 'Saving...' : 'Save launch controls'}
+          <button className="btn btn-primary" onClick={saveSite} disabled={saving === 'site' || signatureUploading}>
+            {saving === 'site' ? 'Saving...' : signatureUploading ? 'Uploading signature...' : 'Save launch and contract controls'}
           </button>
         </div>
       </div>

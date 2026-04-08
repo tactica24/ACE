@@ -880,6 +880,40 @@ button {
   gap: 14px;
 }
 
+.signature-upload-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(88, 217, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.signature-upload-preview {
+  width: min(220px, 100%);
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed rgba(88, 217, 255, 0.2);
+  background: linear-gradient(180deg, rgba(249, 245, 236, 0.82), rgba(231, 223, 208, 0.58));
+  color: #20170f;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.signature-upload-preview img {
+  max-width: 100%;
+  max-height: 82px;
+  object-fit: contain;
+}
+
 .contract-preview-header {
   display: flex;
   justify-content: space-between;
@@ -1905,5 +1939,14 @@ body.watch-mode-active .video-page-player {
 
   .contract-document-frame {
     padding: 12px;
+  }
+
+  .signature-upload-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .signature-upload-preview {
+    width: 100%;
   }
 }

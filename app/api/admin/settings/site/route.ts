@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
   const launchCountdownAt = typeof body.launchCountdownAt === 'string' ? body.launchCountdownAt.trim() : '';
   const launchCtaLabel = typeof body.launchCtaLabel === 'string' ? body.launchCtaLabel.trim() : '';
   const launchCtaHref = typeof body.launchCtaHref === 'string' ? body.launchCtaHref.trim() : '';
+  const platformSignatureKey = typeof body.platformSignatureKey === 'string' ? body.platformSignatureKey.trim() : '';
   const parsedLaunchCountdown = launchCountdownAt ? parseLaunchCountdown(launchCountdownAt) : null;
 
   if (launchCountdownAt && (!parsedLaunchCountdown || Number.isNaN(parsedLaunchCountdown.getTime()))) {
@@ -57,7 +58,8 @@ export async function POST(req: NextRequest) {
       launchMessage: launchMessage || 'We are getting the catalog, producers, and launch details ready.',
       launchCountdownAt: parsedLaunchCountdown,
       launchCtaLabel: launchCtaLabel || null,
-      launchCtaHref: launchCtaHref || null
+      launchCtaHref: launchCtaHref || null,
+      platformSignatureKey: platformSignatureKey || null
     },
     create: {
       id: 'default',
@@ -66,7 +68,8 @@ export async function POST(req: NextRequest) {
       launchMessage: launchMessage || 'We are getting the catalog, producers, and launch details ready.',
       launchCountdownAt: parsedLaunchCountdown,
       launchCtaLabel: launchCtaLabel || null,
-      launchCtaHref: launchCtaHref || null
+      launchCtaHref: launchCtaHref || null,
+      platformSignatureKey: platformSignatureKey || null
     }
   });
 

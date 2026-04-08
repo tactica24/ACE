@@ -361,6 +361,8 @@ model Contract {
   documentHtml       String?
   producerLegalName  String?
   producerSignedName String?
+  platformSignatureKey String?
+  producerSignatureKey String?
   producerAccepted   Boolean        @default(false)
   effectiveDate      DateTime?
   producerSignedAt   DateTime?
@@ -535,6 +537,7 @@ model SiteSettings {
   launchCountdownAt DateTime?
   launchCtaLabel    String?
   launchCtaHref     String?
+  platformSignatureKey String?
   updatedAt         DateTime     @default(now()) @updatedAt
 }
 

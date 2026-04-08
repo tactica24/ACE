@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
@@ -23,6 +24,42 @@ export async function headObject(key: string) {
 
 export async function getObjectStream(key: string, range?: string) {
   return createClient().send(new GetObjectCommand({ Bucket: getBucket(), Key: key, Range: range }));
+}
+
+async function streamToBuffer(stream: Readable) {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+export async function getObjectBuffer(key: string) {
+  const response = await getObjectStream(key);
+  if (!response.Body) {
+    throw new Error('Missing R2 object body');
+  }
+
+  const body = response.Body as
+    | (Readable & { transformToByteArray?: () => Promise<Uint8Array> })
+    | Buffer
+    | Uint8Array;
+
+  let buffer: Buffer;
+  if (Buffer.isBuffer(body)) {
+    buffer = body;
+  } else if (body instanceof Uint8Array) {
+    buffer = Buffer.from(body);
+  } else if (typeof body.transformToByteArray === 'function') {
+    buffer = Buffer.from(await body.transformToByteArray());
+  } else {
+    buffer = await streamToBuffer(body);
+  }
+
+  return {
+    buffer,
+    contentType: response.ContentType ?? 'application/octet-stream'
+  };
 }
 
 export async function putObject(key: string, body: Buffer, contentType: string) {
