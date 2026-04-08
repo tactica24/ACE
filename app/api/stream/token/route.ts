@@ -3,6 +3,7 @@ import { getAuthFromRequest, createStreamToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { ensureStreamSession } from '@/lib/stream-sessions';
+import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -23,9 +24,12 @@ export async function GET(req: NextRequest) {
 
   const video = await prisma.video.findUnique({ where: { id: videoId } });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-  const canPreviewPendingVideo = Boolean(auth && (auth.role === 'ADMIN' || auth.sub === video.creatorId));
+  const canPreviewPendingVideo = canPreviewVideo(video, auth);
   if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
     return NextResponse.json({ error: 'Video not available' }, { status: 403 });
+  }
+  if (!isPlayableVideo(video)) {
+    return NextResponse.json({ error: 'Select an episode to start playback.' }, { status: 400 });
   }
 
   const deviceSessionId = req.nextUrl.searchParams.get('deviceSessionId') ?? undefined;

@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  await prisma.video.update({ where: { id: moderation.videoId }, data: { status: 'REJECTED' } });
+  await prisma.$transaction([
+    prisma.video.update({ where: { id: moderation.videoId }, data: { status: 'REJECTED' } }),
+    prisma.video.updateMany({ where: { seriesId: moderation.videoId }, data: { status: 'REJECTED' } })
+  ]);
   revalidateApprovedCatalog();
 
   return NextResponse.json({ ok: true });

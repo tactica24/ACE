@@ -9,6 +9,7 @@ import fsPromises from 'fs/promises';
 import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
 import { headObject } from '@/lib/r2';
 import { touchStreamSession } from '@/lib/stream-sessions';
+import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,9 +33,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const video = await prisma.video.findUnique({ where: { id: params.id } });
   if (!video) return new Response('Video not found', { status: 404 });
-  const canPreviewPendingVideo = payload.role === 'ADMIN' || payload.userId === video.creatorId;
+  const canPreviewPendingVideo = canPreviewVideo(video, payload.userId ? { sub: payload.userId, role: payload.role ?? 'USER' } : null);
   if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
     return new Response('Video not available', { status: 403 });
+  }
+  if (!isPlayableVideo(video) || !video.r2Key) {
+    return new Response('Select an episode to start playback', { status: 400 });
   }
 
   const isGuest = payload.guest || !payload.userId || payload.userId === 'guest';

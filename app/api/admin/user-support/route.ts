@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
 import { verifyTransaction } from '@/lib/paystack';
@@ -9,6 +10,24 @@ function getActionType(balanceNairaDelta: number, creditsDelta: number) {
   if (balanceNairaDelta !== 0 && creditsDelta !== 0) return 'SUPPORT_COMPENSATION';
   if (creditsDelta !== 0) return 'CREDIT_ADJUSTMENT';
   return 'WALLET_ADJUSTMENT';
+}
+
+function serializeWallet(wallet: { balanceNaira: number; credits: number }) {
+  return {
+    ...wallet,
+    credits: storedUnitsToCredits(wallet.credits)
+  };
+}
+
+function serializeSupportAction<T extends {
+  creditsDelta: number;
+  resultingCredits: number | null;
+}>(action: T) {
+  return {
+    ...action,
+    creditsDelta: storedUnitsToCredits(action.creditsDelta),
+    resultingCredits: action.resultingCredits === null ? null : storedUnitsToCredits(action.resultingCredits)
+  };
 }
 
 async function logSupportAction(args: {
@@ -161,7 +180,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         payment: result.payment,
         externalStatus: result.externalStatus,
-        action: supportAction
+        action: serializeSupportAction(supportAction)
       });
     }
 
@@ -197,7 +216,7 @@ export async function POST(req: NextRequest) {
         note
       });
 
-      return NextResponse.json({ ok: true, payment, action: supportAction });
+      return NextResponse.json({ ok: true, payment, action: serializeSupportAction(supportAction) });
     }
 
     if (action === 'ADJUST_ACCOUNT') {
@@ -205,7 +224,7 @@ export async function POST(req: NextRequest) {
       const note = typeof body?.note === 'string' ? body.note.trim() : '';
       const reference = typeof body?.reference === 'string' ? body.reference.trim() : '';
       const amountNairaDelta = Math.round(Number(body?.amountNairaDelta ?? 0));
-      const creditsDelta = Math.round(Number(body?.creditsDelta ?? 0));
+      const creditsDelta = creditsToStoredUnits(Number(body?.creditsDelta ?? 0));
 
       if (!userId || !note) {
         return NextResponse.json({ error: 'User and support note are required.' }, { status: 400 });
@@ -270,7 +289,11 @@ export async function POST(req: NextRequest) {
         return { wallet: updatedWallet, action: actionRecord };
       });
 
-      return NextResponse.json({ ok: true, ...result });
+      return NextResponse.json({
+        ok: true,
+        wallet: serializeWallet(result.wallet),
+        action: serializeSupportAction(result.action)
+      });
     }
 
     return NextResponse.json({ error: 'Unsupported support action.' }, { status: 400 });

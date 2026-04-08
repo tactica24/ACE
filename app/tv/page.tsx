@@ -6,8 +6,8 @@ import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getSiteSettings } from '@/lib/site-settings';
+import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ export default async function TvPage() {
   let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
   try {
     videos = await prisma.video.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'APPROVED', seriesId: null },
       orderBy: { createdAt: 'desc' },
       take: 20
     });
@@ -71,7 +71,7 @@ export default async function TvPage() {
             {videos.map((video) => (
               <VideoCard
                 key={video.id}
-                video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }}
+                video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }}
               />
             ))}
           </div>

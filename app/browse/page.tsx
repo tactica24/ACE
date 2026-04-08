@@ -7,13 +7,14 @@ import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { getFinanceConfig } from '@/lib/finance';
 import { type PriceTierValue } from '@/lib/media-types';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getSiteSettings } from '@/lib/site-settings';
+import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 
 export const dynamic = 'force-dynamic';
 
 type BrowseVideo = {
   id: string;
+  seriesId?: string | null;
   title: string;
   description: string;
   priceTier: PriceTierValue;
@@ -22,6 +23,7 @@ type BrowseVideo = {
   videoType: string;
   ageRating: string;
   category: string;
+  episodeCount?: number | null;
 };
 
 export default async function BrowsePage() {
@@ -70,7 +72,7 @@ export default async function BrowsePage() {
           <BrowseCatalog
             videos={videos.map((video) => ({
               ...video,
-              price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig)
+              price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig)
             }))}
           />
         ) : (

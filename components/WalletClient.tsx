@@ -204,9 +204,10 @@ export default function WalletClient({
           <input
             className="input"
             type="number"
-            min={1}
+            min={shareType === 'CREDITS' ? 0.5 : 1}
+            step={shareType === 'CREDITS' ? 0.5 : 1}
             value={shareAmount}
-            onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value || '1', 10)))}
+            onChange={(e) => setShareAmount(Math.max(shareType === 'CREDITS' ? 0.5 : 1, Number(e.target.value || '1')))}
             style={{ marginTop: 12 }}
             placeholder={shareType === 'CREDITS' ? 'Number of credits' : 'Amount in naira'}
           />

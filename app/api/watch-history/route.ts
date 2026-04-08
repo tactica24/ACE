@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -28,15 +29,47 @@ export async function POST(req: NextRequest) {
 
   const video = await prisma.video.findUnique({
     where: { id: videoId },
-    select: { id: true }
+    select: {
+      id: true,
+      creatorId: true,
+      status: true,
+      teaserSec: true,
+      durationSec: true,
+      videoType: true,
+      seriesId: true,
+      r2Key: true
+    }
   });
 
   if (!video) {
     return NextResponse.json({ error: 'Video not found' }, { status: 404 });
   }
 
-  const progressSec = Math.max(0, Math.floor(Number.isFinite(rawProgress) ? rawProgress : 0));
-  const durationSec = rawDuration > 0 && Number.isFinite(rawDuration) ? Math.floor(rawDuration) : null;
+  if (!isPlayableVideo(video)) {
+    return NextResponse.json({ error: 'This title does not support playback progress.' }, { status: 400 });
+  }
+
+  const previewAllowed = canPreviewVideo(video, auth);
+  if (video.status !== 'APPROVED' && !previewAllowed) {
+    return NextResponse.json({ error: 'Video not available' }, { status: 403 });
+  }
+
+  const unlock = previewAllowed
+    ? { id: 'preview' }
+    : await prisma.unlock.findFirst({
+        where: {
+          userId: auth.sub,
+          videoId
+        },
+        select: { id: true }
+      });
+
+  const maxProgressSec = unlock ? Math.max(video.durationSec, 0) : Math.max(video.teaserSec, 0);
+  const progressSec = Math.min(maxProgressSec, Math.max(0, Math.floor(Number.isFinite(rawProgress) ? rawProgress : 0)));
+  const durationSec = rawDuration > 0 && Number.isFinite(rawDuration)
+    ? Math.min(Math.floor(rawDuration), Math.max(video.durationSec, 0))
+    : Math.max(video.durationSec, 0);
+  const markedCompleted = completed && Boolean(unlock);
 
   const history = await prisma.watchHistory.upsert({
     where: {
@@ -46,16 +79,16 @@ export async function POST(req: NextRequest) {
       }
     },
     update: {
-      progressSec: completed ? 0 : progressSec,
+      progressSec: markedCompleted ? 0 : progressSec,
       durationSec,
-      completedAt: completed ? new Date() : null
+      completedAt: markedCompleted ? new Date() : null
     },
     create: {
       userId: auth.sub,
       videoId,
-      progressSec: completed ? 0 : progressSec,
+      progressSec: markedCompleted ? 0 : progressSec,
       durationSec,
-      completedAt: completed ? new Date() : null
+      completedAt: markedCompleted ? new Date() : null
     }
   });
 

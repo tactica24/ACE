@@ -1,31 +1,19 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getFinanceConfig } from '@/lib/finance';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
+import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const video = await prisma.video.findUnique({
     where: { id: params.id },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      videoType: true,
-      ageRating: true,
-      category: true,
-      genres: true,
-      priceTier: true,
-      rightsTier: true,
-      teaserSec: true,
-      durationSec: true,
-      releaseYear: true,
-      highlightSeconds: true,
-      posterKey: true,
-      creatorId: true,
-      status: true
+    include: {
+      episodes: {
+        where: { status: 'APPROVED' },
+        orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }]
+      }
     }
   });
 
@@ -40,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   const pricingConfig = await getFinanceConfig();
-  const price = getRegionalPriceFromConfig(req, video.priceTier, pricingConfig);
+  const price = getRegionalPriceForVideo(req, video, pricingConfig);
 
   return NextResponse.json({
     video: {
@@ -58,7 +46,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       releaseYear: video.releaseYear,
       highlightSeconds: video.highlightSeconds,
       posterKey: video.posterKey,
-      creatorId: video.creatorId
+      creatorId: video.creatorId,
+      seriesId: video.seriesId,
+      seasonNumber: video.seasonNumber,
+      episodeNumber: video.episodeNumber,
+      episodes: video.episodes.map((episode) => ({
+        id: episode.id,
+        title: episode.title,
+        description: episode.description,
+        teaserSec: episode.teaserSec,
+        durationSec: episode.durationSec,
+        posterKey: episode.posterKey,
+        seasonNumber: episode.seasonNumber,
+        episodeNumber: episode.episodeNumber
+      }))
     },
     price,
     unlocked

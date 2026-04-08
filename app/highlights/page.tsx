@@ -7,7 +7,7 @@ export default async function HighlightsPage() {
   let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
   try {
     videos = await prisma.video.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'APPROVED', seriesId: null },
       orderBy: { createdAt: 'desc' },
       take: 12
     });

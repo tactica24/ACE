@@ -178,7 +178,7 @@ model Wallet {
   id            String   @id @default(cuid())
   userId        String   @unique
   balanceNaira  Int      @default(0)
-  credits       Int      @default(0)
+  credits       Int      @default(0) // stored in half-credit units
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id])
 }
@@ -215,6 +215,9 @@ model CreatorProfile {
 model Video {
   id          String       @id @default(cuid())
   creatorId   String
+  seriesId    String?
+  seasonNumber Int?
+  episodeNumber Int?
   title       String
   description String
   videoType   VideoType    @default(FEATURE)
@@ -231,12 +234,14 @@ model Video {
   durationSec Int
   teaserSec   Int
   highlightSeconds Int[]   @default([])
-  r2Key       String
+  r2Key       String?
   posterKey   String?
   tags        String[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   creator     User         @relation("CreatorVideos", fields: [creatorId], references: [id])
+  series      Video?       @relation("SeriesEpisodes", fields: [seriesId], references: [id])
+  episodes    Video[]      @relation("SeriesEpisodes")
   unlocks     Unlock[]
   contracts   Contract[]
   moderation  ModerationItem?
@@ -249,6 +254,8 @@ model Video {
   offlinePackages OfflinePackage[]
   @@index([status])
   @@index([priceTier])
+  @@index([seriesId, seasonNumber, episodeNumber])
+  @@unique([seriesId, seasonNumber, episodeNumber])
 }
 
 model OfflinePackage {
@@ -345,7 +352,7 @@ model Unlock {
 model SubscriptionPass {
   id              String   @id @default(cuid())
   userId          String
-  creditsRemaining Int
+  creditsRemaining Int // stored in half-credit units
   expiresAt       DateTime
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id])

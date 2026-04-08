@@ -27,6 +27,7 @@ const ageLabel: Record<string, string> = {
 
 export type VideoCardData = {
   id: string;
+  seriesId?: string | null;
   title: string;
   description: string;
   videoType: string;
@@ -34,6 +35,7 @@ export type VideoCardData = {
   category: string;
   durationSec?: number;
   releaseYear?: number | null;
+  episodeCount?: number | null;
   priceTier: PriceTierValue;
   posterKey?: string | null;
   price?: { currency: string; amountMinor: number; amountNaira?: number };
@@ -84,8 +86,9 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
           <div className="video-card-details">
             {video.releaseYear ? <span>{video.releaseYear}</span> : null}
             {runtimeLabel ? <span>{runtimeLabel}</span> : null}
+            {video.videoType === 'SERIES' && !video.seriesId && video.episodeCount ? <span>{video.episodeCount} episodes</span> : null}
             <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
-            <span>{tierLabel[video.priceTier]}</span>
+            <span>{video.videoType === 'SERIES' ? 'Per episode' : tierLabel[video.priceTier]}</span>
           </div>
         </div>
       </div>

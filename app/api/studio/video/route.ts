@@ -3,11 +3,33 @@ import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
+import { isOwnedUploadKey } from '@/lib/upload-security';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 type VideoTypeValue = 'FEATURE' | 'SERIES' | 'SHORT' | 'SKIT' | 'DOCUMENTARY' | 'ADVERT';
 type AgeRatingValue = 'ALL' | 'PG13' | 'PG16' | 'PG18';
+
+type SubtitlePayload = {
+  label?: string;
+  languageCode?: string;
+  kind?: string;
+  fileKey?: string;
+  isDefault?: boolean;
+};
+
+type EpisodePayload = {
+  seasonNumber?: number;
+  episodeNumber?: number;
+  title?: string;
+  description?: string;
+  teaserSec?: number;
+  durationSec?: number;
+  highlightSeconds?: number[];
+  r2Key?: string;
+  posterKey?: string | null;
+  subtitleTracks?: SubtitlePayload[];
+};
 
 const PRICE_TIERS: PriceTierValue[] = ['SNACK', 'STANDARD', 'PREMIERE'];
 const RIGHTS_TIERS: RightsTierValue[] = ['SHARED', 'EXCLUSIVE'];
@@ -31,13 +53,46 @@ function isAgeRating(value: string | undefined): value is AgeRatingValue {
   return Boolean(value && AGE_RATINGS.includes(value as AgeRatingValue));
 }
 
+function normalizeSubtitlePayload(tracks: SubtitlePayload[] | undefined) {
+  return normalizeSubtitleTracks(
+    (tracks ?? []).map((track) => ({
+      label: track.label ?? '',
+      languageCode: track.languageCode ?? '',
+      kind: (track.kind ?? 'subtitles') as 'subtitles' | 'captions' | 'sdh',
+      fileKey: track.fileKey ?? '',
+      isDefault: track.isDefault
+    }))
+  );
+}
+
+function validateOwnedKey(key: string | null | undefined, userId: string, purpose: 'video' | 'poster' | 'subtitle') {
+  if (!key) {
+    return false;
+  }
+
+  return isOwnedUploadKey(key, userId, purpose);
+}
+
+function hasSupportedVideoExtension(key: string) {
+  return SUPPORTED_VIDEO_EXTENSIONS.some((extension) => key.toLowerCase().endsWith(extension));
+}
+
+function normalizeHighlights(values: number[] | undefined) {
+  return (values ?? []).filter((value) => Number.isFinite(value) && value >= 0);
+}
+
+function normalizeEpisodeNumber(value: number | undefined) {
+  const parsed = Math.floor(Number(value ?? 0));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const {
     title,
     description,
@@ -57,8 +112,10 @@ export async function POST(req: NextRequest) {
     tags,
     highlightSeconds,
     r2Key,
-    posterKey
-  } = body as {
+    posterKey,
+    seriesId,
+    episodes
+  } = (body ?? {}) as {
     title?: string;
     description?: string;
     videoType?: string;
@@ -67,13 +124,7 @@ export async function POST(req: NextRequest) {
     originalLanguage?: string;
     audioLanguages?: string[];
     contentWarnings?: string[];
-    subtitleTracks?: Array<{
-      label?: string;
-      languageCode?: string;
-      kind?: string;
-      fileKey?: string;
-      isDefault?: boolean;
-    }>;
+    subtitleTracks?: SubtitlePayload[];
     genres?: string[];
     priceTier?: string;
     rightsTier?: string;
@@ -84,6 +135,8 @@ export async function POST(req: NextRequest) {
     highlightSeconds?: number[];
     r2Key?: string;
     posterKey?: string | null;
+    seriesId?: string;
+    episodes?: EpisodePayload[];
   };
 
   const safeTitle = title?.trim();
@@ -91,21 +144,14 @@ export async function POST(req: NextRequest) {
   const safeCategory = category?.trim() || 'General';
   const safeR2Key = r2Key?.trim() || '';
   const safePosterKey = posterKey?.trim() || null;
+  const safeSeriesId = seriesId?.trim() || null;
   const safeGenres = (genres ?? []).map((value) => value.trim()).filter(Boolean);
   const safeTags = (tags ?? []).map((value) => value.trim()).filter(Boolean);
-  const safeHighlights = (highlightSeconds ?? []).filter((value) => Number.isFinite(value) && value >= 0);
+  const safeHighlights = normalizeHighlights(highlightSeconds);
   const safeOriginalLanguage = normalizeLanguageCodes([(originalLanguage ?? 'en').trim().toLowerCase()])[0] ?? 'en';
   const safeAudioLanguages = normalizeLanguageCodes([safeOriginalLanguage, ...(audioLanguages ?? [])]);
   const safeContentWarnings = normalizeContentWarnings(contentWarnings ?? []);
-  const safeSubtitleTracks = normalizeSubtitleTracks(
-    (subtitleTracks ?? []).map((track) => ({
-      label: track.label ?? '',
-      languageCode: track.languageCode ?? '',
-      kind: (track.kind ?? 'subtitles') as 'subtitles' | 'captions' | 'sdh',
-      fileKey: track.fileKey ?? '',
-      isDefault: track.isDefault
-    }))
-  );
+  const safeSubtitleTracks = normalizeSubtitlePayload(subtitleTracks);
 
   const safeTeaserSec = Math.max(0, Math.floor(Number(teaserSec ?? 0)));
   const safeDurationSec = Math.max(0, Math.floor(Number(durationSec ?? 0)));
@@ -116,15 +162,7 @@ export async function POST(req: NextRequest) {
       ? parsedReleaseYear
       : null;
 
-  if (!safeTitle || !safeDescription || !priceTier || !rightsTier || !safeDurationSec || !safeR2Key) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
-  }
-
-  if (!SUPPORTED_VIDEO_EXTENSIONS.some((extension) => safeR2Key.toLowerCase().endsWith(extension))) {
-    return NextResponse.json({ error: 'Upload MP4 or WebM video files for reliable playback.' }, { status: 400 });
-  }
-
-  if (!isPriceTier(priceTier) || !isRightsTier(rightsTier)) {
+  if (!priceTier || !rightsTier || !isPriceTier(priceTier) || !isRightsTier(rightsTier)) {
     return NextResponse.json({ error: 'Invalid pricing or rights tier' }, { status: 400 });
   }
 
@@ -132,7 +170,7 @@ export async function POST(req: NextRequest) {
   const safeAgeRating: AgeRatingValue = isAgeRating(ageRating) ? ageRating : 'ALL';
   const pendingStatus: VideoStatusValue = 'PENDING';
 
-  const creatorProfile = await prisma.creatorProfile.upsert({
+  await prisma.creatorProfile.upsert({
     where: { userId: auth.sub },
     update: {},
     create: {
@@ -141,50 +179,309 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  const hasExplicitDefaultSubtitle = safeSubtitleTracks.some((track) => track.isDefault);
+  if (safeVideoType !== 'SERIES') {
+    if (!safeTitle || !safeDescription || !safeDurationSec || !safeR2Key) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
 
-  const video = await prisma.video.create({
-    data: {
-      creatorId: auth.sub,
-      title: safeTitle,
-      description: safeDescription,
-      videoType: safeVideoType,
-      ageRating: safeAgeRating,
-      category: safeCategory,
-      originalLanguage: safeOriginalLanguage,
-      audioLanguages: safeAudioLanguages,
-      contentWarnings: safeContentWarnings,
-      genres: safeGenres,
-      priceTier,
-      rightsTier,
-      status: pendingStatus,
-      releaseYear: safeReleaseYear,
-      teaserSec: safeTeaserSec,
-      durationSec: safeDurationSec,
-      tags: safeTags,
-      highlightSeconds: safeHighlights,
-      r2Key: safeR2Key,
-      posterKey: safePosterKey,
-      subtitleTracks: safeSubtitleTracks.length
-        ? {
-            create: safeSubtitleTracks.map((track, index) => ({
-              label: track.label,
-              languageCode: track.languageCode,
-              kind: track.kind,
-              fileKey: track.fileKey,
-              isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
-            }))
+    if (!hasSupportedVideoExtension(safeR2Key) || !validateOwnedKey(safeR2Key, auth.sub, 'video')) {
+      return NextResponse.json({ error: 'Upload MP4 or WebM video files that belong to your studio account.' }, { status: 400 });
+    }
+
+    if (safePosterKey && !validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
+      return NextResponse.json({ error: 'Poster upload is invalid for this studio account.' }, { status: 400 });
+    }
+
+    if (safeSubtitleTracks.some((track) => !validateOwnedKey(track.fileKey, auth.sub, 'subtitle'))) {
+      return NextResponse.json({ error: 'One or more subtitle uploads are invalid for this studio account.' }, { status: 400 });
+    }
+
+    const hasExplicitDefaultSubtitle = safeSubtitleTracks.some((track) => track.isDefault);
+
+    const video = await prisma.video.create({
+      data: {
+        creatorId: auth.sub,
+        title: safeTitle,
+        description: safeDescription,
+        videoType: safeVideoType,
+        ageRating: safeAgeRating,
+        category: safeCategory,
+        originalLanguage: safeOriginalLanguage,
+        audioLanguages: safeAudioLanguages,
+        contentWarnings: safeContentWarnings,
+        genres: safeGenres,
+        priceTier,
+        rightsTier,
+        status: pendingStatus,
+        releaseYear: safeReleaseYear,
+        teaserSec: safeTeaserSec,
+        durationSec: safeDurationSec,
+        tags: safeTags,
+        highlightSeconds: safeHighlights,
+        r2Key: safeR2Key,
+        posterKey: safePosterKey,
+        subtitleTracks: safeSubtitleTracks.length
+          ? {
+              create: safeSubtitleTracks.map((track, index) => ({
+                label: track.label,
+                languageCode: track.languageCode,
+                kind: track.kind,
+                fileKey: track.fileKey,
+                isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
+              }))
+            }
+          : undefined
+      }
+    });
+
+    await prisma.moderationItem.create({
+      data: {
+        videoId: video.id,
+        status: 'PENDING'
+      }
+    });
+
+    return NextResponse.json({ ok: true, videoId: video.id, requiresContract: true });
+  }
+
+  const safeEpisodes = (episodes ?? []).map((episode) => {
+    const normalizedSubtitleTracks = normalizeSubtitlePayload(episode.subtitleTracks);
+    return {
+      seasonNumber: normalizeEpisodeNumber(episode.seasonNumber),
+      episodeNumber: normalizeEpisodeNumber(episode.episodeNumber),
+      title: episode.title?.trim() || '',
+      description: episode.description?.trim() || '',
+      teaserSec: Math.max(0, Math.floor(Number(episode.teaserSec ?? 0))),
+      durationSec: Math.max(0, Math.floor(Number(episode.durationSec ?? 0))),
+      highlightSeconds: normalizeHighlights(episode.highlightSeconds),
+      r2Key: episode.r2Key?.trim() || '',
+      posterKey: episode.posterKey?.trim() || null,
+      subtitleTracks: normalizedSubtitleTracks
+    };
+  });
+  const requestedEpisodeSlots = new Set<string>();
+
+  if (!safeEpisodes.length) {
+    return NextResponse.json({ error: 'Add at least one episode to this season.' }, { status: 400 });
+  }
+
+  for (const episode of safeEpisodes) {
+    const slotKey = `${episode.seasonNumber}:${episode.episodeNumber}`;
+    if (requestedEpisodeSlots.has(slotKey)) {
+      return NextResponse.json({ error: `Season ${episode.seasonNumber} episode ${episode.episodeNumber} was added more than once.` }, { status: 400 });
+    }
+    requestedEpisodeSlots.add(slotKey);
+
+    if (
+      !episode.seasonNumber ||
+      !episode.episodeNumber ||
+      !episode.title ||
+      !episode.description ||
+      !episode.durationSec ||
+      !episode.r2Key
+    ) {
+      return NextResponse.json({ error: 'Each episode needs a title, synopsis, season, episode number, runtime, and uploaded video.' }, { status: 400 });
+    }
+
+    if (!hasSupportedVideoExtension(episode.r2Key) || !validateOwnedKey(episode.r2Key, auth.sub, 'video')) {
+      return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid video upload.` }, { status: 400 });
+    }
+
+    if (episode.posterKey && !validateOwnedKey(episode.posterKey, auth.sub, 'poster')) {
+      return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid poster upload.` }, { status: 400 });
+    }
+
+    if (episode.subtitleTracks.some((track) => !validateOwnedKey(track.fileKey, auth.sub, 'subtitle'))) {
+      return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid subtitle upload.` }, { status: 400 });
+    }
+  }
+
+  if (safeSeriesId) {
+    const series = await prisma.video.findFirst({
+      where: {
+        id: safeSeriesId,
+        creatorId: auth.sub,
+        videoType: 'SERIES',
+        seriesId: null
+      }
+    });
+
+    if (!series) {
+      return NextResponse.json({ error: 'Series not found' }, { status: 404 });
+    }
+
+    const existingSlots = new Set(
+      (
+        await prisma.video.findMany({
+          where: {
+            seriesId: series.id
+          },
+          select: {
+            seasonNumber: true,
+            episodeNumber: true
           }
-        : undefined
+        })
+      ).map((episode) => `${episode.seasonNumber}:${episode.episodeNumber}`)
+    );
+
+    for (const episode of safeEpisodes) {
+      const slotKey = `${episode.seasonNumber}:${episode.episodeNumber}`;
+      if (existingSlots.has(slotKey)) {
+        return NextResponse.json({ error: `Season ${episode.seasonNumber} episode ${episode.episodeNumber} already exists in this series.` }, { status: 400 });
+      }
     }
+
+    const createdEpisodes = await prisma.$transaction(async (tx) => {
+      const items = [];
+
+      for (const episode of safeEpisodes) {
+        const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
+        const created = await tx.video.create({
+          data: {
+            creatorId: auth.sub,
+            seriesId: series.id,
+            seasonNumber: episode.seasonNumber,
+            episodeNumber: episode.episodeNumber,
+            title: episode.title,
+            description: episode.description,
+            videoType: 'SERIES',
+            ageRating: series.ageRating,
+            category: series.category,
+            originalLanguage: series.originalLanguage,
+            audioLanguages: series.audioLanguages,
+            contentWarnings: series.contentWarnings,
+            genres: series.genres,
+            priceTier: series.priceTier,
+            rightsTier: series.rightsTier,
+            status: series.status === 'APPROVED' ? 'APPROVED' : 'PENDING',
+            releaseYear: series.releaseYear,
+            teaserSec: episode.teaserSec,
+            durationSec: episode.durationSec,
+            tags: series.tags,
+            highlightSeconds: episode.highlightSeconds,
+            r2Key: episode.r2Key,
+            posterKey: episode.posterKey ?? series.posterKey,
+            subtitleTracks: episode.subtitleTracks.length
+              ? {
+                  create: episode.subtitleTracks.map((track, index) => ({
+                    label: track.label,
+                    languageCode: track.languageCode,
+                    kind: track.kind,
+                    fileKey: track.fileKey,
+                    isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
+                  }))
+                }
+              : undefined
+          }
+        });
+        items.push(created);
+      }
+
+      return items;
+    });
+
+    return NextResponse.json({
+      ok: true,
+      videoId: series.id,
+      addedEpisodeIds: createdEpisodes.map((episode) => episode.id),
+      requiresContract: false
+    });
+  }
+
+  if (!safeTitle || !safeDescription) {
+    return NextResponse.json({ error: 'Series title and synopsis are required.' }, { status: 400 });
+  }
+
+  if (safePosterKey && !validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
+    return NextResponse.json({ error: 'Series poster upload is invalid for this studio account.' }, { status: 400 });
+  }
+
+  const totalDurationSec = safeEpisodes.reduce((sum, episode) => sum + episode.durationSec, 0);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const series = await tx.video.create({
+      data: {
+        creatorId: auth.sub,
+        title: safeTitle,
+        description: safeDescription,
+        videoType: 'SERIES',
+        ageRating: safeAgeRating,
+        category: safeCategory,
+        originalLanguage: safeOriginalLanguage,
+        audioLanguages: safeAudioLanguages,
+        contentWarnings: safeContentWarnings,
+        genres: safeGenres,
+        priceTier,
+        rightsTier,
+        status: pendingStatus,
+        releaseYear: safeReleaseYear,
+        teaserSec: 0,
+        durationSec: totalDurationSec,
+        tags: safeTags,
+        highlightSeconds: [],
+        r2Key: null,
+        posterKey: safePosterKey
+      }
+    });
+
+    const createdEpisodes = [];
+    for (const episode of safeEpisodes) {
+      const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
+      const created = await tx.video.create({
+        data: {
+          creatorId: auth.sub,
+          seriesId: series.id,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          title: episode.title,
+          description: episode.description,
+          videoType: 'SERIES',
+          ageRating: safeAgeRating,
+          category: safeCategory,
+          originalLanguage: safeOriginalLanguage,
+          audioLanguages: safeAudioLanguages,
+          contentWarnings: safeContentWarnings,
+          genres: safeGenres,
+          priceTier,
+          rightsTier,
+          status: pendingStatus,
+          releaseYear: safeReleaseYear,
+          teaserSec: episode.teaserSec,
+          durationSec: episode.durationSec,
+          tags: safeTags,
+          highlightSeconds: episode.highlightSeconds,
+          r2Key: episode.r2Key,
+          posterKey: episode.posterKey ?? safePosterKey,
+          subtitleTracks: episode.subtitleTracks.length
+            ? {
+                create: episode.subtitleTracks.map((track, index) => ({
+                  label: track.label,
+                  languageCode: track.languageCode,
+                  kind: track.kind,
+                  fileKey: track.fileKey,
+                  isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
+                }))
+              }
+            : undefined
+        }
+      });
+      createdEpisodes.push(created);
+    }
+
+    await tx.moderationItem.create({
+      data: {
+        videoId: series.id,
+        status: 'PENDING'
+      }
+    });
+
+    return { series, createdEpisodes };
   });
 
-  await prisma.moderationItem.create({
-    data: {
-      videoId: video.id,
-      status: 'PENDING'
-    }
+  return NextResponse.json({
+    ok: true,
+    videoId: result.series.id,
+    addedEpisodeIds: result.createdEpisodes.map((episode) => episode.id),
+    requiresContract: true
   });
-
-  return NextResponse.json({ ok: true, videoId: video.id });
 }

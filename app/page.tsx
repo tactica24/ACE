@@ -10,15 +10,16 @@ import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
+import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 
 export const dynamic = 'force-dynamic';
 
 type HomeVideo = {
   id: string;
+  seriesId?: string | null;
   title: string;
   description: string;
   priceTier: PriceTierValue;
@@ -29,6 +30,7 @@ type HomeVideo = {
   videoType: string;
   ageRating: string;
   category: string;
+  episodeCount?: number | null;
 };
 
 type HomeRow = {
@@ -281,7 +283,7 @@ export default async function HomePage() {
                   {row.items.map((video) => (
                     <div key={`${row.title}-${video.id}`} className="home-carousel-item">
                       <VideoCard
-                        video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }}
+                        video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }}
                       />
                     </div>
                   ))}

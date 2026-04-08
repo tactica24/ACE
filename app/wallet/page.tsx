@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import WalletClient from '@/components/WalletClient';
 import { getCurrentUser } from '@/lib/auth';
 import { DEFAULT_FAMILY_BUNDLE_CREDITS, PASS_CREDITS, PASS_PRICE_NAIRA } from '@/lib/commerce';
-import { formatCredits, getCreditsForNaira } from '@/lib/credits';
+import { formatCredits, getCreditsForNaira, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { getFinanceConfig } from '@/lib/finance';
@@ -75,8 +75,8 @@ export default async function WalletPage() {
         </div>
         <WalletClient
           balance={wallet?.balanceNaira ?? 0}
-          credits={wallet?.credits ?? 0}
-          passCredits={pass.reduce((total, item) => total + item.creditsRemaining, 0)}
+          credits={storedUnitsToCredits(wallet?.credits ?? 0)}
+          passCredits={storedUnitsToCredits(pass.reduce((total, item) => total + item.creditsRemaining, 0))}
           passCreditsPerBundle={PASS_CREDITS}
           familyBundleCredits={familyBundleCredits}
           isDiaspora={region.region === 'DIASPORA'}

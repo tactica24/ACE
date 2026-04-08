@@ -10,14 +10,30 @@ import { getStudioNavItems } from '@/lib/studio-nav';
 export default async function UploadPage({
   searchParams
 }: {
-  searchParams?: { contractVideoId?: string | string[] };
+  searchParams?: { contractVideoId?: string | string[]; seriesId?: string | string[] };
 }) {
   const user = await requireCreatorUser('/studio/upload');
   const contractVideoId = typeof searchParams?.contractVideoId === 'string'
     ? searchParams.contractVideoId.trim()
     : undefined;
+  const initialSeriesId = typeof searchParams?.seriesId === 'string'
+    ? searchParams.seriesId.trim()
+    : undefined;
   const creatorProfile = await prisma.creatorProfile.findUnique({
     where: { userId: user.sub }
+  });
+  const existingSeries = await prisma.video.findMany({
+    where: {
+      creatorId: user.sub,
+      videoType: 'SERIES',
+      seriesId: null
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { episodes: true }
+      }
+    }
   });
   const siteSettings = await getSiteSettings();
 
@@ -88,7 +104,22 @@ export default async function UploadPage({
             }
           />
         ) : (
-          <UploadForm />
+          <UploadForm
+            initialSeriesId={initialSeriesId}
+            seriesOptions={existingSeries.map((series) => ({
+              id: series.id,
+              title: series.title,
+              status: series.status,
+              priceTier: series.priceTier,
+              rightsTier: series.rightsTier,
+              category: series.category,
+              ageRating: series.ageRating,
+              originalLanguage: series.originalLanguage,
+              audioLanguages: series.audioLanguages,
+              releaseYear: series.releaseYear,
+              episodeCount: series._count.episodes
+            }))}
+          />
         )}
       </div>
     </DashboardShell>

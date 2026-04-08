@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail, hasVerifiedPhone } from '@/lib/auth';
+import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
@@ -35,7 +36,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const recipientPhone = normalizePhone(typeof body?.recipientPhone === 'string' ? body.recipientPhone : '');
   const shareType = body?.shareType === 'BALANCE' ? 'BALANCE' : 'CREDITS';
-  const amount = Math.floor(Number(body?.amount ?? 0));
+  const rawAmount = Number(body?.amount ?? 0);
+  const amount = shareType === 'CREDITS' ? creditsToStoredUnits(rawAmount) : Math.floor(rawAmount);
 
   if (!recipientPhone) {
     return NextResponse.json({ error: 'Enter the family member phone number.' }, { status: 400 });
@@ -129,10 +131,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       shareType,
-      wallet: result.wallet,
+      wallet: result.wallet
+        ? { ...result.wallet, credits: storedUnitsToCredits(result.wallet.credits) }
+        : result.wallet,
       message:
         shareType === 'CREDITS'
-          ? `${amount} credits shared with ${result.recipient.name ?? result.recipient.phone}.`
+          ? `${storedUnitsToCredits(amount)} credits shared with ${result.recipient.name ?? result.recipient.phone}.`
           : `NGN ${amount} shared with ${result.recipient.name ?? result.recipient.phone}.`
     });
   } catch (error) {

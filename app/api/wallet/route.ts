@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { storedUnitsToCredits } from '@/lib/credits';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,10 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     balanceNaira: wallet?.balanceNaira ?? 0,
-    credits: wallet?.credits ?? 0,
+    credits: storedUnitsToCredits(wallet?.credits ?? 0),
     pass: passes.length
       ? {
-          creditsRemaining: passes.reduce((total, pass) => total + pass.creditsRemaining, 0),
+          creditsRemaining: storedUnitsToCredits(passes.reduce((total, pass) => total + pass.creditsRemaining, 0)),
           expiresAt: passes[0]?.expiresAt ?? null
         }
       : null

@@ -2,11 +2,12 @@ import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
-import { CREDIT_VALUE_NAIRA, getCreditValueNaira, getCreditsForNaira } from '@/lib/credits';
+import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditValueNairaFromStoredUnits, getCreditsForNaira } from '@/lib/credits';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
-import { getBasePriceNairaForTierFromConfig } from '@/lib/pricing';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { isPlayableVideo, isSeriesContainer } from '@/lib/video-access';
+import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -33,9 +34,16 @@ export async function POST(req: NextRequest) {
     include: { creator: { include: { creator: true } } }
   });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+  if (video.status !== 'APPROVED') {
+    return NextResponse.json({ error: 'This title is not available for unlock yet.' }, { status: 403 });
+  }
+  if (!isPlayableVideo(video) || isSeriesContainer(video)) {
+    return NextResponse.json({ error: 'Select an episode to unlock and watch.' }, { status: 400 });
+  }
 
   const financeConfig = await getFinanceConfig();
-  const amountNaira = getBasePriceNairaForTierFromConfig(financeConfig, video.priceTier);
+  const amountNaira = getUnlockAmountNairaForVideo(video, financeConfig);
+  const creditsRequiredUnits = getCreditUnitsForNaira(amountNaira);
   const creditsRequired = getCreditsForNaira(amountNaira);
   const referralCode = readReferralCode(req, body?.referralCode);
   const referral = await resolveReferral(referralCode, videoId);
@@ -60,37 +68,37 @@ export async function POST(req: NextRequest) {
           where: { userId: auth.sub, expiresAt: { gt: new Date() }, creditsRemaining: { gt: 0 } },
           orderBy: { expiresAt: 'asc' }
         });
-        let remainingCredits = creditsRequired;
-        let passCreditsUsed = 0;
+        let remainingCreditUnits = creditsRequiredUnits;
+        let passCreditUnitsUsed = 0;
 
         for (const pass of activePasses) {
-          if (remainingCredits <= 0) {
+          if (remainingCreditUnits <= 0) {
             break;
           }
 
-          const creditsToUse = Math.min(pass.creditsRemaining, remainingCredits);
-          if (creditsToUse <= 0) {
+          const creditUnitsToUse = Math.min(pass.creditsRemaining, remainingCreditUnits);
+          if (creditUnitsToUse <= 0) {
             continue;
           }
 
           await tx.subscriptionPass.update({
             where: { id: pass.id },
-            data: { creditsRemaining: { decrement: creditsToUse } }
+            data: { creditsRemaining: { decrement: creditUnitsToUse } }
           });
-          passCreditsUsed += creditsToUse;
-          remainingCredits -= creditsToUse;
+          passCreditUnitsUsed += creditUnitsToUse;
+          remainingCreditUnits -= creditUnitsToUse;
         }
 
         const wallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
-        const walletCreditsUsed = Math.min(wallet?.credits ?? 0, remainingCredits);
-        remainingCredits -= walletCreditsUsed;
-        const walletBalanceNeeded = getCreditValueNaira(remainingCredits);
+        const walletCreditUnitsUsed = Math.min(wallet?.credits ?? 0, remainingCreditUnits);
+        remainingCreditUnits -= walletCreditUnitsUsed;
+        const walletBalanceNeeded = getCreditValueNairaFromStoredUnits(remainingCreditUnits);
 
         if (walletBalanceNeeded > 0 && (wallet?.balanceNaira ?? 0) < walletBalanceNeeded) {
           throw new Error('INSUFFICIENT_BALANCE');
         }
 
-        if (walletCreditsUsed > 0 || walletBalanceNeeded > 0) {
+        if (walletCreditUnitsUsed > 0 || walletBalanceNeeded > 0) {
           if (!wallet) {
             throw new Error('INSUFFICIENT_BALANCE');
           }
@@ -98,13 +106,16 @@ export async function POST(req: NextRequest) {
           await tx.wallet.update({
             where: { userId: auth.sub },
             data: {
-              credits: walletCreditsUsed > 0 ? { decrement: walletCreditsUsed } : undefined,
+              credits: walletCreditUnitsUsed > 0 ? { decrement: walletCreditUnitsUsed } : undefined,
               balanceNaira: walletBalanceNeeded > 0 ? { decrement: walletBalanceNeeded } : undefined
             }
           });
         }
 
-        source = passCreditsUsed === creditsRequired && walletCreditsUsed === 0 && walletBalanceNeeded === 0 ? 'PASS' : 'WALLET';
+        source =
+          passCreditUnitsUsed === creditsRequiredUnits && walletCreditUnitsUsed === 0 && walletBalanceNeeded === 0
+            ? 'PASS'
+            : 'WALLET';
 
         const unlock = await tx.unlock.create({
           data: {

@@ -20,7 +20,7 @@ export type CatalogVideo = {
 const getApprovedCatalogVideosCached = unstable_cache(
   async () =>
     prisma.video.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'APPROVED', seriesId: null },
       orderBy: { createdAt: 'desc' },
       take: 60
     }),

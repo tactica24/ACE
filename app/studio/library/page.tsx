@@ -5,13 +5,13 @@ import VideoCard from '@/components/VideoCard';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { getRegionalPriceFromConfig } from '@/lib/pricing';
 import { getStudioNavItems } from '@/lib/studio-nav';
+import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 
 export default async function LibraryPage() {
   const user = await requireCreatorUser('/studio/library');
   const videos = await prisma.video.findMany({
-    where: { creatorId: user.sub },
+    where: { creatorId: user.sub, seriesId: null },
     orderBy: { createdAt: 'desc' },
     include: {
       contracts: {
@@ -19,7 +19,7 @@ export default async function LibraryPage() {
         take: 1
       },
       _count: {
-        select: { subtitleTracks: true }
+        select: { subtitleTracks: true, episodes: true }
       }
     }
   });
@@ -61,7 +61,7 @@ export default async function LibraryPage() {
         <div className="library-grid">
           {videos.map((video) => (
             <div key={video.id} className="card library-card">
-              <VideoCard video={{ ...video, price: getRegionalPriceFromConfig(requestHeaders, video.priceTier, pricingConfig) }} />
+              <VideoCard video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }} />
               <div className="detail-grid">
                 <div className="detail-card">
                   <span className="detail-label">Status</span>
@@ -103,8 +103,24 @@ export default async function LibraryPage() {
                   <span className="detail-label">Subtitles</span>
                   <strong>{video._count.subtitleTracks}</strong>
                 </div>
+                {video.videoType === 'SERIES' ? (
+                  <div className="detail-card">
+                    <span className="detail-label">Episodes</span>
+                    <strong>{video._count.episodes}</strong>
+                  </div>
+                ) : null}
               </div>
               <div className="action-list">
+                {video.videoType !== 'SERIES' ? (
+                  <Link className="btn btn-ghost" href={`/studio/library/${video.id}`}>
+                    Audience insights
+                  </Link>
+                ) : null}
+                {video.videoType === 'SERIES' ? (
+                  <Link className="btn btn-ghost" href={`/studio/upload?seriesId=${video.id}`}>
+                    Add episodes
+                  </Link>
+                ) : null}
                 {video.contracts[0]?.producerAccepted ? (
                   <a className="btn btn-ghost" href={`/api/studio/contracts/${video.contracts[0].id}/download`}>
                     Download document

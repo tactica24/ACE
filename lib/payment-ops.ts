@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { DEFAULT_FAMILY_BUNDLE_CREDITS, PASS_CREDITS } from '@/lib/commerce';
+import { creditsToStoredUnits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 
 type PaymentRecord = Prisma.PaymentGetPayload<{
@@ -30,7 +31,7 @@ async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: Pa
   const type = metadata?.type;
 
   if (type === 'pass') {
-    const credits = Number(metadata?.credits ?? PASS_CREDITS);
+    const credits = creditsToStoredUnits(Number(metadata?.credits ?? PASS_CREDITS));
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
     await tx.subscriptionPass.create({
@@ -44,7 +45,7 @@ async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: Pa
   }
 
   if (type === 'family') {
-    const credits = Number(metadata?.credits ?? DEFAULT_FAMILY_BUNDLE_CREDITS);
+    const credits = creditsToStoredUnits(Number(metadata?.credits ?? DEFAULT_FAMILY_BUNDLE_CREDITS));
     if (metadata?.recipientUserId) {
       await tx.wallet.upsert({
         where: { userId: metadata.recipientUserId },

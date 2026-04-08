@@ -236,7 +236,7 @@ export default function AdminCommerceSupportPanel({
           </label>
           <label className="field">
             <span className="field-label">Credits delta</span>
-            <input className="input" type="number" value={creditsDelta} onChange={(event) => setCreditsDelta(Math.round(Number(event.target.value || '0')))} />
+            <input className="input" type="number" step="0.5" value={creditsDelta} onChange={(event) => setCreditsDelta(Number(event.target.value || '0'))} />
           </label>
         </div>
         <label className="field" style={{ marginTop: 12 }}>

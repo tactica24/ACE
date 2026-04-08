@@ -9,7 +9,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { formatContractDate } from '@/lib/contracts';
-import { formatCredits, getCreditsForNaira } from '@/lib/credits';
+import { formatCredits, getCreditsForNaira, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { formatRecordedCharge } from '@/lib/format';
 
@@ -104,7 +104,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <span className="muted">Producer access: {user.creatorAccessStatus}</span>
             <span className="muted">Viewer wallet: {formatRecordedCharge({ amountMinor: (user.wallet?.balanceNaira ?? 0) * 100, amountNaira: user.wallet?.balanceNaira ?? 0, currency: 'NGN' })}</span>
             <span className="muted">Wallet value: {formatCredits(getCreditsForNaira(user.wallet?.balanceNaira ?? 0))}</span>
-            <span className="muted">Viewer credits: {formatCredits(user.wallet?.credits ?? 0)}</span>
+            <span className="muted">Viewer credits: {formatCredits(storedUnitsToCredits(user.wallet?.credits ?? 0))}</span>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           userId={user.id}
           wallet={{
             balanceNaira: user.wallet?.balanceNaira ?? 0,
-            credits: user.wallet?.credits ?? 0
+            credits: storedUnitsToCredits(user.wallet?.credits ?? 0)
           }}
           recentPayments={user.payments.map((payment) => ({
             id: payment.id,
@@ -242,9 +242,9 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             id: action.id,
             actionType: action.actionType,
             amountNairaDelta: action.amountNairaDelta,
-            creditsDelta: action.creditsDelta,
+            creditsDelta: storedUnitsToCredits(action.creditsDelta),
             resultingBalanceNaira: action.resultingBalanceNaira,
-            resultingCredits: action.resultingCredits,
+            resultingCredits: action.resultingCredits === null ? null : storedUnitsToCredits(action.resultingCredits),
             note: action.note,
             createdAt: action.createdAt.toISOString().slice(0, 10),
             adminEmail: action.adminUser.email
