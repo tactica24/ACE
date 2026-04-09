@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { buildContractDocument, formatContractDate, type RightsTierValue } from '@/lib/contracts';
@@ -239,7 +240,14 @@ export default function StudioContractReview({
             </div>
             <div className="signature-upload-preview">
               {producerSignaturePreviewUrl ? (
-                <img src={producerSignaturePreviewUrl} alt="Producer signature preview" />
+                <Image
+                  src={producerSignaturePreviewUrl}
+                  alt="Producer signature preview"
+                  width={220}
+                  height={120}
+                  unoptimized
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               ) : (
                 <span>{signedName.trim() || producerName}</span>
               )}

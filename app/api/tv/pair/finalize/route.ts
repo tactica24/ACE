@@ -31,12 +31,12 @@ export async function POST(req: NextRequest) {
       if (session.status === 'COMPLETED') {
         throw new Error('PAIRING_USED');
       }
-      if (session.status !== 'CLAIMED') {
-        throw new Error('PAIRING_NOT_CLAIMED');
-      }
       if (session.status === 'EXPIRED' || isPairingExpired(session.expiresAt)) {
         await tx.tvPairingSession.update({ where: { id: session.id }, data: { status: 'EXPIRED' } });
         throw new Error('PAIRING_EXPIRED');
+      }
+      if (session.status !== 'CLAIMED') {
+        throw new Error('PAIRING_NOT_CLAIMED');
       }
       if (!session.claimedBy?.firebaseUid) {
         throw new Error('PAIRING_CLAIMED_USER_INVALID');
