@@ -472,6 +472,10 @@ export function createStreamToken(payload: {
   guest?: boolean;
   deviceSessionId?: string;
   role?: RoleValue;
+  fullAccess?: boolean;
+  streamKey?: string;
+  teaserSec?: number;
+  durationSec?: number;
 }) {
   return jwt.sign(payload, env.ACE_STREAM_SIGNING_SECRET, { expiresIn: '15m' });
 }
@@ -483,6 +487,10 @@ export function verifyStreamToken(token: string) {
     guest?: boolean;
     deviceSessionId?: string;
     role?: RoleValue;
+    fullAccess?: boolean;
+    streamKey?: string;
+    teaserSec?: number;
+    durationSec?: number;
   };
 }
 

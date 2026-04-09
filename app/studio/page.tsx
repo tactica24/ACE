@@ -1,13 +1,16 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import AnalyticsTicker from '@/components/AnalyticsTicker';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import StudioWorkspacePanel from '@/components/StudioWorkspacePanel';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioPage() {
   const user = await requireCreatorUser('/studio');
+  const requestHeaders = headers();
   const [creatorProfile, videos] = await Promise.all([
     prisma.creatorProfile.findUnique({
       where: { userId: user.sub },
@@ -33,6 +36,7 @@ export default async function StudioPage() {
     : 0;
   const liveTitles = videos.filter((video) => video.status === 'APPROVED').length;
   const pendingTitles = videos.filter((video) => video.status !== 'APPROVED').length;
+  const walletBalanceLabel = getRegionalMoneyDisplay(requestHeaders, creatorProfile?.earningsBalanceNaira ?? 0).label;
 
   return (
     <DashboardShell
@@ -53,39 +57,94 @@ export default async function StudioPage() {
         libraryCount={videos.length}
         pendingTitles={pendingTitles}
         liveTitles={liveTitles}
-        walletBalance={creatorProfile?.earningsBalanceNaira ?? 0}
+        walletBalanceLabel={walletBalanceLabel}
         unsignedContracts={unsignedContracts}
       />
 
       <div className="grid">
         <div className="card">
-          <h3>Studio identity</h3>
-          <div className="stack-list" style={{ gap: 8 }}>
-            <p className="muted" style={{ margin: 0 }}>Registered name: {user.name ?? 'Not set yet'}</p>
-            <p className="muted" style={{ margin: 0 }}>Display name: {creatorProfile?.displayName ?? user.name ?? 'Pending onboarding'}</p>
-            <p className="muted" style={{ margin: 0 }}>Producer number: {creatorProfile?.creatorNumber ?? 'Pending assignment'}</p>
-            <p className="muted" style={{ margin: 0 }}>Email: {user.email}</p>
-            <p className="muted" style={{ margin: 0 }}>Verification status: {creatorProfile?.verified ? 'Verified producer' : 'Awaiting review'}</p>
+          <h3>Studio snapshot</h3>
+          <p className="muted">Everything important about your producer account, releases, and payout readiness in one place.</p>
+          <div className="detail-grid" style={{ marginTop: 16 }}>
+            <div className="detail-card">
+              <span className="detail-label">Registered name</span>
+              <strong>{user.name ?? 'Not set yet'}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Display name</span>
+              <strong>{creatorProfile?.displayName ?? user.name ?? 'Pending onboarding'}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Producer number</span>
+              <strong>{creatorProfile?.creatorNumber ?? 'Pending assignment'}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Verification</span>
+              <strong>{creatorProfile?.verified ? 'Verified producer' : 'Awaiting review'}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Library health</span>
+              <strong>{liveTitles} live / {pendingTitles} pending</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Available wallet</span>
+              <strong>{walletBalanceLabel}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Unsigned documents</span>
+              <strong>{unsignedContracts}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Account email</span>
+              <strong>{user.email}</strong>
+            </div>
           </div>
         </div>
-        <div className="card card-soft">
-          <h3>Producer verification</h3>
-          <p className="muted">Complete your profile once so payouts, moderation, and catalog attribution stay accurate.</p>
-          <Link className="btn btn-ghost" href="/studio/onboarding">Open onboarding</Link>
-        </div>
-        <div className="card card-soft">
-          <h3>Producer wallet</h3>
-          <p className="muted">Track every credited unlock and your current producer balance in one place.</p>
-          <Link className="btn btn-ghost" href="/studio/wallet">Open wallet</Link>
-        </div>
-        <div className="card card-soft">
-          <h3>Release workflow</h3>
-          <p className="muted">Upload the title, review the contract, check moderation status, and keep your library ready for viewers.</p>
-          <div className="action-list">
+
+        <div className="card">
+          <h3>What needs attention</h3>
+          <div className="stack-list" style={{ marginTop: 16 }}>
+            <div className="stack-row">
+              <div>
+                <strong>Verification and profile</strong>
+                <p className="muted">Keep producer identity complete so payouts and attribution stay accurate.</p>
+              </div>
+              <span className={`status-chip ${creatorProfile?.verified ? 'status-live' : 'status-review'}`}>
+                {creatorProfile?.verified ? 'Ready' : 'Needs review'}
+              </span>
+            </div>
+            <div className="stack-row">
+              <div>
+                <strong>Release queue</strong>
+                <p className="muted">Monitor moderation so pending titles move cleanly from upload to release.</p>
+              </div>
+              <span className={`status-chip ${pendingTitles === 0 ? 'status-live' : 'status-review'}`}>
+                {pendingTitles === 0 ? 'Clear' : `${pendingTitles} pending`}
+              </span>
+            </div>
+            <div className="stack-row">
+              <div>
+                <strong>Wallet and withdrawals</strong>
+                <p className="muted">Your earnings and payout requests are tracked from one wallet flow.</p>
+              </div>
+              <span className="status-chip status-live">{walletBalanceLabel}</span>
+            </div>
+            <div className="stack-row">
+              <div>
+                <strong>Contracts and support</strong>
+                <p className="muted">Finish outstanding documents before release and keep support close for fast fixes.</p>
+              </div>
+              <span className={`status-chip ${unsignedContracts === 0 ? 'status-live' : 'status-review'}`}>
+                {unsignedContracts === 0 ? 'Current' : `${unsignedContracts} open`}
+              </span>
+            </div>
+          </div>
+          <div className="action-list" style={{ marginTop: 18 }}>
             <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>
             <Link className="btn btn-ghost" href="/studio/library">Open library</Link>
             <Link className="btn btn-ghost" href="/studio/contracts">View documents</Link>
+            <Link className="btn btn-ghost" href="/studio/onboarding">Open onboarding</Link>
             <Link className="btn btn-ghost" href="/studio/contact">Contact support</Link>
           </div>
         </div>

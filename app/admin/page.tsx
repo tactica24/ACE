@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import AdminOpsPanel from '@/components/AdminOpsPanel';
 import AdminWorkspacePanel from '@/components/AdminWorkspacePanel';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
@@ -7,6 +8,7 @@ import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getNodeHealth } from '@/lib/metrics';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 import { getReconciliationSummary } from '@/lib/reconciliation';
 import { getActiveStreamCount } from '@/lib/stream-sessions';
 
@@ -14,6 +16,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
   await requireAdminUser('/admin');
+  const requestHeaders = headers();
+  const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   const activeStreamCutoff = new Date(Date.now() - 1000 * 60 * 15);
   let users = 0;
@@ -30,6 +34,7 @@ export default async function AdminPage() {
   let platformNetSettled = 0;
   let producerEarningsHeld = 0;
   let creatorVerificationBacklog = 0;
+  let pendingPayouts = 0;
   let safetySensitiveTitles = 0;
   let recentTitles: Array<{ id: string; title: string; status: string; createdAt: Date }> = [];
   let topUnlockedTitles: Array<{ title: string; unlocks: number }> = [];
@@ -122,6 +127,7 @@ export default async function AdminPage() {
       creatorVerificationBacklogCount,
       creatorVerificationQueueData,
       liveSessionData,
+      pendingPayoutCount,
       platformWallet,
       health,
       summary
@@ -229,6 +235,9 @@ export default async function AdminPage() {
           }
         }
       }),
+      prisma.creatorPayoutRequest.count({
+        where: { status: 'PENDING' }
+      }),
       prisma.platformWallet.findUnique({ where: { id: 'ace-platform' } }),
       getNodeHealth(),
       getReconciliationSummary()
@@ -284,6 +293,7 @@ export default async function AdminPage() {
       phone: creator.user.phone
     }));
     creatorVerificationBacklog = creatorVerificationBacklogCount;
+    pendingPayouts = pendingPayoutCount;
     liveSessions = liveSessionData.map((session) => ({
       id: session.id,
       deviceSessionId: session.deviceSessionId,
@@ -311,13 +321,13 @@ export default async function AdminPage() {
       sideNav={
         <SideNav
           active="/admin"
-          items={getAdminNavItems({ creatorRequests, pendingModeration, openSupport })}
+          items={getAdminNavItems({ creatorRequests, pendingModeration, openSupport, pendingPayouts })}
         />
       }
       actions={
         <>
           <Link className="btn btn-primary" href="/admin/moderation">Open moderation</Link>
-          <Link className="btn btn-ghost" href="/admin/settings">Controls</Link>
+          <Link className="btn btn-ghost" href="/admin/payments">Payments</Link>
           <Link className="btn btn-ghost" href="/admin/finance">Finance</Link>
         </>
       }
@@ -330,7 +340,8 @@ export default async function AdminPage() {
         creatorRequests={creatorRequests}
         pendingModeration={pendingModeration}
         openSupport={openSupport}
-        platformBalance={platformBalance}
+        pendingPayouts={pendingPayouts}
+        platformBalanceLabel={formatMoney(platformBalance)}
       />
 
       <div className="metric-grid">
@@ -370,22 +381,22 @@ export default async function AdminPage() {
         </div>
         <div className="metric-card">
           <span className="muted">Revenue</span>
-          <strong>NGN {totalRevenue}</strong>
+          <strong>{formatMoney(totalRevenue)}</strong>
           <span className="trend-up">Gross successful payments</span>
         </div>
         <div className="metric-card">
           <span className="muted">App commission wallet</span>
-          <strong>NGN {platformBalance}</strong>
+          <strong>{formatMoney(platformBalance)}</strong>
           <span className="trend-up">Platform net after deductions</span>
         </div>
         <div className="metric-card">
           <span className="muted">Settled platform net</span>
-          <strong>NGN {platformNetSettled}</strong>
+          <strong>{formatMoney(platformNetSettled)}</strong>
           <span className="trend-up">Recorded commission share from unlocks</span>
         </div>
         <div className="metric-card">
           <span className="muted">Producer balances held</span>
-          <strong>NGN {producerEarningsHeld}</strong>
+          <strong>{formatMoney(producerEarningsHeld)}</strong>
           <span className="trend-up">Outstanding producer earnings</span>
         </div>
         <div className="metric-card">
@@ -413,16 +424,21 @@ export default async function AdminPage() {
         <AdminOpsPanel initialSummary={reconciliationSummary} />
 
         <div className="card">
-          <h3>Control lanes</h3>
+          <h3>Priority queues</h3>
+          <p className="muted">Work the highest-impact queues first so money, moderation, and support stay under control.</p>
           <div className="action-list">
-            <Link className="btn btn-primary" href="/admin/users">User control center</Link>
-            <Link className="btn btn-ghost" href="/admin/support">Support interventions</Link>
-            <Link className="btn btn-ghost" href="/admin/finance">Commission wallet</Link>
+            <Link className="btn btn-primary" href="/admin/payments">Payout approvals</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Catalog moderation</Link>
             <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
-            <Link className="btn btn-ghost" href="/admin/settings">Pricing and launch controls</Link>
+            <Link className="btn btn-ghost" href="/admin/support">Support interventions</Link>
+            <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
+            <Link className="btn btn-ghost" href="/admin/users">User control center</Link>
           </div>
           <div className="detail-grid" style={{ marginTop: 14 }}>
+            <div className="detail-card">
+              <span className="detail-label">Pending payouts</span>
+              <strong>{pendingPayouts}</strong>
+            </div>
             <div className="detail-card">
               <span className="detail-label">Support waiting</span>
               <strong>{openSupport}</strong>
@@ -437,7 +453,15 @@ export default async function AdminPage() {
             </div>
             <div className="detail-card">
               <span className="detail-label">Commission wallet</span>
-              <strong>NGN {platformBalance}</strong>
+              <strong>{formatMoney(platformBalance)}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Failed payments</span>
+              <strong>{failedPayments}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Stale pending payments</span>
+              <strong>{reconciliationSummary.stalePendingPayments}</strong>
             </div>
           </div>
         </div>
@@ -475,33 +499,65 @@ export default async function AdminPage() {
 
       <div className="grid">
         <div className="card">
-          <h3>Issue resolution radar</h3>
+          <h3>Commerce watchlist</h3>
+          <p className="muted">Recent payment movement and anything that needs follow-up from finance or support.</p>
           <div className="detail-grid">
             <div className="detail-card">
-              <span className="detail-label">Support cases</span>
-              <strong>{openSupport}</strong>
+              <span className="detail-label">Pending payouts</span>
+              <strong>{pendingPayouts}</strong>
             </div>
             <div className="detail-card">
               <span className="detail-label">Failed payments</span>
               <strong>{failedPayments}</strong>
             </div>
             <div className="detail-card">
-              <span className="detail-label">Producer approvals</span>
-              <strong>{creatorVerificationBacklog}</strong>
+              <span className="detail-label">Revenue</span>
+              <strong>{formatMoney(totalRevenue)}</strong>
             </div>
             <div className="detail-card">
               <span className="detail-label">Stale pending payments</span>
               <strong>{reconciliationSummary.stalePendingPayments}</strong>
             </div>
             <div className="detail-card">
-              <span className="detail-label">Pending moderation</span>
-              <strong>{pendingModeration}</strong>
+              <span className="detail-label">Commission wallet</span>
+              <strong>{formatMoney(platformBalance)}</strong>
             </div>
             <div className="detail-card">
-              <span className="detail-label">Safety-sensitive titles</span>
-              <strong>{safetySensitiveTitles}</strong>
+              <span className="detail-label">Producer balances held</span>
+              <strong>{formatMoney(producerEarningsHeld)}</strong>
             </div>
           </div>
+          <div className="stack-list" style={{ marginTop: 16 }}>
+            {recentPayments.length ? (
+              recentPayments.map((payment) => (
+                <div key={payment.reference} className="stack-row">
+                  <div>
+                    <strong>{payment.reference}</strong>
+                    <p className="muted">{payment.gateway} | {payment.status}</p>
+                  </div>
+                  <span className="muted">{formatMoney(payment.amountNaira)}</span>
+                </div>
+              ))
+            ) : (
+              <p className="muted">Recent commerce activity will appear here.</p>
+            )}
+          </div>
+          {recentFailedPayments.length ? (
+            <>
+              <h4 style={{ marginTop: 18, marginBottom: 12 }}>Recent payment failures</h4>
+              <div className="stack-list">
+                {recentFailedPayments.map((payment) => (
+                  <div key={payment.reference} className="stack-row">
+                    <div>
+                      <strong>{payment.reference}</strong>
+                      <p className="muted">{payment.userEmail}</p>
+                    </div>
+                    <span className="muted">{formatMoney(payment.amountNaira)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="card">
@@ -517,43 +573,6 @@ export default async function AdminPage() {
             </div>
           ) : (
             <p className="muted">Unlock activity will appear here as viewers keep watching.</p>
-          )}
-        </div>
-
-        <div className="card">
-          <h3>Payment queue</h3>
-          {recentPayments.length ? (
-            <div className="stack-list">
-              {recentPayments.map((payment) => (
-                <div key={payment.reference} className="stack-row">
-                  <div>
-                    <strong>{payment.reference}</strong>
-                    <p className="muted">{payment.gateway} | {payment.status}</p>
-                  </div>
-                  <span className="muted">NGN {payment.amountNaira}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">Recent commerce activity will appear here.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid">
-        <div className="card">
-          <h3>Support hotspots</h3>
-          {supportHotspots.length ? (
-            <div className="stack-list">
-              {supportHotspots.map((item) => (
-                <div key={item.category} className="stack-row">
-                  <strong>{item.category}</strong>
-                  <span className="badge">{item.total} open</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">No support hotspots are active right now.</p>
           )}
         </div>
 
@@ -598,21 +617,14 @@ export default async function AdminPage() {
         </div>
 
         <div className="card">
-          <h3>Immediate actions</h3>
-          <div className="action-list">
-            <Link className="btn btn-ghost" href="/admin/intake">Review producer requests</Link>
-            <Link className="btn btn-ghost" href="/admin/finance">Open finance console</Link>
-            <Link className="btn btn-ghost" href="/admin/moderation">Review pending titles</Link>
-            <Link className="btn btn-ghost" href="/admin/users">Open producer accounts</Link>
-            <Link className="btn btn-ghost" href="/admin/support">Open support inbox</Link>
-            <Link className="btn btn-ghost" href="/admin/node">Inspect infrastructure</Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid">
-        <div className="card">
           <h3>Recent support cases</h3>
+          {supportHotspots.length ? (
+            <div className="detail-badges" style={{ marginBottom: 12 }}>
+              {supportHotspots.map((item) => (
+                <span key={item.category} className="badge">{item.category} {item.total}</span>
+              ))}
+            </div>
+          ) : null}
           {recentSupportTickets.length ? (
             <div className="stack-list">
               {recentSupportTickets.map((ticket) => (
@@ -651,27 +663,6 @@ export default async function AdminPage() {
             </div>
           ) : (
             <p className="muted">Producer approval backlog is clear.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid">
-        <div className="card">
-          <h3>Recent payment failures</h3>
-          {recentFailedPayments.length ? (
-            <div className="stack-list">
-              {recentFailedPayments.map((payment) => (
-                <div key={payment.reference} className="stack-row">
-                  <div>
-                    <strong>{payment.reference}</strong>
-                    <p className="muted">{payment.userEmail}</p>
-                  </div>
-                  <span className="muted">NGN {payment.amountNaira}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">No recent payment failures.</p>
           )}
         </div>
       </div>

@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const deviceSessionId = req.nextUrl.searchParams.get('deviceSessionId') ?? undefined;
+  let fullAccess = false;
   if (auth) {
     if (!deviceSessionId) {
       return NextResponse.json({ error: 'Missing playback session.', reason: 'SESSION_REQUIRED' }, { status: 400 });
@@ -53,11 +54,33 @@ export async function GET(req: NextRequest) {
         { status: 429 }
       );
     }
+
+    const unlock = await prisma.unlock.findFirst({
+      where: { userId: auth.sub, videoId }
+    });
+    fullAccess = Boolean(unlock) || auth.sub === video.creatorId || auth.role === 'ADMIN';
   }
 
   const token = auth
-    ? createStreamToken({ userId: auth.sub, videoId, deviceSessionId, role: auth.role })
-    : createStreamToken({ videoId, guest: true, userId: 'guest' });
+    ? createStreamToken({
+        userId: auth.sub,
+        videoId,
+        deviceSessionId,
+        role: auth.role,
+        fullAccess,
+        streamKey: video.r2Key ?? undefined,
+        teaserSec: video.teaserSec,
+        durationSec: video.durationSec
+      })
+    : createStreamToken({
+        videoId,
+        guest: true,
+        userId: 'guest',
+        fullAccess: false,
+        streamKey: video.r2Key ?? undefined,
+        teaserSec: video.teaserSec,
+        durationSec: video.durationSec
+      });
   return NextResponse.json({ token, guest: !auth });
 }
 

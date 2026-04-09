@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { verifyTransaction } from '@/lib/paystack';
-import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
+import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
+import { getStripe } from '@/lib/stripe';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -22,6 +23,42 @@ export async function POST(req: NextRequest) {
     if (payment.status === 'FAILED') {
       return NextResponse.json({ error: 'Payment failed' }, { status: 400 });
     }
+
+    const metadata = (payment.metadata as { stripeSessionId?: string } | null) ?? null;
+    if (!metadata?.stripeSessionId) {
+      return NextResponse.json({ status: 'pending' }, { status: 202 });
+    }
+
+    try {
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.retrieve(metadata.stripeSessionId);
+
+      if (session.payment_status === 'paid') {
+        const amountMinor = session.amount_total ?? payment.amountMinor;
+        const currency = session.currency?.toUpperCase() ?? payment.currency;
+        const validation = validateSettledPayment(payment, { amountMinor, currency });
+        if (!validation.ok) {
+          await markPaymentFailed(reference);
+          return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 });
+        }
+
+        await markPaymentSuccessful({
+          reference,
+          amountMinor,
+          currency: validation.currency
+        });
+
+        return NextResponse.json({ ok: true, credited: true });
+      }
+
+      if (session.status === 'expired') {
+        await markPaymentFailed(reference);
+        return NextResponse.json({ error: 'Payment failed' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ status: 'pending' }, { status: 202 });
+    }
+
     return NextResponse.json({ status: 'pending' }, { status: 202 });
   }
 
@@ -30,13 +67,23 @@ export async function POST(req: NextRequest) {
   }
 
   const verification = await verifyTransaction(reference);
-  if (!verification.status || verification.data.status !== 'success') {
-    await markPaymentFailed(reference);
-    return NextResponse.json({ error: 'Payment not successful' }, { status: 400 });
+  if (!verification.status) {
+    return NextResponse.json({ status: 'pending' }, { status: 202 });
+  }
+  if (verification.data.status !== 'success') {
+    if (verification.data.status === 'failed' || verification.data.status === 'abandoned') {
+      await markPaymentFailed(reference);
+      return NextResponse.json({ error: 'Payment not successful' }, { status: 400 });
+    }
+
+    return NextResponse.json({ status: 'pending' }, { status: 202 });
   }
 
-  const amountNaira = Math.round(verification.data.amount / 100);
-  if (amountNaira < payment.amountNaira) {
+  const validation = validateSettledPayment(payment, {
+    amountMinor: verification.data.amount,
+    currency: verification.data.currency ?? payment.currency
+  });
+  if (!validation.ok) {
     await markPaymentFailed(reference);
     return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 });
   }
@@ -47,7 +94,7 @@ export async function POST(req: NextRequest) {
   await markPaymentSuccessful({
     reference,
     amountMinor,
-    currency: verification.data.currency ?? 'NGN',
+    currency: validation.currency,
     feeMinor,
     netMinor
   });

@@ -11,6 +11,7 @@
     "vercel:build": "npm run db:repair:known && npm run db:migrate:deploy && npm run build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "prisma:generate": "node scripts/run-prisma.mjs generate",
     "prisma:migrate": "node scripts/run-prisma.mjs migrate dev",
     "db:push": "node scripts/run-prisma.mjs db push --skip-generate",

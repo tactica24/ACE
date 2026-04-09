@@ -28,15 +28,27 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   return res;
 }
 
+async function readErrorMessage(res: Response) {
+  const contentType = res.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    const payload = await res.json().catch(() => null) as { error?: string; message?: string } | null;
+    if (payload?.error) return payload.error;
+    if (payload?.message) return payload.message;
+  }
+
+  const text = await res.text();
+  return text || 'Request failed';
+}
+
 export async function apiGet<T>(path: string) {
   const res = await apiFetch(path, { method: 'GET' });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<T>;
 }
 
 export async function apiPost<T>(path: string, body?: unknown) {
   const res = await apiFetch(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<T>;
 }
 

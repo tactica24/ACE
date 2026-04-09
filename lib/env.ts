@@ -43,6 +43,28 @@ type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;
 
+const REQUIRED_PRODUCTION_ENV = [
+  'DATABASE_URL',
+  'ACE_STREAM_SIGNING_SECRET',
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_CLIENT_EMAIL',
+  'FIREBASE_PRIVATE_KEY',
+  'FIREBASE_STORAGE_BUCKET',
+  'NEXT_PUBLIC_FIREBASE_API_KEY',
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID',
+  'PAYSTACK_SECRET_KEY',
+  'PAYSTACK_PUBLIC_KEY',
+  'R2_ENDPOINT',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET',
+  'ACE_APP_BASE_URL'
+] as const satisfies ReadonlyArray<keyof Env>;
+
 function normalizeEnvValue(value: string | undefined) {
   if (typeof value !== 'string') return undefined;
 
@@ -53,7 +75,7 @@ function normalizeEnvValue(value: string | undefined) {
 function loadEnv(): Env {
   if (cachedEnv) return cachedEnv;
 
-  cachedEnv = envSchema.parse({
+  const parsedEnv = envSchema.parse({
     DATABASE_URL: normalizeEnvValue(process.env.DATABASE_URL),
     ACE_STREAM_SIGNING_SECRET: normalizeEnvValue(process.env.ACE_STREAM_SIGNING_SECRET),
     FIREBASE_PROJECT_ID: normalizeEnvValue(process.env.FIREBASE_PROJECT_ID),
@@ -91,6 +113,19 @@ function loadEnv(): Env {
     ACE_GRAFANA_URL: normalizeEnvValue(process.env.ACE_GRAFANA_URL),
     ACE_APP_BASE_URL: normalizeEnvValue(process.env.ACE_APP_BASE_URL)
   });
+
+  if (process.env.NODE_ENV === 'production') {
+    const missing = REQUIRED_PRODUCTION_ENV.filter((key) => !parsedEnv[key]);
+
+    if (missing.length) {
+      throw new Error(
+        `Missing required production environment variables: ${missing.join(', ')}. ` +
+        'Set them before starting the app.'
+      );
+    }
+  }
+
+  cachedEnv = parsedEnv;
 
   return cachedEnv;
 }

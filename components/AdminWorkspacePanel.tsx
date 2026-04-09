@@ -4,12 +4,14 @@ export default function AdminWorkspacePanel({
   creatorRequests,
   pendingModeration,
   openSupport,
-  platformBalance
+  pendingPayouts,
+  platformBalanceLabel
 }: {
   creatorRequests: number;
   pendingModeration: number;
   openSupport: number;
-  platformBalance: number;
+  pendingPayouts: number;
+  platformBalanceLabel: string;
 }) {
   return (
     <div className="workspace-grid">
@@ -48,16 +50,17 @@ export default function AdminWorkspacePanel({
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Money</span>
-          <h3>Commission and payouts</h3>
-          <p className="muted">Track app commission, unlock settlements, producer balances, and payout approvals.</p>
+          <h3>Payments and payouts</h3>
+          <p className="muted">Review withdrawal requests, confirm paid transfers, and keep platform settlement visibility clear.</p>
         </div>
         <div className="workspace-links">
-          <Link className="btn btn-primary" href="/admin/finance">Finance console</Link>
-          <Link className="btn btn-ghost" href="/admin/referrals">Referral pipeline</Link>
+          <Link className="btn btn-primary" href="/admin/payments">Payout operations</Link>
+          <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
         </div>
         <div className="workspace-kpis">
-          <span className="muted">Commission wallet</span>
-          <strong>NGN {platformBalance}</strong>
+          <span className="muted">Pending withdrawal approvals</span>
+          <strong>{pendingPayouts}</strong>
+          <span className="muted">Commission wallet: {platformBalanceLabel}</span>
         </div>
       </div>
 

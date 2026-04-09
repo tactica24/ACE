@@ -1142,6 +1142,12 @@ button {
   border-color: rgba(255, 210, 121, 0.18);
 }
 
+.status-warn {
+  color: #ffb4b4;
+  background: rgba(255, 114, 114, 0.12);
+  border-color: rgba(255, 114, 114, 0.18);
+}
+
 .stack-list {
   display: grid;
   gap: 12px;
@@ -1192,6 +1198,20 @@ button {
 .workspace-kpis strong {
   font-size: 1.15rem;
   letter-spacing: -0.02em;
+}
+
+.payout-admin-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.payout-admin-row:first-of-type {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .studio-figure {

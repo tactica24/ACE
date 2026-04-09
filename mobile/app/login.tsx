@@ -30,8 +30,8 @@ export default function LoginScreen() {
         throw new Error(data.error || 'Login failed');
       }
       router.replace('/browse');
-    } catch {
-      alert('Login failed');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setLoading(false);
     }

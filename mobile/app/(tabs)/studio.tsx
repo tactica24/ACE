@@ -27,7 +27,11 @@ export default function StudioScreen() {
         </View>
         <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16, minWidth: 140 }}>
           <Text style={{ color: theme.muted }}>Revenue today</Text>
-          <Text style={{ fontWeight: '800' }}>₦{analytics?.revenueToday ?? '--'}</Text>
+          <Text style={{ fontWeight: '800' }}>{analytics?.revenueTodayLabel ?? '--'}</Text>
+        </View>
+        <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16, minWidth: 140 }}>
+          <Text style={{ color: theme.muted }}>Available wallet</Text>
+          <Text style={{ fontWeight: '800' }}>{analytics?.walletBalanceLabel ?? '--'}</Text>
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 12 }}>

@@ -5,23 +5,23 @@ export default function StudioWorkspacePanel({
   libraryCount,
   pendingTitles,
   liveTitles,
-  walletBalance,
+  walletBalanceLabel,
   unsignedContracts
 }: {
   verified: boolean;
   libraryCount: number;
   pendingTitles: number;
   liveTitles: number;
-  walletBalance: number;
+  walletBalanceLabel: string;
   unsignedContracts: number;
 }) {
   return (
     <div className="workspace-grid">
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
-          <span className="badge">Profile</span>
-          <h3>Studio setup</h3>
-          <p className="muted">Keep your producer identity complete so approvals, payouts, and credits stay accurate.</p>
+          <span className="badge">Identity</span>
+          <h3>Studio readiness</h3>
+          <p className="muted">Keep producer identity complete so approvals, payouts, and release attribution stay accurate.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/onboarding">Open onboarding</Link>
@@ -36,8 +36,8 @@ export default function StudioWorkspacePanel({
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Releases</span>
-          <h3>Upload workflow</h3>
-          <p className="muted">Upload, review contract, monitor moderation, and keep your library publication-ready.</p>
+          <h3>Release pipeline</h3>
+          <p className="muted">Upload, review contracts, monitor moderation, and keep your catalog publication-ready.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
@@ -51,17 +51,17 @@ export default function StudioWorkspacePanel({
 
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
-          <span className="badge">Revenue</span>
-          <h3>Wallet and payouts</h3>
-          <p className="muted">Track unlock earnings, keep payout details correct, and submit withdrawals confidently.</p>
+          <span className="badge">Payments</span>
+          <h3>Wallet and withdrawals</h3>
+          <p className="muted">Track credited unlock earnings, review payout history, and submit withdrawals confidently.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/wallet">Open wallet</Link>
-          <Link className="btn btn-ghost" href="/studio/contracts">View documents</Link>
+          <Link className="btn btn-ghost" href="/studio/library">Recent releases</Link>
         </div>
         <div className="workspace-kpis">
           <span className="muted">Available producer balance</span>
-          <strong>NGN {walletBalance}</strong>
+          <strong>{walletBalanceLabel}</strong>
         </div>
       </div>
 

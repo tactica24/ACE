@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail, hasVerifiedPhone } from '@/lib/auth';
 import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
@@ -52,81 +53,86 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const recipient = await tx.user.findFirst({
-        where: { phone: recipientPhone },
-        select: { id: true, name: true, phone: true, phoneVerified: true }
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`family-share:${auth.sub}`}))`;
 
-      if (!recipient) {
-        throw new Error('That phone number is not linked to an Ace Studio account yet.');
-      }
-      if (!recipient.phoneVerified) {
-        throw new Error('That family member must verify their phone number before receiving shared credits or balance.');
-      }
+        const recipient = await tx.user.findFirst({
+          where: { phone: recipientPhone },
+          select: { id: true, name: true, phone: true, phoneVerified: true }
+        });
 
-      const senderWallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
-      if (!senderWallet) {
-        throw new Error('Wallet not found.');
-      }
-
-      await tx.wallet.upsert({
-        where: { userId: recipient.id },
-        update: {},
-        create: { userId: recipient.id }
-      });
-
-      if (shareType === 'CREDITS') {
-        if (senderWallet.credits < amount) {
-          throw new Error('You do not have enough credits to share that amount.');
+        if (!recipient) {
+          throw new Error('That phone number is not linked to an Ace Studio account yet.');
+        }
+        if (!recipient.phoneVerified) {
+          throw new Error('That family member must verify their phone number before receiving shared credits or balance.');
         }
 
-        await tx.wallet.update({
-          where: { userId: auth.sub },
-          data: { credits: { decrement: amount } }
-        });
-        await tx.wallet.update({
-          where: { userId: recipient.id },
-          data: { credits: { increment: amount } }
-        });
-      } else {
-        if (senderWallet.balanceNaira < amount) {
-          throw new Error('You do not have enough wallet balance to share that amount.');
+        const senderWallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
+        if (!senderWallet) {
+          throw new Error('Wallet not found.');
         }
 
-        await tx.wallet.update({
-          where: { userId: auth.sub },
-          data: { balanceNaira: { decrement: amount } }
-        });
-        await tx.wallet.update({
+        await tx.wallet.upsert({
           where: { userId: recipient.id },
-          data: { balanceNaira: { increment: amount } }
+          update: {},
+          create: { userId: recipient.id }
         });
-      }
 
-      const existingLink = await tx.familyLink.findFirst({
-        where: { ownerId: auth.sub, recipientPhone }
-      });
-
-      if (!existingLink) {
-        await tx.familyLink.create({
-          data: {
-            ownerId: auth.sub,
-            recipientPhone
+        if (shareType === 'CREDITS') {
+          if (senderWallet.credits < amount) {
+            throw new Error('You do not have enough credits to share that amount.');
           }
+
+          await tx.wallet.update({
+            where: { userId: auth.sub },
+            data: { credits: { decrement: amount } }
+          });
+          await tx.wallet.update({
+            where: { userId: recipient.id },
+            data: { credits: { increment: amount } }
+          });
+        } else {
+          if (senderWallet.balanceNaira < amount) {
+            throw new Error('You do not have enough wallet balance to share that amount.');
+          }
+
+          await tx.wallet.update({
+            where: { userId: auth.sub },
+            data: { balanceNaira: { decrement: amount } }
+          });
+          await tx.wallet.update({
+            where: { userId: recipient.id },
+            data: { balanceNaira: { increment: amount } }
+          });
+        }
+
+        const existingLink = await tx.familyLink.findFirst({
+          where: { ownerId: auth.sub, recipientPhone }
         });
-      }
 
-      const updatedSenderWallet = await tx.wallet.findUnique({
-        where: { userId: auth.sub },
-        select: { balanceNaira: true, credits: true }
-      });
+        if (!existingLink) {
+          await tx.familyLink.create({
+            data: {
+              ownerId: auth.sub,
+              recipientPhone
+            }
+          });
+        }
 
-      return {
-        recipient,
-        wallet: updatedSenderWallet
-      };
-    });
+        const updatedSenderWallet = await tx.wallet.findUnique({
+          where: { userId: auth.sub },
+          select: { balanceNaira: true, credits: true }
+        });
+
+        return {
+          recipient,
+          wallet: updatedSenderWallet
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     return NextResponse.json({
       ok: true,

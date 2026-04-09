@@ -353,7 +353,7 @@ export async function POST(req: NextRequest) {
             genres: series.genres,
             priceTier: series.priceTier,
             rightsTier: series.rightsTier,
-            status: series.status === 'APPROVED' ? 'APPROVED' : 'PENDING',
+            status: 'PENDING',
             releaseYear: series.releaseYear,
             teaserSec: episode.teaserSec,
             durationSec: episode.durationSec,
@@ -372,6 +372,12 @@ export async function POST(req: NextRequest) {
                   }))
                 }
               : undefined
+          }
+        });
+        await tx.moderationItem.create({
+          data: {
+            videoId: created.id,
+            status: 'PENDING'
           }
         });
         items.push(created);

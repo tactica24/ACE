@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,13 +16,17 @@ export async function GET(req: NextRequest) {
     select: { id: true, earningsBalanceNaira: true }
   });
 
+  const revenueTodayDisplay = getRegionalMoneyDisplay(req, 0);
+  const totalRevenueDisplay = getRegionalMoneyDisplay(req, 0);
+  const walletBalanceDisplay = getRegionalMoneyDisplay(req, 0);
+
   if (!creatorProfile) {
     return NextResponse.json({
       unlocksToday: 0,
-      revenueToday: 0,
+      revenueTodayLabel: revenueTodayDisplay.label,
       totalUnlocks: 0,
-      totalRevenue: 0,
-      walletBalance: 0
+      totalRevenueLabel: totalRevenueDisplay.label,
+      walletBalanceLabel: walletBalanceDisplay.label
     });
   }
 
@@ -37,12 +42,15 @@ export async function GET(req: NextRequest) {
     .filter((settlement) => settlement.createdAt >= startOfDay)
     .reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
   const unlocksToday = settlements.filter((settlement) => settlement.createdAt >= startOfDay).length;
+  const revenueTodayLabel = getRegionalMoneyDisplay(req, revenueToday).label;
+  const totalRevenueLabel = getRegionalMoneyDisplay(req, totalRevenue).label;
+  const walletBalanceLabel = getRegionalMoneyDisplay(req, creatorProfile.earningsBalanceNaira).label;
 
   return NextResponse.json({
     unlocksToday,
-    revenueToday,
+    revenueTodayLabel,
     totalUnlocks: settlements.length,
-    totalRevenue,
-    walletBalance: creatorProfile.earningsBalanceNaira
+    totalRevenueLabel,
+    walletBalanceLabel
   });
 }

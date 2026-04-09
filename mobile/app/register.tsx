@@ -34,8 +34,8 @@ export default function RegisterScreen() {
         throw new Error(data.error || 'Register failed');
       }
       router.replace('/browse');
-    } catch {
-      alert('Register failed');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Register failed');
     } finally {
       setLoading(false);
     }

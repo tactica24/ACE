@@ -1,11 +1,14 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import AccountActions from '@/components/AccountActions';
 import AccountVerificationPanel from '@/components/AccountVerificationPanel';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export default async function AccountPage() {
   const user = await getCurrentUser();
+  const requestHeaders = headers();
 
   if (!user) {
     return (
@@ -40,7 +43,7 @@ export default async function AccountPage() {
               initialEmailVerified={Boolean(user.emailVerified)}
               initialPhoneVerified={Boolean(user.phoneVerified)}
             />
-            <p className="muted">Wallet balance: NGN {wallet?.balanceNaira ?? 0}</p>
+            <p className="muted">Wallet balance: {getRegionalMoneyDisplay(requestHeaders, wallet?.balanceNaira ?? 0).label}</p>
             <p className="muted">Account type: {user.signupIntent === 'CREATOR' ? 'Producer' : 'Viewer'}</p>
             {user.signupIntent === 'CREATOR' && user.role === 'USER' ? (
               <p className="muted">

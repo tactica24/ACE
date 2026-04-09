@@ -10,13 +10,33 @@ export type StreamResult = {
   stream: Readable;
 };
 
+const pendingCacheWrites = new Map<string, Promise<string>>();
+
 export async function ensureCached(key: string) {
   await ensureStorageDirs();
   if (await cacheExists(key)) return getCachePath(key);
-  const object = await getObjectStream(key);
-  const body = object.Body as Readable | undefined;
-  if (!body) throw new Error('Missing R2 object body');
-  return writeCacheFromStream(key, body);
+
+  const existingWrite = pendingCacheWrites.get(key);
+  if (existingWrite) {
+    return existingWrite;
+  }
+
+  const cacheWrite = (async () => {
+    if (await cacheExists(key)) return getCachePath(key);
+
+    const object = await getObjectStream(key);
+    const body = object.Body as Readable | undefined;
+    if (!body) throw new Error('Missing R2 object body');
+    return writeCacheFromStream(key, body);
+  })();
+
+  pendingCacheWrites.set(key, cacheWrite);
+
+  try {
+    return await cacheWrite;
+  } finally {
+    pendingCacheWrites.delete(key);
+  }
 }
 
 function parseRange(rangeHeader: string | null, fileSize: number) {

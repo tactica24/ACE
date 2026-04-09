@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { prisma } from '@/lib/db';
-import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
+import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
 
 export const runtime = 'nodejs';
 
@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
 
   const currency = (session.currency ?? payment.currency ?? 'USD').toUpperCase();
   const amountMinor = session.amount_total ?? payment.amountMinor ?? 0;
-  if (payment.amountMinor && amountMinor < payment.amountMinor) {
+  const validation = validateSettledPayment(payment, { amountMinor, currency });
+  if (!validation.ok) {
     await markPaymentFailed(reference);
     return new Response('Payment amount mismatch', { status: 400 });
   }
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   await markPaymentSuccessful({
     reference,
     amountMinor,
-    currency
+    currency: validation.currency
   });
 
   return new Response('OK', { status: 200 });

@@ -12,7 +12,7 @@ export default function HomeScreen() {
   const [highlights, setHighlights] = useState<any[]>([]);
 
   useEffect(() => {
-    apiGet<{ videos: any[] }>(`/api/videos`)
+    apiGet<{ videos: any[] }>(`/api/videos?limit=6`)
       .then((data) => setHighlights(data.videos.slice(0, 6)))
       .catch(() => null);
   }, []);

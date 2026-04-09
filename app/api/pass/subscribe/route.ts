@@ -9,6 +9,7 @@ import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { markPaymentFailed } from '@/lib/payment-ops';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -31,64 +32,77 @@ export async function POST(req: NextRequest) {
   const reference = `ace_pass_${uuid()}`;
   const charge = getChargeForNaira(req, PASS_PRICE_NAIRA);
   const useStripe = charge.currency !== 'NGN';
-  await prisma.payment.create({
-    data: {
-      userId: auth.sub,
-      reference,
-      amountNaira: PASS_PRICE_NAIRA,
-      amountMinor: charge.amountMinor,
-      currency: charge.currency,
-      gateway: useStripe ? 'STRIPE' : 'PAYSTACK',
-      referralCode: referral?.code,
-      metadata: { type: 'pass', credits: PASS_CREDITS }
-    }
-  });
-
   const user = await prisma.user.findUnique({ where: { id: auth.sub } });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-  if (useStripe) {
-    if (!env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: 'Stripe not configured' }, { status: 400 });
-    }
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      customer_email: user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: charge.currency.toLowerCase(),
-            product_data: { name: `Ace Studio Hybrid Pass (${PASS_CREDITS} credits)` },
-            unit_amount: charge.amountMinor
-          },
-          quantity: 1
-        }
-      ],
-      metadata: { userId: user.id, type: 'pass', reference, credits: `${PASS_CREDITS}` },
-      success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,
-      cancel_url: `${env.ACE_APP_BASE_URL}/wallet`
-    });
-    if (!session.url) {
-      return NextResponse.json({ error: 'Stripe session unavailable' }, { status: 500 });
-    }
-    await prisma.payment.update({
-      where: { reference },
-      data: {
-        metadata: { type: 'pass', credits: PASS_CREDITS, stripeSessionId: session.id }
-      }
-    });
-    return NextResponse.json({ authorizationUrl: session.url, reference });
+  if (useStripe && !env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 400 });
   }
 
-  const paystack = await initializeTransaction({
-    amountNaira: PASS_PRICE_NAIRA,
-    email: user.email,
-    reference,
-    metadata: { userId: user.id, type: 'pass', credits: PASS_CREDITS, referralCode: referral?.code ?? null }
-  });
+  let paymentCreated = false;
+  try {
+    await prisma.payment.create({
+      data: {
+        userId: auth.sub,
+        reference,
+        amountNaira: PASS_PRICE_NAIRA,
+        amountMinor: charge.amountMinor,
+        currency: charge.currency,
+        gateway: useStripe ? 'STRIPE' : 'PAYSTACK',
+        referralCode: referral?.code,
+        metadata: { type: 'pass', credits: PASS_CREDITS }
+      }
+    });
+    paymentCreated = true;
 
-  return NextResponse.json({ authorizationUrl: paystack.data.authorization_url, reference });
+    if (useStripe) {
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: charge.currency.toLowerCase(),
+              product_data: { name: `Ace Studio Hybrid Pass (${PASS_CREDITS} credits)` },
+              unit_amount: charge.amountMinor
+            },
+            quantity: 1
+          }
+        ],
+        metadata: { userId: user.id, type: 'pass', reference, credits: `${PASS_CREDITS}` },
+        success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,
+        cancel_url: `${env.ACE_APP_BASE_URL}/wallet`
+      });
+      if (!session.url) {
+        throw new Error('Stripe session unavailable');
+      }
+      await prisma.payment.update({
+        where: { reference },
+        data: {
+          metadata: { type: 'pass', credits: PASS_CREDITS, stripeSessionId: session.id }
+        }
+      });
+      return NextResponse.json({ authorizationUrl: session.url, reference });
+    }
+
+    const paystack = await initializeTransaction({
+      amountNaira: PASS_PRICE_NAIRA,
+      email: user.email,
+      reference,
+      metadata: { userId: user.id, type: 'pass', credits: PASS_CREDITS, referralCode: referral?.code ?? null }
+    });
+
+    return NextResponse.json({ authorizationUrl: paystack.data.authorization_url, reference });
+  } catch (error) {
+    if (paymentCreated) {
+      await markPaymentFailed(reference).catch(() => null);
+    }
+
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to start pass subscription right now.' },
+      { status: 500 }
+    );
+  }
 }
 
 

@@ -10,7 +10,7 @@ export default function BrowseScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    apiGet<{ videos: MobileVideo[] }>('/api/videos')
+    apiGet<{ videos: MobileVideo[] }>('/api/videos?limit=24')
       .then((data) => setVideos(data.videos))
       .catch(() => setVideos([]));
   }, []);

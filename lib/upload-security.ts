@@ -100,5 +100,5 @@ export function isOwnedUploadKey(key: string, userId: string, purpose?: UploadPu
     return true;
   }
 
-  return key.startsWith(`${basePrefix}${purpose}/`) || key.startsWith(basePrefix);
+  return key.startsWith(`${basePrefix}${purpose}/`);
 }

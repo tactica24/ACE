@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import { verifyTransaction } from '@/lib/paystack';
 import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
-import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
+import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
 
 const STALE_PENDING_MINUTES = 15;
 
@@ -55,11 +55,20 @@ export async function reconcilePendingCommerce() {
         if (verification.status && verification.data.status === 'success') {
           const feeMinor = typeof verification.data.fees === 'number' ? verification.data.fees : null;
           const amountMinor = verification.data.amount;
+          const validation = validateSettledPayment(payment, {
+            amountMinor,
+            currency: verification.data.currency ?? payment.currency
+          });
+          if (!validation.ok) {
+            await markPaymentFailed(payment.reference);
+            failed += 1;
+            continue;
+          }
           const netMinor = feeMinor === null ? null : amountMinor - feeMinor;
           await markPaymentSuccessful({
             reference: payment.reference,
             amountMinor,
-            currency: verification.data.currency ?? payment.currency,
+            currency: validation.currency,
             feeMinor,
             netMinor
           });
@@ -87,10 +96,19 @@ export async function reconcilePendingCommerce() {
       const session = await stripe.checkout.sessions.retrieve(metadata.stripeSessionId);
 
       if (session.payment_status === 'paid') {
+        const validation = validateSettledPayment(payment, {
+          amountMinor: session.amount_total ?? payment.amountMinor,
+          currency: session.currency?.toUpperCase() ?? payment.currency
+        });
+        if (!validation.ok) {
+          await markPaymentFailed(payment.reference);
+          failed += 1;
+          continue;
+        }
         await markPaymentSuccessful({
           reference: payment.reference,
           amountMinor: session.amount_total ?? payment.amountMinor,
-          currency: session.currency?.toUpperCase() ?? payment.currency
+          currency: validation.currency
         });
         reconciled += 1;
         continue;

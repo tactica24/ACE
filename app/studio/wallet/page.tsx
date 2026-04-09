@@ -1,11 +1,14 @@
+import { headers } from 'next/headers';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorWithdrawPanel from '@/components/CreatorWithdrawPanel';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getFxRate, getRegionalMoneyDisplay, getRegionalCurrency } from '@/lib/pricing';
 import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioWalletPage() {
   const user = await requireCreatorUser('/studio/wallet');
+  const requestHeaders = headers();
   const creatorProfile = await prisma.creatorProfile.findUnique({
     where: { userId: user.sub },
     select: {
@@ -23,6 +26,14 @@ export default async function StudioWalletPage() {
     }
   });
   const settlements = creatorProfile?.settlements ?? [];
+  const payoutRequests = creatorProfile?.payoutRequests ?? [];
+  const displayCurrency = getRegionalCurrency(requestHeaders).currency;
+  const exchangeRateNaira = getFxRate(displayCurrency);
+  const balanceLabel = getRegionalMoneyDisplay(requestHeaders, creatorProfile?.earningsBalanceNaira ?? 0).label;
+  const pendingRequests = payoutRequests.filter((request) => request.status === 'PENDING').length;
+  const approvedRequests = payoutRequests.filter((request) => request.status === 'APPROVED').length;
+  const paidRequests = payoutRequests.filter((request) => request.status === 'PAID').length;
+  const recentInflowsTotal = settlements.reduce((sum, settlement) => sum + settlement.creatorNaira, 0);
 
   return (
     <DashboardShell
@@ -42,23 +53,79 @@ export default async function StudioWalletPage() {
         </div>
       }
     >
-      <div className="grid">
-        <div className="card">
-          <h3>Producer wallet balance</h3>
-          <p className="studio-figure">NGN {creatorProfile?.earningsBalanceNaira ?? 0}</p>
-          <p className="muted">Producer number: {creatorProfile?.creatorNumber ?? 'Pending'}</p>
+      <div className="metric-grid">
+        <div className="metric-card">
+          <span className="muted">Available producer balance</span>
+          <strong>{balanceLabel}</strong>
+          <span className="trend-up">Already excludes pending and approved withdrawals</span>
         </div>
+        <div className="metric-card">
+          <span className="muted">Waiting admin approval</span>
+          <strong>{pendingRequests}</strong>
+          <span className={pendingRequests > 0 ? 'trend-warn' : 'trend-up'}>
+            {pendingRequests > 0 ? 'Reserved and waiting for review' : 'No pending requests right now'}
+          </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Approved for payout</span>
+          <strong>{approvedRequests}</strong>
+          <span className={approvedRequests > 0 ? 'trend-warn' : 'trend-up'}>
+            {approvedRequests > 0 ? 'Waiting for admin transfer processing' : 'No approved payouts waiting'}
+          </span>
+        </div>
+        <div className="metric-card">
+          <span className="muted">Recent credited inflows</span>
+          <strong>{getRegionalMoneyDisplay(requestHeaders, recentInflowsTotal).label}</strong>
+          <span className="trend-up">{paidRequests} completed withdrawal{paidRequests === 1 ? '' : 's'} in history</span>
+        </div>
+      </div>
+
+      <div className="grid">
         <div id="withdrawals">
           <CreatorWithdrawPanel
             balanceNaira={creatorProfile?.earningsBalanceNaira ?? 0}
-            payoutRequests={(creatorProfile?.payoutRequests ?? []).map((request) => ({
+            balanceLabel={balanceLabel}
+            displayCurrency={displayCurrency}
+            exchangeRateNaira={exchangeRateNaira}
+            payoutRequests={payoutRequests.map((request) => ({
               id: request.id,
+              amountLabel: getRegionalMoneyDisplay(requestHeaders, request.amountNaira).label,
               amountNaira: request.amountNaira,
               status: request.status,
+              statusDetail:
+                request.status === 'PAID' && request.paidAt
+                  ? `Paid on ${request.paidAt.toISOString().slice(0, 10)}.`
+                  : request.status !== 'PENDING' && request.reviewedAt
+                    ? `${request.status === 'APPROVED' ? 'Approved' : 'Reviewed'} on ${request.reviewedAt.toISOString().slice(0, 10)}.`
+                    : null,
               adminNote: request.adminNote,
               requestedAt: request.requestedAt.toISOString().slice(0, 10)
             }))}
           />
+        </div>
+        <div className="card">
+          <h3>Wallet operating view</h3>
+          <div className="detail-grid" style={{ marginTop: 16 }}>
+            <div className="detail-card">
+              <span className="detail-label">Producer number</span>
+              <strong>{creatorProfile?.creatorNumber ?? 'Pending'}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Available balance</span>
+              <strong>{balanceLabel}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Pending requests</span>
+              <strong>{pendingRequests}</strong>
+            </div>
+            <div className="detail-card">
+              <span className="detail-label">Approved requests</span>
+              <strong>{approvedRequests}</strong>
+            </div>
+          </div>
+          <p className="muted" style={{ marginTop: 16 }}>
+            Once you submit a withdrawal, the amount is reserved immediately. If admin approves it, it stays deducted until paid. If admin rejects it, the amount is restored to your wallet and remains visible in history.
+          </p>
         </div>
         <div className="card">
           <h3>Recent inflows</h3>
@@ -70,7 +137,7 @@ export default async function StudioWalletPage() {
                     <strong>{settlement.video.title}</strong>
                     <p className="muted">{settlement.createdAt.toISOString().slice(0, 10)}</p>
                   </div>
-                  <span>NGN {settlement.creatorNaira}</span>
+                  <span>{getRegionalMoneyDisplay(requestHeaders, settlement.creatorNaira).label}</span>
                 </div>
               ))}
             </div>

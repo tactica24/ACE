@@ -1,7 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { applyAuthSession, getAuthServerConfigErrorMessage, syncAuthSession } from '@/lib/auth';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rateLimit = await consumeRateLimit({
+    key: `auth-register:${getRateLimitIdentity(req)}`,
+    limit: 12,
+    windowMs: 1000 * 60 * 10
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many registration attempts. Please wait a moment and try again.' }, { status: 429 });
+  }
+
   const configError = getAuthServerConfigErrorMessage();
   if (configError) {
     return NextResponse.json({ error: configError }, { status: 503 });

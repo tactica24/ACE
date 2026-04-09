@@ -2,6 +2,7 @@ export type AdminNavCounts = {
   creatorRequests?: number;
   pendingModeration?: number;
   openSupport?: number;
+  pendingPayouts?: number;
 };
 
 export function getAdminNavItems(counts: AdminNavCounts = {}) {
@@ -22,6 +23,11 @@ export function getAdminNavItems(counts: AdminNavCounts = {}) {
       href: '/admin/moderation',
       label: 'Moderation',
       count: typeof counts.pendingModeration === 'number' ? `${counts.pendingModeration}` : undefined
+    },
+    {
+      href: '/admin/payments',
+      label: 'Payments',
+      count: typeof counts.pendingPayouts === 'number' ? `${counts.pendingPayouts}` : undefined
     },
     { href: '/admin/finance', label: 'Finance' },
     { href: '/admin/settings', label: 'Controls' },

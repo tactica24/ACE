@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
-import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
+import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
 import { verifyPaystackWebhookSignature } from '@/lib/paystack';
 
 export const runtime = 'nodejs';
@@ -45,7 +45,11 @@ export async function POST(req: NextRequest) {
 
   const feeMinor = typeof event.data.fees === 'number' ? event.data.fees : null;
   const amountMinor = typeof event.data.amount === 'number' ? event.data.amount : null;
-  if (amountMinor !== null && payment.amountMinor && amountMinor < payment.amountMinor) {
+  const validation = validateSettledPayment(payment, {
+    amountMinor,
+    currency: event.data.currency?.toUpperCase() ?? payment.currency
+  });
+  if (!validation.ok) {
     await markPaymentFailed(event.data.reference);
     return new Response('Payment amount mismatch', { status: 400 });
   }
@@ -55,7 +59,7 @@ export async function POST(req: NextRequest) {
   await markPaymentSuccessful({
     reference: event.data.reference,
     amountMinor,
-    currency: event.data.currency?.toUpperCase() ?? 'NGN',
+    currency: validation.currency,
     feeMinor,
     netMinor
   });

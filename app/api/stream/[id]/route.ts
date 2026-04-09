@@ -1,72 +1,82 @@
-﻿import { NextRequest } from 'next/server';
-import { verifyStreamToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import { cacheExists, getCachePath } from '@/lib/cache';
-import { ensureCached, streamFile, streamR2Object } from '@/lib/stream';
-import { recordCacheHit } from '@/lib/metrics';
-import { Readable } from 'stream';
 import fsPromises from 'fs/promises';
-import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
+import { Readable } from 'stream';
+import { NextRequest } from 'next/server';
+import { verifyStreamToken } from '@/lib/auth';
+import { cacheExists, getCachePath } from '@/lib/cache';
+import { recordCacheHit } from '@/lib/metrics';
 import { headObject } from '@/lib/r2';
+import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
+import { ensureCached, streamFile, streamR2Object } from '@/lib/stream';
 import { touchStreamSession } from '@/lib/stream-sessions';
-import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+type StreamPayload = {
+  userId?: string;
+  videoId: string;
+  guest?: boolean;
+  deviceSessionId?: string;
+  role?: 'USER' | 'CREATOR' | 'ADMIN';
+  fullAccess?: boolean;
+  streamKey?: string;
+  teaserSec?: number;
+  durationSec?: number;
+};
+
+function getTeaserRatio(payload: StreamPayload) {
+  const durationSec = Math.max(payload.durationSec ?? 0, 1);
+  const teaserSec = Math.max(payload.teaserSec ?? 0, 0);
+  return Math.min(teaserSec / durationSec, 1);
+}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const relayBase = getRelayBaseUrl(req);
   if (shouldRedirectToRelay(req, relayBase)) {
     return Response.redirect(buildRelayUrl(req, relayBase!), 307);
   }
+
   const token = req.nextUrl.searchParams.get('token');
   if (!token) return new Response('Missing token', { status: 401 });
 
-  let payload: { userId?: string; videoId: string; guest?: boolean; deviceSessionId?: string; role?: 'USER' | 'CREATOR' | 'ADMIN' };
+  let payload: StreamPayload;
   try {
-    payload = verifyStreamToken(token);
+    payload = verifyStreamToken(token) as StreamPayload;
   } catch {
     return new Response('Invalid token', { status: 401 });
   }
 
   if (payload.videoId !== params.id) return new Response('Token mismatch', { status: 403 });
-
-  const video = await prisma.video.findUnique({ where: { id: params.id } });
-  if (!video) return new Response('Video not found', { status: 404 });
-  const canPreviewPendingVideo = canPreviewVideo(video, payload.userId ? { sub: payload.userId, role: payload.role ?? 'USER' } : null);
-  if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
-    return new Response('Video not available', { status: 403 });
-  }
-  if (!isPlayableVideo(video) || !video.r2Key) {
-    return new Response('Select an episode to start playback', { status: 400 });
-  }
+  if (!payload.streamKey) return new Response('Select an episode to start playback', { status: 400 });
 
   const isGuest = payload.guest || !payload.userId || payload.userId === 'guest';
-  let unlocked = false;
   if (!isGuest && payload.userId) {
-    const unlock = await prisma.unlock.findFirst({ where: { userId: payload.userId, videoId: video.id } });
-    unlocked = Boolean(unlock) || payload.userId === video.creatorId;
-    await touchStreamSession({ userId: payload.userId, deviceSessionId: payload.deviceSessionId, videoId: video.id });
+    await touchStreamSession({
+      userId: payload.userId,
+      deviceSessionId: payload.deviceSessionId,
+      videoId: payload.videoId
+    });
   }
 
   const rangeHeader = req.headers.get('range');
-  let maxBytes: number | undefined = undefined;
-  if (!unlocked && video.durationSec > 0) {
+  let maxBytes: number | undefined;
+
+  if (!payload.fullAccess && (payload.durationSec ?? 0) > 0) {
+    const ratio = getTeaserRatio(payload);
+
     if (!relayBase) {
-      const objectHead = await headObject(video.r2Key);
+      const objectHead = await headObject(payload.streamKey);
       const objectSize = typeof objectHead.ContentLength === 'number' ? objectHead.ContentLength : 0;
-      const ratio = Math.min(video.teaserSec / video.durationSec, 1);
       maxBytes = Math.max(Math.floor(objectSize * ratio), Math.min(objectSize, 1024 * 512));
     } else {
-      const hit = await cacheExists(video.r2Key);
+      const hit = await cacheExists(payload.streamKey);
       recordCacheHit(hit);
-      const filePath = hit ? getCachePath(video.r2Key) : await ensureCached(video.r2Key);
+      const filePath = hit ? getCachePath(payload.streamKey) : await ensureCached(payload.streamKey);
       const stat = await fsPromises.stat(filePath);
-      const ratio = Math.min(video.teaserSec / video.durationSec, 1);
       maxBytes = Math.max(Math.floor(stat.size * ratio), Math.min(stat.size, 1024 * 512));
       const result = await streamFile(filePath, rangeHeader, maxBytes);
 
-      return new Response(Readable.toWeb(result.stream) as any, {
+      return new Response(Readable.toWeb(result.stream) as never, {
         status: result.status,
         headers: {
           ...result.headers,
@@ -77,12 +87,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (relayBase) {
-    const hit = await cacheExists(video.r2Key);
+    const hit = await cacheExists(payload.streamKey);
     recordCacheHit(hit);
-    const filePath = hit ? getCachePath(video.r2Key) : await ensureCached(video.r2Key);
+    const filePath = hit ? getCachePath(payload.streamKey) : await ensureCached(payload.streamKey);
     const result = await streamFile(filePath, rangeHeader, maxBytes);
 
-    return new Response(Readable.toWeb(result.stream) as any, {
+    return new Response(Readable.toWeb(result.stream) as never, {
       status: result.status,
       headers: {
         ...result.headers,
@@ -91,9 +101,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     });
   }
 
-  const result = await streamR2Object(video.r2Key, rangeHeader, maxBytes);
+  const result = await streamR2Object(payload.streamKey, rangeHeader, maxBytes);
 
-  return new Response(Readable.toWeb(result.stream) as any, {
+  return new Response(Readable.toWeb(result.stream) as never, {
     status: result.status,
     headers: {
       ...result.headers,
@@ -101,7 +111,3 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
   });
 }
-
-
-
-

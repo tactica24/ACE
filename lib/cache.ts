@@ -50,7 +50,17 @@ export async function cacheExists(key: string) {
 export async function writeCacheFromStream(key: string, stream: Readable) {
   const cachePath = getCachePath(key);
   await fs.mkdir(path.dirname(cachePath), { recursive: true });
-  const writeStream = (await import('fs')).createWriteStream(cachePath);
-  await pipeline(stream, writeStream);
+  const tempPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
+  const nodeFs = await import('fs');
+  const writeStream = nodeFs.createWriteStream(tempPath);
+
+  try {
+    await pipeline(stream, writeStream);
+    await fs.rename(tempPath, cachePath);
+  } catch (error) {
+    await fs.unlink(tempPath).catch(() => null);
+    throw error;
+  }
+
   return cachePath;
 }

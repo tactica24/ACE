@@ -17,6 +17,11 @@ type PaymentRecord = Prisma.PaymentGetPayload<{
   };
 }>;
 
+type SettledPaymentCheck = {
+  amountMinor?: number | null;
+  currency?: string | null;
+};
+
 function getPaymentMetadata(payment: PaymentRecord) {
   return (payment.metadata as {
     type?: string;
@@ -24,6 +29,26 @@ function getPaymentMetadata(payment: PaymentRecord) {
     credits?: number | string;
     stripeSessionId?: string;
   } | null) ?? null;
+}
+
+export function validateSettledPayment(payment: Pick<PaymentRecord, 'amountMinor' | 'currency'>, settled: SettledPaymentCheck) {
+  const expectedCurrency = (payment.currency ?? 'NGN').toUpperCase();
+  const settledCurrency = (settled.currency ?? payment.currency ?? 'NGN').toUpperCase();
+
+  if (settledCurrency !== expectedCurrency) {
+    return { ok: false as const, reason: 'CURRENCY_MISMATCH', currency: settledCurrency };
+  }
+
+  if (
+    typeof settled.amountMinor === 'number' &&
+    typeof payment.amountMinor === 'number' &&
+    payment.amountMinor > 0 &&
+    settled.amountMinor < payment.amountMinor
+  ) {
+    return { ok: false as const, reason: 'AMOUNT_MISMATCH', currency: settledCurrency };
+  }
+
+  return { ok: true as const, currency: settledCurrency };
 }
 
 async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: PaymentRecord) {
@@ -159,8 +184,31 @@ export async function markPaymentSuccessful({
 }
 
 export async function markPaymentFailed(reference: string) {
-  return prisma.payment.update({
-    where: { reference },
-    data: { status: 'FAILED' }
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`payment:${reference}`}))`;
+
+      const payment = await tx.payment.findUnique({
+        where: { reference },
+        select: {
+          id: true,
+          status: true
+        }
+      });
+
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      if (payment.status === 'SUCCESS' || payment.status === 'FAILED') {
+        return payment;
+      }
+
+      return tx.payment.update({
+        where: { reference },
+        data: { status: 'FAILED' }
+      });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }

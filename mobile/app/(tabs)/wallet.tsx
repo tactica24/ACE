@@ -8,17 +8,36 @@ import * as WebBrowser from 'expo-web-browser';
 import { theme } from '@/lib/theme';
 
 export default function WalletScreen() {
-  const [balance, setBalance] = useState(0);
+  const [balanceLabel, setBalanceLabel] = useState('NGN 0');
   const [credits, setCredits] = useState(0);
+  const [passCreditsRemaining, setPassCreditsRemaining] = useState<number | null>(null);
+  const [passPriceLabel, setPassPriceLabel] = useState('NGN 2,500');
+  const [passCredits, setPassCredits] = useState(30);
+  const [familyBundlePriceLabel, setFamilyBundlePriceLabel] = useState('NGN 2,500');
+  const [familyBundleCredits, setFamilyBundleCredits] = useState(30);
   const [topupAmount, setTopupAmount] = useState('500');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   const loadWallet = () => {
-    apiGet<{ balanceNaira: number; credits: number }>(`/api/wallet`)
+    apiGet<{
+      balanceNaira: number;
+      balanceLabel?: string;
+      credits: number;
+      passPriceLabel?: string;
+      passCredits?: number;
+      familyBundlePriceLabel?: string;
+      familyBundleCredits?: number;
+      pass?: { creditsRemaining: number } | null;
+    }>(`/api/wallet`)
       .then((data) => {
-        setBalance(data.balanceNaira);
+        setBalanceLabel(data.balanceLabel ?? `NGN ${data.balanceNaira}`);
         setCredits(data.credits);
+        setPassPriceLabel(data.passPriceLabel ?? 'NGN 2,500');
+        setPassCredits(data.passCredits ?? 30);
+        setFamilyBundlePriceLabel(data.familyBundlePriceLabel ?? 'NGN 2,500');
+        setFamilyBundleCredits(data.familyBundleCredits ?? 30);
+        setPassCreditsRemaining(data.pass?.creditsRemaining ?? null);
       })
       .catch(() => null);
   };
@@ -50,8 +69,8 @@ export default function WalletScreen() {
       await WebBrowser.openBrowserAsync(data.authorizationUrl);
       await verifyReference(data.reference);
       loadWallet();
-    } catch {
-      alert('Top-up failed');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Top-up failed');
     } finally {
       setLoading(false);
     }
@@ -64,8 +83,8 @@ export default function WalletScreen() {
       await WebBrowser.openBrowserAsync(data.authorizationUrl);
       await verifyReference(data.reference);
       loadWallet();
-    } catch {
-      alert('Subscription failed');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Subscription failed');
     } finally {
       setLoading(false);
     }
@@ -76,8 +95,9 @@ export default function WalletScreen() {
       <Text style={{ fontSize: 20, fontWeight: '700' }}>Wallet</Text>
       <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16 }}>
         <Text style={{ color: theme.muted }}>Balance</Text>
-        <Text style={{ fontSize: 24, fontWeight: '800' }}>₦{balance}</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800' }}>{balanceLabel}</Text>
         <Text style={{ color: theme.muted }}>Credits: {credits}</Text>
+        {passCreditsRemaining !== null ? <Text style={{ color: theme.muted }}>Active pass credits: {passCreditsRemaining}</Text> : null}
       </View>
       <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16 }}>
         <Text style={{ fontWeight: '700', marginBottom: 8 }}>Top up</Text>
@@ -91,11 +111,12 @@ export default function WalletScreen() {
       </View>
       <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16 }}>
         <Text style={{ fontWeight: '700' }}>Hybrid Pass</Text>
-        <Text style={{ color: theme.muted }}>₦2,500 / month · 30 credits</Text>
+        <Text style={{ color: theme.muted }}>{passPriceLabel} / month · {passCredits} credits</Text>
         <SecondaryButton label={loading ? 'Processing...' : 'Activate pass'} onPress={handlePass} />
       </View>
       <View style={{ backgroundColor: theme.surface, padding: 16, borderRadius: 16 }}>
         <Text style={{ fontWeight: '700', marginBottom: 8 }}>Family Pass (Diaspora)</Text>
+        <Text style={{ color: theme.muted, marginBottom: 8 }}>{familyBundlePriceLabel} · {familyBundleCredits} credits</Text>
         <TextInput
           placeholder="Recipient phone (Nigeria)"
           value={recipientPhone}
@@ -114,8 +135,8 @@ export default function WalletScreen() {
               await WebBrowser.openBrowserAsync(data.authorizationUrl);
               await verifyReference(data.reference);
               loadWallet();
-            } catch {
-              alert('Family pass failed');
+            } catch (error) {
+              alert(error instanceof Error ? error.message : 'Family pass failed');
             } finally {
               setLoading(false);
             }

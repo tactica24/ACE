@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const pricingConfig = await getFinanceConfig();
+  const requestedLimit = Number(req.nextUrl.searchParams.get('limit') ?? 24);
+  const take = Number.isFinite(requestedLimit)
+    ? Math.max(1, Math.min(Math.floor(requestedLimit), 60))
+    : 24;
   const videos = await prisma.video.findMany({
     where: { status: 'APPROVED', seriesId: null },
     select: {
@@ -26,10 +30,19 @@ export async function GET(req: NextRequest) {
       highlightSeconds: true,
       posterKey: true
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    take
   });
 
-  return NextResponse.json({
-    videos: videos.map((video) => ({ ...video, price: getRegionalPriceForVideo(req, video, pricingConfig) }))
-  });
+  return NextResponse.json(
+    {
+      videos: videos.map((video) => ({ ...video, price: getRegionalPriceForVideo(req, video, pricingConfig) }))
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+        Vary: 'x-ace-country, x-vercel-ip-country, cf-ipcountry, cloudfront-viewer-country, x-country, x-geo-country, accept-language'
+      }
+    }
+  );
 }

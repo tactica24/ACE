@@ -4,6 +4,7 @@ import { alignNairaToCreditValue } from './credits';
 import { getGeoContext, getGeoContextFromHeaders } from './geo';
 import { env } from './env';
 import { getFinanceConfig } from './finance';
+import { formatRecordedCharge } from './format';
 import { type PriceTierValue } from './media-types';
 
 export type RegionalPrice = {
@@ -16,6 +17,10 @@ export type RegionalPrice = {
 export type RegionalCurrency = {
   currency: string;
   region: 'NG' | 'DIASPORA';
+};
+
+export type RegionalMoneyDisplay = RegionalPrice & {
+  label: string;
 };
 
 export type PricingConfigValues = Awaited<ReturnType<typeof getFinanceConfig>>;
@@ -123,12 +128,28 @@ export function getRegionalCurrency(req: NextRequest | Headers): RegionalCurrenc
 
 export function getChargeForNaira(req: NextRequest | Headers, amountNaira: number) {
   const { currency, region } = getRegionalCurrency(req);
+  if (!Number.isFinite(amountNaira) || amountNaira <= 0) {
+    return { currency, region, amountMinor: 0, amountNaira: 0 };
+  }
   if (currency === 'NGN') {
     return { currency, region, amountMinor: amountNaira * 100, amountNaira };
   }
   const rate = getFxRate(currency);
   const amountMinor = Math.max(1, Math.round((amountNaira / rate) * 100));
   return { currency, region, amountMinor, amountNaira };
+}
+
+export function getRegionalMoneyDisplay(req: NextRequest | Headers, amountNaira: number): RegionalMoneyDisplay {
+  const charge = getChargeForNaira(req, amountNaira);
+
+  return {
+    ...charge,
+    label: formatRecordedCharge({
+      amountMinor: charge.amountMinor,
+      amountNaira: charge.amountNaira,
+      currency: charge.currency
+    })
+  };
 }
 
 export function getRegionalPriceFromConfig(

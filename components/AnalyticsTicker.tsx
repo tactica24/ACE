@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 
 type Analytics = {
   unlocksToday: number;
-  revenueToday: number;
+  revenueTodayLabel: string;
   totalUnlocks: number;
-  totalRevenue: number;
-  walletBalance: number;
+  totalRevenueLabel: string;
+  walletBalanceLabel: string;
 };
 
 export default function AnalyticsTicker() {
@@ -51,7 +51,7 @@ export default function AnalyticsTicker() {
       </div>
       <div className="metric-card">
         <span className="muted">Revenue today</span>
-        <strong>NGN {data?.revenueToday ?? '--'}</strong>
+        <strong>{data?.revenueTodayLabel ?? '--'}</strong>
         <span className="trend-up">Daily credited revenue</span>
       </div>
       <div className="metric-card">
@@ -61,12 +61,12 @@ export default function AnalyticsTicker() {
       </div>
       <div className="metric-card">
         <span className="muted">Total revenue</span>
-        <strong>NGN {data?.totalRevenue ?? '--'}</strong>
+        <strong>{data?.totalRevenueLabel ?? '--'}</strong>
         <span className="trend-up">All-time credited revenue</span>
       </div>
       <div className="metric-card">
         <span className="muted">Producer wallet</span>
-        <strong>NGN {data?.walletBalance ?? '--'}</strong>
+        <strong>{data?.walletBalanceLabel ?? '--'}</strong>
         <span className="trend-up">Current available balance</span>
       </div>
     </div>

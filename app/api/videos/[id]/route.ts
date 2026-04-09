@@ -30,38 +30,48 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const pricingConfig = await getFinanceConfig();
   const price = getRegionalPriceForVideo(req, video, pricingConfig);
 
-  return NextResponse.json({
-    video: {
-      id: video.id,
-      title: video.title,
-      description: video.description,
-      videoType: video.videoType,
-      ageRating: video.ageRating,
-      category: video.category,
-      genres: video.genres,
-      priceTier: video.priceTier,
-      rightsTier: video.rightsTier,
-      teaserSec: video.teaserSec,
-      durationSec: video.durationSec,
-      releaseYear: video.releaseYear,
-      highlightSeconds: video.highlightSeconds,
-      posterKey: video.posterKey,
-      creatorId: video.creatorId,
-      seriesId: video.seriesId,
-      seasonNumber: video.seasonNumber,
-      episodeNumber: video.episodeNumber,
-      episodes: video.episodes.map((episode) => ({
-        id: episode.id,
-        title: episode.title,
-        description: episode.description,
-        teaserSec: episode.teaserSec,
-        durationSec: episode.durationSec,
-        posterKey: episode.posterKey,
-        seasonNumber: episode.seasonNumber,
-        episodeNumber: episode.episodeNumber
-      }))
+  return NextResponse.json(
+    {
+      video: {
+        id: video.id,
+        title: video.title,
+        description: video.description,
+        videoType: video.videoType,
+        ageRating: video.ageRating,
+        category: video.category,
+        genres: video.genres,
+        priceTier: video.priceTier,
+        rightsTier: video.rightsTier,
+        teaserSec: video.teaserSec,
+        durationSec: video.durationSec,
+        releaseYear: video.releaseYear,
+        highlightSeconds: video.highlightSeconds,
+        posterKey: video.posterKey,
+        creatorId: video.creatorId,
+        seriesId: video.seriesId,
+        seasonNumber: video.seasonNumber,
+        episodeNumber: video.episodeNumber,
+        episodes: video.episodes.map((episode) => ({
+          id: episode.id,
+          title: episode.title,
+          description: episode.description,
+          teaserSec: episode.teaserSec,
+          durationSec: episode.durationSec,
+          posterKey: episode.posterKey,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber
+        }))
+      },
+      price,
+      unlocked
     },
-    price,
-    unlocked
-  });
+    {
+      headers: {
+        Vary: 'authorization, cookie, x-ace-country, x-vercel-ip-country, cf-ipcountry, cloudfront-viewer-country, x-country, x-geo-country, accept-language',
+        'Cache-Control': auth
+          ? 'private, max-age=15, stale-while-revalidate=60'
+          : 'public, s-maxage=30, stale-while-revalidate=120'
+      }
+    }
+  );
 }

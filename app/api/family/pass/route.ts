@@ -8,6 +8,7 @@ import { getStripe } from '@/lib/stripe';
 import { v4 as uuid } from 'uuid';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { markPaymentFailed } from '@/lib/payment-ops';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -50,30 +51,32 @@ export async function POST(req: NextRequest) {
   const referralCode = readReferralCode(req, body?.referralCode);
   const referral = await resolveReferral(referralCode);
   const reference = `ace_family_${uuid()}`;
+  let authorizationUrl: string | null = null;
 
-  await prisma.payment.create({
-    data: {
-      userId: auth.sub,
-      reference,
-      amountNaira: price.amountNaira,
-      amountMinor: price.amountMinor,
-      currency: price.currency,
-      gateway: 'STRIPE',
-      referralCode: referral?.code,
-      metadata: {
-        type: 'family',
-        recipientUserId: recipient.id,
-        recipientPhone,
-        credits
+  try {
+    await prisma.payment.create({
+      data: {
+        userId: auth.sub,
+        reference,
+        amountNaira: price.amountNaira,
+        amountMinor: price.amountMinor,
+        currency: price.currency,
+        gateway: 'STRIPE',
+        referralCode: referral?.code,
+        metadata: {
+          type: 'family',
+          recipientUserId: recipient.id,
+          recipientPhone,
+          credits
+        }
       }
-    }
-  });
+    });
 
-  const stripe = getStripe();
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    customer_email: auth.email,
-    line_items: [
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: auth.email,
+      line_items: [
         {
           price_data: {
             currency: price.currency.toLowerCase(),
@@ -82,27 +85,36 @@ export async function POST(req: NextRequest) {
           },
           quantity: 1
         }
-    ],
-    metadata: { userId: auth.sub, type: 'family', reference, recipientUserId: recipient.id, credits: `${credits}` },
-    success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,
-    cancel_url: `${env.ACE_APP_BASE_URL}/wallet`
-  });
-  if (!session.url) {
-    return NextResponse.json({ error: 'Stripe session unavailable' }, { status: 500 });
-  }
-
-  await prisma.payment.update({
-    where: { reference },
-    data: {
-      metadata: {
-        type: 'family',
-        recipientUserId: recipient.id,
-        recipientPhone,
-        credits,
-        stripeSessionId: session.id
-      }
+      ],
+      metadata: { userId: auth.sub, type: 'family', reference, recipientUserId: recipient.id, credits: `${credits}` },
+      success_url: `${env.ACE_APP_BASE_URL}/wallet/verify?reference=${reference}`,
+      cancel_url: `${env.ACE_APP_BASE_URL}/wallet`
+    });
+    if (!session.url) {
+      throw new Error('Stripe session unavailable');
     }
-  });
+
+    authorizationUrl = session.url;
+
+    await prisma.payment.update({
+      where: { reference },
+      data: {
+        metadata: {
+          type: 'family',
+          recipientUserId: recipient.id,
+          recipientPhone,
+          credits,
+          stripeSessionId: session.id
+        }
+      }
+    });
+  } catch (error) {
+    await markPaymentFailed(reference).catch(() => null);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to start family pass.' },
+      { status: 500 }
+    );
+  }
 
   await prisma.familyLink.create({
     data: {
@@ -111,5 +123,5 @@ export async function POST(req: NextRequest) {
     }
   }).catch(() => null);
 
-  return NextResponse.json({ authorizationUrl: session.url, reference });
+  return NextResponse.json({ authorizationUrl, reference });
 }

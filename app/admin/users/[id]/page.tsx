@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import AdminAccountControlPanel from '@/components/AdminAccountControlPanel';
 import AdminCommerceSupportPanel from '@/components/AdminCommerceSupportPanel';
@@ -12,11 +13,14 @@ import { formatContractDate } from '@/lib/contracts';
 import { formatCredits, getCreditsForNaira, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { formatRecordedCharge } from '@/lib/format';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUserDetailPage({ params }: { params: { id: string } }) {
   const adminUser = await requireAdminUser(`/admin/users/${params.id}`);
+  const requestHeaders = headers();
+  const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   const user = await prisma.user.findUnique({
     where: { id: params.id },
@@ -102,7 +106,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <span className="muted">Role: {user.role}</span>
             <span className="muted">Signup intent: {user.signupIntent}</span>
             <span className="muted">Producer access: {user.creatorAccessStatus}</span>
-            <span className="muted">Viewer wallet: {formatRecordedCharge({ amountMinor: (user.wallet?.balanceNaira ?? 0) * 100, amountNaira: user.wallet?.balanceNaira ?? 0, currency: 'NGN' })}</span>
+            <span className="muted">Viewer wallet: {formatMoney(user.wallet?.balanceNaira ?? 0)}</span>
             <span className="muted">Wallet value: {formatCredits(getCreditsForNaira(user.wallet?.balanceNaira ?? 0))}</span>
             <span className="muted">Viewer credits: {formatCredits(storedUnitsToCredits(user.wallet?.credits ?? 0))}</span>
           </div>
@@ -124,7 +128,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <div className="stack-list">
               <span className="muted">Producer number: {user.creator.creatorNumber ?? 'Pending'}</span>
               <span className="muted">Display name: {user.creator.displayName}</span>
-              <span className="muted">Producer wallet: {formatRecordedCharge({ amountMinor: user.creator.earningsBalanceNaira * 100, amountNaira: user.creator.earningsBalanceNaira, currency: 'NGN' })}</span>
+              <span className="muted">Producer wallet: {formatMoney(user.creator.earningsBalanceNaira)}</span>
               <span className="muted">Verified: {user.creator.verified ? 'Yes' : 'No'}</span>
               <span className="muted">Address: {user.creator.address ?? 'Not provided'}</span>
               <span className="muted">ID number: {user.creator.idCardNumber ?? 'Not provided'}</span>
@@ -280,7 +284,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     <strong>{settlement.video.title}</strong>
                     <p className="muted">{settlement.createdAt.toISOString().slice(0, 10)}</p>
                   </div>
-                  <span>Producer NGN {settlement.creatorNaira}</span>
+                  <span>{formatMoney(settlement.creatorNaira)}</span>
                 </div>
               ))}
             </div>
@@ -296,7 +300,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
               {user.creator.payoutRequests.map((request) => (
                 <div key={request.id} className="stack-row">
                   <div>
-                    <strong>NGN {request.amountNaira}</strong>
+                    <strong>{formatMoney(request.amountNaira)}</strong>
                     <p className="muted">{request.requestedAt.toISOString().slice(0, 10)} | {request.status}</p>
                   </div>
                   <span className="muted">{request.bankName}</span>

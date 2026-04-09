@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
-import { markPaymentFailed, markPaymentSuccessful } from '@/lib/payment-ops';
+import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
 import { verifyTransaction } from '@/lib/paystack';
 import { getStripe } from '@/lib/stripe';
 
@@ -83,7 +83,11 @@ async function getStripeSupportSnapshot(reference: string) {
 
   if (session.payment_status === 'paid') {
     const amountMinor = session.amount_total ?? payment.amountMinor;
-    if (payment.amountMinor && amountMinor && amountMinor < payment.amountMinor) {
+    const validation = validateSettledPayment(payment, {
+      amountMinor,
+      currency: session.currency?.toUpperCase() ?? payment.currency
+    });
+    if (!validation.ok) {
       await markPaymentFailed(reference);
       return { externalStatus: 'amount_mismatch', payment: await prisma.payment.findUnique({ where: { reference } }) };
     }
@@ -91,7 +95,7 @@ async function getStripeSupportSnapshot(reference: string) {
     await markPaymentSuccessful({
       reference,
       amountMinor,
-      currency: session.currency?.toUpperCase() ?? payment.currency
+      currency: validation.currency
     });
     return { externalStatus: 'paid', payment: await prisma.payment.findUnique({ where: { reference } }) };
   }
@@ -115,8 +119,11 @@ async function getPaystackSupportSnapshot(reference: string) {
     const amountMinor = verification.data.amount;
     const feeMinor = typeof verification.data.fees === 'number' ? verification.data.fees : null;
     const netMinor = feeMinor === null ? null : amountMinor - feeMinor;
-    const amountNaira = Math.round(amountMinor / 100);
-    if (amountNaira < payment.amountNaira) {
+    const validation = validateSettledPayment(payment, {
+      amountMinor,
+      currency: verification.data.currency ?? payment.currency
+    });
+    if (!validation.ok) {
       await markPaymentFailed(reference);
       return { externalStatus: 'amount_mismatch', payment: await prisma.payment.findUnique({ where: { reference } }) };
     }
@@ -124,7 +131,7 @@ async function getPaystackSupportSnapshot(reference: string) {
     await markPaymentSuccessful({
       reference,
       amountMinor,
-      currency: verification.data.currency ?? payment.currency,
+      currency: validation.currency,
       feeMinor,
       netMinor
     });
