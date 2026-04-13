@@ -52,7 +52,18 @@ const getCachedPlatformWallet = unstable_cache(
   { revalidate: 60, tags: [PLATFORM_WALLET_TAG] }
 );
 
+function hasDatabaseUrl() {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
+
 export async function getFinanceConfig() {
+  if (!hasDatabaseUrl()) {
+    return {
+      ...DEFAULT_FINANCE_CONFIG,
+      updatedAt: new Date(0)
+    };
+  }
+
   const config = await getCachedFinanceConfig();
   if (config) {
     return config;
@@ -66,6 +77,14 @@ export async function getFinanceConfig() {
 }
 
 export async function getPlatformWallet() {
+  if (!hasDatabaseUrl()) {
+    return {
+      id: PLATFORM_WALLET_ID,
+      balanceNaira: 0,
+      updatedAt: new Date(0)
+    };
+  }
+
   const wallet = await getCachedPlatformWallet();
   if (wallet) {
     return wallet;

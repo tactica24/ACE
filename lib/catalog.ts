@@ -33,6 +33,10 @@ const getApprovedCatalogVideosCached = unstable_cache(
 );
 
 export async function getApprovedCatalogVideos() {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return [];
+  }
+
   return getApprovedCatalogVideosCached() as Promise<CatalogVideo[]>;
 }
 
@@ -63,6 +67,10 @@ const getApprovedHighlightVideosCached = unstable_cache(
 );
 
 export async function getApprovedHighlightVideos() {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return [];
+  }
+
   return getApprovedHighlightVideosCached() as Promise<HighlightCatalogVideo[]>;
 }
 

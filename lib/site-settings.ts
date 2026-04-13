@@ -25,7 +25,18 @@ const getCachedSiteSettings = unstable_cache(
   { revalidate: 300, tags: [SITE_SETTINGS_TAG] }
 );
 
+function hasDatabaseUrl() {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
+
 export async function getSiteSettings() {
+  if (!hasDatabaseUrl()) {
+    return {
+      ...DEFAULT_SITE_SETTINGS,
+      updatedAt: new Date(0)
+    };
+  }
+
   const settings = await getCachedSiteSettings();
   if (settings) {
     return settings;
