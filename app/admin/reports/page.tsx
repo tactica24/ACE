@@ -54,6 +54,50 @@ function printDateLabel(date: Date | string | null | undefined) {
   }).format(parsedDate);
 }
 
+function normalizeAvailableVideoSnapshot(
+  video: unknown,
+  fallbackVideo?: MonthlyReportSnapshot['availableVideos'][number]
+) {
+  if (!video || typeof video !== 'object') {
+    return fallbackVideo ?? null;
+  }
+
+  const snapshotVideo = video as Record<string, unknown>;
+
+  return {
+    ...(fallbackVideo ?? {}),
+    ...snapshotVideo,
+    id: typeof snapshotVideo.id === 'string' ? snapshotVideo.id : fallbackVideo?.id ?? '',
+    title: typeof snapshotVideo.title === 'string' ? snapshotVideo.title : fallbackVideo?.title ?? 'Untitled movie',
+    status: typeof snapshotVideo.status === 'string' ? snapshotVideo.status : fallbackVideo?.status ?? 'DRAFT',
+    statusLabel:
+      typeof snapshotVideo.statusLabel === 'string' ? snapshotVideo.statusLabel : fallbackVideo?.statusLabel ?? 'Draft',
+    category: typeof snapshotVideo.category === 'string' ? snapshotVideo.category : fallbackVideo?.category ?? 'General',
+    releaseYear:
+      typeof snapshotVideo.releaseYear === 'number' ? snapshotVideo.releaseYear : fallbackVideo?.releaseYear ?? null,
+    rightsTier:
+      typeof snapshotVideo.rightsTier === 'string' ? snapshotVideo.rightsTier : fallbackVideo?.rightsTier ?? 'SHARED',
+    rightsLabel:
+      typeof snapshotVideo.rightsLabel === 'string' ? snapshotVideo.rightsLabel : fallbackVideo?.rightsLabel ?? 'Shared',
+    priceTier:
+      typeof snapshotVideo.priceTier === 'string' ? snapshotVideo.priceTier : fallbackVideo?.priceTier ?? 'STANDARD',
+    priceLabel:
+      typeof snapshotVideo.priceLabel === 'string' ? snapshotVideo.priceLabel : fallbackVideo?.priceLabel ?? 'Standard',
+    creatorName:
+      typeof snapshotVideo.creatorName === 'string'
+        ? snapshotVideo.creatorName
+        : fallbackVideo?.creatorName ?? 'Unknown producer',
+    creatorNumber:
+      typeof snapshotVideo.creatorNumber === 'string'
+        ? snapshotVideo.creatorNumber
+        : fallbackVideo?.creatorNumber ?? null,
+    creatorVerified:
+      typeof snapshotVideo.creatorVerified === 'boolean'
+        ? snapshotVideo.creatorVerified
+        : fallbackVideo?.creatorVerified ?? false
+  } as MonthlyReportSnapshot['availableVideos'][number];
+}
+
 function normalizeStoredVideoSnapshot(
   video: unknown,
   fallbackVideo?: MonthlyReportSnapshot['videos'][number]
@@ -147,6 +191,185 @@ function normalizeStoredVideoSnapshot(
   } as MonthlyReportSnapshot['videos'][number];
 }
 
+function normalizeReportSummary(
+  summary: unknown,
+  fallbackSummary?: MonthlyReportSnapshot['summary']
+) {
+  const snapshotSummary = summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : {};
+  const paymentDetails =
+    snapshotSummary.paymentDetails && typeof snapshotSummary.paymentDetails === 'object'
+      ? (snapshotSummary.paymentDetails as Record<string, unknown>)
+      : {};
+
+  return {
+    ...(fallbackSummary ?? {}),
+    ...snapshotSummary,
+    reportId: typeof snapshotSummary.reportId === 'string' ? snapshotSummary.reportId : fallbackSummary?.reportId ?? 'ACE-SVOD-PREVIEW',
+    reportingEntity:
+      typeof snapshotSummary.reportingEntity === 'string'
+        ? snapshotSummary.reportingEntity
+        : fallbackSummary?.reportingEntity ?? 'ACE Naija Distribution Limited',
+    rightsHolder:
+      typeof snapshotSummary.rightsHolder === 'string'
+        ? snapshotSummary.rightsHolder
+        : fallbackSummary?.rightsHolder ?? 'Selected licensors',
+    preparedBy:
+      typeof snapshotSummary.preparedBy === 'string'
+        ? snapshotSummary.preparedBy
+        : fallbackSummary?.preparedBy ?? 'ACE Studio Admin Reporting Desk',
+    statementVersion:
+      typeof snapshotSummary.statementVersion === 'string'
+        ? snapshotSummary.statementVersion
+        : fallbackSummary?.statementVersion ?? 'v1.0',
+    currency: typeof snapshotSummary.currency === 'string' ? snapshotSummary.currency : fallbackSummary?.currency ?? 'NGN',
+    titleCount: typeof snapshotSummary.titleCount === 'number' ? snapshotSummary.titleCount : fallbackSummary?.titleCount ?? 0,
+    unlockCount: typeof snapshotSummary.unlockCount === 'number' ? snapshotSummary.unlockCount : fallbackSummary?.unlockCount ?? 0,
+    uniqueAccounts:
+      typeof snapshotSummary.uniqueAccounts === 'number' ? snapshotSummary.uniqueAccounts : fallbackSummary?.uniqueAccounts ?? 0,
+    watchHours: typeof snapshotSummary.watchHours === 'number' ? snapshotSummary.watchHours : fallbackSummary?.watchHours ?? 0,
+    grossNaira: typeof snapshotSummary.grossNaira === 'number' ? snapshotSummary.grossNaira : fallbackSummary?.grossNaira ?? 0,
+    approvedDeductionsNaira:
+      typeof snapshotSummary.approvedDeductionsNaira === 'number'
+        ? snapshotSummary.approvedDeductionsNaira
+        : fallbackSummary?.approvedDeductionsNaira ?? 0,
+    netRevenueNaira:
+      typeof snapshotSummary.netRevenueNaira === 'number' ? snapshotSummary.netRevenueNaira : fallbackSummary?.netRevenueNaira ?? 0,
+    creatorNaira:
+      typeof snapshotSummary.creatorNaira === 'number' ? snapshotSummary.creatorNaira : fallbackSummary?.creatorNaira ?? 0,
+    platformNaira:
+      typeof snapshotSummary.platformNaira === 'number' ? snapshotSummary.platformNaira : fallbackSummary?.platformNaira ?? 0,
+    platformNetNaira:
+      typeof snapshotSummary.platformNetNaira === 'number' ? snapshotSummary.platformNetNaira : fallbackSummary?.platformNetNaira ?? 0,
+    completionRate:
+      typeof snapshotSummary.completionRate === 'number' ? snapshotSummary.completionRate : fallbackSummary?.completionRate ?? 0,
+    averageRevenuePerUnlockNaira:
+      typeof snapshotSummary.averageRevenuePerUnlockNaira === 'number'
+        ? snapshotSummary.averageRevenuePerUnlockNaira
+        : fallbackSummary?.averageRevenuePerUnlockNaira ?? 0,
+    previousGrossNaira:
+      typeof snapshotSummary.previousGrossNaira === 'number' ? snapshotSummary.previousGrossNaira : fallbackSummary?.previousGrossNaira ?? 0,
+    grossDeltaPercent:
+      typeof snapshotSummary.grossDeltaPercent === 'number' ? snapshotSummary.grossDeltaPercent : fallbackSummary?.grossDeltaPercent ?? 0,
+    licensorSharePercent:
+      typeof snapshotSummary.licensorSharePercent === 'number'
+        ? snapshotSummary.licensorSharePercent
+        : fallbackSummary?.licensorSharePercent ?? 0,
+    platformSharePercent:
+      typeof snapshotSummary.platformSharePercent === 'number'
+        ? snapshotSummary.platformSharePercent
+        : fallbackSummary?.platformSharePercent ?? 0,
+    openingBalanceNaira:
+      typeof snapshotSummary.openingBalanceNaira === 'number'
+        ? snapshotSummary.openingBalanceNaira
+        : fallbackSummary?.openingBalanceNaira ?? 0,
+    amountPreviouslyPaidNaira:
+      typeof snapshotSummary.amountPreviouslyPaidNaira === 'number'
+        ? snapshotSummary.amountPreviouslyPaidNaira
+        : fallbackSummary?.amountPreviouslyPaidNaira ?? 0,
+    currentPeriodPaidNaira:
+      typeof snapshotSummary.currentPeriodPaidNaira === 'number'
+        ? snapshotSummary.currentPeriodPaidNaira
+        : fallbackSummary?.currentPeriodPaidNaira ?? 0,
+    currentAmountDueNaira:
+      typeof snapshotSummary.currentAmountDueNaira === 'number'
+        ? snapshotSummary.currentAmountDueNaira
+        : fallbackSummary?.currentAmountDueNaira ?? 0,
+    closingBalanceNaira:
+      typeof snapshotSummary.closingBalanceNaira === 'number'
+        ? snapshotSummary.closingBalanceNaira
+        : fallbackSummary?.closingBalanceNaira ?? 0,
+    exchangeRateLabel:
+      typeof snapshotSummary.exchangeRateLabel === 'string'
+        ? snapshotSummary.exchangeRateLabel
+        : fallbackSummary?.exchangeRateLabel ?? 'System ledger normalized to NGN at transaction time',
+    paymentDueLabel:
+      typeof snapshotSummary.paymentDueLabel === 'string'
+        ? snapshotSummary.paymentDueLabel
+        : fallbackSummary?.paymentDueLabel ?? 'Per signed commercial cycle after finance approval',
+    activeTerritories:
+      typeof snapshotSummary.activeTerritories === 'number'
+        ? snapshotSummary.activeTerritories
+        : fallbackSummary?.activeTerritories ?? 0,
+    topTerritory:
+      typeof snapshotSummary.topTerritory === 'string'
+        ? snapshotSummary.topTerritory
+        : fallbackSummary?.topTerritory ?? 'No billing-territory activity recorded',
+    topDeviceType:
+      typeof snapshotSummary.topDeviceType === 'string'
+        ? snapshotSummary.topDeviceType
+        : fallbackSummary?.topDeviceType ?? null,
+    topDeviceTypeStatus:
+      typeof snapshotSummary.topDeviceTypeStatus === 'string'
+        ? snapshotSummary.topDeviceTypeStatus
+        : fallbackSummary?.topDeviceTypeStatus ?? 'UNAVAILABLE_IN_CURRENT_TELEMETRY',
+    promotionalAdjustmentsLabel:
+      typeof snapshotSummary.promotionalAdjustmentsLabel === 'string'
+        ? snapshotSummary.promotionalAdjustmentsLabel
+        : fallbackSummary?.promotionalAdjustmentsLabel ?? 'No manual promotional adjustment recorded',
+    contentStatus:
+      typeof snapshotSummary.contentStatus === 'string'
+        ? snapshotSummary.contentStatus
+        : fallbackSummary?.contentStatus ?? 'Mixed release status',
+    contractReadyCount:
+      typeof snapshotSummary.contractReadyCount === 'number'
+        ? snapshotSummary.contractReadyCount
+        : fallbackSummary?.contractReadyCount ?? 0,
+    exclusiveCount:
+      typeof snapshotSummary.exclusiveCount === 'number'
+        ? snapshotSummary.exclusiveCount
+        : fallbackSummary?.exclusiveCount ?? 0,
+    paymentDetails: {
+      ...(fallbackSummary?.paymentDetails ?? {}),
+      ...paymentDetails,
+      beneficiary:
+        typeof paymentDetails.beneficiary === 'string'
+          ? paymentDetails.beneficiary
+          : fallbackSummary?.paymentDetails.beneficiary ?? 'Multiple licensors; see title-level statement',
+      bankName:
+        typeof paymentDetails.bankName === 'string' ? paymentDetails.bankName : fallbackSummary?.paymentDetails.bankName ?? null,
+      accountName:
+        typeof paymentDetails.accountName === 'string'
+          ? paymentDetails.accountName
+          : fallbackSummary?.paymentDetails.accountName ?? null,
+      accountNumber:
+        typeof paymentDetails.accountNumber === 'string'
+          ? paymentDetails.accountNumber
+          : fallbackSummary?.paymentDetails.accountNumber ?? null,
+      swiftOrRouting:
+        typeof paymentDetails.swiftOrRouting === 'string'
+          ? paymentDetails.swiftOrRouting
+          : fallbackSummary?.paymentDetails.swiftOrRouting ?? null,
+      paymentReference:
+        typeof paymentDetails.paymentReference === 'string'
+          ? paymentDetails.paymentReference
+          : fallbackSummary?.paymentDetails.paymentReference ?? 'ACE/SVOD/PREVIEW',
+      remittanceDate:
+        toDate(paymentDetails.remittanceDate as Date | string | null | undefined) ??
+        fallbackSummary?.paymentDetails.remittanceDate ??
+        null,
+      amountRemittedNaira:
+        typeof paymentDetails.amountRemittedNaira === 'number'
+          ? paymentDetails.amountRemittedNaira
+          : fallbackSummary?.paymentDetails.amountRemittedNaira ?? 0
+    },
+    topTitle:
+      snapshotSummary.topTitle && typeof snapshotSummary.topTitle === 'object'
+        ? {
+            ...(fallbackSummary?.topTitle ?? {}),
+            ...(snapshotSummary.topTitle as Record<string, unknown>),
+            title:
+              typeof (snapshotSummary.topTitle as Record<string, unknown>).title === 'string'
+                ? ((snapshotSummary.topTitle as Record<string, unknown>).title as string)
+                : fallbackSummary?.topTitle?.title ?? 'No sales recorded',
+            grossNaira:
+              typeof (snapshotSummary.topTitle as Record<string, unknown>).grossNaira === 'number'
+                ? ((snapshotSummary.topTitle as Record<string, unknown>).grossNaira as number)
+                : fallbackSummary?.topTitle?.grossNaira ?? 0
+          }
+        : fallbackSummary?.topTitle ?? null
+  } as MonthlyReportSnapshot['summary'];
+}
+
 function hydrateStoredReport(
   statementData: unknown,
   fallbackSnapshot?: MonthlyReportSnapshot
@@ -168,7 +391,9 @@ function hydrateStoredReport(
     periodStart: toDate(snapshot.periodStart) ?? fallbackSnapshot?.periodStart ?? new Date(),
     periodEnd: toDate(snapshot.periodEnd) ?? fallbackSnapshot?.periodEnd ?? new Date(),
     generatedAt: toDate(snapshot.generatedAt) ?? fallbackSnapshot?.generatedAt ?? new Date(),
-    availableVideos: Array.isArray(snapshot.availableVideos) ? snapshot.availableVideos : fallbackSnapshot?.availableVideos ?? [],
+    availableVideos: (Array.isArray(snapshot.availableVideos) ? snapshot.availableVideos : fallbackSnapshot?.availableVideos ?? [])
+      .map((video, index) => normalizeAvailableVideoSnapshot(video, fallbackSnapshot?.availableVideos[index]))
+      .filter(Boolean),
     selectedVideoIds: Array.isArray(snapshot.selectedVideoIds) ? snapshot.selectedVideoIds : fallbackSnapshot?.selectedVideoIds ?? [],
     videos: snapshot.videos
       .map((video) =>
@@ -181,16 +406,7 @@ function hydrateStoredReport(
       )
       .filter(Boolean),
     summary: {
-      ...(fallbackSnapshot?.summary ?? {}),
-      ...snapshot.summary,
-      paymentDetails: {
-        ...(fallbackSnapshot?.summary.paymentDetails ?? {}),
-        ...snapshot.summary.paymentDetails,
-        remittanceDate:
-          toDate(snapshot.summary.paymentDetails?.remittanceDate) ??
-          fallbackSnapshot?.summary.paymentDetails.remittanceDate ??
-          null
-      }
+      ...normalizeReportSummary(snapshot.summary, fallbackSnapshot?.summary)
     }
   } as MonthlyReportSnapshot;
 }
@@ -203,6 +419,70 @@ function statementStatusTone(status: string) {
 
 function statementStatusLabel(status?: string | null) {
   return status ?? 'PREVIEW';
+}
+
+function renderReportFallback({
+  loadError,
+  report,
+  formatMoney
+}: {
+  loadError: string;
+  report?: MonthlyReportSnapshot | null;
+  formatMoney?: (amountNaira: number) => string;
+}) {
+  return (
+    <DashboardShell
+      title="Investor reports"
+      description="Select one or more movies, build a clean monthly sales brief, and print the result as a polished PDF for investor or licensing conversations."
+      sideNav={
+        <SideNav
+          active="/admin/reports"
+          items={getAdminNavItems({ pendingPayouts: report?.pendingPayouts })}
+        />
+      }
+      actions={
+        <div className="action-list reports-toolbar no-print">
+          <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
+          <Link className="btn btn-ghost" href="/admin/payments">Payouts</Link>
+        </div>
+      }
+    >
+      <div className="stack-list">
+        <div className="card">
+          <span className="pill">Report loading issue</span>
+          <h3>Production data needs one more hardening step</h3>
+          <p className="muted">{loadError}</p>
+          <p className="muted">
+            This page now fails safely instead of throwing a server exception. The remaining issue is in report snapshot shape or
+            production data completeness, not the admin link itself.
+          </p>
+        </div>
+        {report ? (
+          <div className="card">
+            <h3>Live report snapshot</h3>
+            <div className="detail-grid">
+              <div className="detail-card">
+                <span className="detail-label">Month</span>
+                <strong>{report.monthLabel}</strong>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Selected titles</span>
+                <strong>{report.selectedVideoIds.length}</strong>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Saved statements</span>
+                <strong>{report.availableVideos.length}</strong>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Gross sales</span>
+                <strong>{formatMoney ? formatMoney(report.summary.grossNaira) : report.summary.grossNaira}</strong>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </DashboardShell>
+  );
 }
 
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
@@ -227,78 +507,51 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
   } catch (error) {
     loadError = error instanceof Error ? error.message : 'The report data could not be loaded for this environment.';
 
-    return (
-      <DashboardShell
-        title="Investor reports"
-        description="Select one or more movies, build a clean monthly sales brief, and print the result as a polished PDF for investor or licensing conversations."
-        sideNav={
-          <SideNav
-            active="/admin/reports"
-            items={getAdminNavItems()}
-          />
-        }
-        actions={
-          <div className="action-list reports-toolbar no-print">
-            <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
-            <Link className="btn btn-ghost" href="/admin/payments">Payouts</Link>
-          </div>
-        }
-      >
-        <div className="card">
-          <span className="pill">Report loading issue</span>
-          <h3>Production data needs one more hardening step</h3>
-          <p className="muted">
-            {loadError}
-          </p>
-          <p className="muted">
-            This page now fails safely instead of throwing a server exception. The next fix is to align the production database with the current reporting schema or deploy the new fallback-safe code if the latest build is not live yet.
-          </p>
-        </div>
-      </DashboardShell>
-    );
+    return renderReportFallback({ loadError, formatMoney });
   }
 
-  const storedReport = storedStatement ? hydrateStoredReport(storedStatement.statementData, previewReport) : null;
-  const report = storedReport ?? previewReport;
-  const activeStatement = storedStatement && storedReport ? storedStatement : null;
-  const statementStatus = statementStatusLabel(activeStatement?.status);
-  const periodEndLabel = printDateLabel(new Date(report.periodEnd.getTime() - 24 * 60 * 60 * 1000));
-  const topDeviceTypeLabel = report.summary.topDeviceType ?? 'Not captured in current telemetry';
-  const totalTaxNaira = report.videos
-    .map((video) => video.taxNaira)
-    .reduce((total, value) => total + value, 0);
-  const paymentDetails = report.summary.paymentDetails;
-  const remittanceLabel = paymentDetails.remittanceDate
-    ? printDateLabel(paymentDetails.remittanceDate)
-    : activeStatement?.status === 'PAID'
-      ? printDateLabel(activeStatement.paidAt)
-      : 'Not remitted in this statement lifecycle';
-  const bankNameLabel = paymentDetails.bankName ?? 'Not recorded on creator payout profile';
-  const accountNameLabel = paymentDetails.accountName ?? 'Not recorded on creator payout profile';
-  const accountNumberLabel = paymentDetails.accountNumber ?? 'Not recorded on creator payout profile';
-  const swiftLabel = paymentDetails.swiftOrRouting ?? 'Not stored for the current payout route';
-  const reviewLabel = activeStatement?.reviewedBy
-    ? `${activeStatement.reviewedBy} | ${printDateLabel(activeStatement.reviewedAt)}`
-    : activeStatement
-      ? 'Not yet reviewed'
-      : 'Preview only';
-  const approvalLabel = activeStatement?.approvedBy
-    ? `${activeStatement.approvedBy} | ${printDateLabel(activeStatement.approvedAt)}`
-    : activeStatement
-      ? 'Not yet approved'
-      : 'Preview only';
-  const issuedByLabel = activeStatement?.issuedBy
-    ? `${activeStatement.issuedBy} | ${printDateLabel(activeStatement.issuedAt)}`
-    : activeStatement
-      ? 'Not yet issued'
-      : 'Preview only';
-  const paidByLabel = activeStatement?.paidBy
-    ? `${activeStatement.paidBy} | ${printDateLabel(activeStatement.paidAt)}`
-    : activeStatement
-      ? 'Not yet marked as paid'
-      : 'Preview only';
+  try {
+    const storedReport = storedStatement ? hydrateStoredReport(storedStatement.statementData, previewReport) : null;
+    const report = storedReport ?? previewReport;
+    const activeStatement = storedStatement && storedReport ? storedStatement : null;
+    const statementStatus = statementStatusLabel(activeStatement?.status);
+    const periodEndLabel = printDateLabel(new Date(report.periodEnd.getTime() - 24 * 60 * 60 * 1000));
+    const topDeviceTypeLabel = report.summary.topDeviceType ?? 'Not captured in current telemetry';
+    const totalTaxNaira = report.videos
+      .map((video) => video.taxNaira)
+      .reduce((total, value) => total + value, 0);
+    const paymentDetails = report.summary.paymentDetails;
+    const remittanceLabel = paymentDetails.remittanceDate
+      ? printDateLabel(paymentDetails.remittanceDate)
+      : activeStatement?.status === 'PAID'
+        ? printDateLabel(activeStatement.paidAt)
+        : 'Not remitted in this statement lifecycle';
+    const bankNameLabel = paymentDetails.bankName ?? 'Not recorded on creator payout profile';
+    const accountNameLabel = paymentDetails.accountName ?? 'Not recorded on creator payout profile';
+    const accountNumberLabel = paymentDetails.accountNumber ?? 'Not recorded on creator payout profile';
+    const swiftLabel = paymentDetails.swiftOrRouting ?? 'Not stored for the current payout route';
+    const reviewLabel = activeStatement?.reviewedBy
+      ? `${activeStatement.reviewedBy} | ${printDateLabel(activeStatement.reviewedAt)}`
+      : activeStatement
+        ? 'Not yet reviewed'
+        : 'Preview only';
+    const approvalLabel = activeStatement?.approvedBy
+      ? `${activeStatement.approvedBy} | ${printDateLabel(activeStatement.approvedAt)}`
+      : activeStatement
+        ? 'Not yet approved'
+        : 'Preview only';
+    const issuedByLabel = activeStatement?.issuedBy
+      ? `${activeStatement.issuedBy} | ${printDateLabel(activeStatement.issuedAt)}`
+      : activeStatement
+        ? 'Not yet issued'
+        : 'Preview only';
+    const paidByLabel = activeStatement?.paidBy
+      ? `${activeStatement.paidBy} | ${printDateLabel(activeStatement.paidAt)}`
+      : activeStatement
+        ? 'Not yet marked as paid'
+        : 'Preview only';
 
-  return (
+    return (
     <DashboardShell
       title="Investor reports"
       description="Select one or more movies, build a clean monthly sales brief, and print the result as a polished PDF for investor or licensing conversations."
@@ -1023,5 +1276,9 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
         )}
       </div>
     </DashboardShell>
-  );
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'The report could not be rendered safely for this data snapshot.';
+    return renderReportFallback({ loadError: message, report: previewReport, formatMoney });
+  }
 }
