@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
   createStoredReportStatement,
+  isReportStatementStorageError,
   updateStoredReportStatementStatus
 } from '@/lib/admin-reports';
 import { getAuthFromRequest } from '@/lib/auth';
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to save report statement.' },
-      { status: 400 }
+      { status: isReportStatementStorageError(error) ? 503 : 400 }
     );
   }
 }
@@ -69,7 +70,7 @@ export async function PATCH(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to update report statement status.' },
-      { status: 400 }
+      { status: isReportStatementStorageError(error) ? 503 : 400 }
     );
   }
 }

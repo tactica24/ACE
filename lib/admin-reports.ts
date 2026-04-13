@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { calculateProducerVideoInsights, formatSecondsLabel } from './studio-insights';
 
@@ -120,6 +121,29 @@ type PreviousPeriodRow = {
     grossNaira: number | null;
   };
 };
+
+const REPORT_STATEMENT_STORAGE_ERROR =
+  'Report statement storage is not available yet on this environment. Apply the latest database migration and redeploy.';
+
+function isReportStatementStorageUnavailableError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code === 'P2021' || error.code === 'P2022';
+  }
+
+  if (error instanceof Prisma.PrismaClientUnknownRequestError) {
+    return error.message.includes('ReportStatement') || error.message.includes('ReportStatementItem');
+  }
+
+  if (error instanceof Error) {
+    return error.message.includes('ReportStatement') || error.message.includes('ReportStatementItem');
+  }
+
+  return false;
+}
+
+export function isReportStatementStorageError(error: unknown) {
+  return isReportStatementStorageUnavailableError(error);
+}
 
 function currentMonthKey() {
   return new Date().toISOString().slice(0, 7);
@@ -250,52 +274,70 @@ export function createReportStatementCode(monthKey: string) {
 }
 
 export async function getRecentReportStatements(limit = 8) {
-  return prisma.reportStatement.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    select: {
-      id: true,
-      reportCode: true,
-      status: true,
-      monthKey: true,
-      rightsHolder: true,
-      titleCount: true,
-      currentAmountDueNaira: true,
-      createdAt: true,
-      updatedAt: true
+  try {
+    return await prisma.reportStatement.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        reportCode: true,
+        status: true,
+        monthKey: true,
+        rightsHolder: true,
+        titleCount: true,
+        currentAmountDueNaira: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+  } catch (error) {
+    if (isReportStatementStorageUnavailableError(error)) {
+      return [];
     }
-  });
+
+    throw error;
+  }
 }
 
 export async function getStoredReportStatement(statementId: string) {
-  const statement = await prisma.reportStatement.findUnique({
-    where: { id: statementId },
-    select: {
-      id: true,
-      reportCode: true,
-      status: true,
-      monthKey: true,
-      notes: true,
-      preparedBy: true,
-      reviewedBy: true,
-      reviewedAt: true,
-      approvedBy: true,
-      approvedAt: true,
-      issuedBy: true,
-      issuedAt: true,
-      paidBy: true,
-      paidAt: true,
-      createdAt: true,
-      updatedAt: true,
-      statementData: true
+  let statement: StoredStatementData | null = null;
+
+  try {
+    statement = await prisma.reportStatement.findUnique({
+      where: { id: statementId },
+      select: {
+        id: true,
+        reportCode: true,
+        status: true,
+        monthKey: true,
+        notes: true,
+        preparedBy: true,
+        reviewedBy: true,
+        reviewedAt: true,
+        approvedBy: true,
+        approvedAt: true,
+        issuedBy: true,
+        issuedAt: true,
+        paidBy: true,
+        paidAt: true,
+        createdAt: true,
+        updatedAt: true,
+        statementData: true
+      }
+    }) as StoredStatementData | null;
+  } catch (error) {
+    if (isReportStatementStorageUnavailableError(error)) {
+      return null;
     }
-  });
+
+    throw error;
+  }
 
   if (!statement) {
     return null;
   }
 
-  return statement as StoredStatementData;
+  return statement;
 }
 
 export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = [] }: ReportParams) {
@@ -896,6 +938,11 @@ export async function createStoredReportStatement({
   preparedBy: string;
   notes?: string;
 }) {
+  const selectedIds = selectedVideoIds.map((value) => value.trim()).filter(Boolean);
+  if (selectedIds.length === 0) {
+    throw new Error('Select at least one movie before saving a report statement.');
+  }
+
   const report = await getAdminMonthlyReportData({ monthKey, requestedVideoIds: selectedVideoIds });
   const statementData = serializeSnapshot({
     ...report,
@@ -906,57 +953,67 @@ export async function createStoredReportStatement({
   });
   const reportCode = createReportStatementCode(report.monthKey);
 
-  const statement = await prisma.reportStatement.create({
-    data: {
-      reportCode,
-      monthKey: report.monthKey,
-      reportingEntity: report.summary.reportingEntity,
-      rightsHolder: report.summary.rightsHolder,
-      currency: report.summary.currency,
-      status: 'DRAFT',
-      titleCount: report.summary.titleCount,
-      unlockCount: report.summary.unlockCount,
-      uniqueAccounts: report.summary.uniqueAccounts,
-      watchHours: report.summary.watchHours,
-      grossNaira: report.summary.grossNaira,
-      approvedDeductionsNaira: report.summary.approvedDeductionsNaira,
-      netRevenueNaira: report.summary.netRevenueNaira,
-      licensorSharePercent: report.summary.licensorSharePercent,
-      platformSharePercent: report.summary.platformSharePercent,
-      creatorNaira: report.summary.creatorNaira,
-      platformNaira: report.summary.platformNaira,
-      platformNetNaira: report.summary.platformNetNaira,
-      openingBalanceNaira: report.summary.openingBalanceNaira,
-      amountPreviouslyPaidNaira: report.summary.amountPreviouslyPaidNaira,
-      currentAmountDueNaira: report.summary.currentAmountDueNaira,
-      closingBalanceNaira: report.summary.closingBalanceNaira,
-      exchangeRateLabel: report.summary.exchangeRateLabel,
-      paymentDueLabel: report.summary.paymentDueLabel,
-      activeTerritories: report.summary.activeTerritories,
-      topTerritory: report.summary.topTerritory,
-      topDeviceType: report.summary.topDeviceType,
-      topDeviceTypeStatus: report.summary.topDeviceTypeStatus,
-      promotionalAdjustmentsNote: report.summary.promotionalAdjustmentsLabel,
-      contentStatus: report.summary.contentStatus,
-      preparedBy,
-      notes: notes?.trim() || null,
-      statementData,
-      items: {
-        create: report.videos.map((video) => ({
-          videoId: video.id,
-          title: video.title,
-          territoryLabel: video.topTerritory,
-          periodLabel: report.monthLabel,
-          views: video.uniqueAccounts,
-          watchHours: video.watchHours,
-          revenueBaseNaira: video.netRevenueNaira,
-          sharePercent: video.licensorSharePercent,
-          amountDueNaira: video.creatorNaira,
-          itemData: serializeSnapshot(video)
-        }))
+  let statement;
+
+  try {
+    statement = await prisma.reportStatement.create({
+      data: {
+        reportCode,
+        monthKey: report.monthKey,
+        reportingEntity: report.summary.reportingEntity,
+        rightsHolder: report.summary.rightsHolder,
+        currency: report.summary.currency,
+        status: 'DRAFT',
+        titleCount: report.summary.titleCount,
+        unlockCount: report.summary.unlockCount,
+        uniqueAccounts: report.summary.uniqueAccounts,
+        watchHours: report.summary.watchHours,
+        grossNaira: report.summary.grossNaira,
+        approvedDeductionsNaira: report.summary.approvedDeductionsNaira,
+        netRevenueNaira: report.summary.netRevenueNaira,
+        licensorSharePercent: report.summary.licensorSharePercent,
+        platformSharePercent: report.summary.platformSharePercent,
+        creatorNaira: report.summary.creatorNaira,
+        platformNaira: report.summary.platformNaira,
+        platformNetNaira: report.summary.platformNetNaira,
+        openingBalanceNaira: report.summary.openingBalanceNaira,
+        amountPreviouslyPaidNaira: report.summary.amountPreviouslyPaidNaira,
+        currentAmountDueNaira: report.summary.currentAmountDueNaira,
+        closingBalanceNaira: report.summary.closingBalanceNaira,
+        exchangeRateLabel: report.summary.exchangeRateLabel,
+        paymentDueLabel: report.summary.paymentDueLabel,
+        activeTerritories: report.summary.activeTerritories,
+        topTerritory: report.summary.topTerritory,
+        topDeviceType: report.summary.topDeviceType,
+        topDeviceTypeStatus: report.summary.topDeviceTypeStatus,
+        promotionalAdjustmentsNote: report.summary.promotionalAdjustmentsLabel,
+        contentStatus: report.summary.contentStatus,
+        preparedBy,
+        notes: notes?.trim() || null,
+        statementData,
+        items: {
+          create: report.videos.map((video) => ({
+            videoId: video.id,
+            title: video.title,
+            territoryLabel: video.topTerritory,
+            periodLabel: report.monthLabel,
+            views: video.uniqueAccounts,
+            watchHours: video.watchHours,
+            revenueBaseNaira: video.netRevenueNaira,
+            sharePercent: video.licensorSharePercent,
+            amountDueNaira: video.creatorNaira,
+            itemData: serializeSnapshot(video)
+          }))
+        }
       }
+    });
+  } catch (error) {
+    if (isReportStatementStorageUnavailableError(error)) {
+      throw new Error(REPORT_STATEMENT_STORAGE_ERROR);
     }
-  });
+
+    throw error;
+  }
 
   return { statement, report };
 }
@@ -974,19 +1031,27 @@ export async function updateStoredReportStatementStatus({
 }) {
   const now = new Date();
 
-  return prisma.reportStatement.update({
-    where: { id: statementId },
-    data: {
-      status,
-      notes: notes?.trim() || undefined,
-      reviewedBy: status === 'REVIEWED' ? actor : undefined,
-      reviewedAt: status === 'REVIEWED' ? now : undefined,
-      approvedBy: status === 'APPROVED' ? actor : undefined,
-      approvedAt: status === 'APPROVED' ? now : undefined,
-      issuedBy: status === 'ISSUED' ? actor : undefined,
-      issuedAt: status === 'ISSUED' ? now : undefined,
-      paidBy: status === 'PAID' ? actor : undefined,
-      paidAt: status === 'PAID' ? now : undefined
+  try {
+    return await prisma.reportStatement.update({
+      where: { id: statementId },
+      data: {
+        status,
+        notes: notes?.trim() || undefined,
+        reviewedBy: status === 'REVIEWED' ? actor : undefined,
+        reviewedAt: status === 'REVIEWED' ? now : undefined,
+        approvedBy: status === 'APPROVED' ? actor : undefined,
+        approvedAt: status === 'APPROVED' ? now : undefined,
+        issuedBy: status === 'ISSUED' ? actor : undefined,
+        issuedAt: status === 'ISSUED' ? now : undefined,
+        paidBy: status === 'PAID' ? actor : undefined,
+        paidAt: status === 'PAID' ? now : undefined
+      }
+    });
+  } catch (error) {
+    if (isReportStatementStorageUnavailableError(error)) {
+      throw new Error(REPORT_STATEMENT_STORAGE_ERROR);
     }
-  });
+
+    throw error;
+  }
 }
