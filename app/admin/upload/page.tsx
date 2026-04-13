@@ -1,3 +1,4 @@
+import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminUploadWorkspace from '@/components/AdminUploadWorkspace';
 import { getAdminNavItems } from '@/lib/admin-nav';
@@ -69,30 +70,37 @@ export default async function AdminUploadPage({
         />
       }
     >
-      <AdminUploadWorkspace
-        producers={producers.map((producer) => ({
-          id: producer.id,
-          email: producer.email,
-          displayName: producer.creator?.displayName ?? producer.email,
-          creatorNumber: producer.creator?.creatorNumber ?? null,
-          verified: producer.creator?.verified ?? false
-        }))}
-        seriesOptions={seriesOptions.map((series) => ({
-          id: series.id,
-          creatorId: series.creatorId,
-          title: series.title,
-          status: series.status,
-          priceTier: series.priceTier,
-          rightsTier: series.rightsTier,
-          category: series.category,
-          ageRating: series.ageRating,
-          originalLanguage: series.originalLanguage,
-          audioLanguages: series.audioLanguages,
-          releaseYear: series.releaseYear,
-          episodeCount: series._count.episodes
-        }))}
-        initialProducerId={requestedProducerId || null}
-      />
+      <AdminDisclosureSection
+        title="Upload workspace"
+        description="Choose a producer and expand the full upload form only when you are ready to create or add titles."
+        badge="Upload"
+        defaultOpen
+      >
+        <AdminUploadWorkspace
+          producers={producers.map((producer) => ({
+            id: producer.id,
+            email: producer.email,
+            displayName: producer.creator?.displayName ?? producer.email,
+            creatorNumber: producer.creator?.creatorNumber ?? null,
+            verified: producer.creator?.verified ?? false
+          }))}
+          seriesOptions={seriesOptions.map((series) => ({
+            id: series.id,
+            creatorId: series.creatorId,
+            title: series.title,
+            status: series.status,
+            priceTier: series.priceTier,
+            rightsTier: series.rightsTier,
+            category: series.category,
+            ageRating: series.ageRating,
+            originalLanguage: series.originalLanguage,
+            audioLanguages: series.audioLanguages,
+            releaseYear: series.releaseYear,
+            episodeCount: series._count.episodes
+          }))}
+          initialProducerId={requestedProducerId || null}
+        />
+      </AdminDisclosureSection>
     </DashboardShell>
   );
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import FinanceSettingsForm from '@/components/FinanceSettingsForm';
 import { getAdminNavItems } from '@/lib/admin-nav';
@@ -127,81 +128,96 @@ export default async function AdminFinancePage() {
         </div>
       </div>
 
-      <div className="grid">
-        <div id="finance-settings">
-          <FinanceSettingsForm
-            initialConfig={{
-              creatorSharePercent: config.creatorSharePercent,
-              platformSharePercent: config.platformSharePercent,
-              gatewayFeePercent: config.gatewayFeePercent,
-              taxPercent: config.taxPercent
-            }}
-          />
-        </div>
+      <div className="stack-list">
+        <AdminDisclosureSection
+          title="Finance controls"
+          description="Pricing and split defaults live here so the page opens with overview numbers first."
+          badge="Controls"
+          defaultOpen
+        >
+          <div id="finance-settings">
+            <FinanceSettingsForm
+              initialConfig={{
+                creatorSharePercent: config.creatorSharePercent,
+                platformSharePercent: config.platformSharePercent,
+                gatewayFeePercent: config.gatewayFeePercent,
+                taxPercent: config.taxPercent
+              }}
+            />
+          </div>
+        </AdminDisclosureSection>
 
-        <div className="card">
-          <h3>Top movie impact</h3>
-          {movies.length ? (
-            <div className="stack-list">
-              {movies.map((movie) => (
-                <div key={movie.id} className="stack-row">
-                  <div>
-                    <strong>{movie.title}</strong>
-                    <p className="muted">{movie.creator} | {movie.unlockCount} unlocks</p>
-                  </div>
-                  <span>{formatMoney(movie.grossNaira)}</span>
+        <AdminDisclosureSection
+          title="Finance detail boards"
+          description="Expand for title performance, producer wallet balances, and recent settlement movement."
+          badge="Analysis"
+        >
+          <div className="grid">
+            <div className="card">
+              <h3>Top movie impact</h3>
+              {movies.length ? (
+                <div className="stack-list">
+                  {movies.map((movie) => (
+                    <div key={movie.id} className="stack-row">
+                      <div>
+                        <strong>{movie.title}</strong>
+                        <p className="muted">{movie.creator} | {movie.unlockCount} unlocks</p>
+                      </div>
+                      <span>{formatMoney(movie.grossNaira)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Movie settlement records will appear here after unlocks begin.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Movie settlement records will appear here after unlocks begin.</p>
-          )}
-        </div>
 
-        <div className="card">
-          <h3>Producer wallets</h3>
-          {creators.length ? (
-            <div className="stack-list">
-              {creators.map((creator) => (
-                <div key={creator.creatorNumber ?? creator.user.email} className="stack-row">
-                  <div>
-                    <strong>{creator.displayName}</strong>
-                    <p className="muted">{creator.creatorNumber ?? 'No producer number'} | {creator.user.email}</p>
-                  </div>
-                  <span>{formatMoney(creator.earningsBalanceNaira)}</span>
+            <div className="card">
+              <h3>Producer wallets</h3>
+              {creators.length ? (
+                <div className="stack-list">
+                  {creators.map((creator) => (
+                    <div key={creator.creatorNumber ?? creator.user.email} className="stack-row">
+                      <div>
+                        <strong>{creator.displayName}</strong>
+                        <p className="muted">{creator.creatorNumber ?? 'No producer number'} | {creator.user.email}</p>
+                      </div>
+                      <span>{formatMoney(creator.earningsBalanceNaira)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Producer wallet balances will appear here.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Producer wallet balances will appear here.</p>
-          )}
-        </div>
 
-        <div className="card">
-          <h3>Recent settlement statements</h3>
-          {recentSettlements.length ? (
-            <div className="stack-list">
-              {recentSettlements.map((settlement) => (
-                <div key={settlement.id} className="stack-row">
-                  <div>
-                    <strong>{settlement.video.title}</strong>
-                    <p className="muted">
-                      {settlement.creatorProfile?.displayName ?? 'Unknown producer'} | {settlement.creatorProfile?.creatorNumber ?? 'No producer number'}
-                    </p>
-                  </div>
-                  <span>
-                    Producer {formatMoney(settlement.creatorNaira)} / Platform {formatMoney(settlement.platformNetNaira)}
-                  </span>
-                  {showSettlementLedger ? (
-                    <span className="muted">Settlement ledger: {formatNaira(settlement.creatorNaira)} / {formatNaira(settlement.platformNetNaira)}</span>
-                  ) : null}
+            <div className="card">
+              <h3>Recent settlement statements</h3>
+              {recentSettlements.length ? (
+                <div className="stack-list">
+                  {recentSettlements.map((settlement) => (
+                    <div key={settlement.id} className="stack-row">
+                      <div>
+                        <strong>{settlement.video.title}</strong>
+                        <p className="muted">
+                          {settlement.creatorProfile?.displayName ?? 'Unknown producer'} | {settlement.creatorProfile?.creatorNumber ?? 'No producer number'}
+                        </p>
+                      </div>
+                      <span>
+                        Producer {formatMoney(settlement.creatorNaira)} / Platform {formatMoney(settlement.platformNetNaira)}
+                      </span>
+                      {showSettlementLedger ? (
+                        <span className="muted">Settlement ledger: {formatNaira(settlement.creatorNaira)} / {formatNaira(settlement.platformNetNaira)}</span>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Settlement statements will appear here after viewer unlocks.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Settlement statements will appear here after viewer unlocks.</p>
-          )}
-        </div>
+          </div>
+        </AdminDisclosureSection>
       </div>
     </DashboardShell>
   );

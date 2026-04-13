@@ -148,40 +148,54 @@ function SupportCard({
   const [notes, setNotes] = useState(ticket.adminNotes ?? '');
 
   return (
-    <div className="card">
-      <div className="stack-row" style={{ alignItems: 'flex-start', gap: 16 }}>
-        <div className="stack-list" style={{ gap: 6, flex: 1 }}>
-          <strong>{ticket.subject}</strong>
-          <span className="muted">
-            {supportCategoryLabels[ticket.category]} | {supportStatusLabels[ticket.status]} | {ticket.createdAt}
+    <details className="admin-disclosure">
+      <summary className="admin-disclosure-summary">
+        <div className="admin-disclosure-copy">
+          <span className={`status-chip ${ticket.status === 'RESOLVED' ? 'status-live' : 'status-review'}`}>
+            {supportStatusLabels[ticket.status]}
           </span>
-          <span className="muted">
-            {ticket.user.email} | {ticket.user.phone} | {ticket.user.role} | {ticket.user.signupIntent}
-          </span>
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{ticket.message}</p>
-          <label className="field">
-            <span className="field-label">Admin notes</span>
-            <textarea className="input" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
-          </label>
+          <div>
+            <strong>{ticket.subject}</strong>
+            <p className="muted">
+              {supportCategoryLabels[ticket.category]} | {ticket.user.email} | {ticket.createdAt}
+            </p>
+          </div>
         </div>
-        <div className="action-list" style={{ alignItems: 'stretch' }}>
-          <a
-            className="btn btn-ghost"
-            href={`mailto:${ticket.user.email}?subject=${encodeURIComponent(`Re: ${ticket.subject}`)}`}
-          >
-            Email user
-          </a>
-          <a className="btn btn-ghost" href={`/admin/users/${ticket.user.id}`}>
-            Open support tools
-          </a>
-          <button className="btn btn-ghost" disabled={saving} onClick={() => onSave(ticket.id, 'IN_PROGRESS', notes)}>
-            In progress
-          </button>
-          <button className="btn btn-primary" disabled={saving} onClick={() => onSave(ticket.id, 'RESOLVED', notes)}>
-            Resolve
-          </button>
+        <span className="admin-disclosure-toggle">Open ticket</span>
+      </summary>
+      <div className="admin-disclosure-body">
+        <div className="card">
+          <div className="stack-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+            <div className="stack-list" style={{ gap: 6, flex: 1 }}>
+              <span className="muted">
+                {ticket.user.email} | {ticket.user.phone} | {ticket.user.role} | {ticket.user.signupIntent}
+              </span>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{ticket.message}</p>
+              <label className="field">
+                <span className="field-label">Admin notes</span>
+                <textarea className="input" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+              </label>
+            </div>
+            <div className="action-list" style={{ alignItems: 'stretch' }}>
+              <a
+                className="btn btn-ghost"
+                href={`mailto:${ticket.user.email}?subject=${encodeURIComponent(`Re: ${ticket.subject}`)}`}
+              >
+                Email user
+              </a>
+              <a className="btn btn-ghost" href={`/admin/users/${ticket.user.id}`}>
+                Open support tools
+              </a>
+              <button className="btn btn-ghost" disabled={saving} onClick={() => onSave(ticket.id, 'IN_PROGRESS', notes)}>
+                In progress
+              </button>
+              <button className="btn btn-primary" disabled={saving} onClick={() => onSave(ticket.id, 'RESOLVED', notes)}>
+                Resolve
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </details>
   );
 }

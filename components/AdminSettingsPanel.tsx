@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState, type ChangeEvent } from 'react';
+import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import { prepareSignatureUpload, uploadContractSignatureAsset } from '@/lib/signature-upload-client';
 
 type FinanceSettings = {
@@ -136,99 +137,112 @@ export default function AdminSettingsPanel({
   };
 
   return (
-    <div className="grid">
-      <div className="card" id="site-controls">
-        <h3>Public launch and contract controls</h3>
-        <div className="detail-grid">
-          <label className="field">
-            <span className="field-label">Homepage mode</span>
-            <select className="input" value={site.homePageMode} onChange={(event) => setSite((current) => ({ ...current, homePageMode: event.target.value as 'LIVE' | 'LAUNCH' }))}>
-              <option value="LIVE">Live</option>
-              <option value="LAUNCH">Launch / under construction</option>
-            </select>
-          </label>
-          <label className="field">
-            <span className="field-label">Launch title</span>
-            <input className="input" value={site.launchTitle} onChange={(event) => setSite((current) => ({ ...current, launchTitle: event.target.value }))} />
-          </label>
-          <label className="field" style={{ gridColumn: '1 / -1' }}>
-            <span className="field-label">Launch message</span>
-            <textarea className="input" rows={4} value={site.launchMessage} onChange={(event) => setSite((current) => ({ ...current, launchMessage: event.target.value }))} />
-          </label>
-          <label className="field">
-            <span className="field-label">Countdown date</span>
-            <input className="input" type="datetime-local" value={site.launchCountdownAt} onChange={(event) => setSite((current) => ({ ...current, launchCountdownAt: event.target.value }))} />
-          </label>
-          <label className="field">
-            <span className="field-label">CTA label</span>
-            <input className="input" value={site.launchCtaLabel} onChange={(event) => setSite((current) => ({ ...current, launchCtaLabel: event.target.value }))} />
-          </label>
-          <label className="field">
-            <span className="field-label">CTA link</span>
-            <input className="input" value={site.launchCtaHref} onChange={(event) => setSite((current) => ({ ...current, launchCtaHref: event.target.value }))} />
-          </label>
-          <label className="field">
-            <span className="field-label">ACE Studio signature</span>
-            <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSignatureUpload} disabled={signatureUploading} />
-            <span className="field-hint">Upload a clean signature on white paper. It will be flattened to JPEG for the contract preview and PDF.</span>
-          </label>
-        </div>
-        <div className="signature-upload-card" style={{ marginTop: 16 }}>
-          <div>
-            <strong>Contract signature preview</strong>
-            <p className="muted" style={{ margin: '6px 0 0' }}>
-              {site.platformSignatureKey ? 'This signature will be placed above the ACE Studio line on new signed documents.' : 'No ACE Studio signature has been uploaded yet. The document will fall back to the typed ACE Studio name until you upload one.'}
-            </p>
-          </div>
-          <div className="signature-upload-preview">
-            {site.platformSignaturePreviewUrl ? (
-              <Image
-                src={site.platformSignaturePreviewUrl}
-                alt="ACE Studio signature preview"
-                width={220}
-                height={82}
-                unoptimized
-              />
-            ) : (
-              <span>ACE Studio</span>
-            )}
-          </div>
-        </div>
-        {site.launchCountdownAt ? (
-          <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
-            Countdown preview: {site.launchCountdownAt.replace('T', ' ')}
-          </p>
-        ) : null}
-        <div className="moderation-actions" style={{ marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={saveSite} disabled={saving === 'site' || signatureUploading}>
-            {saving === 'site' ? 'Saving...' : signatureUploading ? 'Uploading signature...' : 'Save launch and contract controls'}
-          </button>
-        </div>
-      </div>
-
-      <div className="card" id="pricing-controls">
-        <h3>Catalog pricing controls</h3>
-        <p className="muted">Change tier prices here without editing code. Producers can still choose tiers per title, and admins can adjust a specific title in moderation before approval.</p>
-        <div className="detail-grid">
-          {pricingFields.map(({ key, label }) => (
-            <label key={key} className="field">
-              <span className="field-label">{label}</span>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                value={finance[key]}
-                onChange={(event) => setFinance((current) => ({ ...current, [key]: Math.max(0, Number(event.target.value || '0')) }))}
-              />
+    <div className="stack-list">
+      <AdminDisclosureSection
+        title="Launch and contract controls"
+        description="Homepage launch messaging and the ACE Studio signature are grouped here instead of always staying expanded."
+        badge="Site"
+        defaultOpen
+      >
+        <div className="card" id="site-controls">
+          <h3>Public launch and contract controls</h3>
+          <div className="detail-grid">
+            <label className="field">
+              <span className="field-label">Homepage mode</span>
+              <select className="input" value={site.homePageMode} onChange={(event) => setSite((current) => ({ ...current, homePageMode: event.target.value as 'LIVE' | 'LAUNCH' }))}>
+                <option value="LIVE">Live</option>
+                <option value="LAUNCH">Launch / under construction</option>
+              </select>
             </label>
-          ))}
+            <label className="field">
+              <span className="field-label">Launch title</span>
+              <input className="input" value={site.launchTitle} onChange={(event) => setSite((current) => ({ ...current, launchTitle: event.target.value }))} />
+            </label>
+            <label className="field" style={{ gridColumn: '1 / -1' }}>
+              <span className="field-label">Launch message</span>
+              <textarea className="input" rows={4} value={site.launchMessage} onChange={(event) => setSite((current) => ({ ...current, launchMessage: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span className="field-label">Countdown date</span>
+              <input className="input" type="datetime-local" value={site.launchCountdownAt} onChange={(event) => setSite((current) => ({ ...current, launchCountdownAt: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span className="field-label">CTA label</span>
+              <input className="input" value={site.launchCtaLabel} onChange={(event) => setSite((current) => ({ ...current, launchCtaLabel: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span className="field-label">CTA link</span>
+              <input className="input" value={site.launchCtaHref} onChange={(event) => setSite((current) => ({ ...current, launchCtaHref: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span className="field-label">ACE Studio signature</span>
+              <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSignatureUpload} disabled={signatureUploading} />
+              <span className="field-hint">Upload a clean signature on white paper. It will be flattened to JPEG for the contract preview and PDF.</span>
+            </label>
+          </div>
+          <div className="signature-upload-card" style={{ marginTop: 16 }}>
+            <div>
+              <strong>Contract signature preview</strong>
+              <p className="muted" style={{ margin: '6px 0 0' }}>
+                {site.platformSignatureKey ? 'This signature will be placed above the ACE Studio line on new signed documents.' : 'No ACE Studio signature has been uploaded yet. The document will fall back to the typed ACE Studio name until you upload one.'}
+              </p>
+            </div>
+            <div className="signature-upload-preview">
+              {site.platformSignaturePreviewUrl ? (
+                <Image
+                  src={site.platformSignaturePreviewUrl}
+                  alt="ACE Studio signature preview"
+                  width={220}
+                  height={82}
+                  unoptimized
+                />
+              ) : (
+                <span>ACE Studio</span>
+              )}
+            </div>
+          </div>
+          {site.launchCountdownAt ? (
+            <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
+              Countdown preview: {site.launchCountdownAt.replace('T', ' ')}
+            </p>
+          ) : null}
+          <div className="moderation-actions" style={{ marginTop: 16 }}>
+            <button className="btn btn-primary" onClick={saveSite} disabled={saving === 'site' || signatureUploading}>
+              {saving === 'site' ? 'Saving...' : signatureUploading ? 'Uploading signature...' : 'Save launch and contract controls'}
+            </button>
+          </div>
         </div>
-        <div className="moderation-actions" style={{ marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={saveFinance} disabled={saving === 'finance'}>
-            {saving === 'finance' ? 'Saving...' : 'Save pricing controls'}
-          </button>
+      </AdminDisclosureSection>
+
+      <AdminDisclosureSection
+        title="Pricing controls"
+        description="The full multi-currency pricing table is now tucked away until you need to edit it."
+        badge="Pricing"
+      >
+        <div className="card" id="pricing-controls">
+          <h3>Catalog pricing controls</h3>
+          <p className="muted">Change tier prices here without editing code. Producers can still choose tiers per title, and admins can adjust a specific title in moderation before approval.</p>
+          <div className="detail-grid">
+            {pricingFields.map(({ key, label }) => (
+              <label key={key} className="field">
+                <span className="field-label">{label}</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={finance[key]}
+                  onChange={(event) => setFinance((current) => ({ ...current, [key]: Math.max(0, Number(event.target.value || '0')) }))}
+                />
+              </label>
+            ))}
+          </div>
+          <div className="moderation-actions" style={{ marginTop: 16 }}>
+            <button className="btn btn-primary" onClick={saveFinance} disabled={saving === 'finance'}>
+              {saving === 'finance' ? 'Saving...' : 'Save pricing controls'}
+            </button>
+          </div>
         </div>
-      </div>
+      </AdminDisclosureSection>
 
       {feedback ? <p className="muted form-message">{feedback}</p> : null}
     </div>

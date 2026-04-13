@@ -1,3 +1,4 @@
+import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminSupportInbox, { type AdminSupportTicketRow } from '@/components/AdminSupportInbox';
 import { getAdminNavItems } from '@/lib/admin-nav';
@@ -81,9 +82,16 @@ export default async function AdminSupportPage() {
           <strong>{initialTickets.filter((ticket) => ticket.user.signupIntent === 'CREATOR').length}</strong>
         </div>
       </div>
-      <div id="support-queue">
-        <AdminSupportInbox initialTickets={initialTickets} />
-      </div>
+      <AdminDisclosureSection
+        title="Support queue"
+        description="Expand to search, filter, and work through individual support tickets."
+        badge="Queue"
+        defaultOpen
+      >
+        <div id="support-queue">
+          <AdminSupportInbox initialTickets={initialTickets} />
+        </div>
+      </AdminDisclosureSection>
     </DashboardShell>
   );
 }

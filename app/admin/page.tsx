@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import AdminOpsPanel from '@/components/AdminOpsPanel';
+import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import AdminWorkspacePanel from '@/components/AdminWorkspacePanel';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import InfrastructureReadiness from '@/components/InfrastructureReadiness';
@@ -363,308 +364,329 @@ export default async function AdminPage() {
           </span>
         </div>
         <div className="metric-card">
-          <span className="muted">Resume sessions</span>
-          <strong>{watchingUsers}</strong>
-          <span className="trend-up">Users with unfinished progress</span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Successful payments</span>
-          <strong>{successfulPayments}</strong>
-          <span className="trend-up">Completed commerce events</span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Failed payments</span>
-          <strong>{failedPayments}</strong>
-          <span className={failedPayments > 0 ? 'trend-warn' : 'trend-up'}>
-            {failedPayments > 0 ? 'Needs payment support follow-up' : 'Payments are resolving cleanly'}
-          </span>
-        </div>
-        <div className="metric-card">
           <span className="muted">Revenue</span>
           <strong>{formatMoney(totalRevenue)}</strong>
           <span className="trend-up">Gross successful payments</span>
         </div>
-        <div className="metric-card">
-          <span className="muted">App commission wallet</span>
-          <strong>{formatMoney(platformBalance)}</strong>
-          <span className="trend-up">Platform net after deductions</span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Settled platform net</span>
-          <strong>{formatMoney(platformNetSettled)}</strong>
-          <span className="trend-up">Recorded commission share from unlocks</span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Producer balances held</span>
-          <strong>{formatMoney(producerEarningsHeld)}</strong>
-          <span className="trend-up">Outstanding producer earnings</span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Open support</span>
-          <strong>{openSupport}</strong>
-          <span className={openSupport > 10 ? 'trend-warn' : 'trend-up'}>
-            {openSupport > 10 ? 'Support queue needs attention' : 'Support queue stable'}
-          </span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Producer approvals</span>
-          <strong>{creatorVerificationBacklog}</strong>
-          <span className={creatorVerificationBacklog > 0 ? 'trend-warn' : 'trend-up'}>
-            {creatorVerificationBacklog > 0 ? 'Profiles waiting for admin approval' : 'Producer approvals are current'}
-          </span>
-        </div>
-        <div className="metric-card">
-          <span className="muted">Safety-sensitive titles</span>
-          <strong>{safetySensitiveTitles}</strong>
-          <span className="trend-up">Adult-rated or warning-heavy approved titles</span>
-        </div>
       </div>
 
-      <div className="grid">
-        <AdminOpsPanel initialSummary={reconciliationSummary} />
-
-        <div className="card">
-          <h3>Priority queues</h3>
-          <p className="muted">Work the highest-impact queues first so money, moderation, and support stay under control.</p>
-          <div className="action-list">
-            <Link className="btn btn-primary" href="/admin/payments">Payout approvals</Link>
-            <Link className="btn btn-ghost" href="/admin/moderation">Catalog moderation</Link>
-            <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
-            <Link className="btn btn-ghost" href="/admin/support">Support interventions</Link>
-            <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
-            <Link className="btn btn-ghost" href="/admin/users">User control center</Link>
-          </div>
-          <div className="detail-grid" style={{ marginTop: 14 }}>
-            <div className="detail-card">
-              <span className="detail-label">Pending payouts</span>
-              <strong>{pendingPayouts}</strong>
+      <div className="stack-list">
+        <AdminDisclosureSection
+          title="Operational metrics"
+          description="Expand for the full platform KPI board, including support, finance, approvals, and safety indicators."
+          badge="Metrics"
+        >
+          <div className="metric-grid">
+            <div className="metric-card">
+              <span className="muted">Resume sessions</span>
+              <strong>{watchingUsers}</strong>
+              <span className="trend-up">Users with unfinished progress</span>
             </div>
-            <div className="detail-card">
-              <span className="detail-label">Support waiting</span>
-              <strong>{openSupport}</strong>
+            <div className="metric-card">
+              <span className="muted">Successful payments</span>
+              <strong>{successfulPayments}</strong>
+              <span className="trend-up">Completed commerce events</span>
             </div>
-            <div className="detail-card">
-              <span className="detail-label">Pending moderation</span>
-              <strong>{pendingModeration}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Producer approvals</span>
-              <strong>{creatorVerificationBacklog}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Commission wallet</span>
-              <strong>{formatMoney(platformBalance)}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Failed payments</span>
+            <div className="metric-card">
+              <span className="muted">Failed payments</span>
               <strong>{failedPayments}</strong>
+              <span className={failedPayments > 0 ? 'trend-warn' : 'trend-up'}>
+                {failedPayments > 0 ? 'Needs payment support follow-up' : 'Payments are resolving cleanly'}
+              </span>
             </div>
-            <div className="detail-card">
-              <span className="detail-label">Stale pending payments</span>
-              <strong>{reconciliationSummary.stalePendingPayments}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Realtime platform health</h3>
-          <div className="detail-grid">
-            <div className="detail-card">
-              <span className="detail-label">Node</span>
-              <strong>{nodeHealth.nodeName}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Region</span>
-              <strong>{nodeHealth.region}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">CPU load</span>
-              <strong>{(nodeHealth.cpuLoad * 100).toFixed(0)}%</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Memory</span>
-              <strong>{(nodeHealth.memoryUsed * 100).toFixed(0)}%</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Cache hit</span>
-              <strong>{(nodeHealth.cacheHitRate * 100).toFixed(0)}%</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Disk free</span>
-              <strong>{nodeHealth.diskFreeGb.toFixed(1)} GB</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid">
-        <div className="card">
-          <h3>Commerce watchlist</h3>
-          <p className="muted">Recent payment movement and anything that needs follow-up from finance or support.</p>
-          <div className="detail-grid">
-            <div className="detail-card">
-              <span className="detail-label">Pending payouts</span>
-              <strong>{pendingPayouts}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Failed payments</span>
-              <strong>{failedPayments}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Revenue</span>
-              <strong>{formatMoney(totalRevenue)}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Stale pending payments</span>
-              <strong>{reconciliationSummary.stalePendingPayments}</strong>
-            </div>
-            <div className="detail-card">
-              <span className="detail-label">Commission wallet</span>
+            <div className="metric-card">
+              <span className="muted">App commission wallet</span>
               <strong>{formatMoney(platformBalance)}</strong>
+              <span className="trend-up">Platform net after deductions</span>
             </div>
-            <div className="detail-card">
-              <span className="detail-label">Producer balances held</span>
+            <div className="metric-card">
+              <span className="muted">Settled platform net</span>
+              <strong>{formatMoney(platformNetSettled)}</strong>
+              <span className="trend-up">Recorded commission share from unlocks</span>
+            </div>
+            <div className="metric-card">
+              <span className="muted">Producer balances held</span>
               <strong>{formatMoney(producerEarningsHeld)}</strong>
+              <span className="trend-up">Outstanding producer earnings</span>
+            </div>
+            <div className="metric-card">
+              <span className="muted">Open support</span>
+              <strong>{openSupport}</strong>
+              <span className={openSupport > 10 ? 'trend-warn' : 'trend-up'}>
+                {openSupport > 10 ? 'Support queue needs attention' : 'Support queue stable'}
+              </span>
+            </div>
+            <div className="metric-card">
+              <span className="muted">Producer approvals</span>
+              <strong>{creatorVerificationBacklog}</strong>
+              <span className={creatorVerificationBacklog > 0 ? 'trend-warn' : 'trend-up'}>
+                {creatorVerificationBacklog > 0 ? 'Profiles waiting for admin approval' : 'Producer approvals are current'}
+              </span>
+            </div>
+            <div className="metric-card">
+              <span className="muted">Safety-sensitive titles</span>
+              <strong>{safetySensitiveTitles}</strong>
+              <span className="trend-up">Adult-rated or warning-heavy approved titles</span>
             </div>
           </div>
-          <div className="stack-list" style={{ marginTop: 16 }}>
-            {recentPayments.length ? (
-              recentPayments.map((payment) => (
-                <div key={payment.reference} className="stack-row">
-                  <div>
-                    <strong>{payment.reference}</strong>
-                    <p className="muted">{payment.gateway} | {payment.status}</p>
-                  </div>
-                  <span className="muted">{formatMoney(payment.amountNaira)}</span>
-                </div>
-              ))
-            ) : (
-              <p className="muted">Recent commerce activity will appear here.</p>
-            )}
-          </div>
-          {recentFailedPayments.length ? (
-            <>
-              <h4 style={{ marginTop: 18, marginBottom: 12 }}>Recent payment failures</h4>
-              <div className="stack-list">
-                {recentFailedPayments.map((payment) => (
-                  <div key={payment.reference} className="stack-row">
-                    <div>
-                      <strong>{payment.reference}</strong>
-                      <p className="muted">{payment.userEmail}</p>
-                    </div>
-                    <span className="muted">{formatMoney(payment.amountNaira)}</span>
-                  </div>
-                ))}
+        </AdminDisclosureSection>
+
+        <AdminDisclosureSection
+          title="Queues and system health"
+          description="Open this when you need the full queue board, reconciliation controls, and realtime node health."
+          badge="Ops"
+        >
+          <div className="grid">
+            <AdminOpsPanel initialSummary={reconciliationSummary} />
+
+            <div className="card">
+              <h3>Priority queues</h3>
+              <p className="muted">Work the highest-impact queues first so money, moderation, and support stay under control.</p>
+              <div className="action-list">
+                <Link className="btn btn-primary" href="/admin/payments">Payout approvals</Link>
+                <Link className="btn btn-ghost" href="/admin/moderation">Catalog moderation</Link>
+                <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
+                <Link className="btn btn-ghost" href="/admin/support">Support interventions</Link>
+                <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
+                <Link className="btn btn-ghost" href="/admin/users">User control center</Link>
               </div>
-            </>
-          ) : null}
-        </div>
-
-        <div className="card">
-          <h3>Most opened titles</h3>
-          {topUnlockedTitles.length ? (
-            <div className="stack-list">
-              {topUnlockedTitles.map((item) => (
-                <div key={item.title} className="stack-row">
-                  <strong>{item.title}</strong>
-                  <span className="badge">{item.unlocks} unlocks</span>
+              <div className="detail-grid" style={{ marginTop: 14 }}>
+                <div className="detail-card">
+                  <span className="detail-label">Pending payouts</span>
+                  <strong>{pendingPayouts}</strong>
                 </div>
-              ))}
+                <div className="detail-card">
+                  <span className="detail-label">Support waiting</span>
+                  <strong>{openSupport}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Pending moderation</span>
+                  <strong>{pendingModeration}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Producer approvals</span>
+                  <strong>{creatorVerificationBacklog}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Commission wallet</span>
+                  <strong>{formatMoney(platformBalance)}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Failed payments</span>
+                  <strong>{failedPayments}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Stale pending payments</span>
+                  <strong>{reconciliationSummary.stalePendingPayments}</strong>
+                </div>
+              </div>
             </div>
-          ) : (
-            <p className="muted">Unlock activity will appear here as viewers keep watching.</p>
-          )}
-        </div>
 
-        <div className="card">
-          <h3>Live viewing sessions</h3>
-          {liveSessions.length ? (
-            <div className="stack-list">
-              {liveSessions.map((session) => (
-                <div key={session.id} className="stack-row">
-                  <div>
-                    <strong>{session.videoTitle}</strong>
-                    <p className="muted">{session.userEmail} | {session.deviceSessionId.slice(0, 8)}</p>
+            <div className="card">
+              <h3>Realtime platform health</h3>
+              <div className="detail-grid">
+                <div className="detail-card">
+                  <span className="detail-label">Node</span>
+                  <strong>{nodeHealth.nodeName}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Region</span>
+                  <strong>{nodeHealth.region}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">CPU load</span>
+                  <strong>{(nodeHealth.cpuLoad * 100).toFixed(0)}%</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Memory</span>
+                  <strong>{(nodeHealth.memoryUsed * 100).toFixed(0)}%</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Cache hit</span>
+                  <strong>{(nodeHealth.cacheHitRate * 100).toFixed(0)}%</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Disk free</span>
+                  <strong>{nodeHealth.diskFreeGb.toFixed(1)} GB</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </AdminDisclosureSection>
+
+        <AdminDisclosureSection
+          title="Activity feeds"
+          description="Recent commerce, viewing, uploads, support, and producer approval queues are tucked here for when you need a deeper read."
+          badge="Feeds"
+        >
+          <div className="grid">
+            <div className="card">
+              <h3>Commerce watchlist</h3>
+              <p className="muted">Recent payment movement and anything that needs follow-up from finance or support.</p>
+              <div className="detail-grid">
+                <div className="detail-card">
+                  <span className="detail-label">Pending payouts</span>
+                  <strong>{pendingPayouts}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Failed payments</span>
+                  <strong>{failedPayments}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Revenue</span>
+                  <strong>{formatMoney(totalRevenue)}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Stale pending payments</span>
+                  <strong>{reconciliationSummary.stalePendingPayments}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Commission wallet</span>
+                  <strong>{formatMoney(platformBalance)}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Producer balances held</span>
+                  <strong>{formatMoney(producerEarningsHeld)}</strong>
+                </div>
+              </div>
+              <div className="stack-list" style={{ marginTop: 16 }}>
+                {recentPayments.length ? (
+                  recentPayments.map((payment) => (
+                    <div key={payment.reference} className="stack-row">
+                      <div>
+                        <strong>{payment.reference}</strong>
+                        <p className="muted">{payment.gateway} | {payment.status}</p>
+                      </div>
+                      <span className="muted">{formatMoney(payment.amountNaira)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">Recent commerce activity will appear here.</p>
+                )}
+              </div>
+              {recentFailedPayments.length ? (
+                <>
+                  <h4 style={{ marginTop: 18, marginBottom: 12 }}>Recent payment failures</h4>
+                  <div className="stack-list">
+                    {recentFailedPayments.map((payment) => (
+                      <div key={payment.reference} className="stack-row">
+                        <div>
+                          <strong>{payment.reference}</strong>
+                          <p className="muted">{payment.userEmail}</p>
+                        </div>
+                        <span className="muted">{formatMoney(payment.amountNaira)}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="muted">{session.lastSeenAt.toISOString().slice(11, 16)} UTC</span>
-                </div>
-              ))}
+                </>
+              ) : null}
             </div>
-          ) : (
-            <p className="muted">Live playback sessions will appear here when viewers are active.</p>
-          )}
-        </div>
-      </div>
 
-      <div className="grid">
-        <div className="card">
-          <h3>Recent uploads</h3>
-          {recentTitles.length ? (
-            <div className="stack-list">
-              {recentTitles.map((video) => (
-                <div key={video.id} className="stack-row">
-                  <div>
-                    <strong>{video.title}</strong>
-                    <p className="muted">{video.createdAt.toISOString().slice(0, 10)}</p>
-                  </div>
-                  <span className={`status-chip ${video.status === 'APPROVED' ? 'status-live' : 'status-review'}`}>{video.status}</span>
+            <div className="card">
+              <h3>Most opened titles</h3>
+              {topUnlockedTitles.length ? (
+                <div className="stack-list">
+                  {topUnlockedTitles.map((item) => (
+                    <div key={item.title} className="stack-row">
+                      <strong>{item.title}</strong>
+                      <span className="badge">{item.unlocks} unlocks</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Unlock activity will appear here as viewers keep watching.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Uploads will appear here as producers submit titles.</p>
-          )}
-        </div>
 
-        <div className="card">
-          <h3>Recent support cases</h3>
-          {supportHotspots.length ? (
-            <div className="detail-badges" style={{ marginBottom: 12 }}>
-              {supportHotspots.map((item) => (
-                <span key={item.category} className="badge">{item.category} {item.total}</span>
-              ))}
-            </div>
-          ) : null}
-          {recentSupportTickets.length ? (
-            <div className="stack-list">
-              {recentSupportTickets.map((ticket) => (
-                <div key={ticket.id} className="stack-row">
-                  <div>
-                    <strong>{ticket.subject}</strong>
-                    <p className="muted">{ticket.category} | {ticket.userEmail} | {ticket.userPhone}</p>
-                  </div>
-                  <span className={`status-chip ${ticket.status === 'RESOLVED' ? 'status-live' : 'status-review'}`}>{ticket.status}</span>
+            <div className="card">
+              <h3>Live viewing sessions</h3>
+              {liveSessions.length ? (
+                <div className="stack-list">
+                  {liveSessions.map((session) => (
+                    <div key={session.id} className="stack-row">
+                      <div>
+                        <strong>{session.videoTitle}</strong>
+                        <p className="muted">{session.userEmail} | {session.deviceSessionId.slice(0, 8)}</p>
+                      </div>
+                      <span className="muted">{session.lastSeenAt.toISOString().slice(11, 16)} UTC</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Live playback sessions will appear here when viewers are active.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Open support cases will appear here.</p>
-          )}
-        </div>
 
-        <div className="card">
-          <h3>Producer approval queue</h3>
-          {creatorVerificationQueue.length ? (
-            <div className="stack-list">
-              {creatorVerificationQueue.map((creator) => (
-                <div key={creator.id} className="stack-row">
-                  <div>
-                    <strong>{creator.displayName}</strong>
-                    <p className="muted">{creator.email} | {creator.phone}</p>
-                    <p className="muted">
-                      Identity {creator.idVerified ? 'ok' : 'pending'} | NIN {creator.ninVerified ? 'ok' : 'pending'} | Bank {creator.bankVerified ? 'ok' : 'pending'}
-                    </p>
-                  </div>
-                  <span className={`status-chip ${creator.verified ? 'status-live' : 'status-review'}`}>
-                    {creator.verified ? 'Verified' : 'Needs review'}
-                  </span>
+            <div className="card">
+              <h3>Recent uploads</h3>
+              {recentTitles.length ? (
+                <div className="stack-list">
+                  {recentTitles.map((video) => (
+                    <div key={video.id} className="stack-row">
+                      <div>
+                        <strong>{video.title}</strong>
+                        <p className="muted">{video.createdAt.toISOString().slice(0, 10)}</p>
+                      </div>
+                      <span className={`status-chip ${video.status === 'APPROVED' ? 'status-live' : 'status-review'}`}>{video.status}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="muted">Uploads will appear here as producers submit titles.</p>
+              )}
             </div>
-          ) : (
-            <p className="muted">Producer approval backlog is clear.</p>
-          )}
-        </div>
+
+            <div className="card">
+              <h3>Recent support cases</h3>
+              {supportHotspots.length ? (
+                <div className="detail-badges" style={{ marginBottom: 12 }}>
+                  {supportHotspots.map((item) => (
+                    <span key={item.category} className="badge">{item.category} {item.total}</span>
+                  ))}
+                </div>
+              ) : null}
+              {recentSupportTickets.length ? (
+                <div className="stack-list">
+                  {recentSupportTickets.map((ticket) => (
+                    <div key={ticket.id} className="stack-row">
+                      <div>
+                        <strong>{ticket.subject}</strong>
+                        <p className="muted">{ticket.category} | {ticket.userEmail} | {ticket.userPhone}</p>
+                      </div>
+                      <span className={`status-chip ${ticket.status === 'RESOLVED' ? 'status-live' : 'status-review'}`}>{ticket.status}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">Open support cases will appear here.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Producer approval queue</h3>
+              {creatorVerificationQueue.length ? (
+                <div className="stack-list">
+                  {creatorVerificationQueue.map((creator) => (
+                    <div key={creator.id} className="stack-row">
+                      <div>
+                        <strong>{creator.displayName}</strong>
+                        <p className="muted">{creator.email} | {creator.phone}</p>
+                        <p className="muted">
+                          Identity {creator.idVerified ? 'ok' : 'pending'} | NIN {creator.ninVerified ? 'ok' : 'pending'} | Bank {creator.bankVerified ? 'ok' : 'pending'}
+                        </p>
+                      </div>
+                      <span className={`status-chip ${creator.verified ? 'status-live' : 'status-review'}`}>
+                        {creator.verified ? 'Verified' : 'Needs review'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">Producer approval backlog is clear.</p>
+              )}
+            </div>
+          </div>
+        </AdminDisclosureSection>
       </div>
     </DashboardShell>
   );

@@ -54,6 +54,99 @@ function printDateLabel(date: Date | string | null | undefined) {
   }).format(parsedDate);
 }
 
+function normalizeStoredVideoSnapshot(
+  video: unknown,
+  fallbackVideo?: MonthlyReportSnapshot['videos'][number]
+) {
+  if (!video || typeof video !== 'object') {
+    return fallbackVideo ?? null;
+  }
+
+  const snapshotVideo = video as Record<string, unknown>;
+  const latestContractValue =
+    snapshotVideo.latestContract && typeof snapshotVideo.latestContract === 'object'
+      ? (snapshotVideo.latestContract as Record<string, unknown>)
+      : null;
+
+  return {
+    ...(fallbackVideo ?? {}),
+    ...snapshotVideo,
+    unlockCount: typeof snapshotVideo.unlockCount === 'number' ? snapshotVideo.unlockCount : fallbackVideo?.unlockCount ?? 0,
+    trackedPurchasers:
+      typeof snapshotVideo.trackedPurchasers === 'number' ? snapshotVideo.trackedPurchasers : fallbackVideo?.trackedPurchasers ?? 0,
+    uniqueAccounts: typeof snapshotVideo.uniqueAccounts === 'number' ? snapshotVideo.uniqueAccounts : fallbackVideo?.uniqueAccounts ?? 0,
+    fullMovieStarters:
+      typeof snapshotVideo.fullMovieStarters === 'number' ? snapshotVideo.fullMovieStarters : fallbackVideo?.fullMovieStarters ?? 0,
+    completionCount:
+      typeof snapshotVideo.completionCount === 'number' ? snapshotVideo.completionCount : fallbackVideo?.completionCount ?? 0,
+    completionRate:
+      typeof snapshotVideo.completionRate === 'number' ? snapshotVideo.completionRate : fallbackVideo?.completionRate ?? 0,
+    cohortWatchRate:
+      typeof snapshotVideo.cohortWatchRate === 'number' ? snapshotVideo.cohortWatchRate : fallbackVideo?.cohortWatchRate ?? 0,
+    averageWatchPercent:
+      typeof snapshotVideo.averageWatchPercent === 'number' ? snapshotVideo.averageWatchPercent : fallbackVideo?.averageWatchPercent ?? 0,
+    watchHours: typeof snapshotVideo.watchHours === 'number' ? snapshotVideo.watchHours : fallbackVideo?.watchHours ?? 0,
+    activeTerritories:
+      typeof snapshotVideo.activeTerritories === 'number' ? snapshotVideo.activeTerritories : fallbackVideo?.activeTerritories ?? 0,
+    grossNaira: typeof snapshotVideo.grossNaira === 'number' ? snapshotVideo.grossNaira : fallbackVideo?.grossNaira ?? 0,
+    creatorNaira: typeof snapshotVideo.creatorNaira === 'number' ? snapshotVideo.creatorNaira : fallbackVideo?.creatorNaira ?? 0,
+    platformNaira: typeof snapshotVideo.platformNaira === 'number' ? snapshotVideo.platformNaira : fallbackVideo?.platformNaira ?? 0,
+    platformNetNaira:
+      typeof snapshotVideo.platformNetNaira === 'number' ? snapshotVideo.platformNetNaira : fallbackVideo?.platformNetNaira ?? 0,
+    gatewayFeeNaira:
+      typeof snapshotVideo.gatewayFeeNaira === 'number' ? snapshotVideo.gatewayFeeNaira : fallbackVideo?.gatewayFeeNaira ?? 0,
+    taxNaira: typeof snapshotVideo.taxNaira === 'number' ? snapshotVideo.taxNaira : fallbackVideo?.taxNaira ?? 0,
+    referralNaira: typeof snapshotVideo.referralNaira === 'number' ? snapshotVideo.referralNaira : fallbackVideo?.referralNaira ?? 0,
+    netRevenueNaira:
+      typeof snapshotVideo.netRevenueNaira === 'number' ? snapshotVideo.netRevenueNaira : fallbackVideo?.netRevenueNaira ?? 0,
+    approvedDeductionsNaira:
+      typeof snapshotVideo.approvedDeductionsNaira === 'number'
+        ? snapshotVideo.approvedDeductionsNaira
+        : fallbackVideo?.approvedDeductionsNaira ?? 0,
+    licensorSharePercent:
+      typeof snapshotVideo.licensorSharePercent === 'number'
+        ? snapshotVideo.licensorSharePercent
+        : fallbackVideo?.licensorSharePercent ?? 0,
+    platformSharePercent:
+      typeof snapshotVideo.platformSharePercent === 'number'
+        ? snapshotVideo.platformSharePercent
+        : fallbackVideo?.platformSharePercent ?? 0,
+    averageRevenuePerUnlockNaira:
+      typeof snapshotVideo.averageRevenuePerUnlockNaira === 'number'
+        ? snapshotVideo.averageRevenuePerUnlockNaira
+        : fallbackVideo?.averageRevenuePerUnlockNaira ?? 0,
+    previousUnlockCount:
+      typeof snapshotVideo.previousUnlockCount === 'number' ? snapshotVideo.previousUnlockCount : fallbackVideo?.previousUnlockCount ?? 0,
+    previousGrossNaira:
+      typeof snapshotVideo.previousGrossNaira === 'number' ? snapshotVideo.previousGrossNaira : fallbackVideo?.previousGrossNaira ?? 0,
+    unlockDeltaPercent:
+      typeof snapshotVideo.unlockDeltaPercent === 'number' ? snapshotVideo.unlockDeltaPercent : fallbackVideo?.unlockDeltaPercent ?? 0,
+    grossDeltaPercent:
+      typeof snapshotVideo.grossDeltaPercent === 'number' ? snapshotVideo.grossDeltaPercent : fallbackVideo?.grossDeltaPercent ?? 0,
+    sourceBreakdown: Array.isArray(snapshotVideo.sourceBreakdown) ? snapshotVideo.sourceBreakdown : fallbackVideo?.sourceBreakdown ?? [],
+    territoryRows: Array.isArray(snapshotVideo.territoryRows) ? snapshotVideo.territoryRows : fallbackVideo?.territoryRows ?? [],
+    dailyPerformance: Array.isArray(snapshotVideo.dailyPerformance) ? snapshotVideo.dailyPerformance : fallbackVideo?.dailyPerformance ?? [],
+    availabilityNote:
+      typeof snapshotVideo.availabilityNote === 'string'
+        ? snapshotVideo.availabilityNote
+        : fallbackVideo?.availabilityNote ?? 'Availability note not recorded for this statement snapshot.',
+    latestContract: latestContractValue
+      ? {
+          ...(fallbackVideo?.latestContract ?? {}),
+          ...latestContractValue,
+          effectiveDate:
+            toDate(latestContractValue.effectiveDate as Date | string | null | undefined) ??
+            fallbackVideo?.latestContract?.effectiveDate ??
+            null,
+          producerSignedAt:
+            toDate(latestContractValue.producerSignedAt as Date | string | null | undefined) ??
+            fallbackVideo?.latestContract?.producerSignedAt ??
+            null
+        }
+      : fallbackVideo?.latestContract ?? null
+  } as MonthlyReportSnapshot['videos'][number];
+}
+
 function hydrateStoredReport(
   statementData: unknown,
   fallbackSnapshot?: MonthlyReportSnapshot
@@ -67,6 +160,8 @@ function hydrateStoredReport(
     return null;
   }
 
+  const fallbackVideoById = new Map((fallbackSnapshot?.videos ?? []).map((video) => [video.id, video]));
+
   return {
     ...(fallbackSnapshot ?? {}),
     ...snapshot,
@@ -75,16 +170,16 @@ function hydrateStoredReport(
     generatedAt: toDate(snapshot.generatedAt) ?? fallbackSnapshot?.generatedAt ?? new Date(),
     availableVideos: Array.isArray(snapshot.availableVideos) ? snapshot.availableVideos : fallbackSnapshot?.availableVideos ?? [],
     selectedVideoIds: Array.isArray(snapshot.selectedVideoIds) ? snapshot.selectedVideoIds : fallbackSnapshot?.selectedVideoIds ?? [],
-    videos: snapshot.videos.map((video) => ({
-      ...video,
-      latestContract: video.latestContract
-        ? {
-            ...video.latestContract,
-            effectiveDate: toDate(video.latestContract.effectiveDate),
-            producerSignedAt: toDate(video.latestContract.producerSignedAt)
-          }
-        : null
-    })),
+    videos: snapshot.videos
+      .map((video) =>
+        normalizeStoredVideoSnapshot(
+          video,
+          typeof video === 'object' && video && 'id' in video
+            ? fallbackVideoById.get((video as { id?: string }).id ?? '')
+            : undefined
+        )
+      )
+      .filter(Boolean),
     summary: {
       ...(fallbackSnapshot?.summary ?? {}),
       ...snapshot.summary,
