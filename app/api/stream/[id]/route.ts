@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { verifyStreamToken } from '@/lib/auth';
 import { cacheExists, getCachePath } from '@/lib/cache';
 import { recordCacheHit } from '@/lib/metrics';
-import { headObject } from '@/lib/r2';
+import { getObjectMetadata } from '@/lib/r2';
 import { buildRelayUrl, getRelayBaseUrl, shouldRedirectToRelay } from '@/lib/relay';
 import { ensureCached, streamFile, streamR2Object } from '@/lib/stream';
 import { touchStreamSession } from '@/lib/stream-sessions';
@@ -22,12 +22,41 @@ type StreamPayload = {
   streamKey?: string;
   teaserSec?: number;
   durationSec?: number;
+  streamBytes?: number;
+  streamContentType?: string;
 };
 
 function getTeaserRatio(payload: StreamPayload) {
   const durationSec = Math.max(payload.durationSec ?? 0, 1);
   const teaserSec = Math.max(payload.teaserSec ?? 0, 0);
   return Math.min(teaserSec / durationSec, 1);
+}
+
+function getMaxPreviewBytes(totalBytes: number, payload: StreamPayload) {
+  const ratio = getTeaserRatio(payload);
+  return Math.max(Math.floor(totalBytes * ratio), Math.min(totalBytes, 1024 * 512));
+}
+
+function getStreamCacheControl(isGuest: boolean, fullAccess: boolean) {
+  if (isGuest && !fullAccess) {
+    return 'public, max-age=60, s-maxage=600, stale-while-revalidate=86400';
+  }
+
+  return 'private, max-age=0, no-store';
+}
+
+function getStreamResponseHeaders(baseHeaders: HeadersInit, isGuest: boolean, fullAccess: boolean) {
+  const cacheControl = getStreamCacheControl(isGuest, fullAccess);
+  const headers = new Headers(baseHeaders);
+  headers.set('Cache-Control', cacheControl);
+  headers.set('Vary', 'Range');
+
+  if (isGuest && !fullAccess) {
+    headers.set('CDN-Cache-Control', 'public, s-maxage=600, stale-while-revalidate=86400');
+    headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=600, stale-while-revalidate=86400');
+  }
+
+  return headers;
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -62,26 +91,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   let maxBytes: number | undefined;
 
   if (!payload.fullAccess && (payload.durationSec ?? 0) > 0) {
-    const ratio = getTeaserRatio(payload);
-
     if (!relayBase) {
-      const objectHead = await headObject(payload.streamKey);
-      const objectSize = typeof objectHead.ContentLength === 'number' ? objectHead.ContentLength : 0;
-      maxBytes = Math.max(Math.floor(objectSize * ratio), Math.min(objectSize, 1024 * 512));
+      if (typeof payload.streamBytes === 'number' && payload.streamBytes > 0) {
+        maxBytes = getMaxPreviewBytes(payload.streamBytes, payload);
+      } else {
+        const objectHead = await getObjectMetadata(payload.streamKey);
+        const fallbackSize = typeof objectHead.ContentLength === 'number' ? objectHead.ContentLength : 0;
+        maxBytes = getMaxPreviewBytes(fallbackSize, payload);
+      }
     } else {
       const hit = await cacheExists(payload.streamKey);
       recordCacheHit(hit);
       const filePath = hit ? getCachePath(payload.streamKey) : await ensureCached(payload.streamKey);
       const stat = await fsPromises.stat(filePath);
-      maxBytes = Math.max(Math.floor(stat.size * ratio), Math.min(stat.size, 1024 * 512));
+      maxBytes = getMaxPreviewBytes(stat.size, payload);
       const result = await streamFile(filePath, rangeHeader, maxBytes);
 
       return new Response(Readable.toWeb(result.stream) as never, {
         status: result.status,
-        headers: {
-          ...result.headers,
-          'Cache-Control': 'private, max-age=0, no-store'
-        }
+        headers: getStreamResponseHeaders(result.headers, isGuest, Boolean(payload.fullAccess))
       });
     }
   }
@@ -94,10 +122,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     return new Response(Readable.toWeb(result.stream) as never, {
       status: result.status,
-      headers: {
-        ...result.headers,
-        'Cache-Control': 'private, max-age=0, no-store'
-      }
+      headers: getStreamResponseHeaders(result.headers, isGuest, Boolean(payload.fullAccess))
     });
   }
 
@@ -105,9 +130,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   return new Response(Readable.toWeb(result.stream) as never, {
     status: result.status,
-    headers: {
-      ...result.headers,
-      'Cache-Control': 'private, max-age=0, no-store'
-    }
+    headers: getStreamResponseHeaders(result.headers, isGuest, Boolean(payload.fullAccess))
   });
 }

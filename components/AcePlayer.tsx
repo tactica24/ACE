@@ -84,6 +84,7 @@ export default function AcePlayer({
   teaserSec,
   priceLabel,
   initialUnlocked,
+  initialStreamUrl,
   initialProgress = 0,
   watermarkText,
   posterSrc,
@@ -98,6 +99,7 @@ export default function AcePlayer({
   teaserSec: number;
   priceLabel: string;
   initialUnlocked: boolean;
+  initialStreamUrl?: string;
   initialProgress?: number;
   watermarkText: string;
   posterSrc?: string;
@@ -303,6 +305,13 @@ export default function AcePlayer({
   };
 
   const loadStream = useCallback(async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
+    if (!isAuthenticated && initialStreamUrl) {
+      pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
+      pendingAutoplayRef.current = Boolean(autoplay);
+      setStreamUrl(initialStreamUrl);
+      return;
+    }
+
     const deviceSessionId = isAuthenticated ? getDeviceSessionId() : '';
     const tokenUrl = isAuthenticated
       ? `/api/stream/token?videoId=${videoId}&deviceSessionId=${encodeURIComponent(deviceSessionId)}`
@@ -318,7 +327,7 @@ export default function AcePlayer({
     pendingAutoplayRef.current = Boolean(autoplay);
 
     setStreamUrl(`/api/stream/${videoId}?token=${data.token}`);
-  }, [isAuthenticated, videoId]);
+  }, [initialStreamUrl, isAuthenticated, videoId]);
 
   const syncHistory = useCallback(async ({
     progressSec,

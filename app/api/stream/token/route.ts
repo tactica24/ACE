@@ -1,7 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { getAuthFromRequest, createStreamToken } from '@/lib/auth';
+import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { getObjectMetadata } from '@/lib/r2';
 import { ensureStreamSession } from '@/lib/stream-sessions';
 import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
 
@@ -22,7 +23,19 @@ export async function GET(req: NextRequest) {
   const videoId = req.nextUrl.searchParams.get('videoId');
   if (!videoId) return NextResponse.json({ error: 'Missing videoId' }, { status: 400 });
 
-  const video = await prisma.video.findUnique({ where: { id: videoId } });
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    select: {
+      id: true,
+      creatorId: true,
+      status: true,
+      videoType: true,
+      seriesId: true,
+      r2Key: true,
+      teaserSec: true,
+      durationSec: true
+    }
+  });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
   const canPreviewPendingVideo = canPreviewVideo(video, auth);
   if (video.status !== 'APPROVED' && !canPreviewPendingVideo) {
@@ -61,6 +74,19 @@ export async function GET(req: NextRequest) {
     fullAccess = Boolean(unlock) || auth.sub === video.creatorId || auth.role === 'ADMIN';
   }
 
+  let streamBytes: number | undefined;
+  let streamContentType: string | undefined;
+  if (video.r2Key) {
+    try {
+      const metadata = await getObjectMetadata(video.r2Key);
+      streamBytes = typeof metadata.ContentLength === 'number' ? metadata.ContentLength : undefined;
+      streamContentType = metadata.ContentType ?? undefined;
+    } catch {
+      streamBytes = undefined;
+      streamContentType = undefined;
+    }
+  }
+
   const token = auth
     ? createStreamToken({
         userId: auth.sub,
@@ -70,16 +96,17 @@ export async function GET(req: NextRequest) {
         fullAccess,
         streamKey: video.r2Key ?? undefined,
         teaserSec: video.teaserSec,
-        durationSec: video.durationSec
+        durationSec: video.durationSec,
+        streamBytes,
+        streamContentType
       })
-    : createStreamToken({
+    : createGuestPreviewStreamToken({
         videoId,
-        guest: true,
-        userId: 'guest',
-        fullAccess: false,
         streamKey: video.r2Key ?? undefined,
         teaserSec: video.teaserSec,
-        durationSec: video.durationSec
+        durationSec: video.durationSec,
+        streamBytes,
+        streamContentType
       });
   return NextResponse.json({ token, guest: !auth });
 }

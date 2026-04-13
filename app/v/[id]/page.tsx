@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
 import LaunchPage from '@/components/LaunchPage';
-import { getCurrentUser } from '@/lib/auth';
+import { createGuestPreviewStreamToken, getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
@@ -11,6 +11,7 @@ import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getContentWarningLabel, getLanguageLabel } from '@/lib/media-types';
+import { getObjectMetadata } from '@/lib/r2';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -49,6 +50,40 @@ function formatEpisodeLabel(seasonNumber?: number | null, episodeNumber?: number
   }
 
   return `S${seasonNumber} E${episodeNumber}`;
+}
+
+async function buildGuestPreviewStreamUrl(video: {
+  id: string;
+  r2Key?: string | null;
+  teaserSec: number;
+  durationSec: number;
+}) {
+  if (!video.r2Key) {
+    return null;
+  }
+
+  let streamBytes: number | undefined;
+  let streamContentType: string | undefined;
+
+  try {
+    const metadata = await getObjectMetadata(video.r2Key);
+    streamBytes = typeof metadata.ContentLength === 'number' ? metadata.ContentLength : undefined;
+    streamContentType = metadata.ContentType ?? undefined;
+  } catch {
+    streamBytes = undefined;
+    streamContentType = undefined;
+  }
+
+  const token = createGuestPreviewStreamToken({
+    videoId: video.id,
+    streamKey: video.r2Key,
+    teaserSec: video.teaserSec,
+    durationSec: video.durationSec,
+    streamBytes,
+    streamContentType
+  });
+
+  return `/api/stream/${video.id}?token=${encodeURIComponent(token)}`;
 }
 
 export default async function VideoPage({
@@ -108,6 +143,7 @@ export default async function VideoPage({
     let unlocked = false;
     let initialProgress = 0;
     let watermarkText = 'Ace Studio Preview';
+    const initialStreamUrl = user ? null : await buildGuestPreviewStreamUrl(requestedVideo);
 
     if (user) {
       const [unlock, watchHistory] = await Promise.all([
@@ -180,6 +216,7 @@ export default async function VideoPage({
               teaserSec={requestedVideo.teaserSec}
               priceLabel={priceLabel}
               initialUnlocked={unlocked}
+              initialStreamUrl={initialStreamUrl ?? undefined}
               initialProgress={initialProgress}
               watermarkText={watermarkText}
               posterSrc={posterUrl ?? undefined}
@@ -259,6 +296,7 @@ export default async function VideoPage({
   let unlocked = false;
   let initialProgress = 0;
   let watermarkText = 'Ace Studio Preview';
+  const initialStreamUrl = !user && selectedEpisode ? await buildGuestPreviewStreamUrl(selectedEpisode) : null;
 
   if (user && selectedEpisode) {
     const [unlock, watchHistory] = await Promise.all([
@@ -349,6 +387,7 @@ export default async function VideoPage({
               teaserSec={selectedEpisode.teaserSec}
               priceLabel={priceLabel}
               initialUnlocked={unlocked}
+              initialStreamUrl={initialStreamUrl ?? undefined}
               initialProgress={initialProgress}
               watermarkText={watermarkText}
               posterSrc={selectedPosterUrl ?? undefined}

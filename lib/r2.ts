@@ -10,15 +10,30 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
 
+const OBJECT_METADATA_TTL_MS = 1000 * 60 * 10;
+
+let r2Client: S3Client | null = null;
+const objectMetadataCache = new Map<
+  string,
+  {
+    expiresAt: number;
+    promise: Promise<HeadObjectCommandOutput>;
+  }
+>();
+
 function createClient() {
-  return new S3Client({
-    region: env.R2_REGION,
-    endpoint: env.R2_ENDPOINT,
-    credentials: {
-      accessKeyId: env.R2_ACCESS_KEY_ID,
-      secretAccessKey: env.R2_SECRET_ACCESS_KEY
-    }
-  });
+  if (!r2Client) {
+    r2Client = new S3Client({
+      region: env.R2_REGION,
+      endpoint: env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY
+      }
+    });
+  }
+
+  return r2Client;
 }
 
 function getBucket() {
@@ -27,6 +42,27 @@ function getBucket() {
 
 export async function headObject(key: string): Promise<HeadObjectCommandOutput> {
   return createClient().send(new HeadObjectCommand({ Bucket: getBucket(), Key: key }));
+}
+
+export async function getObjectMetadata(key: string): Promise<HeadObjectCommandOutput> {
+  const now = Date.now();
+  const cached = objectMetadataCache.get(key);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  const promise = headObject(key).catch((error) => {
+    objectMetadataCache.delete(key);
+    throw error;
+  });
+
+  objectMetadataCache.set(key, {
+    expiresAt: now + OBJECT_METADATA_TTL_MS,
+    promise
+  });
+
+  return promise;
 }
 
 export async function getObjectStream(key: string, range?: string): Promise<GetObjectCommandOutput> {

@@ -476,8 +476,36 @@ export function createStreamToken(payload: {
   streamKey?: string;
   teaserSec?: number;
   durationSec?: number;
+  streamBytes?: number;
+  streamContentType?: string;
 }) {
   return jwt.sign(payload, env.ACE_STREAM_SIGNING_SECRET, { expiresIn: '15m' });
+}
+
+export function createGuestPreviewStreamToken(payload: {
+  videoId: string;
+  streamKey?: string;
+  teaserSec?: number;
+  durationSec?: number;
+  streamBytes?: number;
+  streamContentType?: string;
+}) {
+  const ttlSeconds = 60 * 10;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const bucketStart = Math.floor(nowSec / ttlSeconds) * ttlSeconds;
+  const exp = bucketStart + ttlSeconds;
+
+  return jwt.sign(
+    {
+      ...payload,
+      guest: true,
+      userId: 'guest',
+      fullAccess: false,
+      exp
+    },
+    env.ACE_STREAM_SIGNING_SECRET,
+    { noTimestamp: true }
+  );
 }
 
 export function verifyStreamToken(token: string) {
@@ -491,6 +519,8 @@ export function verifyStreamToken(token: string) {
     streamKey?: string;
     teaserSec?: number;
     durationSec?: number;
+    streamBytes?: number;
+    streamContentType?: string;
   };
 }
 
