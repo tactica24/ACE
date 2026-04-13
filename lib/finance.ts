@@ -1,47 +1,97 @@
+import { type FinanceConfig } from '@prisma/client';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { prisma } from './db';
 
+const FINANCE_CONFIG_ID = 'default';
+const FINANCE_CONFIG_TAG = 'finance-config';
+const PLATFORM_WALLET_ID = 'ace-platform';
+const PLATFORM_WALLET_TAG = 'platform-wallet';
+
+const DEFAULT_FINANCE_CONFIG: Omit<FinanceConfig, 'updatedAt'> = {
+  id: FINANCE_CONFIG_ID,
+  creatorSharePercent: 60,
+  platformSharePercent: 29.5,
+  gatewayFeePercent: 3,
+  taxPercent: 7.5,
+  snackNaira: 100,
+  standardNaira: 200,
+  premiereNaira: 500,
+  snackUsdMinor: 149,
+  standardUsdMinor: 199,
+  premiereUsdMinor: 249,
+  snackEurMinor: 129,
+  standardEurMinor: 179,
+  premiereEurMinor: 229,
+  snackGbpMinor: 99,
+  standardGbpMinor: 149,
+  premiereGbpMinor: 199,
+  snackCadMinor: 199,
+  standardCadMinor: 249,
+  premiereCadMinor: 299,
+  familyPassUsdMinor: 1000,
+  familyPassEurMinor: 900,
+  familyPassGbpMinor: 800,
+  familyPassCadMinor: 1300
+};
+
+const getCachedFinanceConfig = unstable_cache(
+  () =>
+    prisma.financeConfig.findUnique({
+      where: { id: FINANCE_CONFIG_ID }
+    }),
+  [FINANCE_CONFIG_TAG],
+  { revalidate: 300, tags: [FINANCE_CONFIG_TAG] }
+);
+
+const getCachedPlatformWallet = unstable_cache(
+  () =>
+    prisma.platformWallet.findUnique({
+      where: { id: PLATFORM_WALLET_ID }
+    }),
+  [PLATFORM_WALLET_TAG],
+  { revalidate: 60, tags: [PLATFORM_WALLET_TAG] }
+);
+
 export async function getFinanceConfig() {
+  const config = await getCachedFinanceConfig();
+  if (config) {
+    return config;
+  }
+
   return prisma.financeConfig.upsert({
-    where: { id: 'default' },
+    where: { id: FINANCE_CONFIG_ID },
     update: {},
-    create: {
-      id: 'default',
-      creatorSharePercent: 60,
-      platformSharePercent: 29.5,
-      gatewayFeePercent: 3,
-      taxPercent: 7.5,
-      snackNaira: 100,
-      standardNaira: 200,
-      premiereNaira: 500,
-      snackUsdMinor: 149,
-      standardUsdMinor: 199,
-      premiereUsdMinor: 249,
-      snackEurMinor: 129,
-      standardEurMinor: 179,
-      premiereEurMinor: 229,
-      snackGbpMinor: 99,
-      standardGbpMinor: 149,
-      premiereGbpMinor: 199,
-      snackCadMinor: 199,
-      standardCadMinor: 249,
-      premiereCadMinor: 299,
-      familyPassUsdMinor: 1000,
-      familyPassEurMinor: 900,
-      familyPassGbpMinor: 800,
-      familyPassCadMinor: 1300
-    }
+    create: DEFAULT_FINANCE_CONFIG
   });
 }
 
 export async function getPlatformWallet() {
+  const wallet = await getCachedPlatformWallet();
+  if (wallet) {
+    return wallet;
+  }
+
   return prisma.platformWallet.upsert({
-    where: { id: 'ace-platform' },
+    where: { id: PLATFORM_WALLET_ID },
     update: {},
     create: {
-      id: 'ace-platform',
+      id: PLATFORM_WALLET_ID,
       balanceNaira: 0
     }
   });
+}
+
+export function revalidateFinanceConfig() {
+  revalidateTag(FINANCE_CONFIG_TAG);
+  revalidatePath('/');
+  revalidatePath('/browse');
+  revalidatePath('/highlights');
+  revalidatePath('/wallet');
+  revalidatePath('/tv');
+}
+
+export function revalidatePlatformWallet() {
+  revalidateTag(PLATFORM_WALLET_TAG);
 }
 
 export function calculateUnlockSplit(amountNaira: number, config: {

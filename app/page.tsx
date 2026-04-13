@@ -1,21 +1,16 @@
 import Link from 'next/link';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import LaunchPage from '@/components/LaunchPage';
+import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import VideoCard from '@/components/VideoCard';
-import { getCurrentUser } from '@/lib/auth';
-import { getPrimaryAppPath } from '@/lib/account-routing';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
-import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getUiCopy } from '@/lib/ui-language';
-import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
-import { getRegionalPriceForVideo } from '@/lib/video-pricing';
+import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 type HomeVideo = {
   id: string;
@@ -50,18 +45,6 @@ function formatRuntime(durationSec?: number | null) {
   }
 
   return `${minutes}m`;
-}
-
-function dedupeVideos(videos: HomeVideo[]) {
-  const seen = new Set<string>();
-  return videos.filter((video) => {
-    if (seen.has(video.id)) {
-      return false;
-    }
-
-    seen.add(video.id);
-    return true;
-  });
 }
 
 function buildRows({
@@ -141,19 +124,11 @@ function buildRows({
 }
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
-  if (user) {
-    const primaryAppPath = getPrimaryAppPath(user);
-    if (primaryAppPath !== '/browse') {
-      redirect(primaryAppPath);
-    }
-  }
-
-  const language = await getPreferredUiLanguage();
+  const language = 'en';
   const copy = getUiCopy(language);
   const siteSettings = await getSiteSettings();
 
-  if (siteSettings.homePageMode === 'LAUNCH' && (!user || user.role === 'USER')) {
+  if (siteSettings.homePageMode === 'LAUNCH') {
     return (
       <LaunchPage
         title={siteSettings.launchTitle}
@@ -172,50 +147,17 @@ export default async function HomePage() {
     videos = [];
   }
 
-  let continueWatching: HomeVideo[] = [];
-  let unlockedVideos: HomeVideo[] = [];
-
-  if (user) {
-    const [watchHistory, unlocks] = await Promise.all([
-      prisma.watchHistory.findMany({
-        where: {
-          userId: user.sub,
-          completedAt: null,
-          progressSec: { gt: 0 },
-          video: { status: 'APPROVED' }
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 12,
-        include: { video: true }
-      }),
-      prisma.unlock.findMany({
-        where: {
-          userId: user.sub,
-          video: { status: 'APPROVED' }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 18,
-        include: { video: true }
-      })
-    ]);
-
-    continueWatching = dedupeVideos(
-      watchHistory.map((item) => item.video as HomeVideo)
-    );
-    unlockedVideos = dedupeVideos(
-      unlocks.map((item) => item.video as HomeVideo)
-    );
-  }
-
-  const requestHeaders = headers();
   const pricingConfig = await getFinanceConfig();
-  const featured = continueWatching[0] ?? unlockedVideos[0] ?? videos[0] ?? null;
+  const continueWatching: HomeVideo[] = [];
+  const unlockedVideos: HomeVideo[] = [];
+  const featured = videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
   const rows = buildRows({ videos, continueWatching, unlockedVideos, language });
   const featuredRuntime = formatRuntime(featured?.durationSec);
 
   return (
     <div className="viewer-home">
+      <PublicPageAutoRedirect allowedPath="/browse" />
       <section
         className="home-hero"
         style={featuredPoster ? { backgroundImage: `linear-gradient(90deg, rgba(3, 5, 14, 0.92) 0%, rgba(3, 5, 14, 0.58) 48%, rgba(3, 5, 14, 0.88) 100%), url(${featuredPoster})` } : undefined}
@@ -283,7 +225,14 @@ export default async function HomePage() {
                   {row.items.map((video) => (
                     <div key={`${row.title}-${video.id}`} className="home-carousel-item">
                       <VideoCard
-                        video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }}
+                        video={{
+                          ...video,
+                          price: {
+                            currency: 'NGN',
+                            amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
+                            amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
+                          }
+                        }}
                       />
                     </div>
                   ))}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest, getCurrentUser } from '@/lib/auth';
 import { alignNairaToCreditValue } from '@/lib/credits';
 import { prisma } from '@/lib/db';
+import { revalidateFinanceConfig } from '@/lib/finance';
 
 function toInt(value: unknown, fallback: number) {
   const parsed = Number(value);
@@ -65,6 +66,8 @@ export async function POST(req: NextRequest) {
       familyPassCadMinor: toInt(body.familyPassCadMinor, 1300)
     }
   });
+
+  revalidateFinanceConfig();
 
   return NextResponse.json({ ok: true, config });
 }

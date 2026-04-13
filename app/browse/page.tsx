@@ -1,16 +1,13 @@
 import LaunchPage from '@/components/LaunchPage';
 import BrowseCatalog from '@/components/BrowseCatalog';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
-import { getPrimaryAppPath } from '@/lib/account-routing';
+import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { getFinanceConfig } from '@/lib/finance';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getSiteSettings } from '@/lib/site-settings';
-import { getRegionalPriceForVideo } from '@/lib/video-pricing';
+import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 type BrowseVideo = {
   id: string;
@@ -27,16 +24,9 @@ type BrowseVideo = {
 };
 
 export default async function BrowsePage() {
-  const user = await getCurrentUser();
   const siteSettings = await getSiteSettings();
-  if (user) {
-    const primaryAppPath = getPrimaryAppPath(user);
-    if (primaryAppPath !== '/browse') {
-      redirect(primaryAppPath);
-    }
-  }
 
-  if (siteSettings.homePageMode === 'LAUNCH' && (!user || user.role === 'USER')) {
+  if (siteSettings.homePageMode === 'LAUNCH') {
     return (
       <LaunchPage
         title={siteSettings.launchTitle}
@@ -55,11 +45,11 @@ export default async function BrowsePage() {
     videos = [];
   }
 
-  const requestHeaders = headers();
   const pricingConfig = await getFinanceConfig();
 
   return (
     <div className="section">
+      <PublicPageAutoRedirect allowedPath="/browse" />
       <div className="container">
         <div className="section-heading">
           <div>
@@ -72,7 +62,11 @@ export default async function BrowsePage() {
           <BrowseCatalog
             videos={videos.map((video) => ({
               ...video,
-              price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig)
+              price: {
+                currency: 'NGN',
+                amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
+                amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
+              }
             }))}
           />
         ) : (

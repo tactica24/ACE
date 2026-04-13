@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { UI_LANGUAGE_OPTIONS, getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 export default function LanguageSwitcher({
-  language
+  language,
+  onChange
 }: {
   language: UILanguage;
+  onChange?: (language: UILanguage) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -19,6 +21,8 @@ export default function LanguageSwitcher({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ language: nextLanguage })
     });
+
+    onChange?.(nextLanguage as UILanguage);
 
     startTransition(() => {
       router.refresh();

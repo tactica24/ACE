@@ -17,6 +17,10 @@ export type CatalogVideo = {
   createdAt: Date;
 };
 
+export type HighlightCatalogVideo = CatalogVideo & {
+  highlightSeconds: number[];
+};
+
 const getApprovedCatalogVideosCached = unstable_cache(
   async () =>
     prisma.video.findMany({
@@ -32,8 +36,39 @@ export async function getApprovedCatalogVideos() {
   return getApprovedCatalogVideosCached() as Promise<CatalogVideo[]>;
 }
 
+const getApprovedHighlightVideosCached = unstable_cache(
+  async () =>
+    prisma.video.findMany({
+      where: { status: 'APPROVED', seriesId: null },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        priceTier: true,
+        posterKey: true,
+        genres: true,
+        durationSec: true,
+        releaseYear: true,
+        videoType: true,
+        ageRating: true,
+        category: true,
+        createdAt: true,
+        highlightSeconds: true
+      }
+    }),
+  ['approved-highlight-videos'],
+  { revalidate: 60, tags: ['approved-highlight-videos', 'approved-catalog-videos'] }
+);
+
+export async function getApprovedHighlightVideos() {
+  return getApprovedHighlightVideosCached() as Promise<HighlightCatalogVideo[]>;
+}
+
 export function revalidateApprovedCatalog() {
   revalidateTag('approved-catalog-videos');
+  revalidateTag('approved-highlight-videos');
   revalidatePath('/');
   revalidatePath('/browse');
   revalidatePath('/highlights');

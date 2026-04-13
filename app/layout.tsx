@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next';
 import TopNav from '@/components/TopNav';
 import Footer from '@/components/Footer';
 import PwaRegistrar from '@/components/PwaRegistrar';
-import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 
 export const metadata: Metadata = {
   title: 'Ace Studio',
@@ -31,11 +30,9 @@ export const viewport: Viewport = {
   themeColor: '#070b18'
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const language = await getPreferredUiLanguage();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={language}>
+    <html lang="en">
       <body>
         <PwaRegistrar />
         <div className="app-shell">

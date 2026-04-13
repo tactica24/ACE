@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './db';
+import { getFinanceConfig } from './finance';
 import { calculateProducerVideoInsights, formatSecondsLabel } from './studio-insights';
 
 type ReportParams = {
@@ -145,6 +146,22 @@ export function isReportStatementStorageError(error: unknown) {
   return isReportStatementStorageUnavailableError(error);
 }
 
+function isRecoverableReportSchemaError(error: unknown) {
+  if (isReportStatementStorageUnavailableError(error)) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code === 'P2021' || error.code === 'P2022';
+  }
+
+  if (error instanceof Error) {
+    return /column|does not exist|relation|Unknown arg|Invalid .* invocation/i.test(error.message);
+  }
+
+  return false;
+}
+
 function currentMonthKey() {
   return new Date().toISOString().slice(0, 7);
 }
@@ -273,6 +290,408 @@ export function createReportStatementCode(monthKey: string) {
   return buildStatementCode(monthKey);
 }
 
+async function getPendingReportPayoutCount() {
+  try {
+    return await prisma.creatorPayoutRequest.count({
+      where: { status: 'PENDING' }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return 0;
+    }
+
+    throw error;
+  }
+}
+
+async function getReportVideoOptions() {
+  try {
+    return await prisma.video.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        category: true,
+        releaseYear: true,
+        rightsTier: true,
+        priceTier: true,
+        createdAt: true,
+        creator: {
+          select: {
+            email: true,
+            creator: {
+              select: {
+                id: true,
+                displayName: true,
+                creatorNumber: true,
+                verified: true,
+                bankName: true,
+                bankAccountName: true,
+                bankAccountNumber: true,
+                earningsBalanceNaira: true
+              }
+            }
+          }
+        }
+      }
+    });
+  } catch (error) {
+    if (!isRecoverableReportSchemaError(error)) {
+      throw error;
+    }
+
+    const fallbackVideos = await prisma.video.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        category: true,
+        releaseYear: true,
+        rightsTier: true,
+        priceTier: true,
+        createdAt: true,
+        creator: {
+          select: {
+            email: true,
+            creator: {
+              select: {
+                id: true,
+                displayName: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return fallbackVideos.map((video) => ({
+      ...video,
+      creator: {
+        ...video.creator,
+        creator: video.creator.creator
+          ? {
+              ...video.creator.creator,
+              creatorNumber: null,
+              verified: false,
+              bankName: null,
+              bankAccountName: null,
+              bankAccountNumber: null,
+              earningsBalanceNaira: 0
+            }
+          : null
+      }
+    })) as VideoOptionRow[];
+  }
+}
+
+async function getReportSelectedVideos(selectedVideoIds: string[], range: ReturnType<typeof buildMonthRange>) {
+  try {
+    return await prisma.video.findMany({
+      where: {
+        id: { in: selectedVideoIds }
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        category: true,
+        releaseYear: true,
+        rightsTier: true,
+        priceTier: true,
+        durationSec: true,
+        teaserSec: true,
+        createdAt: true,
+        creator: {
+          select: {
+            email: true,
+            creator: {
+              select: {
+                id: true,
+                displayName: true,
+                creatorNumber: true,
+                verified: true,
+                bankName: true,
+                bankAccountName: true,
+                bankAccountNumber: true,
+                earningsBalanceNaira: true
+              }
+            }
+          }
+        },
+        contracts: {
+          orderBy: [{ effectiveDate: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+          select: {
+            rightsTier: true,
+            producerAccepted: true,
+            effectiveDate: true,
+            producerSignedAt: true,
+            producerLegalName: true,
+            producerSignedName: true
+          }
+        },
+        unlocks: {
+          where: {
+            createdAt: {
+              gte: range.start,
+              lt: range.end
+            }
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            userId: true,
+            createdAt: true,
+            amountNaira: true,
+            amountMinor: true,
+            currency: true,
+            source: true
+          }
+        },
+        settlements: {
+          where: {
+            createdAt: {
+              gte: range.start,
+              lt: range.end
+            }
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            createdAt: true,
+            grossNaira: true,
+            creatorNaira: true,
+            platformNaira: true,
+            gatewayFeeNaira: true,
+            taxNaira: true,
+            referralNaira: true,
+            platformNetNaira: true
+          }
+        }
+      }
+    });
+  } catch (error) {
+    if (!isRecoverableReportSchemaError(error)) {
+      throw error;
+    }
+
+    const fallbackVideos = await prisma.video.findMany({
+      where: {
+        id: { in: selectedVideoIds }
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        category: true,
+        releaseYear: true,
+        rightsTier: true,
+        priceTier: true,
+        durationSec: true,
+        teaserSec: true,
+        createdAt: true,
+        creator: {
+          select: {
+            email: true,
+            creator: {
+              select: {
+                id: true,
+                displayName: true
+              }
+            }
+          }
+        },
+        unlocks: {
+          where: {
+            createdAt: {
+              gte: range.start,
+              lt: range.end
+            }
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            userId: true,
+            createdAt: true,
+            amountNaira: true,
+            amountMinor: true,
+            currency: true,
+            source: true
+          }
+        },
+        settlements: {
+          where: {
+            createdAt: {
+              gte: range.start,
+              lt: range.end
+            }
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            createdAt: true,
+            grossNaira: true,
+            creatorNaira: true,
+            platformNaira: true,
+            gatewayFeeNaira: true,
+            taxNaira: true,
+            referralNaira: true,
+            platformNetNaira: true
+          }
+        }
+      }
+    });
+
+    return fallbackVideos.map((video) => ({
+      ...video,
+        creator: {
+          ...video.creator,
+          creator: video.creator.creator
+            ? {
+              ...video.creator.creator,
+              creatorNumber: null,
+              verified: false,
+              bankName: null,
+              bankAccountName: null,
+              bankAccountNumber: null,
+              earningsBalanceNaira: 0
+            }
+          : null
+      },
+      contracts: []
+    })) as ReportVideoRow[];
+  }
+}
+
+async function getPreviousReportPeriodRows(selectedVideoIds: string[], range: ReturnType<typeof buildMonthRange>) {
+  try {
+    return await prisma.unlockSettlement.groupBy({
+      by: ['videoId'],
+      where: {
+        videoId: { in: selectedVideoIds },
+        createdAt: {
+          gte: range.previousStart,
+          lt: range.start
+        }
+      },
+      _count: { _all: true },
+      _sum: { grossNaira: true }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function getReportWatchHistoryRows(selectedVideoIds: string[], unlockUserIds: string[]) {
+  if (!unlockUserIds.length) {
+    return [];
+  }
+
+  try {
+    return await prisma.watchHistory.findMany({
+      where: {
+        videoId: { in: selectedVideoIds },
+        userId: { in: unlockUserIds }
+      },
+      select: {
+        videoId: true,
+        userId: true,
+        progressSec: true,
+        durationSec: true,
+        completedAt: true,
+        updatedAt: true
+      }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function getPriorCreatorSettlementTotals(selectedVideoIds: string[], range: ReturnType<typeof buildMonthRange>) {
+  try {
+    return await prisma.unlockSettlement.aggregate({
+      where: {
+        videoId: { in: selectedVideoIds },
+        createdAt: { lt: range.start }
+      },
+      _sum: {
+        creatorNaira: true
+      }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return { _sum: { creatorNaira: 0 } };
+    }
+
+    throw error;
+  }
+}
+
+async function getPriorPaidPayoutTotals(creatorProfileIds: string[], range: ReturnType<typeof buildMonthRange>) {
+  if (!creatorProfileIds.length) {
+    return { _sum: { amountNaira: 0 } };
+  }
+
+  try {
+    return await prisma.creatorPayoutRequest.aggregate({
+      where: {
+        creatorProfileId: { in: creatorProfileIds },
+        status: 'PAID',
+        paidAt: { lt: range.start }
+      },
+      _sum: {
+        amountNaira: true
+      }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return { _sum: { amountNaira: 0 } };
+    }
+
+    throw error;
+  }
+}
+
+async function getCurrentPaidPayoutRows(creatorProfileIds: string[], range: ReturnType<typeof buildMonthRange>) {
+  if (!creatorProfileIds.length) {
+    return [];
+  }
+
+  try {
+    return await prisma.creatorPayoutRequest.findMany({
+      where: {
+        creatorProfileId: { in: creatorProfileIds },
+        status: 'PAID',
+        paidAt: {
+          gte: range.start,
+          lt: range.end
+        }
+      },
+      orderBy: { paidAt: 'desc' },
+      select: {
+        id: true,
+        amountNaira: true,
+        paidAt: true,
+        bankName: true,
+        bankAccountName: true,
+        bankAccountNumber: true
+      }
+    });
+  } catch (error) {
+    if (isRecoverableReportSchemaError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
 export async function getRecentReportStatements(limit = 8) {
   try {
     return await prisma.reportStatement.findMany({
@@ -345,44 +764,9 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
   const range = buildMonthRange(selectedMonthKey);
 
   const [pendingPayouts, financeConfig, videos] = await Promise.all([
-    prisma.creatorPayoutRequest.count({
-      where: { status: 'PENDING' }
-    }),
-    prisma.financeConfig.upsert({
-      where: { id: 'default' },
-      update: {},
-      create: { id: 'default', creatorSharePercent: 60, platformSharePercent: 29.5, gatewayFeePercent: 3, taxPercent: 7.5 }
-    }),
-    prisma.video.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        category: true,
-        releaseYear: true,
-        rightsTier: true,
-        priceTier: true,
-        createdAt: true,
-        creator: {
-          select: {
-            email: true,
-            creator: {
-              select: {
-                id: true,
-                displayName: true,
-                creatorNumber: true,
-                verified: true,
-                bankName: true,
-                bankAccountName: true,
-                bankAccountNumber: true,
-                earningsBalanceNaira: true
-              }
-            }
-          }
-        }
-      }
-    })
+    getPendingReportPayoutCount(),
+    getFinanceConfig(),
+    getReportVideoOptions()
   ]);
 
   const availableVideos = [...videos]
@@ -487,88 +871,7 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
     };
   }
 
-  const selectedVideos = await prisma.video.findMany({
-    where: {
-      id: { in: selectedVideoIds }
-    },
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      category: true,
-      releaseYear: true,
-      rightsTier: true,
-      priceTier: true,
-      durationSec: true,
-      teaserSec: true,
-      createdAt: true,
-      creator: {
-        select: {
-          email: true,
-          creator: {
-            select: {
-              id: true,
-              displayName: true,
-              creatorNumber: true,
-              verified: true,
-              bankName: true,
-              bankAccountName: true,
-              bankAccountNumber: true,
-              earningsBalanceNaira: true
-            }
-          }
-        }
-      },
-      contracts: {
-        orderBy: [{ effectiveDate: 'desc' }, { createdAt: 'desc' }],
-        take: 1,
-        select: {
-          rightsTier: true,
-          producerAccepted: true,
-          effectiveDate: true,
-          producerSignedAt: true,
-          producerLegalName: true,
-          producerSignedName: true
-        }
-      },
-      unlocks: {
-        where: {
-          createdAt: {
-            gte: range.start,
-            lt: range.end
-          }
-        },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          userId: true,
-          createdAt: true,
-          amountNaira: true,
-          amountMinor: true,
-          currency: true,
-          source: true
-        }
-      },
-      settlements: {
-        where: {
-          createdAt: {
-            gte: range.start,
-            lt: range.end
-          }
-        },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          createdAt: true,
-          grossNaira: true,
-          creatorNaira: true,
-          platformNaira: true,
-          gatewayFeeNaira: true,
-          taxNaira: true,
-          referralNaira: true,
-          platformNetNaira: true
-        }
-      }
-    }
-  });
+  const selectedVideos = await getReportSelectedVideos(selectedVideoIds, range);
 
   const videoMap = new Map(selectedVideos.map((video) => [video.id, video]));
   const orderedVideos = selectedVideoIds
@@ -584,77 +887,11 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
   ) as string[];
 
   const [previousPeriodRows, watchHistoryRows, priorCreatorSettlements, priorPaidPayouts, currentPaidPayouts] = await Promise.all([
-    prisma.unlockSettlement.groupBy({
-      by: ['videoId'],
-      where: {
-        videoId: { in: selectedVideoIds },
-        createdAt: {
-          gte: range.previousStart,
-          lt: range.start
-        }
-      },
-      _count: { _all: true },
-      _sum: { grossNaira: true }
-    }),
-    unlockUserIds.length
-      ? prisma.watchHistory.findMany({
-          where: {
-            videoId: { in: selectedVideoIds },
-            userId: { in: unlockUserIds }
-          },
-          select: {
-            videoId: true,
-            userId: true,
-            progressSec: true,
-            durationSec: true,
-            completedAt: true,
-            updatedAt: true
-          }
-        })
-      : Promise.resolve([])
-    ,
-    prisma.unlockSettlement.aggregate({
-      where: {
-        videoId: { in: selectedVideoIds },
-        createdAt: { lt: range.start }
-      },
-      _sum: {
-        creatorNaira: true
-      }
-    }),
-    creatorProfileIds.length
-      ? prisma.creatorPayoutRequest.aggregate({
-          where: {
-            creatorProfileId: { in: creatorProfileIds },
-            status: 'PAID',
-            paidAt: { lt: range.start }
-          },
-          _sum: {
-            amountNaira: true
-          }
-        })
-      : Promise.resolve({ _sum: { amountNaira: 0 } }),
-    creatorProfileIds.length
-      ? prisma.creatorPayoutRequest.findMany({
-          where: {
-            creatorProfileId: { in: creatorProfileIds },
-            status: 'PAID',
-            paidAt: {
-              gte: range.start,
-              lt: range.end
-            }
-          },
-          orderBy: { paidAt: 'desc' },
-          select: {
-            id: true,
-            amountNaira: true,
-            paidAt: true,
-            bankName: true,
-            bankAccountName: true,
-            bankAccountNumber: true
-          }
-        })
-      : Promise.resolve([])
+    getPreviousReportPeriodRows(selectedVideoIds, range),
+    getReportWatchHistoryRows(selectedVideoIds, unlockUserIds),
+    getPriorCreatorSettlementTotals(selectedVideoIds, range),
+    getPriorPaidPayoutTotals(creatorProfileIds, range),
+    getCurrentPaidPayoutRows(creatorProfileIds, range)
   ]);
 
   const previousByVideo = new Map(

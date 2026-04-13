@@ -4,6 +4,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import FinanceSettingsForm from '@/components/FinanceSettingsForm';
 import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
+import { getFinanceConfig, getPlatformWallet } from '@/lib/finance';
 import { prisma } from '@/lib/db';
 import { formatNaira } from '@/lib/format';
 import { getRegionalMoneyDisplay } from '@/lib/pricing';
@@ -17,16 +18,8 @@ export default async function AdminFinancePage() {
   const showSettlementLedger = getRegionalMoneyDisplay(requestHeaders, 100).currency !== 'NGN';
 
   const [config, platformWallet, topMovies, recentSettlements, creators, pendingPayouts, settlementAggregate] = await Promise.all([
-    prisma.financeConfig.upsert({
-      where: { id: 'default' },
-      update: {},
-      create: { id: 'default', creatorSharePercent: 60, platformSharePercent: 29.5, gatewayFeePercent: 3, taxPercent: 7.5 }
-    }),
-    prisma.platformWallet.upsert({
-      where: { id: 'ace-platform' },
-      update: {},
-      create: { id: 'ace-platform', balanceNaira: 0 }
-    }),
+    getFinanceConfig(),
+    getPlatformWallet(),
     prisma.video.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },

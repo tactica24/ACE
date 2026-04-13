@@ -1,15 +1,86 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { getCurrentUser } from '@/lib/auth';
-import { getPrimaryAppPath } from '@/lib/account-routing';
-import { getPreferredUiLanguage } from '@/lib/ui-language-server';
-import { getUiCopy } from '@/lib/ui-language';
 import UserMenu from '@/components/UserMenu';
+import { getPrimaryAppPath } from '@/lib/account-routing';
+import { UI_LANGUAGE_COOKIE, getUiCopy, normalizeUiLanguage, type UILanguage } from '@/lib/ui-language';
+import { type CreatorAccessStatusValue, type RoleValue, type SignupIntentValue } from '@/lib/media-types';
 
-export default async function TopNav() {
-  const user = await getCurrentUser();
-  const language = await getPreferredUiLanguage();
+type NavUser = {
+  name?: string | null;
+  email: string;
+  role: RoleValue;
+  signupIntent: SignupIntentValue;
+  creatorAccessStatus: CreatorAccessStatusValue;
+  emailVerified?: boolean;
+};
+
+function readLanguageCookie() {
+  if (typeof document === 'undefined') {
+    return 'en' as UILanguage;
+  }
+
+  const cookiePrefix = `${UI_LANGUAGE_COOKIE}=`;
+  const cookieValue = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(cookiePrefix))
+    ?.slice(cookiePrefix.length);
+
+  return normalizeUiLanguage(cookieValue);
+}
+
+export default function TopNav() {
+  const [user, setUser] = useState<NavUser | null>(null);
+  const [language, setLanguage] = useState<UILanguage>('en');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLanguage(readLanguageCookie());
+
+    const syncLanguage = () => {
+      if (!cancelled) {
+        setLanguage(readLanguageCookie());
+      }
+    };
+
+    const loadUser = async () => {
+      try {
+        const response = await fetch('/api/me', {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { user?: NavUser | null };
+        if (!cancelled) {
+          setUser(payload.user ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+        }
+      }
+    };
+
+    void loadUser();
+
+    window.addEventListener('focus', syncLanguage);
+    document.addEventListener('visibilitychange', syncLanguage);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', syncLanguage);
+      document.removeEventListener('visibilitychange', syncLanguage);
+    };
+  }, []);
+
   const copy = getUiCopy(language);
   const homeHref = '/';
   const primaryHref = user ? getPrimaryAppPath(user) : '/browse';
@@ -40,7 +111,7 @@ export default async function TopNav() {
           {user?.role === 'USER' ? <Link href="/wallet">{copy.wallet}</Link> : null}
         </div>
         <div className="nav-actions">
-          <LanguageSwitcher language={language} />
+          <LanguageSwitcher language={language} onChange={setLanguage} />
           {user ? (
             <UserMenu
               name={user.name ?? user.email}

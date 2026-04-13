@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateFinanceConfig } from '@/lib/finance';
 
 function isValidPercent(value: number) {
   return Number.isFinite(value) && value >= 0;
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
       taxPercent
     }
   });
+
+  revalidateFinanceConfig();
 
   return NextResponse.json({ ok: true, config });
 }

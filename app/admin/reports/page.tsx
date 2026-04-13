@@ -104,15 +104,53 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
   const requestHeaders = headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
   const requestedStatementId = asString(searchParams?.statementId);
+  let previewReport: MonthlyReportSnapshot;
+  let recentStatements: Awaited<ReturnType<typeof getRecentReportStatements>> = [];
+  let storedStatement: Awaited<ReturnType<typeof getStoredReportStatement>> = null;
+  let loadError: string | null = null;
 
-  const [previewReport, recentStatements, storedStatement] = await Promise.all([
-    getAdminMonthlyReportData({
-      monthKey: searchParams?.month,
-      requestedVideoIds: asArray(searchParams?.videoId)
-    }),
-    getRecentReportStatements(),
-    requestedStatementId ? getStoredReportStatement(requestedStatementId) : Promise.resolve(null)
-  ]);
+  try {
+    [previewReport, recentStatements, storedStatement] = await Promise.all([
+      getAdminMonthlyReportData({
+        monthKey: searchParams?.month,
+        requestedVideoIds: asArray(searchParams?.videoId)
+      }),
+      getRecentReportStatements(),
+      requestedStatementId ? getStoredReportStatement(requestedStatementId) : Promise.resolve(null)
+    ]);
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : 'The report data could not be loaded for this environment.';
+
+    return (
+      <DashboardShell
+        title="Investor reports"
+        description="Select one or more movies, build a clean monthly sales brief, and print the result as a polished PDF for investor or licensing conversations."
+        sideNav={
+          <SideNav
+            active="/admin/reports"
+            items={getAdminNavItems()}
+          />
+        }
+        actions={
+          <div className="action-list reports-toolbar no-print">
+            <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
+            <Link className="btn btn-ghost" href="/admin/payments">Payouts</Link>
+          </div>
+        }
+      >
+        <div className="card">
+          <span className="pill">Report loading issue</span>
+          <h3>Production data needs one more hardening step</h3>
+          <p className="muted">
+            {loadError}
+          </p>
+          <p className="muted">
+            This page now fails safely instead of throwing a server exception. The next fix is to align the production database with the current reporting schema or deploy the new fallback-safe code if the latest build is not live yet.
+          </p>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   const storedReport = storedStatement ? hydrateStoredReport(storedStatement.statementData) : null;
   const report = storedReport ?? previewReport;

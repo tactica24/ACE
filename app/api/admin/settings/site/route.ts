@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { revalidateSiteSettings } from '@/lib/site-settings';
 
 function parseLaunchCountdown(value: string) {
   const normalized = value.trim();
@@ -72,6 +73,8 @@ export async function POST(req: NextRequest) {
       platformSignatureKey: platformSignatureKey || null
     }
   });
+
+  revalidateSiteSettings();
 
   return NextResponse.json({ ok: true, settings });
 }

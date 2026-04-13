@@ -1,16 +1,12 @@
-import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { getApprovedHighlightVideos } from '@/lib/catalog';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function HighlightsPage() {
-  let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
+  let videos: Awaited<ReturnType<typeof getApprovedHighlightVideos>> = [];
   try {
-    videos = await prisma.video.findMany({
-      where: { status: 'APPROVED', seriesId: null },
-      orderBy: { createdAt: 'desc' },
-      take: 12
-    });
+    videos = await getApprovedHighlightVideos();
   } catch {
     videos = [];
   }
