@@ -24,6 +24,11 @@ type UploadFormProps = {
     releaseYear: number | null;
     episodeCount: number;
   }>;
+  uploadEndpoint?: string;
+  submissionEndpoint?: string;
+  extraPayload?: Record<string, unknown>;
+  successRedirectPath?: string;
+  contractRedirectBasePath?: string | null;
 };
 
 type UploadState = {
@@ -155,7 +160,15 @@ function isSupportedVideoFile(file: File | null) {
   return hasSupportedExtension && hasSupportedMimeType;
 }
 
-export default function UploadForm({ initialSeriesId = null, seriesOptions }: UploadFormProps) {
+export default function UploadForm({
+  initialSeriesId = null,
+  seriesOptions,
+  uploadEndpoint = '/api/studio/upload-url',
+  submissionEndpoint = '/api/studio/video',
+  extraPayload,
+  successRedirectPath = '/studio/library',
+  contractRedirectBasePath = '/studio/upload?contractVideoId='
+}: UploadFormProps) {
   const [form, setForm] = useState<UploadState>({
     ...initialState,
     videoType: initialSeriesId ? 'SERIES' : initialState.videoType
@@ -242,7 +255,7 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
     purpose: 'video' | 'poster' | 'subtitle',
     onProgress: (loaded: number, total: number) => void
   ) => {
-    const presign = await fetch('/api/studio/upload-url', {
+    const presign = await fetch(uploadEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -365,10 +378,11 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
         setUploadLabel('Finalizing release...');
         setUploadProgress(100);
 
-        const create = await fetch('/api/studio/video', {
+        const create = await fetch(submissionEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            ...(extraPayload ?? {}),
             title: form.title,
             description: form.description,
             videoType: form.videoType,
@@ -399,7 +413,9 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
           throw new Error(data.error || 'Unable to save release');
         }
 
-        window.location.href = `/studio/upload?contractVideoId=${encodeURIComponent(data.videoId)}`;
+        window.location.href = contractRedirectBasePath
+          ? `${contractRedirectBasePath}${encodeURIComponent(data.videoId)}`
+          : successRedirectPath;
         return;
       }
 
@@ -456,12 +472,13 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
       setUploadLabel(isAddingToExistingSeries ? 'Adding episodes...' : 'Creating series...');
       setUploadProgress(100);
 
-      const create = await fetch('/api/studio/video', {
+      const create = await fetch(submissionEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           isAddingToExistingSeries
             ? {
+                ...(extraPayload ?? {}),
                 videoType: 'SERIES',
                 seriesId: selectedSeries?.id,
                 priceTier: selectedSeries?.priceTier,
@@ -469,6 +486,7 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
                 episodes: episodePayload
               }
             : {
+                ...(extraPayload ?? {}),
                 title: form.title,
                 description: form.description,
                 videoType: 'SERIES',
@@ -493,9 +511,9 @@ export default function UploadForm({ initialSeriesId = null, seriesOptions }: Up
         throw new Error(data.error || 'Unable to save series');
       }
 
-      window.location.href = data.requiresContract
-        ? `/studio/upload?contractVideoId=${encodeURIComponent(data.videoId)}`
-        : '/studio/library';
+      window.location.href = data.requiresContract && contractRedirectBasePath
+        ? `${contractRedirectBasePath}${encodeURIComponent(data.videoId)}`
+        : successRedirectPath;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upload failed');
       setUploadLabel(null);

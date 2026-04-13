@@ -146,7 +146,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     if ((action === 'approve' || action === 'reject') && !item.hasModerationRecord) {
       setErrors((prev) => ({
         ...prev,
-        [item.video.id]: 'This title has no moderation record yet. Use "Remove from catalog" to take it off the homepage.'
+        [item.video.id]: 'This title has no moderation record yet. Use "Deactivate for viewers" to hide it from the catalog.'
       }));
       return;
     }
@@ -155,7 +155,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     const reason = (reasons[item.video.id] ?? '').trim();
 
     if (action === 'remove' && !reason) {
-      setErrors((prev) => ({ ...prev, [item.video.id]: 'Add a removal note before taking this title off the catalog.' }));
+      setErrors((prev) => ({ ...prev, [item.video.id]: 'Add a note before hiding this title from viewers.' }));
       return;
     }
 
@@ -358,7 +358,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </button>
                 ) : null}
                 <button className="btn btn-ghost" onClick={() => handleAction(item, 'remove')}>
-                  Remove from catalog
+                  Deactivate for viewers
                 </button>
               </div>
 

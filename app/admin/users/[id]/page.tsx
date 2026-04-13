@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import AdminAccountControlPanel from '@/components/AdminAccountControlPanel';
 import AdminCommerceSupportPanel from '@/components/AdminCommerceSupportPanel';
 import AdminCreatorProfileEditor from '@/components/AdminCreatorProfileEditor';
+import AdminProducerVideoManager from '@/components/AdminProducerVideoManager';
 import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
@@ -65,6 +66,26 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
         orderBy: { createdAt: 'desc' },
         take: 20
       },
+      videos: {
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          category: true,
+          videoType: true,
+          releaseYear: true,
+          createdAt: true,
+          series: {
+            select: {
+              title: true
+            }
+          },
+          seasonNumber: true,
+          episodeNumber: true
+        }
+      },
       unlocks: {
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -92,6 +113,9 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       actions={
         <div className="action-list">
           <PromoteAdminButton userId={user.id} email={user.email} role={user.role} />
+          {user.signupIntent === 'CREATOR' || user.creator ? (
+            <Link className="btn btn-ghost" href={`/admin/upload?producerId=${encodeURIComponent(user.id)}`}>Upload for producer</Link>
+          ) : null}
           <Link className="btn btn-ghost" href={`mailto:${user.email}`}>Email user</Link>
           <Link className="btn btn-ghost" href="/admin/users">Back to users</Link>
         </div>
@@ -184,6 +208,30 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                 bankName: user.creator?.bankName ?? '',
                 bankAccountNumber: user.creator?.bankAccountNumber ?? ''
               }}
+            />
+          </div>
+        ) : null}
+
+        {user.signupIntent === 'CREATOR' || user.creator || user.videos.length ? (
+          <div className="card">
+            <h3>Producer movie availability</h3>
+            <p className="muted">
+              Activate a movie to make it visible to viewers, or deactivate it to hide it without losing the upload.
+            </p>
+            <AdminProducerVideoManager
+              userId={user.id}
+              initialVideos={user.videos.map((video) => ({
+                id: video.id,
+                title: video.title,
+                status: video.status,
+                category: video.category,
+                videoType: video.videoType,
+                releaseYear: video.releaseYear,
+                createdAt: video.createdAt.toISOString(),
+                seriesTitle: video.series?.title ?? null,
+                seasonNumber: video.seasonNumber,
+                episodeNumber: video.episodeNumber
+              }))}
             />
           </div>
         ) : null}

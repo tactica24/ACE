@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
     r2Key,
     posterKey,
     seriesId,
-    episodes
+    episodes,
+    targetCreatorUserId
   } = (body ?? {}) as {
     title?: string;
     description?: string;
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest) {
     posterKey?: string | null;
     seriesId?: string;
     episodes?: EpisodePayload[];
+    targetCreatorUserId?: string;
   };
 
   const safeTitle = title?.trim();
@@ -145,6 +147,8 @@ export async function POST(req: NextRequest) {
   const safeR2Key = r2Key?.trim() || '';
   const safePosterKey = posterKey?.trim() || null;
   const safeSeriesId = seriesId?.trim() || null;
+  const requestedCreatorUserId = typeof targetCreatorUserId === 'string' ? targetCreatorUserId.trim() : '';
+  const targetCreatorId = auth.role === 'ADMIN' && requestedCreatorUserId ? requestedCreatorUserId : auth.sub;
   const safeGenres = (genres ?? []).map((value) => value.trim()).filter(Boolean);
   const safeTags = (tags ?? []).map((value) => value.trim()).filter(Boolean);
   const safeHighlights = normalizeHighlights(highlightSeconds);
@@ -170,12 +174,25 @@ export async function POST(req: NextRequest) {
   const safeAgeRating: AgeRatingValue = isAgeRating(ageRating) ? ageRating : 'ALL';
   const pendingStatus: VideoStatusValue = 'PENDING';
 
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetCreatorId },
+    select: {
+      id: true,
+      email: true,
+      name: true
+    }
+  });
+
+  if (!targetUser) {
+    return NextResponse.json({ error: 'Selected producer account was not found.' }, { status: 404 });
+  }
+
   await prisma.creatorProfile.upsert({
-    where: { userId: auth.sub },
+    where: { userId: targetCreatorId },
     update: {},
     create: {
-      userId: auth.sub,
-      displayName: auth.email.split('@')[0]
+      userId: targetCreatorId,
+      displayName: targetUser.name?.trim() || targetUser.email.split('@')[0]
     }
   });
 
@@ -200,7 +217,7 @@ export async function POST(req: NextRequest) {
 
     const video = await prisma.video.create({
       data: {
-        creatorId: auth.sub,
+        creatorId: targetCreatorId,
         title: safeTitle,
         description: safeDescription,
         videoType: safeVideoType,
@@ -300,7 +317,7 @@ export async function POST(req: NextRequest) {
     const series = await prisma.video.findFirst({
       where: {
         id: safeSeriesId,
-        creatorId: auth.sub,
+        creatorId: targetCreatorId,
         videoType: 'SERIES',
         seriesId: null
       }
@@ -338,7 +355,7 @@ export async function POST(req: NextRequest) {
         const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
         const created = await tx.video.create({
           data: {
-            creatorId: auth.sub,
+            creatorId: targetCreatorId,
             seriesId: series.id,
             seasonNumber: episode.seasonNumber,
             episodeNumber: episode.episodeNumber,
@@ -407,7 +424,7 @@ export async function POST(req: NextRequest) {
   const result = await prisma.$transaction(async (tx) => {
     const series = await tx.video.create({
       data: {
-        creatorId: auth.sub,
+        creatorId: targetCreatorId,
         title: safeTitle,
         description: safeDescription,
         videoType: 'SERIES',
@@ -435,7 +452,7 @@ export async function POST(req: NextRequest) {
       const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
       const created = await tx.video.create({
         data: {
-          creatorId: auth.sub,
+          creatorId: targetCreatorId,
           seriesId: series.id,
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,

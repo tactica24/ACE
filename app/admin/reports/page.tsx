@@ -54,7 +54,10 @@ function printDateLabel(date: Date | string | null | undefined) {
   }).format(parsedDate);
 }
 
-function hydrateStoredReport(statementData: unknown): MonthlyReportSnapshot | null {
+function hydrateStoredReport(
+  statementData: unknown,
+  fallbackSnapshot?: MonthlyReportSnapshot
+): MonthlyReportSnapshot | null {
   if (!statementData || typeof statementData !== 'object') {
     return null;
   }
@@ -65,10 +68,13 @@ function hydrateStoredReport(statementData: unknown): MonthlyReportSnapshot | nu
   }
 
   return {
+    ...(fallbackSnapshot ?? {}),
     ...snapshot,
-    periodStart: toDate(snapshot.periodStart) ?? new Date(),
-    periodEnd: toDate(snapshot.periodEnd) ?? new Date(),
-    generatedAt: toDate(snapshot.generatedAt) ?? new Date(),
+    periodStart: toDate(snapshot.periodStart) ?? fallbackSnapshot?.periodStart ?? new Date(),
+    periodEnd: toDate(snapshot.periodEnd) ?? fallbackSnapshot?.periodEnd ?? new Date(),
+    generatedAt: toDate(snapshot.generatedAt) ?? fallbackSnapshot?.generatedAt ?? new Date(),
+    availableVideos: Array.isArray(snapshot.availableVideos) ? snapshot.availableVideos : fallbackSnapshot?.availableVideos ?? [],
+    selectedVideoIds: Array.isArray(snapshot.selectedVideoIds) ? snapshot.selectedVideoIds : fallbackSnapshot?.selectedVideoIds ?? [],
     videos: snapshot.videos.map((video) => ({
       ...video,
       latestContract: video.latestContract
@@ -80,10 +86,15 @@ function hydrateStoredReport(statementData: unknown): MonthlyReportSnapshot | nu
         : null
     })),
     summary: {
+      ...(fallbackSnapshot?.summary ?? {}),
       ...snapshot.summary,
       paymentDetails: {
+        ...(fallbackSnapshot?.summary.paymentDetails ?? {}),
         ...snapshot.summary.paymentDetails,
-        remittanceDate: toDate(snapshot.summary.paymentDetails.remittanceDate)
+        remittanceDate:
+          toDate(snapshot.summary.paymentDetails?.remittanceDate) ??
+          fallbackSnapshot?.summary.paymentDetails.remittanceDate ??
+          null
       }
     }
   } as MonthlyReportSnapshot;
@@ -152,7 +163,7 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
     );
   }
 
-  const storedReport = storedStatement ? hydrateStoredReport(storedStatement.statementData) : null;
+  const storedReport = storedStatement ? hydrateStoredReport(storedStatement.statementData, previewReport) : null;
   const report = storedReport ?? previewReport;
   const activeStatement = storedStatement && storedReport ? storedStatement : null;
   const statementStatus = statementStatusLabel(activeStatement?.status);

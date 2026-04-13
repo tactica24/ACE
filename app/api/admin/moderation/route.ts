@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const items = await prisma.moderationItem.findMany({
-    where: { status: { in: ['PENDING', 'APPROVED'] } },
+    where: {
+      status: { in: ['PENDING', 'APPROVED'] },
+      video: { status: { in: ['PENDING', 'APPROVED'] } }
+    },
     include: { video: true },
     orderBy: { createdAt: 'desc' },
     take: 50

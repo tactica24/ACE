@@ -13,21 +13,41 @@ export async function POST(req: NextRequest) {
   if (!videoId) return NextResponse.json({ error: 'Missing videoId' }, { status: 400 });
   if (!reason) return NextResponse.json({ error: 'Missing reason' }, { status: 400 });
 
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    select: {
+      id: true,
+      videoType: true,
+      seriesId: true
+    }
+  });
+
+  if (!video) {
+    return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
+  }
+
   await prisma.video.update({
     where: { id: videoId },
-    data: { status: 'REJECTED' }
+    data: { status: 'DRAFT' }
   });
+
+  if (video.videoType === 'SERIES' && !video.seriesId) {
+    await prisma.video.updateMany({
+      where: { seriesId: videoId },
+      data: { status: 'DRAFT' }
+    });
+  }
 
   await prisma.moderationItem.upsert({
     where: { videoId },
     update: {
-      status: 'REJECTED',
+      status: 'APPROVED',
       reviewerId: auth.sub,
       notes: reason
     },
     create: {
       videoId,
-      status: 'REJECTED',
+      status: 'APPROVED',
       reviewerId: auth.sub,
       notes: reason
     }
@@ -35,5 +55,5 @@ export async function POST(req: NextRequest) {
 
   revalidateApprovedCatalog();
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, message: 'Movie hidden from viewers and kept available for reactivation.' });
 }
