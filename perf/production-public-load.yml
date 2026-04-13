@@ -1,0 +1,67 @@
+config:
+  target: "https://www.acestudio.ng"
+  phases:
+    - name: "warmup"
+      duration: 60
+      arrivalRate: 2
+    - name: "baseline"
+      duration: 60
+      arrivalRate: 10
+    - name: "steady-browse"
+      duration: 120
+      arrivalRate: 25
+    - name: "pressure"
+      duration: 120
+      arrivalRate: 50
+    - name: "stress"
+      duration: 180
+      arrivalRate: 100
+  defaults:
+    headers:
+      User-Agent: "ACE-Production-Load-Test/1.0"
+      Accept-Language: "en-US,en;q=0.9"
+  http:
+    timeout: 20
+    pool: 50
+  plugins:
+    metrics-by-endpoint: {}
+
+scenarios:
+  - name: "home-and-highlights"
+    weight: 40
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+      - think: 1
+      - get:
+          url: "/highlights"
+          expect:
+            - statusCode: 200
+
+  - name: "browse-and-catalog"
+    weight: 35
+    flow:
+      - get:
+          url: "/browse"
+          expect:
+            - statusCode: 200
+      - think: 1
+      - get:
+          url: "/api/videos"
+          expect:
+            - statusCode: 200
+
+  - name: "auth-entry"
+    weight: 25
+    flow:
+      - get:
+          url: "/auth/login"
+          expect:
+            - statusCode: 200
+      - think: 1
+      - get:
+          url: "/auth/register"
+          expect:
+            - statusCode: 200

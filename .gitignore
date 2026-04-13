@@ -10,4 +10,5 @@ yarn-error.log*
 *.log
 storage/cache
 storage/ace
+perf/results
 
