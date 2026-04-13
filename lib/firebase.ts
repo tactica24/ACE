@@ -1,6 +1,6 @@
 'use client';
 
-import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
 const firebaseEnv = {
@@ -52,8 +52,10 @@ export function toFirebaseAuthErrorMessage(error: unknown, fallback: string) {
   const configMessage = getFirebaseClientConfigErrorMessage();
   if (configMessage) return configMessage;
 
-  if (error instanceof FirebaseError) {
-    switch (error.code) {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const firebaseError = error as { code?: string; message?: string };
+
+    switch (firebaseError.code) {
       case 'auth/api-key-not-valid':
       case 'auth/app-not-authorized':
       case 'auth/invalid-api-key':
@@ -99,7 +101,7 @@ export function toFirebaseAuthErrorMessage(error: unknown, fallback: string) {
       case 'auth/too-many-requests':
         return 'Too many attempts were made. Please wait a moment and try again.';
       default:
-        return error.message || fallback;
+        return firebaseError.message || fallback;
     }
   }
 

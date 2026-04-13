@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 
@@ -14,8 +16,12 @@ if (usesDirectUrl && process.env.DIRECT_URL) {
   env.DATABASE_URL = process.env.DIRECT_URL;
 }
 
-const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-const result = spawnSync(command, ['prisma', ...args], {
+const localPrismaEntry = resolve('node_modules', 'prisma', 'build', 'index.js');
+const useLocalPrisma = existsSync(localPrismaEntry);
+const command = useLocalPrisma ? process.execPath : process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const commandArgs = useLocalPrisma ? [localPrismaEntry, ...args] : ['prisma', ...args];
+
+const result = spawnSync(command, commandArgs, {
   stdio: 'inherit',
   env
 });

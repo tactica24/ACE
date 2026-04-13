@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, type ChangeEvent } from 'react';
 import { prepareSignatureUpload, uploadContractSignatureAsset } from '@/lib/signature-upload-client';
 
@@ -181,7 +182,13 @@ export default function AdminSettingsPanel({
           </div>
           <div className="signature-upload-preview">
             {site.platformSignaturePreviewUrl ? (
-              <img src={site.platformSignaturePreviewUrl} alt="ACE Studio signature preview" />
+              <Image
+                src={site.platformSignaturePreviewUrl}
+                alt="ACE Studio signature preview"
+                width={220}
+                height={82}
+                unoptimized
+              />
             ) : (
               <span>ACE Studio</span>
             )}

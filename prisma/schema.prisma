@@ -142,6 +142,15 @@ enum PairingStatus {
   EXPIRED
 }
 
+enum ReportStatementStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  ISSUED
+  PAID
+  SUPERSEDED
+}
+
 model User {
   id           String          @id @default(cuid())
   firebaseUid  String?         @unique
@@ -608,4 +617,74 @@ model CreatorPayoutRequest {
 
   @@index([creatorProfileId, requestedAt])
   @@index([status, requestedAt])
+}
+
+model ReportStatement {
+  id                         String                @id @default(cuid())
+  reportCode                 String                @unique
+  monthKey                   String
+  reportingEntity            String
+  rightsHolder               String
+  currency                   String                @default("NGN")
+  status                     ReportStatementStatus @default(DRAFT)
+  titleCount                 Int                   @default(0)
+  unlockCount                Int                   @default(0)
+  uniqueAccounts             Int                   @default(0)
+  watchHours                 Float                 @default(0)
+  grossNaira                 Int                   @default(0)
+  approvedDeductionsNaira    Int                   @default(0)
+  netRevenueNaira            Int                   @default(0)
+  licensorSharePercent       Float                 @default(0)
+  platformSharePercent       Float                 @default(0)
+  creatorNaira               Int                   @default(0)
+  platformNaira              Int                   @default(0)
+  platformNetNaira           Int                   @default(0)
+  openingBalanceNaira        Int                   @default(0)
+  amountPreviouslyPaidNaira  Int                   @default(0)
+  currentAmountDueNaira      Int                   @default(0)
+  closingBalanceNaira        Int                   @default(0)
+  exchangeRateLabel          String?
+  paymentDueLabel            String?
+  activeTerritories          Int                   @default(0)
+  topTerritory               String?
+  topDeviceType              String?
+  topDeviceTypeStatus        String?
+  promotionalAdjustmentsNote String?
+  contentStatus              String?
+  preparedBy                 String
+  reviewedBy                 String?
+  reviewedAt                 DateTime?
+  approvedBy                 String?
+  approvedAt                 DateTime?
+  issuedBy                   String?
+  issuedAt                   DateTime?
+  paidBy                     String?
+  paidAt                     DateTime?
+  notes                      String?
+  statementData              Json
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+  items                      ReportStatementItem[]
+
+  @@index([monthKey, createdAt])
+  @@index([status, createdAt])
+}
+
+model ReportStatementItem {
+  id               String          @id @default(cuid())
+  statementId      String
+  videoId          String?
+  title            String
+  territoryLabel   String?
+  periodLabel      String
+  views            Int             @default(0)
+  watchHours       Float           @default(0)
+  revenueBaseNaira Int             @default(0)
+  sharePercent     Float           @default(0)
+  amountDueNaira   Int             @default(0)
+  itemData         Json?
+  createdAt        DateTime        @default(now())
+  statement        ReportStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@index([statementId, createdAt])
 }

@@ -1,5 +1,12 @@
 import { Readable } from 'node:stream';
-import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  GetObjectCommand,
+  type GetObjectCommandOutput,
+  PutObjectCommand,
+  HeadObjectCommand,
+  type HeadObjectCommandOutput
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
 
@@ -18,11 +25,11 @@ function getBucket() {
   return env.R2_BUCKET;
 }
 
-export async function headObject(key: string) {
+export async function headObject(key: string): Promise<HeadObjectCommandOutput> {
   return createClient().send(new HeadObjectCommand({ Bucket: getBucket(), Key: key }));
 }
 
-export async function getObjectStream(key: string, range?: string) {
+export async function getObjectStream(key: string, range?: string): Promise<GetObjectCommandOutput> {
   return createClient().send(new GetObjectCommand({ Bucket: getBucket(), Key: key, Range: range }));
 }
 
