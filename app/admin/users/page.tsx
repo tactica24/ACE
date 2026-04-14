@@ -81,7 +81,8 @@ export default async function UsersPage() {
       }
       actions={
         <div className="action-list">
-          <a className="btn btn-primary" href="#account-directory">Account directory</a>
+          <a className="btn btn-primary" href="/admin/upload#create-producer">Create producer</a>
+          <a className="btn btn-ghost" href="#account-directory">Account directory</a>
           <a className="btn btn-ghost" href="/admin/intake">Producer approvals</a>
           <a className="btn btn-ghost" href="/admin/support">Support inbox</a>
         </div>

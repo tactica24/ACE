@@ -1,23 +1,49 @@
 'use client';
 
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import VideoCard, { type VideoCardData } from '@/components/VideoCard';
 
 type BrowseCatalogVideo = VideoCardData & {
   genres: string[];
 };
 
-export default function BrowseCatalog({ videos }: { videos: BrowseCatalogVideo[] }) {
-  const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
+export default function BrowseCatalog({
+  videos,
+  initialQuery = '',
+  initialCategory = 'All',
+  initialVideoType = 'All'
+}: {
+  videos: BrowseCatalogVideo[];
+  initialQuery?: string;
+  initialCategory?: string;
+  initialVideoType?: string;
+}) {
+  const [query, setQuery] = useState(initialQuery);
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [activeVideoType, setActiveVideoType] = useState(initialVideoType);
   const deferredQuery = useDeferredValue(query);
   const trimmedQuery = deferredQuery.trim();
 
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    setActiveCategory(initialCategory);
+  }, [initialCategory]);
+
+  useEffect(() => {
+    setActiveVideoType(initialVideoType);
+  }, [initialVideoType]);
+
   const categories = ['All', ...Array.from(new Set(videos.map((video) => video.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const videoTypes = ['All', ...Array.from(new Set(videos.map((video) => video.videoType).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const normalizedQuery = trimmedQuery.toLowerCase();
   const filteredVideos = videos.filter((video) => {
     const matchesCategory = activeCategory === 'All' || video.category === activeCategory;
-    if (!matchesCategory) {
+    const matchesVideoType = activeVideoType === 'All' || video.videoType === activeVideoType;
+
+    if (!matchesCategory || !matchesVideoType) {
       return false;
     }
 
@@ -74,13 +100,36 @@ export default function BrowseCatalog({ videos }: { videos: BrowseCatalogVideo[]
             ))}
           </div>
         </div>
+
+        <div className="browse-sidebar-section">
+          <div className="stack-row" style={{ alignItems: 'center' }}>
+            <h3 style={{ margin: 0 }}>Format</h3>
+            <span className="muted">{activeVideoType}</span>
+          </div>
+          <div className="browse-filter-list">
+            {videoTypes.map((videoType) => (
+              <button
+                key={videoType}
+                className={`browse-filter-button${videoType === activeVideoType ? ' active' : ''}`}
+                type="button"
+                onClick={() => setActiveVideoType(videoType)}
+              >
+                {videoType}
+              </button>
+            ))}
+          </div>
+        </div>
       </aside>
 
       <div className="browse-results">
         <div className="browse-results-header">
           <div>
             <h2 className="section-title" style={{ margin: 0 }}>
-              {activeCategory === 'All' ? 'All titles' : activeCategory}
+              {activeCategory === 'All' && activeVideoType === 'All'
+                ? 'All titles'
+                : [activeCategory !== 'All' ? activeCategory : null, activeVideoType !== 'All' ? activeVideoType : null]
+                    .filter(Boolean)
+                    .join(' / ')}
             </h2>
             <p className="muted" style={{ marginBottom: 0 }}>
               {trimmedQuery

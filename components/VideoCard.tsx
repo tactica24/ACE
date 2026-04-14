@@ -39,6 +39,7 @@ export type VideoCardData = {
   priceTier: PriceTierValue;
   posterKey?: string | null;
   price?: { currency: string; amountMinor: number; amountNaira?: number };
+  progressPercent?: number;
 };
 
 function formatRuntime(durationSec?: number) {
@@ -72,6 +73,15 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
         style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         {!posterUrl ? <span>Ace Studio</span> : null}
+        <div className="video-thumb-overlay">
+          <span className="video-thumb-kicker">{video.category}</span>
+          <span className="video-thumb-runtime">{runtimeLabel ?? labelize(video.videoType)}</span>
+        </div>
+        {typeof video.progressPercent === 'number' && video.progressPercent > 0 ? (
+          <div className="video-progress" aria-hidden="true">
+            <span style={{ width: `${Math.min(100, Math.max(0, video.progressPercent))}%` }} />
+          </div>
+        ) : null}
       </div>
       <div className="video-meta">
         <div className="video-meta-top">

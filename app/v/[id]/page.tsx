@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
 import LaunchPage from '@/components/LaunchPage';
+import VideoCard from '@/components/VideoCard';
 import { createGuestPreviewStreamToken, getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { formatCredits, getCreditsForNaira } from '@/lib/credits';
@@ -16,7 +17,7 @@ import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
 import { canPreviewVideo, isEpisodeVideo } from '@/lib/video-access';
-import { getRegionalPriceForVideo } from '@/lib/video-pricing';
+import { getRegionalPriceForVideo, getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
 const ageLabel: Record<string, string> = {
   ALL: 'All',
@@ -139,6 +140,21 @@ export default async function VideoPage({
     const regionalPrice = getRegionalPriceForVideo(requestHeaders, requestedVideo, pricingConfig);
     const posterUrl = getMediaAssetUrl(requestedVideo.posterKey);
     const priceLabel = `${formatCredits(getCreditsForNaira(regionalPrice.amountNaira))} / ${formatCurrencyMinor(regionalPrice.amountMinor, regionalPrice.currency)}`;
+    const relatedTitleCandidates = await prisma.video.findMany({
+      where: {
+        status: 'APPROVED',
+        seriesId: null,
+        id: { not: requestedVideo.id },
+        OR: requestedVideo.genres.length
+          ? [
+              { category: requestedVideo.category },
+              { genres: { hasSome: requestedVideo.genres.slice(0, 4) } }
+            ]
+          : [{ category: requestedVideo.category }]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 6
+    });
 
     let unlocked = false;
     let initialProgress = 0;
@@ -179,10 +195,25 @@ export default async function VideoPage({
       requestedVideo.subtitleTracks.length ? `Subtitles: ${requestedVideo.subtitleTracks.map((track) => track.label).join(', ')}` : null,
       requestedVideo.contentWarnings.length ? `Advisories: ${requestedVideo.contentWarnings.map((warning) => getContentWarningLabel(warning)).join(', ')}` : null
     ].filter(Boolean);
+    const relatedTitles = relatedTitleCandidates.length
+      ? relatedTitleCandidates
+      : await prisma.video.findMany({
+          where: {
+            status: 'APPROVED',
+            seriesId: null,
+            id: { not: requestedVideo.id }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 6
+        });
 
     return (
       <div className="section video-page-section">
         <div className="container detail-page video-page-shell">
+          <div
+            className="video-page-backdrop"
+            style={posterUrl ? { backgroundImage: `linear-gradient(180deg, rgba(5, 7, 14, 0.18), rgba(5, 7, 14, 0.92)), url(${posterUrl})` } : undefined}
+          />
           <div className="detail-hero video-page-header">
             <div className="detail-poster card-soft">
               <div
@@ -203,6 +234,15 @@ export default async function VideoPage({
                   <p className="muted video-page-meta-line">{secondaryMeta.join(' / ')}</p>
                 ) : null}
               </div>
+              <div className="video-page-actions">
+                <a className="btn btn-primary" href="#watch-player">Watch now</a>
+                <Link className="btn btn-ghost" href="/browse">Browse more titles</Link>
+                {!user ? (
+                  <Link className="btn btn-ghost" href={`/auth/login?next=${encodeURIComponent(`/v/${requestedVideo.id}`)}`}>Sign in</Link>
+                ) : (
+                  <Link className="btn btn-ghost" href="/account">My account</Link>
+                )}
+              </div>
               <div className="detail-badges detail-badges-compact">
                 <span className="badge">{priceLabel}</span>
                 <span className="badge">{requestedVideo.category}</span>
@@ -210,7 +250,7 @@ export default async function VideoPage({
             </div>
           </div>
 
-          <div className="video-page-player">
+          <div id="watch-player" className="video-page-player">
             <AcePlayer
               videoId={requestedVideo.id}
               teaserSec={requestedVideo.teaserSec}
@@ -236,11 +276,70 @@ export default async function VideoPage({
             />
           </div>
 
+          <div className="video-page-fact-grid video-page-secondary">
+            <div className="detail-card">
+              <span className="video-page-fact-label">Playback access</span>
+              <strong>{unlocked ? 'Ready to watch' : 'Preview-first access'}</strong>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {unlocked
+                  ? 'This title is available on your account and resumes with progress memory.'
+                  : 'Guests can preview before signing in and continuing with an account.'}
+              </p>
+            </div>
+            <div className="detail-card">
+              <span className="video-page-fact-label">Languages</span>
+              <strong>{requestedVideo.originalLanguage ? getLanguageLabel(requestedVideo.originalLanguage) : 'Standard audio'}</strong>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {requestedVideo.subtitleTracks.length
+                  ? `Subtitle options: ${requestedVideo.subtitleTracks.map((track) => track.label).join(', ')}`
+                  : 'Subtitle options will appear here whenever they are available.'}
+              </p>
+            </div>
+            <div className="detail-card">
+              <span className="video-page-fact-label">Content notes</span>
+              <strong>{requestedVideo.contentWarnings.length ? 'Viewer advisories available' : 'General audience guidance'}</strong>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {requestedVideo.contentWarnings.length
+                  ? requestedVideo.contentWarnings.map((warning) => getContentWarningLabel(warning)).join(', ')
+                  : 'No additional advisories have been recorded for this title.'}
+              </p>
+            </div>
+          </div>
+
           {!user ? (
             <div className="card video-page-secondary">
               <h3>{copy.continueWithAccount}</h3>
               <p className="muted">{copy.continueWithAccountSummary}</p>
               <Link className="btn btn-primary" href={`/auth/login?next=${encodeURIComponent(`/v/${requestedVideo.id}`)}`}>{copy.signIn}</Link>
+            </div>
+          ) : null}
+
+          {relatedTitles.length ? (
+            <div className="card video-page-collection">
+              <div className="home-shelf-header" style={{ marginBottom: 8 }}>
+                <div>
+                  <span className="home-row-kicker">Related titles</span>
+                  <h3 style={{ margin: '6px 0 4px' }}>Keep the cinematic mood going</h3>
+                  <p className="muted" style={{ marginBottom: 0 }}>More titles connected by tone, genre, or category.</p>
+                </div>
+                <Link className="btn btn-ghost btn-compact" href="/browse">Explore all</Link>
+              </div>
+              <div className="home-carousel">
+                {relatedTitles.map((video) => (
+                  <div key={video.id} className="home-carousel-item">
+                    <VideoCard
+                      video={{
+                        ...video,
+                        price: {
+                          currency: 'NGN',
+                          amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
+                          amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
@@ -292,6 +391,21 @@ export default async function VideoPage({
   const seriesPosterUrl = getMediaAssetUrl(series.posterKey);
   const selectedPosterUrl = getMediaAssetUrl(selectedEpisode?.posterKey ?? series.posterKey);
   const totalSeasons = new Set(visibleEpisodes.map((episode) => episode.seasonNumber).filter(Boolean)).size;
+  const relatedSeries = await prisma.video.findMany({
+    where: {
+      status: 'APPROVED',
+      seriesId: null,
+      id: { not: series.id },
+      OR: series.genres.length
+        ? [
+            { category: series.category },
+            { genres: { hasSome: series.genres.slice(0, 4) } }
+          ]
+        : [{ category: series.category }]
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 6
+  });
 
   let unlocked = false;
   let initialProgress = 0;
@@ -341,6 +455,10 @@ export default async function VideoPage({
   return (
     <div className="section video-page-section">
       <div className="container detail-page video-page-shell">
+        <div
+          className="video-page-backdrop"
+          style={seriesPosterUrl ? { backgroundImage: `linear-gradient(180deg, rgba(5, 7, 14, 0.18), rgba(5, 7, 14, 0.92)), url(${seriesPosterUrl})` } : undefined}
+        />
         <div className="detail-hero video-page-header">
           <div className="detail-poster card-soft">
             <div
@@ -366,6 +484,15 @@ export default async function VideoPage({
                 <p className="muted video-page-meta-line">{currentEpisodeMeta.join(' / ')}</p>
               ) : null}
             </div>
+            <div className="video-page-actions">
+              {selectedEpisode ? <a className="btn btn-primary" href="#watch-player">Watch episode</a> : null}
+              <Link className="btn btn-ghost" href="/browse?type=SERIES">Browse series</Link>
+              {!user ? (
+                <Link className="btn btn-ghost" href={loginHref}>Sign in</Link>
+              ) : (
+                <Link className="btn btn-ghost" href="/account">My account</Link>
+              )}
+            </div>
             <div className="detail-badges detail-badges-compact">
               <span className="badge">{priceLabel} per episode</span>
               <span className="badge">{visibleEpisodes.length} episodes available</span>
@@ -374,7 +501,7 @@ export default async function VideoPage({
         </div>
 
         {selectedEpisode ? (
-          <div className="video-page-player series-player-shell">
+          <div id="watch-player" className="video-page-player series-player-shell">
             <div className="series-player-header">
               <div>
                 <span className="pill series-episode-pill">{formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)}</span>
@@ -479,6 +606,35 @@ export default async function VideoPage({
             <h3>{copy.continueWithAccount}</h3>
             <p className="muted">{copy.continueWithAccountSummary}</p>
             <Link className="btn btn-primary" href={loginHref}>{copy.signIn}</Link>
+          </div>
+        ) : null}
+
+        {relatedSeries.length ? (
+          <div className="card video-page-collection">
+            <div className="home-shelf-header" style={{ marginBottom: 8 }}>
+              <div>
+                <span className="home-row-kicker">More series</span>
+                <h3 style={{ margin: '6px 0 4px' }}>Continue the same mood</h3>
+                <p className="muted" style={{ marginBottom: 0 }}>Series and featured titles that sit close to this world.</p>
+              </div>
+              <Link className="btn btn-ghost btn-compact" href="/browse?type=SERIES">See more series</Link>
+            </div>
+            <div className="home-carousel">
+              {relatedSeries.map((video) => (
+                <div key={video.id} className="home-carousel-item">
+                  <VideoCard
+                    video={{
+                      ...video,
+                      price: {
+                        currency: 'NGN',
+                        amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
+                        amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
+                      }
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>

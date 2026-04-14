@@ -58,6 +58,9 @@ export default function AdminUploadWorkspace({
         <p className="muted">
           Create or complete a producer account first so uploaded movies can be attached to the correct rights holder and show up properly in reports.
         </p>
+        <div className="action-list">
+          <a className="btn btn-primary" href="#create-producer">Create approved producer</a>
+        </div>
       </div>
     );
   }

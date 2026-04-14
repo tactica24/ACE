@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import UserMenu from '@/components/UserMenu';
 import { getPrimaryAppPath } from '@/lib/account-routing';
@@ -36,6 +37,8 @@ function readLanguageCookie() {
 export default function TopNav() {
   const [user, setUser] = useState<NavUser | null>(null);
   const [language, setLanguage] = useState<UILanguage>('en');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +84,10 @@ export default function TopNav() {
     };
   }, []);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
   const copy = getUiCopy(language);
   const homeHref = '/';
   const primaryHref = user ? getPrimaryAppPath(user) : '/browse';
@@ -93,6 +100,14 @@ export default function TopNav() {
           ? 'Producer'
           : copy.browse
     : copy.browse;
+  const navLinks = [
+    { label: 'Home', href: '/' },
+    { label: 'Movies', href: '/browse' },
+    { label: 'Series', href: '/browse?type=SERIES' },
+    { label: 'TV Shows', href: '/tv' },
+    { label: 'My List', href: '/#continue-watching' },
+    { label: 'Categories', href: '/#categories' }
+  ];
 
   return (
     <nav className="nav">
@@ -105,39 +120,83 @@ export default function TopNav() {
             <strong>Ace Studio</strong>
           </span>
         </Link>
-        <div className="nav-links">
-          <Link href={homeHref}>Home</Link>
-          <Link href={primaryHref}>{primaryLabel}</Link>
-          {user?.role === 'USER' ? <Link href="/wallet">{copy.wallet}</Link> : null}
-        </div>
-        <div className="nav-actions">
-          <LanguageSwitcher language={language} onChange={setLanguage} />
-          {user ? (
-            <UserMenu
-              name={user.name ?? user.email}
-              email={user.email}
-              role={user.role}
-              showCreatorStudio={user.role === 'CREATOR'}
-              showCreatorOnboarding={
-                user.signupIntent === 'CREATOR' &&
-                user.role !== 'CREATOR' &&
-                user.creatorAccessStatus === 'REQUESTED' &&
-                Boolean(user.emailVerified)
-              }
-              showCreatorStatus={
-                user.signupIntent === 'CREATOR' &&
-                user.role !== 'CREATOR' &&
-                (!user.emailVerified || user.creatorAccessStatus === 'SUBMITTED')
-              }
-              showSupport={user.role !== 'ADMIN'}
-              language={language}
-            />
-          ) : (
-            <div className="nav-actions-guest">
-              <Link className="btn btn-ghost btn-compact nav-action-button" href="/auth/login">{copy.signIn}</Link>
-              <Link className="btn btn-primary btn-compact nav-action-button" href="/auth/register">{copy.createAccount}</Link>
-            </div>
-          )}
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <div className={`nav-shell${menuOpen ? ' open' : ''}`}>
+          <div className="nav-links nav-links-primary">
+            {navLinks.map((link) => {
+              const isActive =
+                link.href === '/'
+                  ? pathname === '/'
+                  : link.href.startsWith('/browse')
+                    ? pathname?.startsWith('/browse')
+                    : pathname === link.href;
+
+              return (
+                <Link key={link.label} className={`nav-link${isActive ? ' active' : ''}`} href={link.href}>
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className="nav-actions nav-actions-premium">
+            <form className="nav-search" action="/browse" method="get">
+              <input
+                className="nav-search-input"
+                type="search"
+                name="q"
+                placeholder="Search films, series, or genres"
+                aria-label="Search the ACE Studio catalog"
+              />
+              <button className="nav-search-button" type="submit">Search</button>
+            </form>
+            <Link className="nav-icon-link" href="/highlights" aria-label="See new highlights">
+              New
+            </Link>
+            <LanguageSwitcher language={language} onChange={setLanguage} />
+            {user ? (
+              <>
+                {primaryHref !== '/browse' ? (
+                  <Link className="btn btn-ghost btn-compact nav-action-button" href={primaryHref}>
+                    {primaryLabel}
+                  </Link>
+                ) : null}
+                <UserMenu
+                  name={user.name ?? user.email}
+                  email={user.email}
+                  role={user.role}
+                  showCreatorStudio={user.role === 'CREATOR'}
+                  showCreatorOnboarding={
+                    user.signupIntent === 'CREATOR' &&
+                    user.role !== 'CREATOR' &&
+                    user.creatorAccessStatus === 'REQUESTED' &&
+                    Boolean(user.emailVerified)
+                  }
+                  showCreatorStatus={
+                    user.signupIntent === 'CREATOR' &&
+                    user.role !== 'CREATOR' &&
+                    (!user.emailVerified || user.creatorAccessStatus === 'SUBMITTED')
+                  }
+                  showSupport={user.role !== 'ADMIN'}
+                  language={language}
+                />
+              </>
+            ) : (
+              <div className="nav-actions-guest">
+                <Link className="btn btn-ghost btn-compact nav-action-button" href="/auth/login">{copy.signIn}</Link>
+                <Link className="btn btn-primary btn-compact nav-action-button" href="/auth/register">Start Streaming</Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>

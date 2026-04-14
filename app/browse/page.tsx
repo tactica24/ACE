@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import LaunchPage from '@/components/LaunchPage';
 import BrowseCatalog from '@/components/BrowseCatalog';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
@@ -23,7 +24,19 @@ type BrowseVideo = {
   episodeCount?: number | null;
 };
 
-export default async function BrowsePage() {
+function firstValue(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function BrowsePage({
+  searchParams
+}: {
+  searchParams?: {
+    q?: string | string[];
+    category?: string | string[];
+    type?: string | string[];
+  };
+}) {
   const siteSettings = await getSiteSettings();
 
   if (siteSettings.homePageMode === 'LAUNCH') {
@@ -51,15 +64,22 @@ export default async function BrowsePage() {
     <div className="section">
       <PublicPageAutoRedirect allowedPath="/browse" />
       <div className="container">
-        <div className="section-heading">
+        <div className="section-heading browse-hero-header">
           <div>
-            <h1 className="hero-title" style={{ fontSize: '2.45rem', marginBottom: 8 }}>Browse</h1>
+            <span className="pill">Live catalog</span>
+            <h1 className="hero-title" style={{ fontSize: '2.65rem', marginBottom: 8, marginTop: 14 }}>Browse</h1>
+            <p className="muted" style={{ maxWidth: 720, marginBottom: 0 }}>
+              Search by title, discover by genre, and move through the ACE Studio catalog with a cleaner premium layout.
+            </p>
           </div>
-          <div className="pill">Live catalog</div>
+          <Link className="btn btn-ghost" href="/">Back to home</Link>
         </div>
 
         {videos.length ? (
           <BrowseCatalog
+            initialQuery={firstValue(searchParams?.q) ?? ''}
+            initialCategory={firstValue(searchParams?.category) ?? 'All'}
+            initialVideoType={firstValue(searchParams?.type) ?? 'All'}
             videos={videos.map((video) => ({
               ...video,
               price: {

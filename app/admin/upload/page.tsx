@@ -1,4 +1,5 @@
 import AdminDisclosureSection from '@/components/AdminDisclosureSection';
+import AdminCreateProducerForm from '@/components/AdminCreateProducerForm';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import AdminUploadWorkspace from '@/components/AdminUploadWorkspace';
 import { getAdminNavItems } from '@/lib/admin-nav';
@@ -70,6 +71,17 @@ export default async function AdminUploadPage({
         />
       }
     >
+      <div id="create-producer">
+        <AdminDisclosureSection
+          title="Create approved producer"
+          description="Create a producer record directly from admin when the rights holder has not signed up yet, then go straight into upload under that producer ID."
+          badge="Producer setup"
+          defaultOpen={!producers.length}
+        >
+          <AdminCreateProducerForm />
+        </AdminDisclosureSection>
+      </div>
+
       <AdminDisclosureSection
         title="Upload workspace"
         description="Choose a producer and expand the full upload form only when you are ready to create or add titles."
