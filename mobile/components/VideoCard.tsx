@@ -5,17 +5,9 @@ export type MobileVideo = {
   id: string;
   title: string;
   description: string;
-  priceTier: 'SNACK' | 'STANDARD' | 'PREMIERE';
-  price?: { currency: string; amountMinor: number };
   category?: string;
   videoType?: string;
   ageRating?: string;
-};
-
-const priceMap = {
-  SNACK: 100,
-  STANDARD: 200,
-  PREMIERE: 500
 };
 
 const ageLabel: Record<string, string> = {
@@ -26,11 +18,6 @@ const ageLabel: Record<string, string> = {
 };
 
 export default function VideoCard({ video, onPress }: { video: MobileVideo; onPress?: () => void }) {
-  const priceLabel = video.price
-    ? video.price.currency === 'NGN'
-      ? `₦${Math.round(video.price.amountMinor / 100)}`
-      : `${video.price.currency} ${(video.price.amountMinor / 100).toFixed(2)}`
-    : `₦${priceMap[video.priceTier]}`;
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.thumb}>
@@ -46,7 +33,6 @@ export default function VideoCard({ video, onPress }: { video: MobileVideo; onPr
               .join(' · ')}
           </Text>
         ) : null}
-        <Text style={styles.price}>{priceLabel}</Text>
       </View>
     </Pressable>
   );
@@ -74,6 +60,5 @@ const styles = StyleSheet.create({
   metaBlock: { padding: 14, gap: 6 },
   title: { fontWeight: '700', color: theme.ink, fontSize: 16 },
   desc: { color: theme.muted },
-  metaText: { color: theme.muted, fontSize: 12 },
-  price: { color: theme.accent, fontWeight: '700' }
+  metaText: { color: theme.muted, fontSize: 12 }
 });

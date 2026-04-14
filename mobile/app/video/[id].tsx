@@ -1,36 +1,53 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Text, View, StyleSheet, Pressable } from 'react-native';
+import { Text, View, StyleSheet, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import Screen from '@/components/Screen';
 import PrimaryButton from '@/components/PrimaryButton';
 import SecondaryButton from '@/components/SecondaryButton';
-import { apiGet, apiPost, BASE_URL } from '@/lib/client';
+import { apiGet, BASE_URL } from '@/lib/client';
 import { getDeviceSessionId } from '@/lib/device-session';
 import { theme } from '@/lib/theme';
+
+type TitleAccess = {
+  hasAccess: boolean;
+  status: 'ACTIVE' | 'NO_ACCESS' | 'SIGN_IN_REQUIRED';
+  message: string;
+};
+
+type TitleDetailPayload = {
+  title: {
+    id: string;
+    title: string;
+    description: string;
+    videoType: string;
+    ageRating: string;
+    category: string;
+    genres: string[];
+    teaserSec: number;
+    durationSec: number;
+    releaseYear?: number | null;
+    highlightSeconds: number[];
+  };
+  access: TitleAccess;
+};
 
 export default function VideoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const videoRef = useRef<any>(null);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<TitleDetailPayload | null>(null);
   const [streamUrl, setStreamUrl] = useState<string>('');
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [showAccessNotice, setShowAccessNotice] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [deviceSessionId, setDeviceSessionId] = useState<string>('');
-  const [preparingOffline, setPreparingOffline] = useState(false);
   const [watermarkText, setWatermarkText] = useState('Ace Studio Preview');
 
   useEffect(() => {
     if (!id) return;
-    apiGet<{ video: any; price: { currency: string; amountMinor: number }; unlocked: boolean }>(`/api/videos/${id}`)
-      .then((payload) => {
-        setData(payload);
-        setUnlocked(payload.unlocked);
-      })
+    apiGet<TitleDetailPayload>(`/api/mobile/titles/${id}`)
+      .then((payload) => setData(payload))
       .catch(() => null);
   }, [id]);
 
@@ -41,7 +58,7 @@ export default function VideoDetailScreen() {
   }, []);
 
   useEffect(() => {
-    apiGet<{ user: { name?: string | null; email?: string | null } | null }>('/api/me')
+    apiGet<{ user: { name?: string | null; email?: string | null } | null }>('/api/mobile/me')
       .then((payload) => {
         const preferredName = payload.user?.name?.trim();
         const emailHandle = payload.user?.email?.split('@')[0]?.trim();
@@ -65,11 +82,12 @@ export default function VideoDetailScreen() {
       const payload = await apiGet<{ token: string; guest?: boolean }>(`/api/stream/token?${query.toString()}`);
       setStreamUrl(`${BASE_URL}/api/stream/${id}?token=${payload.token}`);
       setAuthRequired(false);
+      setShowAccessNotice(false);
     } catch (error) {
       setStreamUrl('');
       setAuthRequired(true);
       if (error instanceof Error) {
-        setPlayerError(error.message);
+      setPlayerError(error.message);
       }
     }
   }, [deviceSessionId, id]);
@@ -78,46 +96,6 @@ export default function VideoDetailScreen() {
     if (!id) return;
     void loadStream();
   }, [id, loadStream]);
-
-  const handleUnlock = async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      await apiPost('/api/unlock', { videoId: id });
-      setUnlocked(true);
-      setShowPaywall(false);
-      await loadStream();
-      videoRef.current?.playAsync();
-    } catch {
-      alert('Sign in to unlock or top up your wallet.');
-      router.push('/login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePrepareOffline = async () => {
-    if (!id || !unlocked) {
-      return;
-    }
-
-    setPreparingOffline(true);
-    try {
-      await apiPost('/api/offline/packages', { videoId: id });
-      Alert.alert(
-        'Secure ACE package ready',
-        'Your protected ACE package is ready. Open Downloads to save it into the app for offline use.'
-      );
-      router.push('/downloads');
-    } catch (error) {
-      Alert.alert(
-        'Offline package',
-        error instanceof Error ? error.message : 'This title could not be prepared for protected offline use.'
-      );
-    } finally {
-      setPreparingOffline(false);
-    }
-  };
 
   const handleSeek = async (sec: number) => {
     try {
@@ -128,20 +106,16 @@ export default function VideoDetailScreen() {
     }
   };
 
-  const teaserSec = data?.video?.teaserSec ?? 0;
-  const highlightSeconds: number[] = data?.video?.highlightSeconds ?? [];
-  const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
-  const priceLabel = data?.price
-    ? data.price.currency === 'NGN'
-      ? `NGN ${Math.round(data.price.amountMinor / 100)}`
-      : `${data.price.currency} ${(data.price.amountMinor / 100).toFixed(2)}`
-    : null;
+  const teaserSec = data?.title.teaserSec ?? 0;
+  const highlightSeconds: number[] = data?.title.highlightSeconds ?? [];
+  const hasAccess = Boolean(data?.access.hasAccess);
+  const maxPreview = hasAccess ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
 
   return (
     <Screen>
-      <Text style={styles.title}>{data?.video?.title ?? 'Loading...'}</Text>
-      <Text style={styles.desc}>{data?.video?.description}</Text>
-      <Text style={styles.meta}>{[data?.video?.category, data?.video?.videoType, data?.video?.ageRating].filter(Boolean).join(' | ')}</Text>
+      <Text style={styles.title}>{data?.title.title ?? 'Loading...'}</Text>
+      <Text style={styles.desc}>{data?.title.description}</Text>
+      <Text style={styles.meta}>{[data?.title.category, data?.title.videoType, data?.title.ageRating].filter(Boolean).join(' | ')}</Text>
       {streamUrl ? (
         <View style={styles.player}>
           <Video
@@ -153,26 +127,26 @@ export default function VideoDetailScreen() {
             onPlaybackStatusUpdate={(status) => {
               if (!status.isLoaded) return;
               const currentSec = status.positionMillis / 1000;
-              if (!unlocked && currentSec >= teaserSec) {
+              if (!hasAccess && currentSec >= teaserSec) {
                 videoRef.current?.pauseAsync();
-                setShowPaywall(true);
+                setShowAccessNotice(true);
               }
             }}
           />
           <View style={styles.watermark}>
             <Text style={styles.watermarkText}>{watermarkText}</Text>
           </View>
-          {showPaywall && !unlocked ? (
+          {showAccessNotice && !hasAccess ? (
             <View style={styles.paywall}>
-              <Text style={styles.paywallTitle}>Unlock full video</Text>
-              <Text style={styles.paywallSub}>{priceLabel ? `Pay ${priceLabel} to continue.` : 'Pay to continue.'}</Text>
-              <PrimaryButton label={loading ? 'Processing...' : 'Pay to unlock'} onPress={handleUnlock} disabled={loading} />
+              <Text style={styles.paywallTitle}>Playback unavailable</Text>
+              <Text style={styles.paywallSub}>{data?.access.message ?? 'You do not currently have access to this title.'}</Text>
+              <PrimaryButton label="Sign in" onPress={() => router.push('/login')} />
             </View>
           ) : null}
         </View>
       ) : authRequired ? (
         <View style={styles.card}>
-          <Text style={styles.desc}>Sign in to play this title.</Text>
+          <Text style={styles.desc}>Please sign in with an account that has access.</Text>
           <PrimaryButton label="Sign in" onPress={() => router.push('/login')} />
         </View>
       ) : (
@@ -186,18 +160,18 @@ export default function VideoDetailScreen() {
         </View>
       ) : null}
 
-      {unlocked ? (
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Access</Text>
+        <Text style={styles.desc}>{data?.access.message ?? 'Playback availability will appear here once this title loads.'}</Text>
+        {!hasAccess ? (
+          <SecondaryButton label="Open My Access" onPress={() => router.push('/library')} />
+        ) : null}
+      </View>
+
+      {hasAccess ? (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Offline in ACE app</Text>
-          <Text style={styles.desc}>
-            Save this unlocked title as a protected `.ace` package for app-only offline access and secure sharing.
-          </Text>
-          <PrimaryButton
-            label={preparingOffline ? 'Preparing secure package...' : 'Prepare secure download'}
-            onPress={handlePrepareOffline}
-            disabled={preparingOffline}
-          />
-          <SecondaryButton label="Open Downloads" onPress={() => router.push('/downloads')} />
+          <Text style={styles.sectionTitle}>Active access</Text>
+          <Text style={styles.desc}>This title is available for playback on your account.</Text>
         </View>
       ) : null}
 

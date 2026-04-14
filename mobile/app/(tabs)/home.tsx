@@ -12,8 +12,8 @@ export default function HomeScreen() {
   const [highlights, setHighlights] = useState<any[]>([]);
 
   useEffect(() => {
-    apiGet<{ videos: any[] }>(`/api/videos?limit=6`)
-      .then((data) => setHighlights(data.videos.slice(0, 6)))
+    apiGet<{ titles: any[] }>(`/api/mobile/titles?limit=6`)
+      .then((data) => setHighlights(data.titles.slice(0, 6)))
       .catch(() => null);
   }, []);
 
@@ -22,11 +22,12 @@ export default function HomeScreen() {
       <View style={{ gap: 12 }}>
         <Text style={{ fontSize: 28, fontWeight: '800', color: theme.ink }}>Ace Studio</Text>
         <Text style={{ color: theme.muted }}>
-          Africa-first video marketplace with instant wallet unlocks.
+          Sign in, browse available titles, and watch content that already has active access on your account.
         </Text>
       </View>
       <View style={{ gap: 12 }}>
         <PrimaryButton label="Explore Catalog" onPress={() => router.push('/browse')} />
+        <SecondaryButton label="My Access" onPress={() => router.push('/library')} />
         <SecondaryButton label="Sign in" onPress={() => router.push('/login')} />
         <SecondaryButton label="Create account" onPress={() => router.push('/register')} />
       </View>
