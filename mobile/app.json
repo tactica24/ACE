@@ -10,6 +10,9 @@
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "ng.acestudio.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "supportsTablet": true,
       "icon": "./assets/icon.png"
     },
