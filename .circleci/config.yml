@@ -1,44 +1,29 @@
-# This config was automatically generated from your source code
-# Stacks detected: cicd:github-actions:.github/workflows,deps:node:.
 version: 2.1
 orbs:
-  node: circleci/node@5
+  android: circleci/android@3.0.2
+  ruby: circleci/ruby@2.3.0
 jobs:
-  build-node:
-    # Build node project
-    executor: node/default
+  build-android:
+    docker:
+      - image: cimg/android:2024.11.1
     steps:
       - checkout
-      - node/install-packages:
-          pkg-manager: npm
+      - run: sudo gem install fastlane
+      - run: bundle install
       - run:
-          command: npm run build
-      - run:
-          name: Create the ~/artifacts directory if it doesn't exist
-          command: mkdir -p ~/artifacts
-      # Copy output to artifacts dir
-      - run:
-          name: Copy artifacts
-          command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
-      - store_artifacts:
-          path: ~/artifacts
-          destination: node-build
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
-    docker:
-      - image: cimg/base:stable
+          name: Fastlane
+          command: bundle exec fastlane playstore
+  build-ios:
+    macos:
+      xcode: 14.3.1
     steps:
-      # Replace this with steps to deploy to users
+      - checkout
+      - run: bundle install
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
-      - run:
-          name: found github actions config
-          command: ':'
+          name: Fastlane
+          command: bundle exec fastlane test
 workflows:
-  build:
+  build-deploy:
     jobs:
-      - build-node
-    # - deploy:
-    #     requires:
-    #       - build-node
+      - build-android
+      - build-ios
