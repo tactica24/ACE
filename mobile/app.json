@@ -32,6 +32,9 @@
     "extra": {
       "expoRouter": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "e270126c-65d2-4663-ad3e-30717bb6ce80"
       }
     }
   }
