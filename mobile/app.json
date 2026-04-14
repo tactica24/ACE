@@ -9,10 +9,12 @@
     "assetBundlePatterns": ["**/*"],
     "icon": "./assets/icon.png",
     "ios": {
+      "bundleIdentifier": "ng.acestudio.mobile",
       "supportsTablet": true,
       "icon": "./assets/icon.png"
     },
     "android": {
+      "package": "ng.acestudio.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b1026"
