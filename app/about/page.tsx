@@ -3,22 +3,24 @@ import PublicInfoPage from '@/components/PublicInfoPage';
 export default function AboutPage() {
   return (
     <PublicInfoPage
-      eyebrow="About ACE Studio"
-      title="A cinematic streaming platform built for African stories and global audiences."
-      summary="ACE Studio combines premium discovery, secure playback, and investor-ready presentation for films and series that deserve a stronger digital home."
+      eyebrow="About"
+      title="ACE Studio is a streaming platform for film and series distribution across web, mobile, and connected TV."
+      summary="The platform combines catalog discovery, account-based access, secure playback, producer operations, and reporting tools in one connected product."
+      ctaLabel="Browse titles"
+      ctaHref="/browse"
       sections={[
         {
-          title: 'What we are building',
+          title: 'Platform scope',
           body: [
-            'ACE Studio is designed to present films, series, and premium video content with the polish of a world-class streaming platform while staying rooted in African storytelling strength.',
-            'The product combines premium visual presentation, account-linked access, and clean administrative tooling for catalog, reporting, and rights management.'
+            'ACE Studio is built to support the commercial presentation and delivery of films and series to viewers across multiple devices, including web, mobile, and TV-linked viewing.',
+            'The service is designed to present licensed content clearly, manage access at account level, and maintain a structured operating environment for catalog and reporting.'
           ]
         },
         {
-          title: 'Why it matters',
+          title: 'Who the platform serves',
           body: [
-            'The platform is built to help viewers discover better stories, while also helping producers, licensors, and partners work with cleaner records and stronger presentation.',
-            'That means the experience needs to feel immersive for viewers and credible for operators, investors, and business partners.'
+            'ACE Studio serves viewers looking for quality film and series access, producers managing releases and records, and business stakeholders who require a credible operating platform.',
+            'This includes content partners, licensors, and prospective investors evaluating product readiness, reporting quality, and operational maturity.'
           ]
         }
       ]}

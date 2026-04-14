@@ -25,12 +25,14 @@ export function SideNav({
 
 export function DashboardShell({
   title,
+  eyebrow,
   description,
   actions,
   sideNav,
   children
 }: {
   title: string;
+  eyebrow?: string;
   description?: string;
   actions?: React.ReactNode;
   sideNav: React.ReactNode;
@@ -41,7 +43,7 @@ export function DashboardShell({
       <div className="container">
         <div className="dashboard-header">
           <div>
-            <div className="pill">Ace Studio</div>
+            {eyebrow ? <div className="pill">{eyebrow}</div> : null}
             <h1 className="hero-title dashboard-title">{title}</h1>
             {description ? <p className="muted dashboard-subtitle">{description}</p> : null}
           </div>

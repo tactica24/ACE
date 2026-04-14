@@ -1,8 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import TopNav from '@/components/TopNav';
-import Footer from '@/components/Footer';
-import PwaRegistrar from '@/components/PwaRegistrar';
+import AppChrome from '@/components/AppChrome';
 
 export const metadata: Metadata = {
   title: 'Ace Studio',
@@ -34,12 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <PwaRegistrar />
-        <div className="app-shell">
-          <TopNav />
-          <main style={{ flex: 1 }}>{children}</main>
-          <Footer />
-        </div>
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );

@@ -20,8 +20,8 @@ export default function StudioWorkspacePanel({
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Identity</span>
-          <h3>Studio readiness</h3>
-          <p className="muted">Keep producer identity complete so approvals, payouts, and release attribution stay accurate.</p>
+          <h3>Account and catalog status</h3>
+          <p className="muted">See whether your producer profile, catalog, and release workflow are in good standing.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/onboarding">Open onboarding</Link>
@@ -37,7 +37,7 @@ export default function StudioWorkspacePanel({
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Releases</span>
           <h3>Release pipeline</h3>
-          <p className="muted">Upload, review contracts, monitor moderation, and keep your catalog publication-ready.</p>
+          <p className="muted">Upload titles, review contracts, monitor moderation, and manage the release process from one place.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
@@ -53,7 +53,7 @@ export default function StudioWorkspacePanel({
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Payments</span>
           <h3>Wallet and withdrawals</h3>
-          <p className="muted">Track credited unlock earnings, review payout history, and submit withdrawals confidently.</p>
+          <p className="muted">Track earnings, review payout history, and manage withdrawals from your producer wallet.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/wallet">Open wallet</Link>
@@ -69,7 +69,7 @@ export default function StudioWorkspacePanel({
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Documents</span>
           <h3>Contracts and support</h3>
-          <p className="muted">Finish any unsigned agreements and keep admin support close for upload or payout issues.</p>
+          <p className="muted">Keep agreements current and contact support quickly when an upload, contract, or payout issue needs attention.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/contracts">Open documents</Link>

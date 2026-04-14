@@ -26,7 +26,7 @@ export default function TvPairingClaim() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Unable to pair screen');
-      setMessage('Screen linked. Your TV will sign in automatically.');
+      setMessage('Screen linked successfully. The TV session will complete sign-in automatically.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to pair screen');
     } finally {
@@ -44,7 +44,7 @@ export default function TvPairingClaim() {
         maxLength={6}
       />
       <button className="btn btn-primary" type="submit" disabled={loading || code.trim().length < 6}>
-        {loading ? 'Linking...' : 'Link TV'}
+        {loading ? 'Linking...' : 'Link screen'}
       </button>
       {message ? <p className="muted" style={{ margin: 0 }}>{message}</p> : null}
     </form>

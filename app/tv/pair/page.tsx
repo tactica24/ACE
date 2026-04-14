@@ -10,9 +10,9 @@ export default async function TvPairPage() {
       <div className="container" style={{ maxWidth: 560 }}>
         <div className="card" style={{ display: 'grid', gap: 16 }}>
           <div className="pill">Ace Studio TV Pairing</div>
-          <h1 className="hero-title" style={{ margin: 0 }}>Link your TV in seconds</h1>
+          <h1 className="hero-title" style={{ margin: 0 }}>Link a TV screen to your ACE Studio account</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Enter the pairing code showing on your TV{user ? '.' : '. If you are not signed in yet, sign in first and come right back.'}
+            Enter the pairing code shown on the TV screen{user ? '.' : '. If you are not signed in yet, sign in first and return to complete the link.'}
           </p>
           <TvPairingClaim />
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

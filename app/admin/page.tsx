@@ -317,8 +317,8 @@ export default async function AdminPage() {
 
   return (
     <DashboardShell
-      title="Admin command center"
-      description="Observe trust, commerce, support, streaming, and discovery health from one interactive control surface."
+      title="Admin Dashboard"
+      description="Monitor platform operations, manage accounts and producers, review catalog activity, and oversee commercial performance from one internal dashboard."
       sideNav={
         <SideNav
           active="/admin"

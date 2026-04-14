@@ -4,19 +4,20 @@ const platformLinks = [
   { label: 'Home', href: '/' },
   { label: 'Browse', href: '/browse' },
   { label: 'Highlights', href: '/highlights' },
-  { label: 'TV Experience', href: '/tv' }
+  { label: 'Watch on TV', href: '/tv' },
+  { label: 'FAQ', href: '/faq' }
 ];
 
 const companyLinks = [
   { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },
-  { label: 'Licensing & Partners', href: '/partners' },
-  { label: 'Help Center', href: '/help' }
+  { label: 'Partnership Enquiries', href: '/partners' },
+  { label: 'Support', href: '/help' }
 ];
 
 const legalLinks = [
   { label: 'Terms of Use', href: '/terms' },
-  { label: 'Privacy Policy', href: '/privacy' }
+  { label: 'Privacy Notice', href: '/privacy' }
 ];
 
 export default function Footer() {
@@ -26,11 +27,11 @@ export default function Footer() {
         <div className="footer-brand-block">
           <strong className="footer-brand">Ace Studio</strong>
           <p className="muted footer-brand-copy">
-            Premium African and international film storytelling, designed for immersive discovery, trusted playback, and investor-ready scale.
+            ACE Studio is a streaming platform for film and series discovery across web, mobile, and connected TV, with integrated tools for viewers, producers, and business partners.
           </p>
           <div className="footer-app-buttons">
-            <Link className="btn btn-ghost btn-compact" href="/browse">Watch on Web</Link>
-            <Link className="btn btn-ghost btn-compact" href="/tv/pair">Pair Your TV</Link>
+            <Link className="btn btn-ghost btn-compact" href="/tv">Open TV mode</Link>
+            <Link className="btn btn-ghost btn-compact" href="/tv/pair">Pair a screen</Link>
           </div>
         </div>
         <div className="footer-link-columns">
@@ -56,7 +57,7 @@ export default function Footer() {
       </div>
       <div className="container footer-legal">
         <span>(c) {new Date().getFullYear()} Ace Studio. All rights reserved.</span>
-        <span className="muted">Built for bold stories from Africa to the world.</span>
+        <span className="muted">Business enquiries: info@acestudio.ng</span>
       </div>
     </footer>
   );

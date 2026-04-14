@@ -159,8 +159,8 @@ export default function TopNav() {
               />
               <button className="nav-search-button" type="submit">Search</button>
             </form>
-            <Link className="nav-icon-link" href="/highlights" aria-label="See new highlights">
-              New
+            <Link className="nav-icon-link" href="/tv" aria-label="Open TV viewing and pairing">
+              TV Pair
             </Link>
             <LanguageSwitcher language={language} onChange={setLanguage} />
             {user ? (

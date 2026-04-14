@@ -4,23 +4,23 @@ export default function ContactPage() {
   return (
     <PublicInfoPage
       eyebrow="Contact"
-      title="Speak with ACE Studio about support, partnerships, or platform access."
-      summary="Use this page as the public contact point for operational questions, content partnerships, and viewer support follow-up."
-      ctaLabel="Open support"
-      ctaHref="/account/contact"
+      title="Contact ACE Studio for support, partnerships, or business enquiries."
+      summary="General enquiries, partnership requests, and support issues can be directed to info@acestudio.ng. Platform users can also use the in-product support routes where available."
+      ctaLabel="Email info@acestudio.ng"
+      ctaHref="mailto:info@acestudio.ng"
       sections={[
         {
           title: 'Viewer support',
           body: [
-            'If you need help with account access, playback availability, or catalog discovery, the ACE Studio support desk is the fastest route.',
-            'Support requests can be tracked through the same operating system used by the admin team so issues are easier to follow through cleanly.'
+            'For questions about account access, playback, title availability, or TV pairing, contact info@acestudio.ng or use the support path inside your account.',
+            'Including your account email, device, and the title involved will help the team respond faster.'
           ]
         },
         {
-          title: 'Partnership and business enquiries',
+          title: 'Producers and partners',
           body: [
-            'For licensing, investor conversations, platform partnerships, and producer onboarding discussions, ACE Studio can route your request internally through the partner contact desk.',
-            'This keeps business conversations separate from day-to-day viewer support while preserving a documented record.'
+            'For onboarding, catalog discussions, reporting questions, or title management support, contact info@acestudio.ng and include the company or producer name involved.',
+            'Partnership and investor enquiries are also routed through the same address for internal handling.'
           ]
         }
       ]}

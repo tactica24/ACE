@@ -8,29 +8,29 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "image": "latest"
+        "image": "sdk-51"
       },
       "ios": {
-        "image": "latest"
+        "image": "sdk-51"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "image": "latest"
+        "image": "sdk-51"
       },
       "ios": {
-        "image": "latest"
+        "image": "sdk-51"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
-        "image": "latest"
+        "image": "sdk-51"
       },
       "ios": {
-        "image": "latest"
+        "image": "sdk-51"
       }
     }
   },

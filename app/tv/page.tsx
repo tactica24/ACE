@@ -45,8 +45,8 @@ export default async function TvPage() {
         <div className="tv-layout">
           <div className="hero-card">
             <div className="pill">Ace Studio TV</div>
-            <h1 className="hero-title" style={{ marginTop: 14 }}>Big-screen browsing that matches the main catalog</h1>
-            <p className="hero-sub">Approved titles, artwork, pricing, and metadata are carried here without layout drift.</p>
+            <h1 className="hero-title" style={{ marginTop: 14 }}>Watch ACE Studio on a larger screen</h1>
+            <p className="hero-sub">The TV surface uses the same catalog and account access system, with a pairing flow that lets a signed-in phone authorize the TV screen.</p>
             <div className="detail-grid" style={{ marginTop: 22 }}>
               <div className="detail-card">
                 <span className="detail-label">Titles on screen</span>
@@ -58,7 +58,7 @@ export default async function TvPage() {
               </div>
               <div className="detail-card">
                 <span className="detail-label">Pairing</span>
-                <strong>Phone to TV</strong>
+                <strong>Code-based sign-in</strong>
               </div>
             </div>
           </div>
@@ -78,7 +78,7 @@ export default async function TvPage() {
         ) : (
           <div className="card empty-state">
             <h3>No approved titles are ready for TV yet</h3>
-            <p className="muted">Once moderation approves a release, it will appear here with its poster and title details.</p>
+            <p className="muted">Approved titles will appear here automatically once they are available for viewers.</p>
           </div>
         )}
       </div>

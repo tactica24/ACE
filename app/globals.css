@@ -3217,6 +3217,24 @@ body.watch-mode-active .video-page-player {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.faq-group-list,
+.faq-list {
+  display: grid;
+  gap: 16px;
+}
+
+.faq-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.faq-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .info-page-card {
   display: grid;
   gap: 10px;

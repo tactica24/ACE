@@ -40,8 +40,8 @@ export default async function StudioPage() {
 
   return (
     <DashboardShell
-      title="Producer studio"
-      description="Manage onboarding, uploads, documents, moderation status, and producer earnings from one organized workspace."
+      title="Studio Dashboard"
+      description="Manage your producer profile, uploads, contracts, release status, and earnings from one internal dashboard."
       sideNav={
         <SideNav
           active="/studio"
@@ -64,7 +64,7 @@ export default async function StudioPage() {
       <div className="grid">
         <div className="card">
           <h3>Studio snapshot</h3>
-          <p className="muted">Everything important about your producer account, releases, and payout readiness in one place.</p>
+          <p className="muted">A current summary of your producer account, catalog activity, documentation, and earnings.</p>
           <div className="detail-grid" style={{ marginTop: 16 }}>
             <div className="detail-card">
               <span className="detail-label">Registered name</span>
@@ -107,7 +107,7 @@ export default async function StudioPage() {
             <div className="stack-row">
               <div>
                 <strong>Verification and profile</strong>
-                <p className="muted">Keep producer identity complete so payouts and attribution stay accurate.</p>
+                <p className="muted">Keep your producer profile complete so title ownership, payments, and documentation remain accurate.</p>
               </div>
               <span className={`status-chip ${creatorProfile?.verified ? 'status-live' : 'status-review'}`}>
                 {creatorProfile?.verified ? 'Ready' : 'Needs review'}
@@ -116,7 +116,7 @@ export default async function StudioPage() {
             <div className="stack-row">
               <div>
                 <strong>Release queue</strong>
-                <p className="muted">Monitor moderation so pending titles move cleanly from upload to release.</p>
+                <p className="muted">Track titles that are still in review so releases move from upload to publication without delay.</p>
               </div>
               <span className={`status-chip ${pendingTitles === 0 ? 'status-live' : 'status-review'}`}>
                 {pendingTitles === 0 ? 'Clear' : `${pendingTitles} pending`}
@@ -125,14 +125,14 @@ export default async function StudioPage() {
             <div className="stack-row">
               <div>
                 <strong>Wallet and withdrawals</strong>
-                <p className="muted">Your earnings and payout requests are tracked from one wallet flow.</p>
+                <p className="muted">Review current earnings and any payout requests linked to your producer account.</p>
               </div>
               <span className="status-chip status-live">{walletBalanceLabel}</span>
             </div>
             <div className="stack-row">
               <div>
                 <strong>Contracts and support</strong>
-                <p className="muted">Finish outstanding documents before release and keep support close for fast fixes.</p>
+                <p className="muted">Keep required agreements current and contact support quickly when an operational issue needs attention.</p>
               </div>
               <span className={`status-chip ${unsignedContracts === 0 ? 'status-live' : 'status-review'}`}>
                 {unsignedContracts === 0 ? 'Current' : `${unsignedContracts} open`}

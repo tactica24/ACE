@@ -3,24 +3,24 @@ import PublicInfoPage from '@/components/PublicInfoPage';
 export default function PartnersPage() {
   return (
     <PublicInfoPage
-      eyebrow="Licensing & Partners"
-      title="A cleaner partnership surface for producers, licensors, and growth collaborators."
-      summary="ACE Studio is being shaped to support title onboarding, reporting, catalog positioning, and business-ready presentation without sacrificing viewer simplicity."
-      ctaLabel="Talk to the studio team"
-      ctaHref="/studio/contact"
+      eyebrow="Partnerships"
+      title="ACE Studio welcomes partnership discussions with content owners, distributors, brands, and investors."
+      summary="Partnership discussions can cover catalog licensing, platform distribution, commercial collaboration, and broader strategic opportunities. Contact info@acestudio.ng to begin a conversation."
+      ctaLabel="Email partnerships"
+      ctaHref="mailto:info@acestudio.ng"
       sections={[
         {
-          title: 'Licensing workflow',
+          title: 'Content and distribution',
           body: [
-            'ACE Studio supports metadata management, producer attribution, reporting surfaces, and controlled title activation so business partners can work from cleaner records.',
-            'That makes it easier to prepare statements, review title status, and keep rights-sensitive workflows documented.'
+            'ACE Studio is structured to support content onboarding, title attribution, access control, and reporting across the catalog.',
+            'Producers, licensors, and distributors can use the platform as a distribution surface and as an operational record for titles managed within the service.'
           ]
         },
         {
-          title: 'Platform collaboration',
+          title: 'Commercial and investor discussions',
           body: [
-            'The partnership path is intended for studios, distributors, brands, and strategic collaborators who need a serious streaming presentation layer.',
-            'As the platform matures, this route will also support more formalized launch, catalog, and reporting collaboration.'
+            'ACE Studio is also open to conversations with strategic partners and investors who require a clear view of the product, operating model, and growth direction.',
+            'Initial enquiries should be sent to info@acestudio.ng with a short introduction and the nature of the proposed discussion.'
           ]
         }
       ]}

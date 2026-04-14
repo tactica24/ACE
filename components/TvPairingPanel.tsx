@@ -91,16 +91,16 @@ export default function TvPairingPanel() {
   return (
     <div className="card" style={{ minHeight: 260, display: 'grid', gap: 14 }}>
       <div className="badge">TV Pairing</div>
-      <h3 style={{ margin: 0 }}>Sign in on your phone, continue on TV</h3>
+      <h3 style={{ margin: 0 }}>Sign in on your phone and continue on TV</h3>
       <p className="muted" style={{ margin: 0 }}>
-        Open the pairing page on your phone and enter the code below to link this screen instantly.
+        Start a pairing session on this screen, enter the code on your phone, and the TV session will complete sign-in automatically.
       </p>
       {session ? (
         <>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '0.24em' }}>{session.code}</div>
             <a className="btn btn-ghost" href={session.claimUrl}>
-              Pair this screen
+              Open pairing page
             </a>
           </div>
           <p className="muted" style={{ margin: 0 }}>

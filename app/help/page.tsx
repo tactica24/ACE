@@ -3,24 +3,24 @@ import PublicInfoPage from '@/components/PublicInfoPage';
 export default function HelpPage() {
   return (
     <PublicInfoPage
-      eyebrow="Help Center"
-      title="Simple guidance for access, playback, and getting around the platform."
-      summary="This is the public help layer for the most common ACE Studio questions, especially around viewing access, account sign-in, and playback readiness."
-      ctaLabel="Go to browse"
-      ctaHref="/browse"
+      eyebrow="Support"
+      title="Get help with access, playback, account questions, and platform use."
+      summary="The support page is the public reference point for common platform issues. For quick answers, review the FAQ. For direct assistance, email info@acestudio.ng."
+      ctaLabel="Open FAQ"
+      ctaHref="/faq"
       sections={[
         {
-          title: 'Account and access',
+          title: 'Common viewer issues',
           body: [
-            'If a title is unavailable, start by confirming that you are signed in with the correct account and that the account has the expected access.',
-            'The platform is designed to keep account-linked access and playback connected, so the right account state should reflect across surfaces.'
+            'Most support requests relate to sign-in, title access, playback availability, or device-specific viewing issues.',
+            'The FAQ explains the core flows, including account access, website unlocks, and TV pairing.'
           ]
         },
         {
-          title: 'Playback support',
+          title: 'Direct support',
           body: [
-            'For the best playback experience, use a stable connection and make sure your browser or device is fully updated.',
-            'If playback still fails, the support route can help investigate blocked sessions, entitlement state, or device-specific issues.'
+            'If the FAQ does not resolve the issue, contact info@acestudio.ng with a short description of the problem, your account email, and any relevant title or device details.',
+            'For signed-in users, in-product support channels remain the best place for tracked account-specific requests.'
           ]
         }
       ]}
