@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import SignOutButton from '@/components/SignOutButton';
 
 export function SideNav({
   items,
@@ -28,6 +29,7 @@ export function DashboardShell({
   eyebrow,
   description,
   actions,
+  showSignOut = true,
   sideNav,
   children
 }: {
@@ -35,6 +37,7 @@ export function DashboardShell({
   eyebrow?: string;
   description?: string;
   actions?: React.ReactNode;
+  showSignOut?: boolean;
   sideNav: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -47,7 +50,12 @@ export function DashboardShell({
             <h1 className="hero-title dashboard-title">{title}</h1>
             {description ? <p className="muted dashboard-subtitle">{description}</p> : null}
           </div>
-          {actions ? <div className="dashboard-links">{actions}</div> : null}
+          {actions || showSignOut ? (
+            <div className="dashboard-links">
+              {actions}
+              {showSignOut ? <SignOutButton className="btn btn-ghost" /> : null}
+            </div>
+          ) : null}
         </div>
         <div className="dashboard">
           {sideNav}

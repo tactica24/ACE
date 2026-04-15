@@ -24,6 +24,13 @@
         "image": "sdk-51"
       }
     },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "image": "sdk-51",
+        "simulator": true
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle",

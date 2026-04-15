@@ -398,19 +398,60 @@ export function applyAuthSession(response: NextResponse, sessionCookie: string) 
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    expires: new Date(Date.now() + SESSION_DURATION_MS)
   });
   return response;
 }
 
-export function clearAuthSession(response: NextResponse) {
+function getSessionCookieDomains(req?: NextRequest | Request) {
+  const hostHeader = req?.headers.get('x-forwarded-host') ?? req?.headers.get('host');
+  const hostname = hostHeader?.split(',')[0]?.trim().split(':')[0]?.toLowerCase();
+
+  if (!hostname || hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return [] as string[];
+  }
+
+  const parts = hostname.split('.').filter(Boolean);
+  if (parts.length < 2) {
+    return [] as string[];
+  }
+
+  const baseDomain = parts.slice(-2).join('.');
+  const domains = new Set<string>();
+
+  domains.add(baseDomain);
+  domains.add(`.${baseDomain}`);
+
+  if (hostname !== baseDomain) {
+    domains.add(hostname);
+  }
+
+  return [...domains];
+}
+
+export function clearAuthSession(response: NextResponse, req?: NextRequest | Request) {
   response.cookies.set(AUTH_COOKIE_NAME, '', {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 0
+    maxAge: 0,
+    expires: new Date(0)
   });
+
+  for (const domain of getSessionCookieDomains(req)) {
+    response.cookies.set(AUTH_COOKIE_NAME, '', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 0,
+      expires: new Date(0),
+      domain
+    });
+  }
+
   return response;
 }
 
