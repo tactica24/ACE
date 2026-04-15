@@ -4,10 +4,22 @@ export default function TermsPage() {
   return (
     <PublicInfoPage
       eyebrow="Terms of Use"
-      title="These terms describe the core rules for using ACE Studio."
-      summary="By accessing or using ACE Studio, users agree to use the service lawfully, protect their account credentials, and respect the access conditions attached to content made available through the platform."
+      title="These terms describe the main rules that govern the use of ACE Studio."
+      summary="By accessing or using ACE Studio, users agree to use the service lawfully, protect their account credentials, and respect the conditions attached to titles, access, and platform functionality."
       ctaLabel="Contact ACE Studio"
       ctaHref="mailto:info@acestudio.ng"
+      secondaryLabel="Privacy notice"
+      secondaryHref="/privacy"
+      facts={[
+        { label: 'Accounts', value: 'Users are responsible for their credentials' },
+        { label: 'Content', value: 'Viewing is subject to authorized access' },
+        { label: 'Questions', value: 'Support available via info@acestudio.ng' }
+      ]}
+      quickLinks={[
+        { label: 'Privacy notice', href: '/privacy' },
+        { label: 'Help centre', href: '/help' },
+        { label: 'Contact', href: '/contact' }
+      ]}
       sections={[
         {
           title: 'Accounts and access',

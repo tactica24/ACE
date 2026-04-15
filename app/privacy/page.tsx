@@ -4,10 +4,22 @@ export default function PrivacyPage() {
   return (
     <PublicInfoPage
       eyebrow="Privacy Notice"
-      title="This notice explains the main categories of data used to operate ACE Studio."
-      summary="ACE Studio uses account, playback, transaction, and support information to provide access to the service, operate the platform, and respond to legitimate business and support needs."
+      title="This notice explains the main categories of information used to operate ACE Studio."
+      summary="ACE Studio uses account, playback, transaction, and support information to provide access to the service, operate the platform, and respond to legitimate business, compliance, and support needs."
       ctaLabel="Contact privacy support"
       ctaHref="mailto:info@acestudio.ng"
+      secondaryLabel="Terms of use"
+      secondaryHref="/terms"
+      facts={[
+        { label: 'Records', value: 'Account, access, and support activity' },
+        { label: 'Purpose', value: 'Service delivery, security, and operations' },
+        { label: 'Questions', value: 'Directed to info@acestudio.ng' }
+      ]}
+      quickLinks={[
+        { label: 'Terms of use', href: '/terms' },
+        { label: 'Contact', href: '/contact' },
+        { label: 'Help centre', href: '/help' }
+      ]}
       sections={[
         {
           title: 'Data collected',
@@ -27,7 +39,7 @@ export default function PrivacyPage() {
           title: 'Questions',
           body: [
             'Questions about privacy, stored data, or account-related records can be directed to info@acestudio.ng.',
-            'This notice may be updated as the platform’s legal and operational documentation continues to mature.'
+            "This notice may be updated as the platform's legal and operational documentation continues to mature."
           ]
         }
       ]}
