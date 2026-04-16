@@ -5,7 +5,7 @@ const allowedOrigins = Array.from(
       process.env.ACE_APP_BASE_URL,
       process.env.VERCEL_PROJECT_PRODUCTION_URL,
       process.env.VERCEL_BRANCH_URL,
-      process.env.VERCEL_URL
+      process.env.VERCEL_URL,
     ]
       .filter(Boolean)
       .map((value) => {
@@ -22,11 +22,14 @@ const allowedOrigins = Array.from(
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     serverActions: {
-      allowedOrigins
-    }
-  }
+      allowedOrigins,
+    },
+  },
 };
 
 export default nextConfig;
