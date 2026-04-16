@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useState, useEffect } from 'react';
 import { 
   Languages, 
@@ -659,10 +661,12 @@ export default function MultiLanguageSupport() {
                         <div key={translator.id} className="translator-card">
                           <div className="translator-header">
                             <div className="translator-avatar">
-                              <img
+                              <Image
                                 src={translator.avatar || '/api/placeholder/user/default'}
                                 alt={translator.name}
                                 className="avatar-image"
+                                width={40}
+                                height={40}
                               />
                             </div>
                             

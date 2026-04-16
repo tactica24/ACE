@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useState, useEffect, useRef } from 'react';
 import { 
   Users, 
@@ -615,10 +617,12 @@ export default function WatchPartyFeature() {
                 <div className="video-section">
                   <div className="video-player">
                     <div className="video-container">
-                      <img
+                      <Image
                         src={activeParty.videoPoster}
                         alt={activeParty.videoTitle}
                         className="video-poster"
+                        width={400}
+                        height={225}
                       />
                       
                       <div className="video-overlay">
