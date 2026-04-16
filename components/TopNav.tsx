@@ -104,7 +104,6 @@ export default function TopNav() {
     { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
     { label: 'Series', href: '/browse?type=SERIES' },
-    { label: 'TV Shows', href: '/tv' },
     { label: 'My List', href: '/#continue-watching' },
     { label: 'Categories', href: '/#categories' }
   ];
@@ -112,12 +111,12 @@ export default function TopNav() {
   return (
     <nav className="nav">
       <div className="container nav-inner">
-        <Link className="brand" href={homeHref}>
-          <span className="brand-mark brand-mark-image">
+        <Link className="brand" href={homeHref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <span className="brand-mark brand-mark-image" style={{ marginBottom: '0' }}>
             <Image src="/ace-studio-mark.svg" alt="Ace Studio" width={38} height={38} priority />
           </span>
-          <span>
-            <strong>Ace Studio</strong>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: '1' }}>
+            Ace Studio
           </span>
         </Link>
         <button
@@ -154,8 +153,9 @@ export default function TopNav() {
                 className="nav-search-input"
                 type="search"
                 name="q"
-                placeholder="Search films, series, or genres"
+                placeholder="Search..."
                 aria-label="Search the ACE Studio catalog"
+                style={{ width: '180px' }}
               />
               <button className="nav-search-button" type="submit">Search</button>
             </form>
