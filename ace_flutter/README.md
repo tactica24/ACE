@@ -8,11 +8,11 @@ This directory contains the Flutter consumer app for ACE Studio. It is intended 
 - Firebase email/password sign-in with shared ACE backend session login/logout
 - access-aware title pages using the existing `/api/mobile/*` routes
 - playback token flow built around `/api/stream/token` and `/api/stream/:id`
-- committed Android project scaffolding for APK and app bundle builds
+- committed Android project files for APK and app bundle builds
 
 ## Android project status
 
-The Android wrapper files now live in `ace_flutter/android/` so the app can be opened directly in Android Studio or built with Flutter once local tooling is installed.
+The Android project files now live in `ace_flutter/android/` so the app can be opened directly in Android Studio or built with Flutter once local tooling is installed.
 
 Typical local setup:
 

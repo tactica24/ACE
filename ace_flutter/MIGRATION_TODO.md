@@ -9,7 +9,7 @@ This app freezes the current Expo path and starts a cleaner Flutter consumer app
 - Keep the Android app consumer-only and Play-safe.
 - Reuse the existing mobile-safe endpoints under `/api/mobile/*`.
 
-## Completed In This Scaffold
+## Completed In This App
 
 - Project structure for auth, catalog, library, profile, and playback
 - Premium ACE theme and navigation shell
@@ -18,12 +18,10 @@ This app freezes the current Expo path and starts a cleaner Flutter consumer app
 - Playback token flow using the current ACE stream endpoints
 - Home, browse, title detail, library, profile, and player screens
 
-## Next Build Steps
+## Remaining Build Steps
 
 - Install Flutter locally or in CI
-- Run `flutter create .` inside `ace_flutter`
 - Run `flutter pub get`
-- Generate native Android and iOS folders
 - Configure Firebase for Flutter with the production ACE project
 - Add app icons, splash assets, and release signing
 - Add secure local session handling and refresh behavior
