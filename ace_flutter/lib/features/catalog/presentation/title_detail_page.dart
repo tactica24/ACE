@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_theme.dart';
-import '../../../core/currency/currency_service.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../data/catalog_repository.dart';
 import '../models/title_detail.dart';
@@ -159,9 +158,7 @@ class _DetailBody extends StatelessWidget {
                       ),
                       if (detail.access.hasAccess) ...[
                         ElevatedButton(
-                          onPressed: () {
-                            context.push('/playback/${titleId}');
-                          },
+                          onPressed: () => context.push('/player/${title.id}'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.gold,
                             foregroundColor: AppTheme.background,
@@ -184,12 +181,11 @@ class _DetailBody extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 color: AppTheme.gold,
                                 fontWeight: FontWeight.w900,
-                            ),
+                              ),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () {
-                            // Redirect to web for payment
                             final url = Uri.parse('https://acestudio.global/wallet');
                             launchUrl(url);
                           },
