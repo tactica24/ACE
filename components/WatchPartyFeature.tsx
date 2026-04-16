@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, 
   Play, 
@@ -307,7 +307,7 @@ export default function WatchPartyFeature() {
     }
   }, [isWatchPartyEnabled, loadWatchPartyData]);
 
-  const loadWatchPartyData = async () => {
+  const loadWatchPartyData = useCallback(async () => {
     setIsLoading(true);
     try {
       // Simulate API calls
@@ -320,7 +320,7 @@ export default function WatchPartyFeature() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleToggleWatchParty = () => {
     setIsWatchPartyEnabled(!isWatchPartyEnabled);
