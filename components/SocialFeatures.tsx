@@ -620,10 +620,12 @@ export default function SocialFeatures() {
                       {filteredFriends.map((friend) => (
                         <div key={friend.id} className="friend-card">
                           <div className="friend-avatar">
-                            <img
+                            <Image
                               src={friend.avatar || '/api/placeholder/user/default'}
                               alt={friend.name}
                               className="avatar-image"
+                              width={40}
+                              height={40}
                             />
                             <div className={`status-indicator ${getStatusColor(friend.status)}`}>
                               {getStatusIcon(friend.status)}
@@ -724,10 +726,12 @@ export default function SocialFeatures() {
                           
                           <div className="party-content">
                             <div className="party-video">
-                              <img
+                              <Image
                                 src={party.videoPoster}
                                 alt={party.videoTitle}
                                 className="video-poster"
+                                width={300}
+                                height={169}
                               />
                               <div className="video-overlay">
                                 <Play className="w-8 h-8" />
@@ -748,10 +752,12 @@ export default function SocialFeatures() {
                             <div className="participants-list">
                               {party.participants.map((participant) => (
                                 <div key={participant.id} className="participant-item">
-                                  <img
+                                  <Image
                                     src={participant.avatar || '/api/placeholder/user/default'}
                                     alt={participant.name}
                                     className="participant-avatar"
+                                    width={40}
+                                    height={40}
                                   />
                                   <div className="participant-info">
                                     <div className="participant-name">{participant.name}</div>
@@ -817,10 +823,12 @@ export default function SocialFeatures() {
                       {socialActivity.map((activity) => (
                         <div key={activity.id} className="activity-item">
                           <div className="activity-avatar">
-                            <img
+                            <Image
                               src={activity.userAvatar || '/api/placeholder/user/default'}
                               alt={activity.userName}
                               className="activity-avatar-image"
+                              width={40}
+                              height={40}
                             />
                           </div>
                           
@@ -883,10 +891,12 @@ export default function SocialFeatures() {
                               )}
                               
                               {activity.targetPoster && (
-                                <img
+                                <Image
                                   src={activity.targetPoster}
                                   alt={activity.targetTitle}
                                   className="target-poster"
+                                  width={100}
+                                  height={150}
                                 />
                               )}
                             </div>
@@ -972,10 +982,12 @@ export default function SocialFeatures() {
                           
                           <div className="post-header">
                             <div className="post-author">
-                              <img
+                              <Image
                                 src={post.authorAvatar || '/api/placeholder/user/default'}
                                 alt={post.authorName}
                                 className="author-avatar"
+                                width={40}
+                                height={40}
                               />
                               <div className="author-info">
                                 <h4 className="author-name">{post.authorName}</h4>
@@ -998,18 +1010,22 @@ export default function SocialFeatures() {
                             {post.media && (
                               <div className="post-media">
                                 {post.media.type === 'image' && (
-                                  <img
+                                  <Image
                                     src={post.media.url}
                                     alt={post.title}
                                     className="media-image"
+                                    width={400}
+                                    height={300}
                                   />
                                 )}
                                 {post.media.type === 'video' && (
                                   <div className="media-video">
-                                    <img
+                                    <Image
                                       src={post.media.thumbnail}
                                       alt={post.title}
                                       className="video-thumbnail"
+                                      width={300}
+                                      height={169}
                                     />
                                     <div className="video-overlay">
                                       <Play className="w-8 h-8" />

@@ -688,10 +688,12 @@ export default function WatchPartyFeature() {
                     {activeParty.participants.map((participant) => (
                       <div key={participant.id} className="participant-item">
                         <div className="participant-avatar">
-                          <img
+                          <Image
                             src={participant.avatar || '/api/placeholder/user/default'}
                             alt={participant.name}
                             className="avatar-image"
+                            width={40}
+                            height={40}
                           />
                           {participant.isHost && (
                             <div className="host-badge">
@@ -761,10 +763,12 @@ export default function WatchPartyFeature() {
                     {activeParty.chat.map((message) => (
                       <div key={message.id} className={`chat-message ${message.participantId === 'current_user' ? 'own' : 'other'}`}>
                         <div className="message-avatar">
-                          <img
+                          <Image
                             src={message.participantAvatar || '/api/placeholder/user/default'}
                             alt={message.participantName}
                             className="avatar-image"
+                            width={40}
+                            height={40}
                           />
                         </div>
                         
@@ -843,10 +847,12 @@ export default function WatchPartyFeature() {
                 {myParties.map((party) => (
                   <div key={party.id} className="party-card">
                     <div className="party-poster">
-                      <img
+                      <Image
                         src={party.videoPoster}
                         alt={party.videoTitle}
                         className="poster-image"
+                        width={300}
+                        height={169}
                       />
                       <div className="party-overlay">
                         <div className="party-status">
@@ -917,10 +923,12 @@ export default function WatchPartyFeature() {
                 {availableParties.map((party) => (
                   <div key={party.id} className="party-card">
                     <div className="party-poster">
-                      <img
+                      <Image
                         src={party.videoPoster}
                         alt={party.videoTitle}
                         className="poster-image"
+                        width={300}
+                        height={169}
                       />
                       <div className="party-overlay">
                         <div className="party-status">
