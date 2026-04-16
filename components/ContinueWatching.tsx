@@ -179,7 +179,7 @@ export default function ContinueWatching({
           <div key={item.id} className="continue-watching-item">
             {/* Thumbnail with Progress Overlay */}
             <div className="item-thumbnail">
-              <img src={item.thumbnail} alt={item.title} />
+              <Image src={item.thumbnail} alt={item.title} width={300} height={169} />
               
               {/* Progress Ring */}
               <div className="progress-overlay">

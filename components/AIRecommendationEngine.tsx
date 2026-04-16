@@ -575,10 +575,12 @@ export default function AIRecommendationEngine() {
                   
                   <div className="recommendation-content">
                     <div className="movie-poster">
-                      <img
+                      <Image
                         src={recommendation.posterUrl}
                         alt={recommendation.title}
                         className="poster-image"
+                        width={200}
+                        height={300}
                       />
                       <div className="poster-overlay">
                         <Play className="w-8 h-8" />

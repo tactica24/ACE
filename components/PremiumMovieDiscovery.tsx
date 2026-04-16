@@ -177,7 +177,7 @@ export default function PremiumMovieDiscovery({
       >
         {/* Thumbnail Container */}
         <div className="movie-thumbnail">
-          <img src={movie.thumbnail} alt={movie.title} />
+          <Image src={movie.thumbnail} alt={movie.title} width={300} height={169} />
           
           {/* Overlay Content */}
           <div className="movie-overlay">
@@ -301,7 +301,7 @@ export default function PremiumMovieDiscovery({
     >
       {/* Thumbnail */}
       <div className="list-thumbnail">
-        <img src={movie.thumbnail} alt={movie.title} />
+        <Image src={movie.thumbnail} alt={movie.title} width={300} height={169} />
         <button 
           className="list-play-button"
           onClick={(e) => {

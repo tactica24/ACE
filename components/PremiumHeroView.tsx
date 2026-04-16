@@ -349,7 +349,7 @@ export default function PremiumHeroView({
                     <div key={index} className="cast-card">
                       {member.image && (
                         <div className="cast-image">
-                          <img src={member.image} alt={member.name} />
+                          <Image src={member.image} alt={member.name} width={80} height={80} />
                         </div>
                       )}
                       <div className="cast-info">
