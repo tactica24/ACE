@@ -1,45 +1,25 @@
 # ACE Studio Flutter App
 
-This directory contains the new Flutter consumer app for ACE Studio. It is designed to replace the Expo-based mobile viewer while reusing the existing ACE backend, Firebase auth bridge, viewer-safe mobile APIs, and streaming endpoints.
+This directory contains the Flutter consumer app for ACE Studio. It is intended to replace the paused Expo-based viewer while reusing the existing ACE backend, Firebase auth bridge, mobile-safe APIs, and streaming endpoints.
 
 ## What this app includes
 
-- premium dark streaming UI
-- Firebase email/password sign-in
-- shared ACE backend session login/logout
-- home, browse, title detail, library, profile, and playback flows
-- access-state aware title pages using the existing `/api/mobile/*` routes
+- premium streaming UI for home, browse, detail, library, profile, and playback
+- Firebase email/password sign-in with shared ACE backend session login/logout
+- access-aware title pages using the existing `/api/mobile/*` routes
 - playback token flow built around `/api/stream/token` and `/api/stream/:id`
+- committed Android project scaffolding for APK and app bundle builds
 
-## Important note
+## Android project status
 
-Flutter is not installed in this workspace, so the native `android/`, `ios/`, `macos/`, and other generated folders were not created in this session. The Dart application structure is fully scaffolded here, but you should run the following after Flutter is installed:
+The Android wrapper files now live in `ace_flutter/android/` so the app can be opened directly in Android Studio or built with Flutter once local tooling is installed.
+
+Typical local setup:
 
 ```bash
 cd ace_flutter
-flutter create .
 flutter pub get
-```
-
-That will generate the platform wrappers around the app code already added in `lib/`.
-
-## Required runtime configuration
-
-Provide these values with `--dart-define` or a build system wrapper:
-
-- `ACE_API_BASE_URL`
-- `ACE_FIREBASE_API_KEY`
-- `ACE_FIREBASE_APP_ID`
-- `ACE_FIREBASE_MESSAGING_SENDER_ID`
-- `ACE_FIREBASE_PROJECT_ID`
-- `ACE_FIREBASE_AUTH_DOMAIN`
-- `ACE_FIREBASE_STORAGE_BUCKET`
-- `ACE_IOS_BUNDLE_ID`
-
-Example:
-
-```bash
-flutter run \
+flutter build apk \
   --dart-define=ACE_API_BASE_URL=https://www.acestudio.ng \
   --dart-define=ACE_FIREBASE_API_KEY=... \
   --dart-define=ACE_FIREBASE_APP_ID=... \
@@ -49,6 +29,21 @@ flutter run \
   --dart-define=ACE_FIREBASE_STORAGE_BUCKET=... \
   --dart-define=ACE_IOS_BUNDLE_ID=ng.acestudio.mobile
 ```
+
+`local.properties` is still environment-specific and should be generated locally by Flutter or Android Studio so it can point at the installed Flutter SDK and Android SDK.
+
+## Required runtime configuration
+
+Provide these values with `--dart-define` or your mobile build system:
+
+- `ACE_API_BASE_URL`
+- `ACE_FIREBASE_API_KEY`
+- `ACE_FIREBASE_APP_ID`
+- `ACE_FIREBASE_MESSAGING_SENDER_ID`
+- `ACE_FIREBASE_PROJECT_ID`
+- `ACE_FIREBASE_AUTH_DOMAIN`
+- `ACE_FIREBASE_STORAGE_BUCKET`
+- `ACE_IOS_BUNDLE_ID`
 
 ## App structure
 
@@ -78,4 +73,4 @@ This Flutter app is wired around the current ACE mobile-safe routes:
 
 ## Migration note
 
-The existing Expo app can now remain frozen while Flutter becomes the forward path for the consumer mobile experience.
+The existing Expo app can remain frozen while Flutter becomes the forward path for the consumer mobile experience.
