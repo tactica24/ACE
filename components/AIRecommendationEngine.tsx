@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Brain, 
