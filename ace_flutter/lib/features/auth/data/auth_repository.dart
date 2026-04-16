@@ -90,7 +90,12 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await firebaseAuth.signOut().catchError((_) {});
-    await apiClient.postJson('/api/auth/logout');
+    try {
+      await apiClient.postJson('/api/auth/logout');
+    } catch (_) {
+      // Clearing the local session is still more important than a failed remote logout.
+    } finally {
+      await firebaseAuth.signOut().catchError((_) {});
+    }
   }
 }
