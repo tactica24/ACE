@@ -1,93 +1,44 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    
-    <!-- Permissions for video playback -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    
-    <!-- Permissions for downloads (if offline features are enabled) -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-                     android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
-                     android:maxSdkVersion="32" />
-    
-    <!-- Features -->
-    <uses-feature android:name="android.hardware.screen.portrait" />
-    <uses-feature android:name="android.hardware.wifi" android:required="false" />
-    
     <application
         android:label="ACE Studio"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/AppTheme"
-        android:allowBackup="false"
-        android:fullBackupContent="false"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:networkSecurityConfig="@xml/network_security_config">
-        
-        <!-- Activities -->
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/AppTheme"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|screenLayout|density|fontScale"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            
-            <!-- Deep linking for video URLs -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="acestudio" />
+            </intent-filter>
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="acestudio.global" />
-            </intent-filter>
-            
-            <!-- App linking for content sharing -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:scheme="https" android:host="www.acestudio.ng" />
             </intent-filter>
         </activity>
-        
-        <!-- ExoPlayer configuration for streaming -->
-        <service
-            android:name="androidx.media3.exoplayer.ExoPlayer"
-            android:exported="false" />
-            
-        <!-- Firebase services -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_notification" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/notification_color" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="ace_studio_notifications" />
-            
-        <!-- Google Play Store metadata -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="${ADMOB_APP_ID}" />
-            
-        <!-- Content rating and privacy policy -->
-        <meta-data
-            android:name="android.content.rating"
-            android:value="Everyone" />
-        <meta-data
-            android:name="android.privacy.policy.url"
-            android:value="https://acestudio.global/privacy" />
-            
+        <meta-data android:name="flutterEmbedding" android:value="2" />
     </application>
-    
-    <!-- Queries for modern Android API access -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
     </queries>
-    
 </manifest>
