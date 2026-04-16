@@ -176,7 +176,7 @@ export default function WebPaymentSystem() {
   useEffect(() => {
     setTransactions(mockTransactions);
     setAuditTrail(mockAuditTrail);
-  }, []);
+  }, [mockTransactions, mockAuditTrail]);
 
   const handlePurchase = async () => {
     if (!selectedPackage || !paymentMethod) return;
