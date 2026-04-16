@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   CreditCard, 
   Smartphone, 
@@ -126,52 +126,107 @@ export default function WebPaymentSystem() {
     }
   ];
 
-  const mockTransactions: Transaction[] = [
+  const mockTransactions = useMemo(() => [
     {
       id: 'txn_001',
       type: 'purchase',
-      amount: 2300,
-      credits: 27,
-      description: 'Standard Pack Purchase',
+      description: 'Premium Credit Package - 100 Credits',
+      amount: 5000,
+      credits: 100,
+      bonusCredits: 20,
       status: 'completed',
+      paymentMethod: 'Flutterwave Card',
       timestamp: new Date('2024-01-15T10:30:00Z'),
-      taxWithheld: 172.50,
-      gatewayFee: 69
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
     },
     {
       id: 'txn_002',
-      type: 'unlock',
-      amount: 200,
-      credits: 2,
-      description: 'Movie: "The Last Guardian"',
+      type: 'purchase',
+      description: 'Standard Credit Package - 50 Credits',
+      amount: 2500,
+      credits: 50,
+      bonusCredits: 0,
       status: 'completed',
-      timestamp: new Date('2024-01-16T14:20:00Z'),
-      videoTitle: 'The Last Guardian',
-      creatorName: 'John Doe',
-      taxWithheld: 15,
-      gatewayFee: 6
-    }
-  ];
-
-  const mockAuditTrail: AuditTrail[] = [
+      paymentMethod: 'Paystack Mobile',
+      timestamp: new Date('2024-01-14T15:45:00Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    },
     {
-      id: 'audit_001',
-      userId: 'user_123',
-      action: 'UNLOCK_SUCCESS',
-      videoId: 'video_456',
-      amount: 200,
-      credits: 2,
-      metadata: {
-        source: 'WALLET',
-        creatorEarnings: 120,
-        platformEarnings: 59
-      },
+      id: 'txn_003',
+      type: 'refund',
+      description: 'Refund - Failed Transaction',
+      amount: -2500,
+      credits: -50,
+      bonusCredits: 0,
+      status: 'completed',
+      paymentMethod: 'Paystack Mobile',
+      timestamp: new Date('2024-01-13T09:20:00Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    },
+    {
+      id: 'txn_004',
+      type: 'purchase',
+      description: 'Premium Credit Package - 100 Credits',
+      amount: 5000,
+      credits: 100,
+      bonusCredits: 20,
+      status: 'pending',
+      paymentMethod: 'Flutterwave Card',
       timestamp: new Date('2024-01-16T14:20:00Z'),
       ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0...',
       sessionId: 'sess_123456'
     }
-  ];
+  ], []);
+
+  const mockAuditTrail = useMemo(() => [
+    {
+      id: 'audit_001',
+      userId: 'user_123',
+      action: 'credit_purchase_initiated',
+      details: 'User initiated purchase of Premium Credit Package - 100 Credits',
+      timestamp: new Date('2024-01-15T10:30:00Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    },
+    {
+      id: 'audit_002',
+      userId: 'user_123',
+      action: 'credit_purchase_completed',
+      details: 'Payment processed successfully - Flutterwave Card',
+      timestamp: new Date('2024-01-15T10:32:00Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    },
+    {
+      id: 'audit_003',
+      userId: 'user_123',
+      action: 'credits_added_to_wallet',
+      details: '100 credits + 20 bonus added to user wallet',
+      timestamp: new Date('2024-01-15T10:32:15Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    },
+    {
+      id: 'audit_004',
+      userId: 'user_123',
+      action: 'payment_method_updated',
+      details: 'User updated default payment method to Paystack Mobile',
+      timestamp: new Date('2024-01-14T15:40:00Z'),
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      sessionId: 'sess_123456'
+    }
+  ], []);
 
   useEffect(() => {
     setTransactions(mockTransactions);
