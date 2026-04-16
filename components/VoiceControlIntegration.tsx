@@ -11,7 +11,6 @@ import {
   SkipForward, 
   SkipBack, 
   Repeat, 
-  RepeatOne, 
   Shuffle, 
   Maximize2, 
   Minimize2, 

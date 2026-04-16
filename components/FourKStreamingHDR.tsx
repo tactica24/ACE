@@ -16,7 +16,6 @@ import {
   SkipForward, 
   SkipBack, 
   Repeat, 
-  RepeatOne, 
   Shuffle, 
   Eye, 
   EyeOff, 

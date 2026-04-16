@@ -32,7 +32,6 @@ import {
   SkipForward,
   SkipBack,
   Repeat,
-  RepeatOne,
   Shuffle,
   ChevronRight,
   ChevronDown,

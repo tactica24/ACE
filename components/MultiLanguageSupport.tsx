@@ -33,7 +33,6 @@ import {
   SkipForward, 
   SkipBack, 
   Repeat, 
-  RepeatOne, 
   Shuffle, 
   Heart, 
   Share2, 
