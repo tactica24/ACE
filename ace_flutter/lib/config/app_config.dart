@@ -3,9 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 class AppConfig {
   static const apiBaseUrl = String.fromEnvironment(
     'ACE_API_BASE_URL',
-    defaultValue: 'https://api.acestudio.global',
+    defaultValue: 'https://www.acestudio.ng',
   );
-  
+
   static const environment = String.fromEnvironment(
     'ACE_ENVIRONMENT',
     defaultValue: 'production',
