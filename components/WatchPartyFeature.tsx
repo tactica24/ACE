@@ -1174,10 +1174,12 @@ export default function WatchPartyFeature() {
                       onClick={() => handleJoinParty(party.id)}
                     >
                       <div className="party-option-poster">
-                        <img
+                        <Image
                           src={party.videoPoster}
                           alt={party.videoTitle}
                           className="option-poster"
+                          width={200}
+                          height={113}
                         />
                       </div>
                       
