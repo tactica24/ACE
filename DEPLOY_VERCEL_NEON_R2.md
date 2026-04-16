@@ -101,10 +101,10 @@ Optional:
 
 ## 3. Sync the production schema
 
-Before the first production deploy, run:
+Before the first production deploy, and again whenever committed Prisma migrations change, run:
 
 ```bash
-npm run db:migrate:deploy
+npm run deploy:prepare:production
 ```
 
 Then seed initial accounts if you want the default admin and creator records:
@@ -113,7 +113,7 @@ Then seed initial accounts if you want the default admin and creator records:
 npm run db:seed
 ```
 
-You can run those from any machine with Node.js access to the production Neon database and Firebase Admin credentials.
+You can run those commands from any machine with Node.js access to the production Neon database and Firebase Admin credentials.
 
 ## 4. Deploy on Vercel
 
@@ -121,17 +121,16 @@ Recommended build flow:
 
 ```bash
 npm install
-npm run vercel:build
+npm run build
 ```
 
-This repository is now configured so Vercel runs:
+Vercel should only build the app on each push. Keep database repair and migration steps outside the Vercel build so a transient database issue or an unresolved Prisma migration does not block an otherwise valid frontend or application deploy.
 
-- an idempotent SQL repair for the known `202603170001_tv_pairing` partial migration state
-- `prisma migrate resolve --applied 202603170001_tv_pairing`
-- `prisma migrate deploy`
-- then the production Next.js build
+Use one of these paths when the production schema needs to move forward:
 
-That means the known stuck production migration state is repaired automatically, then committed Prisma migrations are applied during deploy.
+- run `npm run deploy:prepare:production` from a trusted machine with production database access
+- run `.github/workflows/bootstrap-production.yml` for first-time setup or routine production schema prep
+- run `.github/workflows/repair-production-migration.yml` when a specific failed migration needs an explicit `rolled-back` or `applied` decision
 
 ## 5. Post-deploy checks
 
@@ -178,8 +177,9 @@ Add these GitHub repository secrets before running it:
 You can then use the workflow from the Actions tab to:
 
 1. install dependencies
-2. run `npm run db:migrate:deploy`
-3. optionally run `npm run db:seed`
+2. repair the known production migration states
+3. run `npm run db:migrate:deploy`
+4. optionally run `npm run db:seed`
 
 That gives you a one-click database bootstrap for Neon plus Firebase-backed demo users.
 
