@@ -451,29 +451,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="categories" className="section home-shortcuts-section">
-        <div className="container">
-          <div className="home-section-heading">
-            <div>
-              <span className="pill">Category shortcuts</span>
-              <h2 className="section-title home-section-title">Move through the catalog like a premium storefront</h2>
-              <p className="muted home-section-copy">
-                Quick pathways for regional discovery, mood-based browsing, and curated audience segments.
-              </p>
-            </div>
-          </div>
-          <div className="home-shortcut-grid">
-            {shortcuts.map((shortcut) => (
-              <Link key={shortcut.title} className="home-shortcut-card" href={shortcut.href}>
-                <span className="home-shortcut-eyebrow">{shortcut.eyebrow}</span>
-                <strong>{shortcut.title}</strong>
-                <p>{shortcut.description}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="home-shelves">
         <div className="container">
           {rows.length ? (
@@ -568,31 +545,6 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      <section className="section home-plans-section">
-        <div className="container">
-          <div className="home-plans-shell">
-            <div className="home-section-heading">
-              <div>
-                <span className="pill">Access options</span>
-                <h2 className="section-title home-section-title">Clear monetization, cleaner presentation</h2>
-                <p className="muted home-section-copy">
-                  A polished overview of access models without making the homepage feel pushy or overcrowded.
-                </p>
-              </div>
-              <Link className="btn btn-primary" href="/auth/register">Start Streaming</Link>
-            </div>
-            <div className="home-plan-grid">
-              {PLAN_OPTIONS.map((plan) => (
-                <div key={plan.name} className="home-plan-card">
-                  <span className="home-plan-kicker">{plan.name}</span>
-                  <p>{plan.summary}</p>
-                  <Link className="btn btn-ghost btn-compact" href="/browse">{plan.cta}</Link>
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
-      </section>
-    </div>
   );
 }
