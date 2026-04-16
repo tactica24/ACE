@@ -1,146 +1,96 @@
 'use client';
 
 import Image from 'next/image';
-
-import { useState, useEffect, useRef } from 'react';
-import { 
-  Users, 
-  Play, 
-  Pause, 
-  SkipForward, 
-  SkipBack, 
-  Volume2, 
-  VolumeX, 
-  Maximize2, 
-  Minimize2, 
-  Repeat, 
-  Repeat, 
-  Shuffle, 
-  Mic, 
-  MicOff, 
-  MessageCircle, 
-  MessageSquare, 
-  Send, 
-  Settings, 
-  Crown, 
-  Sparkles, 
-  Tv, 
-  Monitor, 
-  Smartphone, 
-  Tablet, 
-  Wifi, 
-  WifiOff, 
-  Clock, 
-  Calendar, 
-  MapPin, 
-  Globe, 
-  Lock, 
-  Unlock, 
-  Key, 
-  Eye, 
-  EyeOff, 
-  Share2, 
-  Heart, 
-  Bookmark, 
-  Flag, 
-  MoreVertical, 
-  X, 
-  Check, 
-  AlertTriangle, 
-  Info, 
-  RefreshCw, 
-  ChevronRight, 
-  ChevronDown, 
-  Plus, 
-  UserPlus,
-  UserMinus,
-  Zap,
-  Target,
-  Award,
-  Gift,
-  Film,
-  Video,
-  Music,
-  Headphones,
-  Gamepad2,
-  Coffee,
-  Pizza,
-  Popcorn
+import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  Check,
+  Lock,
+  Play,
+  Plus,
+  Share2,
+  Unlock,
+  Users,
+  X,
 } from 'lucide-react';
+
+interface Participant {
+  id: string;
+  name: string;
+  isHost?: boolean;
+}
 
 interface WatchParty {
   id: string;
   title: string;
   description: string;
-  hostId: string;
   hostName: string;
-  hostAvatar?: string;
-  videoId: string;
   videoTitle: string;
   videoPoster: string;
-  videoDuration: number;
-  startTime: Date;
-  endTime?: Date;
+  startTime: string;
   participants: Participant[];
   maxParticipants: number;
-  isLive: boolean;
   isPublic: boolean;
+  isLive: boolean;
   password?: string;
-  settings: {
-    allowChat: boolean;
-    requireApproval: boolean;
-    autoPlayNext: boolean;
-    syncPlayback: boolean;
-    allowSkip: boolean;
-    allowPause: boolean;
-    allowSeek: boolean;
-  };
-  chat: ChatMessage[];
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-interface Participant {
-  id: string;
-  userId: string;
-  name: string;
-  avatar?: string;
-  joinedAt: Date;
-  isHost: boolean;
-  isMuted: boolean;
-  playbackPosition: number;
-  isReady: boolean;
-  status: 'watching' | 'paused' | 'buffering' | 'disconnected' | 'seeking';
-  lastSeen: Date;
-  deviceType: 'tv' | 'desktop' | 'tablet' | 'mobile';
-  networkQuality: 'excellent' | 'good' | 'fair' | 'poor';
-  bandwidth: number;
-  latency: number;
+interface NewPartyForm {
+  title: string;
+  description: string;
+  videoId: string;
+  maxParticipants: number;
+  isPublic: boolean;
+  password: string;
 }
 
-interface ChatMessage {
-  id: string;
-  participantId: string;
-  participantName: string;
-  participantAvatar?: string;
-  message: string;
-  timestamp: Date;
-  type: 'text' | 'system' | 'emoji' | 'reaction';
-  reactions?: { [emoji: string]: string[] };
-  isHost?: boolean;
-}
+const defaultFormState: NewPartyForm = {
+  title: '',
+  description: '',
+  videoId: '',
+  maxParticipants: 8,
+  isPublic: false,
+  password: '',
+};
 
-interface WatchPartySettings {
-  defaultMaxParticipants: number;
-  allowPublicParties: boolean;
-  requireApproval: boolean;
-  autoSync: boolean;
-  chatHistory: boolean;
-  moderationEnabled: boolean;
-  customEmojis: boolean;
-  allowScreenShare: boolean;
-  allowCamera: boolean;
-  recordSession: boolean;
+const mockMyParties: WatchParty[] = [
+  {
+    id: 'party_1',
+    title: 'Friday Night Movie Marathon',
+    description: 'A premium group screening for friends who want synchronized playback and live chat.',
+    hostName: 'You',
+    videoTitle: 'The Last Guardian',
+    videoPoster: '/api/placeholder/movie/poster1',
+    startTime: '2026-04-16T20:00:00.000Z',
+    participants: [
+      { id: 'participant_1', name: 'Alice Johnson' },
+      { id: 'participant_2', name: 'David Cole' },
+    ],
+    maxParticipants: 8,
+    isPublic: false,
+    isLive: true,
+    password: 'secret123',
+  },
+];
+
+const mockAvailableParties: WatchParty[] = [
+  {
+    id: 'party_2',
+    title: 'Sci-Fi Watch Club',
+    description: 'A public room for premiere nights, chat reactions, and shared playback.',
+    hostName: 'John Doe',
+    videoTitle: 'Digital Dreams',
+    videoPoster: '/api/placeholder/movie/poster2',
+    startTime: '2026-04-17T21:00:00.000Z',
+    participants: [{ id: 'participant_3', name: 'Alice Johnson' }],
+    maxParticipants: 10,
+    isPublic: true,
+    isLive: false,
+  },
+];
+
+function formatPartyTime(value: string) {
+  return new Date(value).toLocaleString();
 }
 
 export default function WatchPartyFeature() {
@@ -148,1102 +98,540 @@ export default function WatchPartyFeature() {
   const [activeParty, setActiveParty] = useState<WatchParty | null>(null);
   const [myParties, setMyParties] = useState<WatchParty[]>([]);
   const [availableParties, setAvailableParties] = useState<WatchParty[]>([]);
-  const [partySettings, setPartySettings] = useState<WatchPartySettings>({
-    defaultMaxParticipants: 8,
-    allowPublicParties: true,
-    requireApproval: false,
-    autoSync: true,
-    chatHistory: true,
-    moderationEnabled: true,
-    customEmojis: true,
-    allowScreenShare: false,
-    allowCamera: false,
-    recordSession: false
-  });
   const [showCreateParty, setShowCreateParty] = useState(false);
   const [showJoinParty, setShowJoinParty] = useState(false);
   const [joinCode, setJoinCode] = useState('');
-  const [newPartyData, setNewPartyData] = useState({
-    title: '',
-    description: '',
-    videoId: '',
-    maxParticipants: 8,
-    isPublic: false,
-    password: '',
-    settings: {
-      allowChat: true,
-      requireApproval: false,
-      autoPlayNext: true,
-      syncPlayback: true,
-      allowSkip: true,
-      allowPause: true,
-      allowSeek: true
-    }
-  });
+  const [newPartyData, setNewPartyData] = useState<NewPartyForm>(defaultFormState);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [chatMessage, setChatMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Mock data - replace with actual API calls
-  const mockMyParties: WatchParty[] = [
-    {
-      id: 'party_1',
-      title: 'Friday Night Movie Marathon',
-      description: 'Join us for a fun movie night with friends!',
-      hostId: 'user_123',
-      hostName: 'You',
-      hostAvatar: '/api/placeholder/user/current',
-      videoId: 'video_456',
-      videoTitle: 'The Last Guardian',
-      videoPoster: '/api/placeholder/movie/poster1',
-      videoDuration: 7200,
-      startTime: new Date('2024-01-20T20:00:00Z'),
-      participants: [
-        {
-          id: 'part_1',
-          userId: 'user_456',
-          name: 'Alice Johnson',
-          avatar: '/api/placeholder/user/alice',
-          joinedAt: new Date('2024-01-20T19:55:00Z'),
-          isHost: false,
-          isMuted: false,
-          playbackPosition: 3600,
-          isReady: true,
-          status: 'watching',
-          lastSeen: new Date(),
-          deviceType: 'desktop',
-          networkQuality: 'good',
-          bandwidth: 15.2,
-          latency: 45
-        }
-      ],
-      maxParticipants: 8,
-      isLive: true,
-      isPublic: false,
-      password: 'secret123',
-      settings: {
-        allowChat: true,
-        requireApproval: false,
-        autoPlayNext: true,
-        syncPlayback: true,
-        allowSkip: true,
-        allowPause: true,
-        allowSeek: true
-      },
-      chat: [
-        {
-          id: 'chat_1',
-          participantId: 'user_456',
-          participantName: 'Alice Johnson',
-          participantAvatar: '/api/placeholder/user/alice',
-          message: 'This is amazing! 🍿',
-          timestamp: new Date('2024-01-20T20:05:00Z'),
-          type: 'text',
-          reactions: { '🍿': ['user_123'] }
-        }
-      ],
-      createdAt: new Date('2024-01-20T19:30:00Z'),
-      updatedAt: new Date('2024-01-20T20:05:00Z')
-    }
-  ];
-
-  const mockAvailableParties: WatchParty[] = [
-    {
-      id: 'party_2',
-      title: 'Sci-Fi Movie Night',
-      description: 'Join us for an epic sci-fi movie marathon!',
-      hostId: 'user_789',
-      hostName: 'John Doe',
-      hostAvatar: '/api/placeholder/user/john',
-      videoId: 'video_789',
-      videoTitle: 'Digital Dreams',
-      videoPoster: '/api/placeholder/movie/poster2',
-      videoDuration: 5400,
-      startTime: new Date('2024-01-21T21:00:00Z'),
-      participants: [
-        {
-          id: 'part_2',
-          userId: 'user_456',
-          name: 'Alice Johnson',
-          avatar: '/api/placeholder/user/alice',
-          joinedAt: new Date('2024-01-21T20:50:00Z'),
-          isHost: false,
-          isMuted: false,
-          playbackPosition: 0,
-          isReady: true,
-          status: 'watching',
-          lastSeen: new Date(),
-          deviceType: 'desktop',
-          networkQuality: 'excellent',
-          bandwidth: 25.5,
-          latency: 12
-        }
-      ],
-      maxParticipants: 10,
-      isLive: false,
-      isPublic: true,
-      settings: {
-        allowChat: true,
-        requireApproval: true,
-        autoPlayNext: false,
-        syncPlayback: true,
-        allowSkip: true,
-        allowPause: true,
-        allowSeek: true
-      },
-      chat: [],
-      createdAt: new Date('2024-01-21T20:00:00Z'),
-      updatedAt: new Date('2024-01-21T20:00:00Z')
-    }
-  ];
-
-  useEffect(() => {
-    if (isWatchPartyEnabled) {
-      loadWatchPartyData();
-    }
-  }, [isWatchPartyEnabled, loadWatchPartyData]);
-
-  const loadWatchPartyData = async () => {
+  const loadWatchPartyData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
-      // Simulate API calls
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 250));
       setMyParties(mockMyParties);
       setAvailableParties(mockAvailableParties);
-    } catch (error) {
-      console.error('Failed to load watch party data:', error);
-      setError('Failed to load watch party data');
+    } catch (loadError) {
+      console.error('Failed to load watch party data:', loadError);
+      setError('Failed to load watch party data.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleToggleWatchParty = () => {
-    setIsWatchPartyEnabled(!isWatchPartyEnabled);
-  };
+  useEffect(() => {
+    if (!isWatchPartyEnabled) {
+      return;
+    }
+
+    void loadWatchPartyData();
+  }, [isWatchPartyEnabled, loadWatchPartyData]);
 
   const handleCreateParty = async () => {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const newParty: WatchParty = {
-        id: `party_${Date.now()}`,
-        title: newPartyData.title,
-        description: newPartyData.description,
-        hostId: 'current_user',
-        hostName: 'You',
-        hostAvatar: '/api/placeholder/user/current',
-        videoId: newPartyData.videoId,
-        videoTitle: 'Selected Video',
-        videoPoster: '/api/placeholder/movie/poster',
-        videoDuration: 7200,
-        startTime: new Date(),
-        participants: [],
-        maxParticipants: newPartyData.maxParticipants,
-        isLive: false,
-        isPublic: newPartyData.isPublic,
-        password: newPartyData.password || undefined,
-        settings: newPartyData.settings,
-        chat: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      setMyParties(prev => [newParty, ...prev]);
-      setActiveParty(newParty);
-      setShowCreateParty(false);
-      setNewPartyData({
-        title: '',
-        description: '',
-        videoId: '',
-        maxParticipants: 8,
-        isPublic: false,
-        password: '',
-        settings: {
-          allowChat: true,
-          requireApproval: false,
-          autoPlayNext: true,
-          syncPlayback: true,
-          allowSkip: true,
-          allowPause: true,
-          allowSeek: true
-        }
-      });
-    } catch (error) {
-      console.error('Failed to create party:', error);
-      setError('Failed to create watch party');
+    if (!newPartyData.title.trim() || !newPartyData.videoId.trim()) {
+      setError('Add a party title and a video before creating a room.');
+      return;
     }
+
+    const createdParty: WatchParty = {
+      id: `party_${Date.now()}`,
+      title: newPartyData.title.trim(),
+      description: newPartyData.description.trim() || 'Private watch party',
+      hostName: 'You',
+      videoTitle: newPartyData.videoId.trim(),
+      videoPoster: '/api/placeholder/movie/poster',
+      startTime: new Date().toISOString(),
+      participants: [{ id: 'current_user', name: 'You', isHost: true }],
+      maxParticipants: newPartyData.maxParticipants,
+      isPublic: newPartyData.isPublic,
+      isLive: true,
+      password: newPartyData.isPublic ? undefined : newPartyData.password || undefined,
+    };
+
+    setMyParties((previous) => [createdParty, ...previous]);
+    setActiveParty(createdParty);
+    setShowCreateParty(false);
+    setNewPartyData(defaultFormState);
   };
 
-  const handleJoinParty = async (partyId: string) => {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const party = availableParties.find(p => p.id === partyId);
-      if (party) {
-        setActiveParty(party);
-        setShowJoinParty(false);
-        setJoinCode('');
-      }
-    } catch (error) {
-      console.error('Failed to join party:', error);
-      setError('Failed to join watch party');
-    }
+  const handleJoinParty = (party: WatchParty) => {
+    setActiveParty(party);
+    setShowJoinParty(false);
+    setJoinCode('');
+    setError(null);
   };
 
-  const handleJoinByCode = async () => {
-    if (!joinCode.trim()) {
-      setError('Please enter a valid party code');
+  const handleJoinByCode = () => {
+    const matchedParty = availableParties.find((party) => party.password === joinCode.trim());
+
+    if (!matchedParty) {
+      setError('That party code is invalid.');
+      return;
+    }
+
+    handleJoinParty(matchedParty);
+  };
+
+  const handleCopyInvite = async () => {
+    if (!activeParty || typeof navigator === 'undefined' || !navigator.clipboard) {
       return;
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const party = availableParties.find(p => p.password === joinCode);
-      if (party) {
-        setActiveParty(party);
-        setShowJoinParty(false);
-        setJoinCode('');
-      } else {
-        setError('Invalid party code');
-      }
-    } catch (error) {
-      console.error('Failed to join party by code:', error);
-      setError('Failed to join watch party');
+      await navigator.clipboard.writeText(activeParty.password ?? activeParty.id);
+    } catch (copyError) {
+      console.error('Failed to copy party code:', copyError);
+      setError('Could not copy the invite code.');
     }
   };
-
-  const handleLeaveParty = async () => {
-    if (!activeParty) return;
-
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setActiveParty(null);
-    } catch (error) {
-      console.error('Failed to leave party:', error);
-      setError('Failed to leave watch party');
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!chatMessage.trim() || !activeParty) return;
-
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const newMessage: ChatMessage = {
-        id: `chat_${Date.now()}`,
-        participantId: 'current_user',
-        participantName: 'You',
-        participantAvatar: '/api/placeholder/user/current',
-        message: chatMessage,
-        timestamp: new Date(),
-        type: 'text',
-        isHost: true
-      };
-      
-      if (activeParty) {
-        setActiveParty(prev => ({
-          ...prev,
-          chat: [...prev.chat, newMessage]
-        }));
-      }
-      
-      setChatMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      setError('Failed to send message');
-    }
-  };
-
-  const handleVideoControl = (action: string) => {
-    // Dispatch video control event
-    window.dispatchEvent(new CustomEvent('watchPartyVideoControl', { 
-      detail: { action, partyId: activeParty?.id } 
-    }));
-  };
-
-  const getParticipantStatusColor = (status: string) => {
-    switch (status) {
-      case 'watching': return 'text-green-600 bg-green-100';
-      case 'paused': return 'text-yellow-600 bg-yellow-100';
-      case 'buffering': return 'text-blue-600 bg-blue-100';
-      case 'disconnected': return 'text-red-600 bg-red-100';
-      case 'seeking': return 'text-purple-600 bg-purple-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getNetworkQualityColor = (quality: string) => {
-    switch (quality) {
-      case 'excellent': return 'text-green-600 bg-green-100';
-      case 'good': return 'text-blue-600 bg-blue-100';
-      case 'fair': return 'text-yellow-600 bg-yellow-100';
-      case 'poor': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [activeParty?.chat]);
 
   return (
-    <div className="watch-party-feature">
-      {/* Header */}
-      <div className="party-header">
-        <div className="header-content">
-          <h1 className="header-title">Watch Parties</h1>
-          <p className="header-subtitle">Host or join watch parties to enjoy movies together with friends</p>
-        </div>
-        
-        <div className="header-actions">
-          <div className="party-status">
-            <div className={`status-indicator ${isWatchPartyEnabled ? 'active' : ''}`}>
-              <Users className={`w-6 h-6 ${isWatchPartyEnabled ? 'active' : ''}`} />
-              <span className={`status-text ${isWatchPartyEnabled ? 'active' : ''}`}>
-                Watch Parties {isWatchPartyEnabled ? 'Active' : 'Disabled'}
-              </span>
-            </div>
-            
+    <div className="watch-party-feature space-y-8">
+      <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-white shadow-2xl shadow-black/30">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300">Watch Party</p>
+            <h2 className="text-3xl font-semibold">Host premium shared viewing sessions.</h2>
+            <p className="max-w-2xl text-sm text-slate-300">
+              Bring together live playback, private rooms, and audience engagement in one streamlined screening flow.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              className={`party-toggle ${isWatchPartyEnabled ? 'enabled' : ''}`}
-              onClick={handleToggleWatchParty}
+              type="button"
+              onClick={() => setIsWatchPartyEnabled((value) => !value)}
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                isWatchPartyEnabled
+                  ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40'
+                  : 'bg-white/10 text-white ring-1 ring-white/10'
+              }`}
             >
-              {isWatchPartyEnabled ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Enabled</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  <span>Enable</span>
-                </>
-              )}
+              {isWatchPartyEnabled ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {isWatchPartyEnabled ? 'Enabled' : 'Enable parties'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCreateParty(true)}
+              disabled={!isWatchPartyEnabled}
+              className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Users className="h-4 w-4" />
+              Create party
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowJoinParty(true)}
+              disabled={!isWatchPartyEnabled}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Join party
             </button>
           </div>
-          
-          <button
-            className="create-party-button"
-            onClick={() => setShowCreateParty(true)}
-            disabled={!isWatchPartyEnabled}
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Create Party</span>
-          </button>
-          
-          <button
-            className="join-party-button"
-            onClick={() => setShowJoinParty(true)}
-            disabled={!isWatchPartyEnabled}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Join Party</span>
-          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Main Content */}
-      {isWatchPartyEnabled ? (
-        <div className="party-content">
-          {/* Active Party */}
-          {activeParty && (
-            <div className="active-party">
-              <div className="party-info">
-                <div className="party-header">
-                  <div className="party-title">
-                    <h2 className="title">{activeParty.title}</h2>
-                    <p className="description">{activeParty.description}</p>
-                  </div>
-                  
-                  <div className="party-status">
-                    <div className={`live-indicator ${activeParty.isLive ? 'live' : ''}`}>
-                      <div className="live-dot"></div>
-                      <span>{activeParty.isLive ? 'LIVE' : 'SCHEDULED'}</span>
+      {!isWatchPartyEnabled ? (
+        <section className="rounded-3xl border border-dashed border-white/10 bg-slate-950/40 p-10 text-center text-white">
+          <Users className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+          <h3 className="text-2xl font-semibold">Watch parties are currently turned off.</h3>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-slate-300">
+            Enable the feature to unlock private rooms, public screening sessions, and real-time audience participation.
+          </p>
+        </section>
+      ) : (
+        <div className="space-y-8">
+          {isLoading ? (
+            <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-8 text-sm text-slate-300">
+              Loading watch party rooms...
+            </div>
+          ) : null}
+
+          {activeParty ? (
+            <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 text-white">
+                <div className="relative aspect-video bg-slate-900">
+                  <Image
+                    src={activeParty.videoPoster}
+                    alt={activeParty.videoTitle}
+                    fill
+                    className="object-cover opacity-80"
+                  />
+                </div>
+
+                <div className="space-y-4 p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-200">
+                        <span className="h-2 w-2 rounded-full bg-red-400" />
+                        {activeParty.isLive ? 'Live room' : 'Scheduled room'}
+                      </div>
+                      <h3 className="text-2xl font-semibold">{activeParty.title}</h3>
+                      <p className="mt-2 text-sm text-slate-300">{activeParty.description}</p>
                     </div>
-                    
+
                     <button
-                      className="leave-button"
-                      onClick={handleLeaveParty}
+                      type="button"
+                      onClick={() => setActiveParty(null)}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm"
                     >
-                      <X className="w-4 h-4" />
-                      <span>Leave Party</span>
+                      <X className="h-4 w-4" />
+                      Leave party
                     </button>
                   </div>
-                </div>
-                
-                <div className="party-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Host:</span>
-                    <span className="detail-value">{activeParty.hostName}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Video:</span>
-                    <span className="detail-value">{activeParty.videoTitle}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Participants:</span>
-                    <span className="detail-value">{activeParty.participants.length}/{activeParty.maxParticipants}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Started:</span>
-                    <span className="detail-value">{activeParty.startTime.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="party-content">
-                <div className="video-section">
-                  <div className="video-player">
-                    <div className="video-container">
-                      <Image
-                        src={activeParty.videoPoster}
-                        alt={activeParty.videoTitle}
-                        className="video-poster"
-                        width={400}
-                        height={225}
-                      />
-                      
-                      <div className="video-overlay">
-                        <div className="video-controls">
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('play')}
-                          >
-                            <Play className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('pause')}
-                          >
-                            <Pause className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('seek_backward')}
-                          >
-                            <SkipBack className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('seek_forward')}
-                          >
-                            <SkipForward className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('volume_up')}
-                          >
-                            <Volume2 className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('volume_down')}
-                          >
-                            <VolumeX className="w-5 h-5" />
-                          </button>
-                          
-                          <button
-                            className="control-button"
-                            onClick={() => handleVideoControl('fullscreen')}
-                          >
-                            <Maximize2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="participants-section">
-                  <h3 className="section-title">Participants ({activeParty.participants.length})</h3>
-                  
-                  <div className="participants-list">
-                    {activeParty.participants.map((participant) => (
-                      <div key={participant.id} className="participant-item">
-                        <div className="participant-avatar">
-                          <Image
-                            src={participant.avatar || '/api/placeholder/user/default'}
-                            alt={participant.name}
-                            className="avatar-image"
-                            width={40}
-                            height={40}
-                          />
-                          {participant.isHost && (
-                            <div className="host-badge">
-                              <Crown className="w-3 h-3" />
-                              <span>Host</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="participant-info">
-                          <div className="participant-header">
-                            <h4 className="participant-name">{participant.name}</h4>
-                            <div className={`participant-status ${getParticipantStatusColor(participant.status)}`}>
-                              <span className="status-text">{participant.status.toUpperCase()}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="participant-details">
-                            <div className="detail-item">
-                              <span className="detail-label">Device:</span>
-                              <span className="detail-value">{participant.deviceType}</span>
-                            </div>
-                            
-                            <div className="detail-item">
-                              <span className="detail-label">Network:</span>
-                              <div className={`network-quality ${getNetworkQualityColor(participant.networkQuality)}`}>
-                                <span className="quality-text">{participant.networkQuality.toUpperCase()}</span>
-                                <span className="quality-details">
-                                  {participant.bandwidth} Mbps • {participant.latency}ms
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="detail-item">
-                              <span className="detail-label">Position:</span>
-                              <span className="detail-value">
-                                {Math.floor(participant.playbackPosition / 60)}:{(participant.playbackPosition % 60).toString().padStart(2, '0')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="participant-actions">
-                          <button
-                            className={`action-button ${participant.isMuted ? 'muted' : ''}`}
-                            onClick={() => {/* Toggle mute */}}
-                          >
-                            {participant.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                          </button>
-                          
-                          <button
-                            className="action-button"
-                            onClick={() => {/* Kick participant */}}
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="chat-section">
-                  <h3 className="section-title">Chat</h3>
-                  
-                  <div className="chat-container" ref={chatContainerRef}>
-                    {activeParty.chat.map((message) => (
-                      <div key={message.id} className={`chat-message ${message.participantId === 'current_user' ? 'own' : 'other'}`}>
-                        <div className="message-avatar">
-                          <Image
-                            src={message.participantAvatar || '/api/placeholder/user/default'}
-                            alt={message.participantName}
-                            className="avatar-image"
-                            width={40}
-                            height={40}
-                          />
-                        </div>
-                        
-                        <div className="message-content">
-                          <div className="message-header">
-                            <span className="message-author">{message.participantName}</span>
-                            <span className="message-time">{message.timestamp.toLocaleTimeString()}</span>
-                            {message.isHost && (
-                              <span className="host-badge">Host</span>
-                            )}
-                          </div>
-                          
-                          <div className="message-body">
-                            <p className="message-text">{message.message}</p>
-                            
-                            {message.reactions && Object.keys(message.reactions).length > 0 && (
-                              <div className="message-reactions">
-                                {Object.entries(message.reactions).map(([emoji, reactors]) => (
-                                  <span key={emoji} className="reaction">
-                                    <span>{emoji}</span>
-                                    <span className="reaction-count">{reactors.length}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="chat-input">
-                    <div className="input-container">
-                      <input
-                        type="text"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            handleSendMessage();
-                          }
-                        }}
-                        placeholder="Type a message..."
-                        className="chat-input-field"
-                      />
-                      
-                      <button
-                        className="send-button"
-                        onClick={handleSendMessage}
-                        disabled={!chatMessage.trim()}
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    <div className="chat-status">
-                      {isTyping && (
-                        <span className="typing-indicator">Someone is typing...</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Party List */}
-          {!activeParty && (
-            <div className="party-list">
-              <div className="list-header">
-                <h2 className="section-title">My Parties</h2>
-                <span className="party-count">({myParties.length})</span>
-              </div>
-              
-              <div className="parties-grid">
-                {myParties.map((party) => (
-                  <div key={party.id} className="party-card">
-                    <div className="party-poster">
-                      <Image
-                        src={party.videoPoster}
-                        alt={party.videoTitle}
-                        className="poster-image"
-                        width={300}
-                        height={169}
-                      />
-                      <div className="party-overlay">
-                        <div className="party-status">
-                          {party.isLive && (
-                            <div className="live-indicator">
-                              <div className="live-dot"></div>
-                              <span>LIVE</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="party-info">
-                      <h3 className="party-title">{party.title}</h3>
-                      <p className="party-description">{party.description}</p>
-                      
-                      <div className="party-details">
-                        <div className="detail-item">
-                          <span className="detail-label">Host:</span>
-                          <span className="detail-value">{party.hostName}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Video:</span>
-                          <span className="detail-value">{party.videoTitle}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Participants:</span>
-                          <span className="detail-value">{party.participants.length}/{party.maxParticipants}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Created:</span>
-                          <span className="detail-value">{party.createdAt.toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="party-actions">
-                        <button
-                          className="action-button primary"
-                          onClick={() => setActiveParty(party)}
-                        >
-                          <Play className="w-4 h-4" />
-                          <span>Join Party</span>
-                        </button>
-                        
-                        <button
-                          className="action-button secondary"
-                          onClick={() => {/* Edit party */}}
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span>Manage</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="list-header">
-                <h2 className="section-title">Available Parties</h2>
-                <span className="party-count">({availableParties.length})</span>
-              </div>
-              
-              <div className="parties-grid">
-                {availableParties.map((party) => (
-                  <div key={party.id} className="party-card">
-                    <div className="party-poster">
-                      <Image
-                        src={party.videoPoster}
-                        alt={party.videoTitle}
-                        className="poster-image"
-                        width={300}
-                        height={169}
-                      />
-                      <div className="party-overlay">
-                        <div className="party-status">
-                          {party.isLive && (
-                            <div className="live-indicator">
-                              <div className="live-dot"></div>
-                              <span>LIVE</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="party-info">
-                      <h3 className="party-title">{party.title}</h3>
-                      <p className="party-description">{party.description}</p>
-                      
-                      <div className="party-details">
-                        <div className="detail-item">
-                          <span className="detail-label">Host:</span>
-                          <span className="detail-value">{party.hostName}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Video:</span>
-                          <span className="detail-value">{party.videoTitle}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Participants:</span>
-                          <span className="detail-value">{party.participants.length}/{party.maxParticipants}</span>
-                        </div>
-                        
-                        <div className="detail-item">
-                          <span className="detail-label">Start Time:</span>
-                          <span className="detail-value">{party.startTime.toLocaleString()}</span>
-                        </div>
-                        
-                        {party.isPublic ? (
-                          <div className="detail-item">
-                            <span className="detail-label">Access:</span>
-                            <span className="detail-value public">Public</span>
-                          </div>
-                        ) : (
-                          <div className="detail-item">
-                            <span className="detail-label">Access:</span>
-                            <span className="detail-value private">Private</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="party-actions">
-                        <button
-                          className="action-button primary"
-                          onClick={() => handleJoinParty(party.id)}
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Join Party</span>
-                        </button>
-                        
-                        {party.isPublic && (
-                          <button
-                            className="action-button secondary"
-                            onClick={() => {/* Share party */}}
-                          >
-                            <Share2 className="w-4 h-4" />
-                            <span>Share</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="party-disabled-state">
-          <div className="disabled-content">
-            <Users className="w-16 h-16" />
-            <h2>Watch Parties Disabled</h2>
-            <p>Enable watch parties to enjoy movies together with friends in real-time synchronized viewing.</p>
-            
-            <button
-              className="enable-party-button"
-              onClick={handleToggleWatchParty}
-            >
-              <Users className="w-5 h-5" />
-              <span>Enable Watch Parties</span>
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Create Party Modal */}
-      {showCreateParty && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Create Watch Party</h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowCreateParty(false)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="form-section">
-                <label className="form-label">Party Title</label>
-                <input
-                  type="text"
-                  value={newPartyData.title}
-                  onChange={(e) => setNewPartyData(prev => ({ ...prev, title: e.target.value }))}
-                  className="form-input"
-                  placeholder="Give your watch party a name"
-                />
-              </div>
-              
-              <div className="form-section">
-                <label className="form-label">Description</label>
-                <textarea
-                  value={newPartyData.description}
-                  onChange={(e) => setNewPartyData(prev => ({ ...prev, description: e.target.value }))}
-                  className="form-textarea"
-                  placeholder="Describe your watch party"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="form-section">
-                <label className="form-label">Video</label>
-                <input
-                  type="text"
-                  value={newPartyData.videoId}
-                  onChange={(e) => setNewPartyData(prev => ({ ...prev, videoId: e.target.value }))}
-                  className="form-input"
-                  placeholder="Enter video ID or search for a video"
-                />
-              </div>
-              
-              <div className="form-row">
-                <div className="form-section">
-                  <label className="form-label">Max Participants</label>
-                  <input
-                    type="number"
-                    value={newPartyData.maxParticipants}
-                    onChange={(e) => setNewPartyData(prev => ({ ...prev, maxParticipants: parseInt(e.target.value) }))}
-                    className="form-input"
-                    min="2"
-                    max="50"
-                  />
-                </div>
-                
-                <div className="form-section">
-                  <label className="form-label">Privacy</label>
-                  <select
-                    value={newPartyData.isPublic ? 'public' : 'private'}
-                    onChange={(e) => setNewPartyData(prev => ({ ...prev, isPublic: e.target.value === 'public' }))}
-                    className="form-select"
-                  >
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                  </select>
+                  <div className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Host</p>
+                      <p className="mt-1 font-medium">{activeParty.hostName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Now showing</p>
+                      <p className="mt-1 font-medium">{activeParty.videoTitle}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Start time</p>
+                      <p className="mt-1 font-medium">{formatPartyTime(activeParty.startTime)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Capacity</p>
+                      <p className="mt-1 font-medium">
+                        {activeParty.participants.length}/{activeParty.maxParticipants} attendees
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              {!newPartyData.isPublic && (
-                <div className="form-section">
-                  <label className="form-label">Password (Optional)</label>
-                  <input
-                    type="password"
-                    value={newPartyData.password}
-                    onChange={(e) => setNewPartyData(prev => ({ ...prev, password: e.target.value }))}
-                    className="form-input"
-                    placeholder="Password for private party"
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className="modal-footer">
-              <button
-                className="modal-button secondary"
-                onClick={() => setShowCreateParty(false)}
-              >
-                Cancel
-              </button>
-              
-              <button
-                className="modal-button primary"
-                onClick={handleCreateParty}
-                disabled={!newPartyData.title || !newPartyData.videoId}
-              >
-                <Users className="w-4 h-4" />
-                <span>Create Party</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Join Party Modal */}
-      {showJoinParty && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Join Watch Party</h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowJoinParty(false)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="form-section">
-                <label className="form-label">Party Code</label>
-                <input
-                  type="text"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  className="form-input"
-                  placeholder="Enter party code"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleJoinByCode();
-                    }
-                  }}
-                />
-              </div>
-              
-              <div className="form-section">
-                <label className="form-label">Or Browse Available Parties</label>
-                <div className="available-parties">
-                  {availableParties.map((party) => (
+              <aside className="space-y-4 rounded-3xl border border-white/10 bg-slate-950/60 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Participants</h3>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                    {activeParty.participants.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {activeParty.participants.map((participant) => (
                     <div
-                      key={party.id}
-                      className="party-option"
-                      onClick={() => handleJoinParty(party.id)}
+                      key={participant.id}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                     >
-                      <div className="party-option-poster">
-                        <Image
-                          src={party.videoPoster}
-                          alt={party.videoTitle}
-                          className="option-poster"
-                          width={200}
-                          height={113}
-                        />
+                      <div>
+                        <p className="font-medium">{participant.name}</p>
+                        <p className="text-xs text-slate-400">{participant.isHost ? 'Host' : 'Viewer'}</p>
                       </div>
-                      
-                      <div className="party-option-info">
-                        <h4 className="option-title">{party.title}</h4>
-                        <p className="option-description">{party.description}</p>
-                        
-                        <div className="option-details">
-                          <div className="detail-item">
-                            <span className="detail-label">Host:</span>
-                            <span className="detail-value">{party.hostName}</span>
-                          </div>
-                          
-                          <div className="detail-item">
-                            <span className="detail-label">Participants:</span>
-                            <span className="detail-value">{party.participants.length}/{party.maxParticipants}</span>
-                          </div>
-                          
-                          <div className="detail-item">
-                            <span className="detail-label">Start Time:</span>
-                            <span className="detail-value">{party.startTime.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
+                      {participant.isHost ? <Check className="h-4 w-4 text-amber-300" /> : null}
                     </div>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleCopyInvite()}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-3 text-sm font-medium"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Copy invite code
+                </button>
+              </aside>
+            </section>
+          ) : null}
+
+          <section className="space-y-6">
+            <div className="flex items-center justify-between text-white">
+              <div>
+                <h3 className="text-2xl font-semibold">My parties</h3>
+                <p className="text-sm text-slate-300">Rooms you host or manage.</p>
               </div>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{myParties.length}</span>
             </div>
-            
-            <div className="modal-footer">
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              {myParties.map((party) => (
+                <article
+                  key={party.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 text-white"
+                >
+                  <div className="relative aspect-video bg-slate-900">
+                    <Image src={party.videoPoster} alt={party.videoTitle} fill className="object-cover opacity-80" />
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-xl font-semibold">{party.title}</h4>
+                        <p className="mt-2 text-sm text-slate-300">{party.description}</p>
+                      </div>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                        {party.isLive ? 'Live' : 'Scheduled'}
+                      </span>
+                    </div>
+                    <div className="grid gap-2 text-sm text-slate-300">
+                      <p>Host: {party.hostName}</p>
+                      <p>Video: {party.videoTitle}</p>
+                      <p>Start: {formatPartyTime(party.startTime)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveParty(party)}
+                      className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950"
+                    >
+                      <Play className="h-4 w-4" />
+                      Open room
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="flex items-center justify-between text-white">
+              <div>
+                <h3 className="text-2xl font-semibold">Available parties</h3>
+                <p className="text-sm text-slate-300">Join public rooms or private sessions with an invite code.</p>
+              </div>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                {availableParties.length}
+              </span>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              {availableParties.map((party) => (
+                <article
+                  key={party.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 text-white"
+                >
+                  <div className="relative aspect-video bg-slate-900">
+                    <Image src={party.videoPoster} alt={party.videoTitle} fill className="object-cover opacity-80" />
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-xl font-semibold">{party.title}</h4>
+                        <p className="mt-2 text-sm text-slate-300">{party.description}</p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${
+                          party.isPublic
+                            ? 'bg-emerald-500/15 text-emerald-200'
+                            : 'bg-amber-500/15 text-amber-200'
+                        }`}
+                      >
+                        {party.isPublic ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                        {party.isPublic ? 'Public' : 'Private'}
+                      </span>
+                    </div>
+                    <div className="grid gap-2 text-sm text-slate-300">
+                      <p>Host: {party.hostName}</p>
+                      <p>Video: {party.videoTitle}</p>
+                      <p>Start: {formatPartyTime(party.startTime)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleJoinParty(party)}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium"
+                    >
+                      <Users className="h-4 w-4" />
+                      Join room
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showCreateParty ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-950 p-6 text-white shadow-2xl shadow-black/40">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold">Create watch party</h3>
+                <p className="text-sm text-slate-300">Set up a premium group screening in minutes.</p>
+              </div>
+              <button type="button" onClick={() => setShowCreateParty(false)} className="rounded-full border border-white/10 p-2">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-sm text-slate-300">Party title</span>
+                <input
+                  type="text"
+                  value={newPartyData.title}
+                  onChange={(event) => setNewPartyData((value) => ({ ...value, title: event.target.value }))}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                />
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-sm text-slate-300">Description</span>
+                <textarea
+                  rows={3}
+                  value={newPartyData.description}
+                  onChange={(event) => setNewPartyData((value) => ({ ...value, description: event.target.value }))}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-slate-300">Video ID or title</span>
+                <input
+                  type="text"
+                  value={newPartyData.videoId}
+                  onChange={(event) => setNewPartyData((value) => ({ ...value, videoId: event.target.value }))}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-slate-300">Max participants</span>
+                <input
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={newPartyData.maxParticipants}
+                  onChange={(event) =>
+                    setNewPartyData((value) => ({
+                      ...value,
+                      maxParticipants: Number.parseInt(event.target.value || '8', 10),
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-slate-300">Privacy</span>
+                <select
+                  value={newPartyData.isPublic ? 'public' : 'private'}
+                  onChange={(event) =>
+                    setNewPartyData((value) => ({ ...value, isPublic: event.target.value === 'public' }))
+                  }
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                >
+                  <option value="private">Private</option>
+                  <option value="public">Public</option>
+                </select>
+              </label>
+
+              {!newPartyData.isPublic ? (
+                <label className="space-y-2">
+                  <span className="text-sm text-slate-300">Invite code</span>
+                  <input
+                    type="text"
+                    value={newPartyData.password}
+                    onChange={(event) => setNewPartyData((value) => ({ ...value, password: event.target.value }))}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                  />
+                </label>
+              ) : null}
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
-                className="modal-button secondary"
-                onClick={() => setShowJoinParty(false)}
+                type="button"
+                onClick={() => setShowCreateParty(false)}
+                className="rounded-full border border-white/10 px-4 py-2 text-sm"
               >
                 Cancel
               </button>
-              
               <button
-                className="modal-button primary"
-                onClick={handleJoinByCode}
-                disabled={!joinCode.trim()}
+                type="button"
+                onClick={() => void handleCreateParty()}
+                className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950"
               >
-                <Plus className="w-4 h-4" />
-                <span>Join by Code</span>
+                Create party
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Error Display */}
-      {error && (
-        <div className="error-message">
-          <AlertTriangle className="w-5 h-5" />
+      {showJoinParty ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950 p-6 text-white shadow-2xl shadow-black/40">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold">Join watch party</h3>
+                <p className="text-sm text-slate-300">Use an invite code or jump into an available room.</p>
+              </div>
+              <button type="button" onClick={() => setShowJoinParty(false)} className="rounded-full border border-white/10 p-2">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <label className="space-y-2">
+                <span className="text-sm text-slate-300">Invite code</span>
+                <input
+                  type="text"
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleJoinByCode();
+                    }
+                  }}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none"
+                />
+              </label>
+
+              <div className="space-y-3">
+                {availableParties.map((party) => (
+                  <button
+                    key={party.id}
+                    type="button"
+                    onClick={() => handleJoinParty(party)}
+                    className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left"
+                  >
+                    <div>
+                      <p className="font-medium">{party.title}</p>
+                      <p className="text-sm text-slate-300">Hosted by {party.hostName}</p>
+                    </div>
+                    <span className="text-xs text-slate-400">{party.participants.length}/{party.maxParticipants}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowJoinParty(false)}
+                className="rounded-full border border-white/10 px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleJoinByCode}
+                className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950"
+              >
+                Join by code
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="inline-flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          <AlertTriangle className="h-4 w-4" />
           <span>{error}</span>
-          <button
-            className="error-dismiss"
-            onClick={() => setError(null)}
-          >
-            <X className="w-4 h-4" />
+          <button type="button" onClick={() => setError(null)} className="rounded-full border border-red-200/20 p-1">
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
