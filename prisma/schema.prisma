@@ -688,3 +688,21 @@ model ReportStatementItem {
 
   @@index([statementId, createdAt])
 }
+
+model AuditTrail {
+  id               String          @id @default(cuid())
+  userId           String
+  action           String          // UNLOCK_ATTEMPT, UNLOCK_SUCCESS, UNLOCK_FAILED, CREDIT_DEDUCTED, CREATOR_PAID, TAX_CALCULATED
+  videoId          String?
+  amount           Float?
+  credits          Float?
+  metadata         Json?
+  timestamp        DateTime        @default(now())
+  ipAddress        String
+  userAgent        String
+  sessionId        String
+
+  @@index([userId, action, timestamp])
+  @@index([videoId, timestamp])
+  @@index([action, timestamp])
+}

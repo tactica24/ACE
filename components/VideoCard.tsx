@@ -4,6 +4,7 @@ import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
+import { CurrencyService, Currency } from '@/lib/currency';
 
 const tierLabel: Record<PriceTierValue, string> = {
   SNACK: 'Snack',
@@ -61,10 +62,19 @@ function formatRuntime(durationSec?: number) {
 export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getDefaultTierPriceNaira(video.priceTier) * 100;
   const priceNaira = video.price?.amountNaira ?? getDefaultTierPriceNaira(video.priceTier);
-  const currency = video.price?.currency ?? 'NGN';
+  const currencyCode = video.price?.currency ?? 'USD';
+  const currency = Object.values(Currency).find(c => c === currencyCode) ?? Currency.USD;
   const posterUrl = getMediaAssetUrl(video.posterKey);
   const runtimeLabel = formatRuntime(video.durationSec);
-  const priceLabel = `${formatCredits(getCreditsForNaira(priceNaira))} / ${formatCurrencyMinor(priceMinor, currency)}`;
+  
+  // Use international currency formatting
+  const formattedPrice = CurrencyService.formatPrice({
+    minorUnits: priceMinor,
+    currency: currency,
+  });
+  
+  const creditsAmount = getCreditsForNaira(priceNaira);
+  const priceLabel = `${formatCredits(creditsAmount)} / ${formattedPrice}`;
 
   return (
     <Link href={`/v/${video.id}`} className="video-card">

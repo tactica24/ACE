@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_theme.dart';
+import '../../../core/currency/currency_service.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../data/catalog_repository.dart';
 import '../models/title_detail.dart';
@@ -123,6 +125,95 @@ class _DetailBody extends StatelessWidget {
                       height: 1.5,
                     ),
               ),
+              if (detail.access.priceInfo != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0x22F3BE74),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0x33F3BE74)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            detail.access.hasAccess ? 'Watch Now' : 'Unlock Required',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          if (detail.access.priceInfo!.tier != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              detail.access.priceInfo!.tier!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.textMuted,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (detail.access.hasAccess) ...[
+                        ElevatedButton(
+                          onPressed: () {
+                            context.push('/playback/${titleId}');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.gold,
+                            foregroundColor: AppTheme.background,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Play',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          detail.access.priceInfo!.formattedPrice,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: AppTheme.gold,
+                                fontWeight: FontWeight.w900,
+                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Redirect to web for payment
+                            final url = Uri.parse('https://acestudio.global/wallet');
+                            launchUrl(url);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.gold,
+                            foregroundColor: AppTheme.background,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Get Credits',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

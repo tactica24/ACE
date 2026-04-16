@@ -12,3 +12,4 @@ storage/cache
 storage/ace
 perf/results
 
+.aider*
