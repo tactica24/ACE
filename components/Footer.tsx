@@ -43,9 +43,9 @@ export default function Footer() {
         <section className="footer-premium-hero">
           <div className="footer-premium-copy">
             <span className="footer-premium-label">ACE Studio</span>
-            <h2>Premium film and series streaming with a clean product experience and a credible operating platform behind it.</h2>
+            <h2>Premium streaming for films and series, built to feel elegant for audiences and dependable for rightsholders, partners, and operators.</h2>
             <p className="muted">
-              ACE Studio brings together discovery, account-based access, connected TV viewing, and the internal workflows needed to support titles, producers, partners, and platform operations.
+              ACE Studio combines curated discovery, secure account-based access, connected TV playback, and the operational infrastructure needed to programme titles, onboard producers, support partners, and run a premium entertainment platform with confidence.
             </p>
             <div className="footer-app-buttons">
               <Link className="btn btn-primary btn-compact" href="/tv">
