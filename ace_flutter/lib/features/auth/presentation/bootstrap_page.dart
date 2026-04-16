@@ -12,16 +12,38 @@ class BootstrapPage extends ConsumerStatefulWidget {
 }
 
 class _BootstrapPageState extends ConsumerState<BootstrapPage> {
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() => context.go('/home'));
+  void _redirectTo(String route) {
+    Future.microtask(() {
+      if (!mounted) {
+        return;
+      }
+      context.go(route);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(firebaseUserChangesProvider);
+    final authState = ref.watch(firebaseUserChangesProvider);
 
+    return authState.when(
+      data: (user) {
+        _redirectTo(user == null ? '/login' : '/home');
+        return const _BootstrapScaffold();
+      },
+      loading: () => const _BootstrapScaffold(),
+      error: (_, __) {
+        _redirectTo('/login');
+        return const _BootstrapScaffold();
+      },
+    );
+  }
+}
+
+class _BootstrapScaffold extends StatelessWidget {
+  const _BootstrapScaffold();
+
+  @override
+  Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(),
