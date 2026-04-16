@@ -945,7 +945,7 @@ export default function VoiceControlIntegration() {
       initializeVoiceRecognition();
       loadVoiceCommands();
     }
-  }, [isVoiceEnabled]);
+  }, [isVoiceEnabled, initializeVoiceRecognition, loadVoiceCommands]);
 
   const initializeVoiceRecognition = async () => {
     try {
@@ -1230,7 +1230,7 @@ export default function VoiceControlIntegration() {
               
               <div className="result-content">
                 <div className="transcript">
-                  <span className="transcript-text">"{recognitionResult.transcript}"</span>
+                  <span className="transcript-text">&quot;{recognitionResult.transcript}&quot;</span>
                   <span className="transcript-time">
                     {recognitionResult.timestamp.toLocaleTimeString()}
                   </span>

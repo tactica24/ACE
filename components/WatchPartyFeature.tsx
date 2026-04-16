@@ -14,12 +14,12 @@ import {
   Maximize2, 
   Minimize2, 
   Repeat, 
-  RepeatOne, 
+  Repeat, 
   Shuffle, 
   Mic, 
   MicOff, 
-  ChatBubbleLeft, 
-  ChatBubbleRight, 
+  MessageCircle, 
+  MessageSquare, 
   Send, 
   Settings, 
   Crown, 
@@ -305,7 +305,7 @@ export default function WatchPartyFeature() {
     if (isWatchPartyEnabled) {
       loadWatchPartyData();
     }
-  }, [isWatchPartyEnabled]);
+  }, [isWatchPartyEnabled, loadWatchPartyData]);
 
   const loadWatchPartyData = async () => {
     setIsLoading(true);
