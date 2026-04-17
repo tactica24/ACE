@@ -37,13 +37,6 @@ type HomeRow = {
   items: HomeVideo[];
 };
 
-type ShortcutTile = {
-  title: string;
-  description: string;
-  href: string;
-  eyebrow: string;
-};
-
 type EditorialCollection = {
   title: string;
   description: string;
@@ -51,29 +44,6 @@ type EditorialCollection = {
   spotlight: HomeVideo;
   supporting: HomeVideo[];
 };
-
-const PLAN_OPTIONS = [
-  {
-    name: 'Free Preview',
-    summary: 'Open discovery, trailer moments, and selected launch highlights for first-time viewers.',
-    cta: 'Explore free access'
-  },
-  {
-    name: 'TVOD',
-    summary: 'Unlock individual titles when you want a focused premiere-night experience.',
-    cta: 'Browse title access'
-  },
-  {
-    name: 'SVOD',
-    summary: 'Continuous access for returning viewers building a weekly rhythm around the catalog.',
-    cta: 'Compare catalog value'
-  },
-  {
-    name: 'Premium',
-    summary: 'For households, enthusiasts, and partner-ready packages that need broader access options.',
-    cta: 'Start streaming'
-  }
-] as const;
 
 function formatRuntime(durationSec?: number | null) {
   if (!durationSec || durationSec <= 0) return null;
@@ -214,28 +184,6 @@ function buildRows(videos: HomeVideo[], continueWatching: HomeVideo[], unlockedV
   return rows.slice(0, 8);
 }
 
-function buildShortcutTiles(videos: HomeVideo[]): ShortcutTile[] {
-  const availableCategories = new Set(videos.map((video) => video.category.toLowerCase()));
-  const availableGenres = new Set(videos.flatMap((video) => video.genres.map((genre) => genre.toLowerCase())));
-  const canMatch = (term: string) => availableCategories.has(term.toLowerCase()) || availableGenres.has(term.toLowerCase());
-
-  const candidates: ShortcutTile[] = [
-    { title: 'Nollywood', description: 'Premier local stories with strong regional appeal.', href: '/browse?q=Nollywood', eyebrow: 'Local' },
-    { title: 'Hollywood', description: 'Global audience favorites and high-profile releases.', href: '/browse?q=Hollywood', eyebrow: 'Global' },
-    { title: 'Korean', description: 'Elegant dramas, thrillers, and premium Asian picks.', href: '/browse?q=Korean', eyebrow: 'Asian' },
-    { title: 'Arab World', description: 'Compelling films and series from Arabic-speaking markets.', href: '/browse?q=Arab', eyebrow: 'Regional' },
-    { title: 'Documentaries', description: 'Insightful nonfiction, culture, and current-affairs stories.', href: '/browse?q=Documentary', eyebrow: 'Nonfiction' },
-    { title: 'Faith & Family', description: 'Values-led viewing with wide household appeal.', href: '/browse?q=Faith', eyebrow: 'Shared' },
-    { title: 'Kids', description: 'Lighter picks for younger viewers and family moments.', href: '/browse?q=Kids', eyebrow: 'Family' },
-    { title: 'Comedy', description: 'Feel-good discovery for easy watch sessions.', href: '/browse?q=Comedy', eyebrow: 'Mood' },
-    { title: 'Drama', description: 'Rich characters, emotional stakes, and premium pacing.', href: '/browse?q=Drama', eyebrow: 'Stories' },
-    { title: 'Action', description: 'Fast-moving, high-energy viewing for thrill seekers.', href: '/browse?q=Action', eyebrow: 'Energy' }
-  ];
-
-  const matched = candidates.filter((item) => canMatch(item.title) || item.title === 'Nollywood' || item.title === 'Action');
-  return (matched.length >= 6 ? matched : candidates).slice(0, 10);
-}
-
 function buildEditorialCollections(videos: HomeVideo[]): EditorialCollection[] {
   const definitions = [
     {
@@ -366,11 +314,7 @@ export default async function HomePage() {
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
   const featuredRuntime = formatRuntime(featured?.durationSec);
   const rows = buildRows(videos, continueWatching, unlockedVideos);
-  const shortcuts = buildShortcutTiles(videos);
   const editorialCollections = buildEditorialCollections(videos);
-  const catalogStat = videos.length;
-  const categoryStat = new Set(videos.map((video) => video.category)).size;
-  const genreStat = new Set(videos.flatMap((video) => video.genres)).size;
 
   return (
     <div className="viewer-home">
@@ -395,7 +339,7 @@ export default async function HomePage() {
               </h1>
               <p className="home-summary">
                 {featured?.description ??
-                  'Discover bold films, standout series, and investor-ready catalog presentation built with cinematic polish from the very first frame.'}
+                  'Discover bold films, standout series, and a cinematic viewing journey built to feel premium from the first frame.'}
               </p>
               <div className="home-meta-row">
                 {featured?.releaseYear ? <span>{featured.releaseYear}</span> : null}
@@ -409,21 +353,6 @@ export default async function HomePage() {
                   {featured ? 'Watch Now' : 'Browse Catalog'}
                 </Link>
                 <Link className="btn btn-ghost" href="/highlights">Watch Highlights</Link>
-                <Link className="btn btn-ghost" href="/auth/register">Start Streaming</Link>
-              </div>
-              <div className="home-value-strip">
-                <div className="home-value-card">
-                  <span>Titles</span>
-                  <strong>{catalogStat}</strong>
-                </div>
-                <div className="home-value-card">
-                  <span>Categories</span>
-                  <strong>{categoryStat}</strong>
-                </div>
-                <div className="home-value-card">
-                  <span>Genres</span>
-                  <strong>{genreStat}</strong>
-                </div>
               </div>
             </div>
 
@@ -447,29 +376,6 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="categories" className="section home-shortcuts-section">
-        <div className="container">
-          <div className="home-section-heading">
-            <div>
-              <span className="pill">Category shortcuts</span>
-              <h2 className="section-title home-section-title">Move through the catalog like a premium storefront</h2>
-              <p className="muted home-section-copy">
-                Quick pathways for regional discovery, mood-based browsing, and curated audience segments.
-              </p>
-            </div>
-          </div>
-          <div className="home-shortcut-grid">
-            {shortcuts.map((shortcut) => (
-              <Link key={shortcut.title} className="home-shortcut-card" href={shortcut.href}>
-                <span className="home-shortcut-eyebrow">{shortcut.eyebrow}</span>
-                <strong>{shortcut.title}</strong>
-                <p>{shortcut.description}</p>
-              </Link>
-            ))}
           </div>
         </div>
       </section>
@@ -524,7 +430,7 @@ export default async function HomePage() {
             <div className="home-section-heading">
               <div>
                 <span className="pill">Editorial collections</span>
-                <h2 className="section-title home-section-title">A premium layer for curation, partnerships, and investor-facing polish</h2>
+                <h2 className="section-title home-section-title">A premium layer for curated discovery and standout storytelling</h2>
                 <p className="muted home-section-copy">
                   Designed to feel deliberate, cinematic, and globally competitive rather than just functional.
                 </p>
@@ -567,32 +473,6 @@ export default async function HomePage() {
           </div>
         </section>
       ) : null}
-
-      <section className="section home-plans-section">
-        <div className="container">
-          <div className="home-plans-shell">
-            <div className="home-section-heading">
-              <div>
-                <span className="pill">Access options</span>
-                <h2 className="section-title home-section-title">Clear monetization, cleaner presentation</h2>
-                <p className="muted home-section-copy">
-                  A polished overview of access models without making the homepage feel pushy or overcrowded.
-                </p>
-              </div>
-              <Link className="btn btn-primary" href="/auth/register">Start Streaming</Link>
-            </div>
-            <div className="home-plan-grid">
-              {PLAN_OPTIONS.map((plan) => (
-                <div key={plan.name} className="home-plan-card">
-                  <span className="home-plan-kicker">{plan.name}</span>
-                  <p>{plan.summary}</p>
-                  <Link className="btn btn-ghost btn-compact" href="/browse">{plan.cta}</Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

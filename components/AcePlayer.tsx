@@ -377,20 +377,27 @@ export default function AcePlayer({
     void syncHistory({ progressSec: 0, keepalive: true });
   }, [constrainedSeek, syncHistory, videoId]);
 
+  const exitWatchMode = useCallback(() => {
+    setWatchMode(false);
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('watch-mode-active');
+    }
+  }, []);
+
   const prepareForNavigation = useCallback(() => {
     const videoElement = videoRef.current;
     if (!videoElement) {
-      setWatchMode(false);
+      exitWatchMode();
       return;
     }
 
-    setWatchMode(false);
+    exitWatchMode();
     videoElement.pause();
 
     if (videoElement.currentTime > 0 && !videoElement.ended) {
       void syncHistory({ progressSec: videoElement.currentTime, keepalive: true });
     }
-  }, [syncHistory]);
+  }, [exitWatchMode, syncHistory]);
 
   const unlockVideo = useCallback(async ({
     resumeAt,
@@ -711,6 +718,12 @@ export default function AcePlayer({
       if (key === '0') {
         event.preventDefault();
         restartPlayback();
+        return;
+      }
+
+      if (key === 'escape' && watchMode) {
+        event.preventDefault();
+        exitWatchMode();
       }
     };
 
@@ -718,7 +731,7 @@ export default function AcePlayer({
     return () => {
       window.removeEventListener('keydown', handleKeydown);
     };
-  }, [jumpPlayback, restartPlayback, toggleMute, togglePlayback]);
+  }, [exitWatchMode, jumpPlayback, restartPlayback, toggleMute, togglePlayback, watchMode]);
 
   const previewSeconds = highlightSeconds.filter((sec) => sec >= 0);
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
@@ -769,7 +782,14 @@ export default function AcePlayer({
           <button
             className="player-topbar-control"
             type="button"
-            onClick={() => setWatchMode((current) => !current)}
+            onClick={() => {
+              if (watchMode) {
+                exitWatchMode();
+                return;
+              }
+
+              setWatchMode(true);
+            }}
           >
             {watchMode ? copy.exitWatchMode : copy.watchMode}
           </button>
