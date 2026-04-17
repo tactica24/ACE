@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Mic, 
   MicOff, 
@@ -939,14 +939,7 @@ export default function VoiceControlIntegration() {
     }
   };
 
-  useEffect(() => {
-    if (isVoiceEnabled) {
-      initializeVoiceRecognition();
-      loadVoiceCommands();
-    }
-  }, [isVoiceEnabled, initializeVoiceRecognition, loadVoiceCommands]);
-
-  const initializeVoiceRecognition = async () => {
+  const initializeVoiceRecognition = useCallback(async () => {
     try {
       // Check for browser support
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -1002,9 +995,9 @@ export default function VoiceControlIntegration() {
       console.error('Failed to initialize voice recognition:', error);
       setError('Failed to initialize voice recognition');
     }
-  };
+  }, [voiceSettings]);
 
-  const loadVoiceCommands = async () => {
+  const loadVoiceCommands = useCallback(async () => {
     setIsLoading(true);
     try {
       // Simulate API call
@@ -1017,7 +1010,14 @@ export default function VoiceControlIntegration() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isVoiceEnabled) {
+      void initializeVoiceRecognition();
+      void loadVoiceCommands();
+    }
+  }, [isVoiceEnabled, initializeVoiceRecognition, loadVoiceCommands]);
 
   const processVoiceCommand = (transcript: string, confidence: number) => {
     const lowerTranscript = transcript.toLowerCase();

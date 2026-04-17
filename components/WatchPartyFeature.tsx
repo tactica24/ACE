@@ -1,18 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  AlertTriangle,
-  Check,
-  Lock,
-  Play,
-  Plus,
-  Share2,
-  Unlock,
-  Users,
-  X,
-} from 'lucide-react';
+
+import { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, Check, Lock, Play, Plus, Share2, Unlock, Users, X } from 'lucide-react';
 
 interface Participant {
   id: string;
@@ -104,6 +95,7 @@ export default function WatchPartyFeature() {
   const [newPartyData, setNewPartyData] = useState<NewPartyForm>(defaultFormState);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const loadWatchPartyData = useCallback(async () => {
     setIsLoading(true);
@@ -635,3 +627,4 @@ export default function WatchPartyFeature() {
     </div>
   );
 }
+
