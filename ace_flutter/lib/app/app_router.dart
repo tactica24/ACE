@@ -7,6 +7,8 @@ import '../features/auth/presentation/register_page.dart';
 import '../features/catalog/presentation/browse_page.dart';
 import '../features/catalog/presentation/home_page.dart';
 import '../features/catalog/presentation/title_detail_page.dart';
+import '../features/downloads/models/downloaded_title.dart';
+import '../features/downloads/presentation/offline_playback_page.dart';
 import '../features/library/presentation/library_page.dart';
 import '../features/player/presentation/playback_page.dart';
 import '../features/profile/presentation/profile_page.dart';
@@ -32,6 +34,20 @@ GoRouter createRouter() {
       GoRoute(path: '/profile', builder: (context, state) => const ProfilePage()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
       GoRoute(path: '/support', builder: (context, state) => const SupportPage()),
+      GoRoute(
+        path: '/offline-player',
+        builder: (context, state) {
+          final payload = state.extra;
+          if (payload is! DownloadedTitle) {
+            return const Scaffold(
+              body: Center(
+                child: Text('Offline playback data was missing.'),
+              ),
+            );
+          }
+          return OfflinePlaybackPage(download: payload);
+        },
+      ),
       GoRoute(
         path: '/title/:id',
         builder: (context, state) => TitleDetailPage(titleId: state.pathParameters['id']!),
