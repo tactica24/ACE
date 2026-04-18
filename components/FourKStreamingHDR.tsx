@@ -26,6 +26,7 @@ import {
   Subtitles, 
   Mic, 
   MicOff, 
+  Signal,
   Wifi, 
   WifiOff, 
   Battery, 

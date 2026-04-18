@@ -63,8 +63,8 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: 20),
         _CarouselSection(title: 'Trending now', titles: trending),
         const SizedBox(height: 24),
-        _CategoryStrip(
-          categories: const [
+        const _CategoryStrip(
+          categories: [
             'New Releases',
             'Drama',
             'Action',
@@ -143,7 +143,8 @@ class _HeroCard extends StatelessWidget {
             children: [
               _MetaChip(label: title.category),
               _MetaChip(label: title.videoType),
-              if (title.releaseYear != null) _MetaChip(label: '${title.releaseYear}'),
+              if (title.releaseYear != null)
+                _MetaChip(label: '${title.releaseYear}'),
               _MetaChip(label: title.ageRating),
             ],
           ),

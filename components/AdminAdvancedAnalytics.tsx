@@ -12,6 +12,7 @@ import {
   BarChart3,
   PieChart,
   Activity,
+  Star,
   Download,
   Filter,
   Calendar,
@@ -331,7 +332,7 @@ export default function AdminAdvancedAnalytics() {
           <div className="analytics-geo-list">
             {data.trends.geographicData.map((geo, index) => (
               <div key={index} className="analytics-geo-item">
-                <div className="analytics-geo-flag">{' '.repeat(index)}{geo.flag}</div>
+                <div className="analytics-geo-flag">{geo.country.slice(0, 2).toUpperCase()}</div>
                 <div className="analytics-geo-info">
                   <h4 className="analytics-geo-country">{geo.country}</h4>
                   <div className="analytics-geo-stats">

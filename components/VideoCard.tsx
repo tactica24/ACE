@@ -1,7 +1,9 @@
+'use client';
+
+import { type FocusEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getDefaultTierPriceNaira } from '@/lib/commerce';
 import { formatCredits, getCreditsForNaira } from '@/lib/credits';
-import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { CurrencyService, Currency } from '@/lib/currency';
@@ -43,6 +45,8 @@ export type VideoCardData = {
   progressPercent?: number;
 };
 
+const PREVIEW_DELAY_MS = 320;
+
 function formatRuntime(durationSec?: number) {
   if (!durationSec || durationSec <= 0) {
     return null;
@@ -63,25 +67,160 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getDefaultTierPriceNaira(video.priceTier) * 100;
   const priceNaira = video.price?.amountNaira ?? getDefaultTierPriceNaira(video.priceTier);
   const currencyCode = video.price?.currency ?? 'USD';
-  const currency = Object.values(Currency).find(c => c === currencyCode) ?? Currency.USD;
+  const currency = Object.values(Currency).find((item) => item === currencyCode) ?? Currency.USD;
   const posterUrl = getMediaAssetUrl(video.posterKey);
   const runtimeLabel = formatRuntime(video.durationSec);
-  
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const [canHoverPreview, setCanHoverPreview] = useState(false);
+  const [isInteractive, setIsInteractive] = useState(false);
+  const [previewSource, setPreviewSource] = useState<string | null>(null);
+  const [previewReady, setPreviewReady] = useState(false);
+  const requestRef = useRef<AbortController | null>(null);
+
   // Use international currency formatting
   const formattedPrice = CurrencyService.formatPrice({
     minorUnits: priceMinor,
-    currency: currency,
+    currency
   });
-  
+
   const creditsAmount = getCreditsForNaira(priceNaira);
   const priceLabel = `${formatCredits(creditsAmount)} / ${formattedPrice}`;
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const updateHoverCapability = () => {
+      setCanHoverPreview(hoverQuery.matches && !reducedMotionQuery.matches);
+    };
+
+    updateHoverCapability();
+    hoverQuery.addEventListener('change', updateHoverCapability);
+    reducedMotionQuery.addEventListener('change', updateHoverCapability);
+
+    return () => {
+      hoverQuery.removeEventListener('change', updateHoverCapability);
+      reducedMotionQuery.removeEventListener('change', updateHoverCapability);
+    };
+  }, []);
+
+  const loadPreviewSource = useCallback(async () => {
+    if (previewSource) {
+      setPreviewReady(true);
+      return;
+    }
+
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+
+    try {
+      const tokenResponse = await fetch(`/api/stream/token?videoId=${encodeURIComponent(video.id)}&teaser=1`, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal
+      });
+
+      if (!tokenResponse.ok) {
+        return;
+      }
+
+      const tokenPayload = (await tokenResponse.json()) as { token?: string };
+      if (!tokenPayload.token) {
+        return;
+      }
+
+      const source = `/api/stream/${encodeURIComponent(video.id)}?token=${encodeURIComponent(tokenPayload.token)}`;
+      setPreviewSource(source);
+      setPreviewReady(true);
+    } catch {
+      // Keep poster-only card when preview token or stream is unavailable.
+    }
+  }, [previewSource, video.id]);
+
+  useEffect(() => {
+    if (!canHoverPreview || !isInteractive) {
+      setPreviewReady(false);
+      const videoElement = previewRef.current;
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.currentTime = 0;
+      }
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadPreviewSource();
+    }, PREVIEW_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [canHoverPreview, isInteractive, loadPreviewSource]);
+
+  useEffect(() => {
+    const videoElement = previewRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    if (!canHoverPreview || !isInteractive || !previewReady || !previewSource) {
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      return;
+    }
+
+    const playPromise = videoElement.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        // Silent fallback to poster only.
+      });
+    }
+  }, [canHoverPreview, isInteractive, previewReady, previewSource]);
+
+  useEffect(() => {
+    return () => {
+      requestRef.current?.abort();
+    };
+  }, []);
+
+  const handleFocusOut = (event: FocusEvent<HTMLAnchorElement>) => {
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setIsInteractive(false);
+  };
+
   return (
-    <Link href={`/v/${video.id}`} className="video-card">
+    <Link
+      href={`/v/${video.id}`}
+      className={`video-card ${previewReady && isInteractive ? 'video-card-preview-active' : ''}`}
+      onPointerEnter={() => setIsInteractive(true)}
+      onPointerLeave={() => setIsInteractive(false)}
+      onFocus={() => setIsInteractive(true)}
+      onBlur={handleFocusOut}
+    >
       <div
         className="video-thumb"
         style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
+        {previewSource ? (
+          <video
+            ref={previewRef}
+            className="video-thumb-preview"
+            src={previewSource}
+            muted
+            playsInline
+            preload="metadata"
+            loop
+            aria-hidden="true"
+          />
+        ) : null}
         {!posterUrl ? <span>Ace Studio</span> : null}
         <div className="video-thumb-overlay">
           <span className="video-thumb-kicker">{video.category}</span>
@@ -106,7 +245,9 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
           <div className="video-card-details">
             {video.releaseYear ? <span>{video.releaseYear}</span> : null}
             {runtimeLabel ? <span>{runtimeLabel}</span> : null}
-            {video.videoType === 'SERIES' && !video.seriesId && video.episodeCount ? <span>{video.episodeCount} episodes</span> : null}
+            {video.videoType === 'SERIES' && !video.seriesId && video.episodeCount ? (
+              <span>{video.episodeCount} episodes</span>
+            ) : null}
             <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
             <span>{video.videoType === 'SERIES' ? 'Per episode' : tierLabel[video.priceTier]}</span>
           </div>

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/app_theme.dart';
-import '../../../widgets/premium_scaffold.dart';
 
 class PremiumVideoPlayer extends ConsumerStatefulWidget {
   const PremiumVideoPlayer({
@@ -43,21 +43,26 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_videoListener);
+    if (_isFullscreen) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     _controller?.dispose();
     super.dispose();
   }
 
   Future<void> _initializePlayer() async {
     try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-      
+      _controller =
+          VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+
       await _controller!.initialize();
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        
+
         _controller!.addListener(_videoListener);
         await _controller!.play();
       }
@@ -72,28 +77,29 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
 
   void _videoListener() {
     if (_controller == null) return;
-    
-    final position = _controller!.value.position;
-    final duration = _controller!.value.duration;
-    
-    if (duration != null && position != null) {
-      setState(() {
-        _position = position!;
-        _duration = duration!;
-      });
-      
-      widget.onProgress?.call(position);
-      
-      // Check if video completed
-      if (position.inSeconds >= duration!.inSeconds - 1) {
-        widget.onCompleted?.call();
-      }
+
+    final value = _controller!.value;
+    final position = value.position;
+    final duration = value.duration;
+
+    if (!mounted) return;
+
+    setState(() {
+      _position = position;
+      _duration = duration;
+    });
+
+    widget.onProgress?.call(position);
+
+    if (duration.inMilliseconds > 0 &&
+        position.inSeconds >= duration.inSeconds - 1) {
+      widget.onCompleted?.call();
     }
   }
 
   void _togglePlayPause() {
     if (_controller == null) return;
-    
+
     if (_controller!.value.isPlaying) {
       _controller!.pause();
     } else {
@@ -104,26 +110,24 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
   void _seekForward10Seconds() {
     if (_controller == null) return;
     final newPosition = _position + const Duration(seconds: 10);
-    _controller!.seekTo(newPosition.clamp(Duration.zero, _duration));
+    _controller!.seekTo(_boundedPosition(newPosition));
   }
 
   void _seekBackward10Seconds() {
     if (_controller == null) return;
     final newPosition = _position - const Duration(seconds: 10);
-    _controller!.seekTo(newPosition.clamp(Duration.zero, _duration));
+    _controller!.seekTo(_boundedPosition(newPosition));
   }
 
   void _toggleFullscreen() {
     setState(() {
       _isFullscreen = !_isFullscreen;
     });
-    
+
     if (_isFullscreen) {
-      // Enter fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
-      // Exit fullscreen
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
   }
 
@@ -131,11 +135,11 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     final currentIndex = speeds.indexOf(_playbackSpeed);
     final nextIndex = (currentIndex + 1) % speeds.length;
-    
+
     setState(() {
       _playbackSpeed = speeds[nextIndex];
     });
-    
+
     _controller?.setPlaybackSpeed(_playbackSpeed);
   }
 
@@ -143,14 +147,26 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
     setState(() {
       _subtitlesEnabled = !_subtitlesEnabled;
     });
-    // In a real implementation, this would enable/disable subtitle tracks
+  }
+
+  Duration _boundedPosition(Duration position) {
+    if (_duration <= Duration.zero) {
+      return Duration.zero;
+    }
+    if (position < Duration.zero) {
+      return Duration.zero;
+    }
+    if (position > _duration) {
+      return _duration;
+    }
+    return position;
   }
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
@@ -179,6 +195,20 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
       );
     }
 
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return const Center(
+        child: Text(
+          'Unable to load video right now.',
+          style: TextStyle(color: AppTheme.textMuted),
+        ),
+      );
+    }
+
+    final sliderMax =
+        _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0;
+    final sliderValue =
+        _position.inSeconds.clamp(0, sliderMax.toInt()).toDouble();
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
@@ -196,7 +226,7 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                 child: VideoPlayer(_controller!),
               ),
             ),
-            
+
             // Controls overlay
             if (_showControls) ...[
               // Top controls
@@ -235,7 +265,9 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                           IconButton(
                             onPressed: _toggleSubtitles,
                             icon: Icon(
-                              _subtitlesEnabled ? Icons.subtitles : Icons.subtitles_off,
+                              _subtitlesEnabled
+                                  ? Icons.subtitles
+                                  : Icons.subtitles_off,
                               color: Colors.white,
                             ),
                           ),
@@ -252,7 +284,7 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                   ),
                 ),
               ),
-              
+
               // Bottom controls
               Positioned(
                 bottom: 0,
@@ -275,23 +307,28 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                       // Progress bar
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6),
+                          overlayShape:
+                              const RoundSliderOverlayShape(overlayRadius: 12),
                           activeTrackColor: AppTheme.gold,
                           inactiveTrackColor: Colors.white24,
                           thumbColor: AppTheme.gold,
                         ),
                         child: Slider(
-                          value: _position.inSeconds.toDouble(),
-                          max: _duration.inSeconds.toDouble(),
-                          onChanged: (value) {
-                            _controller?.seekTo(Duration(seconds: value.toInt()));
-                          },
+                          value: sliderValue,
+                          max: sliderMax,
+                          onChanged: _duration.inSeconds > 0
+                              ? (value) {
+                                  _controller?.seekTo(
+                                      Duration(seconds: value.toInt()));
+                                }
+                              : null,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       // Time display
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -312,9 +349,9 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       // Control buttons
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -330,7 +367,9 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                           IconButton(
                             onPressed: _togglePlayPause,
                             icon: Icon(
-                              _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                              _controller!.value.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
                               color: Colors.white,
                               size: 48,
                             ),
@@ -344,18 +383,22 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              '${_playbackSpeed}x',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                          GestureDetector(
+                            onTap: _changePlaybackSpeed,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white24,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '${_playbackSpeed}x',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),

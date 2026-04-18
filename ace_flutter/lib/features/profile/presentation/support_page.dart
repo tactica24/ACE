@@ -32,7 +32,7 @@ class SupportPage extends StatelessWidget {
           ...const [
             _SupportCard(
               title: 'Playback unavailable',
-              description: 'Guide viewers to sign in with the account that already has access, without exposing billing flows.',
+              description: 'Guide viewers to sign in with the account that already has access.',
             ),
             _SupportCard(
               title: 'Device and session support',

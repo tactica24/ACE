@@ -10,6 +10,8 @@ export default function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hidePublicShell = pathname?.startsWith('/admin') || pathname?.startsWith('/studio');
   const isHomePage = pathname === '/';
+  const isVideoDetailPage = pathname?.startsWith('/v/');
+  const hideFooterPremiumHero = isHomePage || isVideoDetailPage;
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -23,7 +25,9 @@ export default function AppChrome({ children }: { children: ReactNode }) {
       <div className="app-shell">
         {!hidePublicShell ? <TopNav /> : null}
         <main style={{ flex: 1 }}>{children}</main>
-        {!hidePublicShell ? <Footer hidePremiumHero={isHomePage} /> : null}
+        {!hidePublicShell ? (
+          <Footer hidePremiumHero={hideFooterPremiumHero} hideSupportEmailTagline={isVideoDetailPage} />
+        ) : null}
       </div>
     </>
   );

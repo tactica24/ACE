@@ -18,6 +18,7 @@ import {
   X,
   Check,
   Clock,
+  Activity,
   TrendingUp,
   Eye,
   EyeOff,
@@ -699,7 +700,7 @@ export default function SocialFeatures() {
                               
                               <div className="party-meta">
                                 <div className="meta-item">
-                                  <Host className="w-4 h-4" />
+                                  <User className="w-4 h-4" />
                                   <span>Host: {party.hostName}</span>
                                 </div>
                                 <div className="meta-item">

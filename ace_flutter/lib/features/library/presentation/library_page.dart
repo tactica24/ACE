@@ -22,7 +22,7 @@ class LibraryPage extends ConsumerWidget {
       body: authAsync.when(
         data: (user) {
           if (user == null) {
-            return _SignedOutLibraryState();
+            return const _SignedOutLibraryState();
           }
 
           final libraryAsync = ref.watch(libraryTitlesProvider);
@@ -37,14 +37,18 @@ class LibraryPage extends ConsumerWidget {
                 children: [
                   Text(
                     'Titles available on your account',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 16),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: titles.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
@@ -90,12 +94,18 @@ class _SignedOutLibraryState extends StatelessWidget {
         children: [
           Text(
             'Sign in to view your access',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           Text(
             'Use the account that already has access to titles on ACE Studio.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textMuted),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: 18),
           ElevatedButton(
@@ -127,12 +137,18 @@ class _EmptyLibraryState extends StatelessWidget {
         children: [
           Text(
             'No active access found for this account',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           Text(
             '$name does not currently have titles in the mobile library feed.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textMuted),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: 18),
           OutlinedButton(

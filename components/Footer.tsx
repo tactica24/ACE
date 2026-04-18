@@ -38,9 +38,10 @@ const footerHighlights = [
 
 type FooterProps = {
   hidePremiumHero?: boolean;
+  hideSupportEmailTagline?: boolean;
 };
 
-export default function Footer({ hidePremiumHero = false }: FooterProps) {
+export default function Footer({ hidePremiumHero = false, hideSupportEmailTagline = false }: FooterProps) {
   return (
     <footer className="footer footer-premium">
       <div className="container footer-premium-shell">
@@ -103,7 +104,7 @@ export default function Footer({ hidePremiumHero = false }: FooterProps) {
 
         <div className="footer-legal">
           <span>(c) {new Date().getFullYear()} ACE Studio. All rights reserved.</span>
-          <span className="muted">Business and support enquiries: info@acestudio.ng</span>
+          {!hideSupportEmailTagline ? <span className="muted">Business and support enquiries: info@acestudio.ng</span> : null}
         </div>
       </div>
     </footer>

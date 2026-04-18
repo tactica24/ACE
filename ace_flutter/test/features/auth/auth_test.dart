@@ -1,177 +1,277 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 
 import 'package:ace_studio_flutter/core/network/api_client.dart';
 import 'package:ace_studio_flutter/features/auth/data/auth_repository.dart';
 
 void main() {
   group('AuthRepository', () {
-    late MockApiClient mockApiClient;
-    late MockFirebaseAuth mockFirebaseAuth;
+    late StubApiClient apiClient;
+    late StubFirebaseAuth firebaseAuth;
     late AuthRepository authRepository;
 
     setUp(() {
-      mockApiClient = MockApiClient();
-      mockFirebaseAuth = MockFirebaseAuth();
+      apiClient = StubApiClient();
+      firebaseAuth = StubFirebaseAuth();
       authRepository = AuthRepository(
-        firebaseAuth: mockFirebaseAuth,
-        apiClient: mockApiClient,
+        firebaseAuth: firebaseAuth,
+        apiClient: apiClient,
       );
     });
 
-    group('signIn', () {
-      test('should sign in user with email and password', () async {
-        const email = 'test@example.com';
-        const password = 'password123';
-        const idToken = 'mock_id_token';
+    test('signIn signs in user with email and password', () async {
+      const email = 'test@example.com';
+      const password = 'password123';
+      const idToken = 'mock_id_token';
 
-        final mockUserCredential = MockUserCredential();
-        final mockUser = MockUser();
+      firebaseAuth.signInResult =
+          StubUserCredential(StubUser(idToken: idToken));
+      apiClient.postResponses['/api/auth/login'] = {'success': true};
 
-        when(mockFirebaseAuth.signInWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        )).thenAnswer((_) async => mockUserCredential);
-        when(mockUserCredential.user).thenReturn(mockUser);
-        when(mockUser.getIdToken()).thenAnswer((_) async => idToken);
-        when(mockApiClient.postJson('/api/auth/login', body: {'idToken': idToken}))
-            .thenAnswer((_) async => {'success': true});
+      await authRepository.signIn(email: email, password: password);
 
-        await authRepository.signIn(email: email, password: password);
+      expect(firebaseAuth.signInCalls.length, 1);
+      expect(firebaseAuth.signInCalls.first.email, email.trim());
+      expect(firebaseAuth.signInCalls.first.password, password);
+      expect(apiClient.postCalls.length, 1);
+      expect(apiClient.postCalls.first.path, '/api/auth/login');
+      expect(apiClient.postCalls.first.body, {'idToken': idToken});
+    });
 
-        verify(mockFirebaseAuth.signInWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        )).called(1);
-        verify(mockApiClient.postJson('/api/auth/login', body: {'idToken': idToken}))
-            .called(1);
-      });
+    test('signIn throws exception when firebase sign in fails', () async {
+      const email = 'test@example.com';
+      const password = 'wrongpassword';
 
-      test('should throw exception when sign in fails', () async {
-        const email = 'test@example.com';
-        const password = 'wrongpassword';
+      firebaseAuth.signInError = FirebaseAuthException(code: 'user-not-found');
 
-        when(mockFirebaseAuth.signInWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        )).thenThrow(FirebaseAuthException(code: 'user-not-found'));
+      expect(
+        () => authRepository.signIn(email: email, password: password),
+        throwsA(isA<FirebaseAuthException>()),
+      );
+    });
 
-        expect(
-          () => authRepository.signIn(email: email, password: password),
-          throwsA(isA<FirebaseAuthException>()),
-        );
+    test('register creates account and syncs backend profile', () async {
+      const name = 'Test User';
+      const email = 'test@example.com';
+      const phone = '+1234567890';
+      const password = 'password123';
+      const idToken = 'mock_id_token';
+
+      final user = StubUser(idToken: idToken);
+      firebaseAuth.registerResult = StubUserCredential(user);
+      apiClient.postResponses['/api/auth/register'] = {'success': true};
+
+      await authRepository.register(
+        name: name,
+        email: email,
+        phone: phone,
+        password: password,
+      );
+
+      expect(firebaseAuth.registerCalls.length, 1);
+      expect(firebaseAuth.registerCalls.first.email, email.trim());
+      expect(firebaseAuth.registerCalls.first.password, password);
+      expect(user.updatedDisplayName, name.trim());
+      expect(user.emailVerificationSent, isTrue);
+      expect(apiClient.postCalls.last.path, '/api/auth/register');
+      expect(apiClient.postCalls.last.body, {
+        'idToken': idToken,
+        'name': name.trim(),
+        'phone': phone.trim(),
+        'signupIntent': 'VIEWER',
       });
     });
 
-    group('register', () {
-      test('should register new user successfully', () async {
-        const name = 'Test User';
-        const email = 'test@example.com';
-        const phone = '+1234567890';
-        const password = 'password123';
-        const idToken = 'mock_id_token';
+    test('signOut calls backend logout then clears local auth', () async {
+      apiClient.postResponses['/api/auth/logout'] = {'success': true};
 
-        final mockUserCredential = MockUserCredential();
-        final mockUser = MockUser();
+      await authRepository.signOut();
 
-        when(mockFirebaseAuth.createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        )).thenAnswer((_) async => mockUserCredential);
-        when(mockUserCredential.user).thenReturn(mockUser);
-        when(mockUser.updateDisplayName(name.trim())).thenAnswer((_) async {});
-        when(mockUser.sendEmailVerification()).thenAnswer((_) async {});
-        when(mockUser.getIdToken()).thenAnswer((_) async => idToken);
-        when(mockApiClient.postJson('/api/auth/register', body: {
-          'idToken': idToken,
-          'name': name.trim(),
-          'phone': phone.trim(),
-          'signupIntent': 'VIEWER',
-        })).thenAnswer((_) async => {'success': true});
-
-        await authRepository.register(
-          name: name,
-          email: email,
-          phone: phone,
-          password: password,
-        );
-
-        verify(mockFirebaseAuth.createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        )).called(1);
-        verify(mockUser.updateDisplayName(name.trim())).called(1);
-        verify(mockApiClient.postJson('/api/auth/register', body: {
-          'idToken': idToken,
-          'name': name.trim(),
-          'phone': phone.trim(),
-          'signupIntent': 'VIEWER',
-        })).called(1);
-      });
+      expect(apiClient.postCalls.length, 1);
+      expect(apiClient.postCalls.first.path, '/api/auth/logout');
+      expect(firebaseAuth.signOutCalls, 1);
     });
 
-    group('signOut', () {
-      test('should sign out user successfully', () async {
-        when(mockApiClient.postJson('/api/auth/logout'))
-            .thenAnswer((_) async => {'success': true});
-        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
+    test('signOut still clears local auth when backend logout fails', () async {
+      apiClient.postErrors['/api/auth/logout'] = Exception('Logout failed');
 
-        await authRepository.signOut();
+      await authRepository.signOut();
 
-        verifyInOrder([
-          mockApiClient.postJson('/api/auth/logout'),
-          mockFirebaseAuth.signOut(),
-        ]);
-      });
-
-      test('should clear local auth even when logout request fails', () async {
-        when(mockApiClient.postJson('/api/auth/logout')).thenThrow(Exception('Logout failed'));
-        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
-
-        await authRepository.signOut();
-
-        verify(mockApiClient.postJson('/api/auth/logout')).called(1);
-        verify(mockFirebaseAuth.signOut()).called(1);
-      });
+      expect(apiClient.postCalls.length, 1);
+      expect(apiClient.postCalls.first.path, '/api/auth/logout');
+      expect(firebaseAuth.signOutCalls, 1);
     });
 
-    group('fetchCurrentAccount', () {
-      test('should return user data when authenticated', () async {
-        final userData = {
+    test('fetchCurrentAccount returns user data when authenticated', () async {
+      apiClient.getResponses['/api/mobile/me'] = {
+        'user': {
           'id': 'user123',
           'email': 'test@example.com',
           'name': 'Test User',
           'role': 'USER',
-        };
+        },
+      };
 
-        when(mockApiClient.getJson('/api/mobile/me'))
-            .thenAnswer((_) async => {'user': userData});
+      final result = await authRepository.fetchCurrentAccount();
 
-        final result = await authRepository.fetchCurrentAccount();
+      expect(result, isNotNull);
+      expect(result!.id, 'user123');
+      expect(result.email, 'test@example.com');
+      expect(result.name, 'Test User');
+    });
 
-        expect(result, isNotNull);
-        expect(result!.id, equals('user123'));
-        expect(result.email, equals('test@example.com'));
-        expect(result.name, equals('Test User'));
-      });
+    test('fetchCurrentAccount returns null when unauthenticated', () async {
+      apiClient.getResponses['/api/mobile/me'] = {'user': null};
 
-      test('should return null when not authenticated', () async {
-        when(mockApiClient.getJson('/api/mobile/me'))
-            .thenAnswer((_) async => {'user': null});
+      final result = await authRepository.fetchCurrentAccount();
 
-        final result = await authRepository.fetchCurrentAccount();
-
-        expect(result, isNull);
-      });
+      expect(result, isNull);
     });
   });
 }
 
-class MockApiClient extends Mock implements ApiClient {}
+class StubApiClient extends Fake implements ApiClient {
+  final List<ApiPostCall> postCalls = [];
+  final List<ApiGetCall> getCalls = [];
+  final Map<String, dynamic> postResponses = {};
+  final Map<String, Exception> postErrors = {};
+  final Map<String, dynamic> getResponses = {};
+  final Map<String, Exception> getErrors = {};
 
-class MockUserCredential extends Mock implements UserCredential {}
+  @override
+  Future<dynamic> postJson(String path, {Object? body}) async {
+    postCalls.add(ApiPostCall(path: path, body: body));
+    final error = postErrors[path];
+    if (error != null) {
+      throw error;
+    }
+    if (postResponses.containsKey(path)) {
+      return postResponses[path];
+    }
+    throw StateError('No POST stub configured for $path');
+  }
 
-class MockUser extends Mock implements User {}
+  @override
+  Future<dynamic> getJson(String path, {Map<String, String>? query}) async {
+    getCalls.add(ApiGetCall(path: path, query: query));
+    final error = getErrors[path];
+    if (error != null) {
+      throw error;
+    }
+    if (getResponses.containsKey(path)) {
+      return getResponses[path];
+    }
+    throw StateError('No GET stub configured for $path');
+  }
+}
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class StubFirebaseAuth extends Fake implements FirebaseAuth {
+  final List<AuthCall> signInCalls = [];
+  final List<AuthCall> registerCalls = [];
+  int signOutCalls = 0;
+
+  UserCredential? signInResult;
+  Exception? signInError;
+  UserCredential? registerResult;
+  Exception? registerError;
+  Exception? signOutError;
+
+  @override
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    signInCalls.add(AuthCall(email: email, password: password));
+    if (signInError != null) {
+      throw signInError!;
+    }
+    if (signInResult == null) {
+      throw StateError('No signInResult configured');
+    }
+    return signInResult!;
+  }
+
+  @override
+  Future<UserCredential> createUserWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    registerCalls.add(AuthCall(email: email, password: password));
+    if (registerError != null) {
+      throw registerError!;
+    }
+    if (registerResult == null) {
+      throw StateError('No registerResult configured');
+    }
+    return registerResult!;
+  }
+
+  @override
+  Future<void> signOut() async {
+    signOutCalls += 1;
+    if (signOutError != null) {
+      throw signOutError!;
+    }
+  }
+}
+
+class StubUserCredential extends Fake implements UserCredential {
+  StubUserCredential(this._user);
+
+  final User _user;
+
+  @override
+  User? get user => _user;
+}
+
+class StubUser extends Fake implements User {
+  StubUser({required this.idToken});
+
+  final String idToken;
+  String? updatedDisplayName;
+  bool emailVerificationSent = false;
+
+  @override
+  Future<String> getIdToken([bool forceRefresh = false]) async => idToken;
+
+  @override
+  Future<void> updateDisplayName(String? displayName) async {
+    updatedDisplayName = displayName;
+  }
+
+  @override
+  Future<void> sendEmailVerification(
+      [ActionCodeSettings? actionCodeSettings]) async {
+    emailVerificationSent = true;
+  }
+}
+
+class AuthCall {
+  const AuthCall({
+    required this.email,
+    required this.password,
+  });
+
+  final String email;
+  final String password;
+}
+
+class ApiPostCall {
+  const ApiPostCall({
+    required this.path,
+    required this.body,
+  });
+
+  final String path;
+  final Object? body;
+}
+
+class ApiGetCall {
+  const ApiGetCall({
+    required this.path,
+    required this.query,
+  });
+
+  final String path;
+  final Map<String, String>? query;
+}
