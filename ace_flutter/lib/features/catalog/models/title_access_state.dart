@@ -1,4 +1,4 @@
-import '../../core/currency/currency_service.dart';
+import '../../../core/currency/currency_service.dart';
 
 class TitleAccessState {
   const TitleAccessState({
@@ -22,11 +22,12 @@ class TitleAccessState {
   factory TitleAccessState.fromJson(Map<String, dynamic> json) {
     final hasAccess = json['hasAccess'] as bool? ?? false;
     final status = json['status'] as String? ?? 'NO_ACCESS';
-    final message = json['message'] as String? ?? 
+    final message = json['message'] as String? ??
         (hasAccess ? 'You have access to this title' : 'Access required');
-    
+
     final priceInfoJson = json['priceInfo'] as Map<String, dynamic>?;
-    final priceInfo = priceInfoJson != null ? PriceInfo.fromJson(priceInfoJson) : null;
+    final priceInfo =
+        priceInfoJson != null ? PriceInfo.fromJson(priceInfoJson) : null;
 
     return TitleAccessState(
       hasAccess: hasAccess,

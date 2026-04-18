@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_theme.dart';
-import '../../../core/currency/currency_service.dart';
 import '../../../widgets/premium_scaffold.dart';
-import '../../../widgets/section_heading.dart';
 import '../../../widgets/title_card.dart';
 import '../data/catalog_repository.dart';
 import '../models/title_summary.dart';
@@ -27,16 +25,38 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
   bool _isSearching = false;
 
   final List<String> _categories = [
-    'All', 'Feature Films', 'Series', 'Documentaries', 'Shorts', 'Skit', 'Advert'
+    'All',
+    'Feature Films',
+    'Series',
+    'Documentaries',
+    'Shorts',
+    'Skit',
+    'Advert'
   ];
 
   final List<String> _genres = [
-    'All', 'Drama', 'Action', 'Comedy', 'Romance', 'Thriller', 'Horror',
-    'Family', 'Documentary', 'Sci-Fi', 'Fantasy', 'Mystery', 'Crime'
+    'All',
+    'Drama',
+    'Action',
+    'Comedy',
+    'Romance',
+    'Thriller',
+    'Horror',
+    'Family',
+    'Documentary',
+    'Sci-Fi',
+    'Fantasy',
+    'Mystery',
+    'Crime'
   ];
 
   final List<String> _sortOptions = [
-    'Newest', 'Oldest', 'Title A-Z', 'Title Z-A', 'Most Popular', 'Highest Rated'
+    'Newest',
+    'Oldest',
+    'Title A-Z',
+    'Title Z-A',
+    'Most Popular',
+    'Highest Rated'
   ];
 
   @override
@@ -92,16 +112,18 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
               style: const TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search for films, series, documentaries...',
-                hintStyle: TextStyle(color: AppTheme.textMuted),
+                hintStyle: const TextStyle(color: AppTheme.textMuted),
                 prefixIcon: const Icon(Icons.search, color: AppTheme.textMuted),
                 suffixIcon: _isSearching
                     ? IconButton(
                         onPressed: _clearSearch,
-                        icon: const Icon(Icons.clear, color: AppTheme.textMuted),
+                        icon:
+                            const Icon(Icons.clear, color: AppTheme.textMuted),
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               ),
               onSubmitted: (_) => _performSearch(),
             ),
@@ -178,7 +200,7 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.error_outline,
                       size: 64,
                       color: AppTheme.textMuted,
@@ -187,15 +209,15 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
                     Text(
                       'Something went wrong',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
+                            color: AppTheme.textMuted,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Please try again later',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
+                            color: AppTheme.textMuted,
+                          ),
                     ),
                   ],
                 ),
@@ -219,8 +241,8 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+                fontWeight: FontWeight.w700,
+              ),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -253,7 +275,7 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.search_off,
               size: 64,
               color: AppTheme.textMuted,
@@ -262,15 +284,15 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
             Text(
               'No titles found',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textMuted,
-              ),
+                    color: AppTheme.textMuted,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Try adjusting your filters or search terms',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
-              ),
+                    color: AppTheme.textMuted,
+                  ),
             ),
           ],
         ),
@@ -290,7 +312,7 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
         final title = titles[index];
         return TitleCard(
           title: title,
-          posterUrl: title.posterKey != null 
+          posterUrl: title.posterKey != null
               ? 'https://api.acestudio.global/api/media/${title.posterKey}'
               : null,
           onTap: () => context.push('/title/${title.id}'),
