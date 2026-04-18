@@ -40,6 +40,7 @@ import {
   Flag, 
   MapPin, 
   Calendar, 
+  Cloud,
   TrendingUp, 
   BarChart3, 
   Activity, 

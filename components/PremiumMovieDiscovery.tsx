@@ -493,7 +493,7 @@ export default function PremiumMovieDiscovery({
             {filteredMovies.length === 1 ? 'movie found' : 'movies found'}
           </span>
           {searchQuery && (
-            <span className="search-query">for "{searchQuery}"</span>
+            <span className="search-query">for &quot;{searchQuery}&quot;</span>
           )}
         </div>
 

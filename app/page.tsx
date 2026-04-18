@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import LaunchPage from '@/components/LaunchPage';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
+import HomeSpotlightPreview, { type HomeSpotlightVideo } from '@/components/HomeSpotlightPreview';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
@@ -315,6 +316,26 @@ export default async function HomePage() {
   const featuredRuntime = formatRuntime(featured?.durationSec);
   const rows = buildRows(videos, continueWatching, unlockedVideos);
   const editorialCollections = buildEditorialCollections(videos);
+  const spotlightVideos: HomeSpotlightVideo[] = videos.slice(1, 4).map((video) => ({
+    id: video.id,
+    title: video.title,
+    description: video.description,
+    category: video.category,
+    durationSec: video.durationSec,
+    videoType: video.videoType,
+    posterKey: video.posterKey
+  }));
+  const featuredSpotlightVideo: HomeSpotlightVideo | null = featured
+    ? {
+        id: featured.id,
+        title: featured.title,
+        description: featured.description,
+        category: featured.category,
+        durationSec: featured.durationSec,
+        videoType: featured.videoType,
+        posterKey: featured.posterKey
+      }
+    : null;
 
   return (
     <div className="viewer-home">
@@ -356,26 +377,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="home-spotlight-shell">
-              <div className="home-spotlight-card">
-                <span className="home-spotlight-label">Featured Premiere</span>
-                <h2>{featured?.title ?? 'ACE Studio Original'}</h2>
-                <p>
-                  A refined presentation layer for films and series that need to look premium from discovery through playback.
-                </p>
-                <div className="home-spotlight-list">
-                  {videos.slice(1, 4).map((video, index) => (
-                    <Link key={video.id} className="home-spotlight-item" href={`/v/${video.id}`}>
-                      <span className="home-spotlight-rank">0{index + 1}</span>
-                      <div>
-                        <strong>{video.title}</strong>
-                        <span>{video.category} / {formatRuntime(video.durationSec) ?? video.videoType}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <HomeSpotlightPreview featured={featuredSpotlightVideo} spotlightVideos={spotlightVideos} />
           </div>
         </div>
       </section>

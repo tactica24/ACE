@@ -529,6 +529,23 @@ button {
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, rgba(3, 5, 14, 0.78), rgba(3, 5, 14, 0.04));
+  z-index: 0;
+}
+
+.video-thumb-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.video-card-preview-active .video-thumb-preview {
+  opacity: 1;
 }
 
 .video-thumb span {
@@ -2925,6 +2942,57 @@ body.watch-mode-active .video-page-player {
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.4);
 }
 
+.home-spotlight-preview {
+  position: relative;
+  min-height: 196px;
+  border-radius: 18px;
+  overflow: hidden;
+  display: grid;
+  align-items: flex-end;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(8, 10, 17, 0.24), rgba(8, 10, 17, 0.82)),
+    linear-gradient(135deg, rgba(22, 31, 51, 0.96), rgba(9, 12, 20, 0.96));
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home-spotlight-preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.home-spotlight-preview.is-active .home-spotlight-preview-video {
+  opacity: 1;
+}
+
+.home-spotlight-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 18, 0.06), rgba(8, 10, 18, 0.76));
+}
+
+.home-spotlight-preview-label {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
 .home-spotlight-card h2 {
   margin: 0;
   font-size: clamp(1.5rem, 2.4vw, 2.2rem);
@@ -2963,6 +3031,13 @@ body.watch-mode-active .video-page-player {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.home-spotlight-item.is-active,
+.home-spotlight-item:hover,
+.home-spotlight-item:focus-visible {
+  border-color: rgba(255, 196, 112, 0.4);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .home-spotlight-item strong,
