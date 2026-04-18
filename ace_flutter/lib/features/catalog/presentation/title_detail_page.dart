@@ -88,11 +88,12 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         _downloadError = error.toString();
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isDownloading = false;
-        _downloadProgress = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _downloadProgress = null;
+        });
+      }
     }
   }
 
