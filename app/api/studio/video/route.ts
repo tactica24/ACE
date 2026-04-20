@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
+import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { isOwnedUploadKey } from '@/lib/upload-security';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
@@ -198,7 +199,14 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
+  const [sessionAuth, creatorLinkAuth] = await Promise.all([
+    getAuthFromRequest(req),
+    getCreatorLinkAuthFromRequest(req, 'upload')
+  ]);
+  const auth =
+    sessionAuth && (sessionAuth.role === 'CREATOR' || sessionAuth.role === 'ADMIN')
+      ? sessionAuth
+      : creatorLinkAuth ?? sessionAuth;
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

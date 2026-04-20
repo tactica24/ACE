@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import AdminAccountControlPanel from '@/components/AdminAccountControlPanel';
 import AdminCommerceSupportPanel from '@/components/AdminCommerceSupportPanel';
+import AdminCreatorAccessLinks from '@/components/AdminCreatorAccessLinks';
 import AdminCreatorProfileEditor from '@/components/AdminCreatorProfileEditor';
 import AdminDisclosureSection from '@/components/AdminDisclosureSection';
 import AdminProducerVideoManager from '@/components/AdminProducerVideoManager';
@@ -161,6 +162,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
               <span className="muted">Bank account name: {user.creator.bankAccountName ?? 'Not provided'}</span>
               <span className="muted">Bank account number: {user.creator.bankAccountNumber ?? 'Not provided'}</span>
               <ApproveCreatorButton userId={user.id} approved={user.role === 'CREATOR'} />
+              <AdminCreatorAccessLinks creatorUserId={user.id} />
             </div>
           ) : (
             <p className="muted">No producer profile on this account yet.</p>
