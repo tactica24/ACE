@@ -29,6 +29,16 @@ type HomeVideo = {
   category: string;
   createdAt: Date;
   progressPercent?: number;
+  technicalMetadata?: {
+    deliveryResolution: string;
+    has4kMaster: boolean;
+    deliveryFormat: string | null;
+    englishSubtitlesProvided: boolean;
+    cleanAudioMasterKey: string | null;
+    castCredits: unknown;
+    crewCredits: unknown;
+    promotionalStillKeys: string[];
+  } | null;
 };
 
 type HomeRow = {
@@ -58,6 +68,48 @@ function formatRuntime(durationSec?: number | null) {
   }
 
   return `${totalMinutes}m`;
+}
+
+function extractCreditNames(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item.trim();
+      }
+      if (typeof item === 'object' && item && 'name' in item && typeof item.name === 'string') {
+        return item.name.trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function buildTechnicalHighlights(video: HomeVideo | null) {
+  if (!video?.technicalMetadata) {
+    return [];
+  }
+
+  const highlights: string[] = [];
+  if (video.technicalMetadata.has4kMaster || video.technicalMetadata.deliveryResolution === '4K') {
+    highlights.push('4K available');
+  } else if (video.technicalMetadata.deliveryResolution) {
+    highlights.push(`${video.technicalMetadata.deliveryResolution} master`);
+  }
+  if (video.technicalMetadata.deliveryFormat) {
+    highlights.push(video.technicalMetadata.deliveryFormat);
+  }
+  if (video.technicalMetadata.englishSubtitlesProvided) {
+    highlights.push('English subtitles');
+  }
+  if (video.technicalMetadata.cleanAudioMasterKey) {
+    highlights.push('Clean audio master');
+  }
+
+  return highlights.slice(0, 4);
 }
 
 function normalizeVideoText(video: HomeVideo) {
@@ -314,6 +366,8 @@ export default async function HomePage() {
   const featured = videos[0] ?? null;
   const featuredPoster = getMediaAssetUrl(featured?.posterKey);
   const featuredRuntime = formatRuntime(featured?.durationSec);
+  const featuredTechnicalHighlights = buildTechnicalHighlights(featured);
+  const featuredCastPreview = extractCreditNames(featured?.technicalMetadata?.castCredits).slice(0, 4);
   const rows = buildRows(videos, continueWatching, unlockedVideos);
   const editorialCollections = buildEditorialCollections(videos);
   const spotlightVideos: HomeSpotlightVideo[] = videos.slice(1, 4).map((video) => ({
@@ -369,6 +423,18 @@ export default async function HomePage() {
                 {featured?.videoType ? <span>{featured.videoType}</span> : null}
                 {featured?.ageRating ? <span>{featured.ageRating}</span> : null}
               </div>
+              {featuredTechnicalHighlights.length ? (
+                <div className="home-meta-row">
+                  {featuredTechnicalHighlights.map((highlight) => (
+                    <span key={highlight}>{highlight}</span>
+                  ))}
+                </div>
+              ) : null}
+              {featuredCastPreview.length ? (
+                <p className="muted" style={{ marginBottom: 0 }}>
+                  Cast: {featuredCastPreview.join(', ')}
+                </p>
+              ) : null}
               <div className="home-actions">
                 <Link className="btn btn-primary" href={featured ? `/v/${featured.id}` : '/browse'}>
                   {featured ? 'Watch Now' : 'Browse Catalog'}

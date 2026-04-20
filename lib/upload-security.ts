@@ -1,4 +1,4 @@
-type UploadPurpose = 'video' | 'poster' | 'subtitle';
+type UploadPurpose = 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master';
 
 type UploadPolicy = {
   contentTypes: string[];
@@ -21,6 +21,31 @@ const UPLOAD_POLICIES: Record<UploadPurpose, UploadPolicy> = {
     contentTypes: ['text/vtt', 'text/plain', 'application/octet-stream'],
     extensions: ['.vtt'],
     maxBytes: 5 * 1024 * 1024
+  },
+  master: {
+    contentTypes: [
+      'video/quicktime',
+      'video/mp4',
+      'video/webm',
+      'video/x-matroska',
+      'application/octet-stream'
+    ],
+    extensions: ['.mov', '.mxf', '.mp4', '.webm', '.mkv'],
+    maxBytes: 200 * 1024 * 1024 * 1024
+  },
+  audio_master: {
+    contentTypes: [
+      'audio/wav',
+      'audio/x-wav',
+      'audio/aiff',
+      'audio/x-aiff',
+      'audio/flac',
+      'audio/mp4',
+      'audio/mpeg',
+      'application/octet-stream'
+    ],
+    extensions: ['.wav', '.aiff', '.aif', '.flac', '.m4a', '.mp3'],
+    maxBytes: 5 * 1024 * 1024 * 1024
   }
 };
 
@@ -29,7 +54,7 @@ export function sanitizeUploadFilename(filename: string) {
 }
 
 export function isUploadPurpose(value: string | undefined): value is UploadPurpose {
-  return value === 'video' || value === 'poster' || value === 'subtitle';
+  return value === 'video' || value === 'poster' || value === 'subtitle' || value === 'master' || value === 'audio_master';
 }
 
 export function buildOwnedUploadKey({
@@ -71,7 +96,11 @@ export function validateUploadRequest({
           ? 'Upload MP4 or WebM video files.'
           : purpose === 'poster'
             ? 'Upload JPG, PNG, or WEBP poster images.'
-            : 'Upload WebVTT subtitle files.'
+            : purpose === 'subtitle'
+              ? 'Upload WebVTT subtitle files.'
+              : purpose === 'master'
+                ? 'Upload MOV, MXF, MP4, WEBM, or MKV master delivery files.'
+                : 'Upload WAV, AIFF, FLAC, M4A, or MP3 clean audio masters.'
     };
   }
 
