@@ -30,11 +30,13 @@ type SupportActionRow = {
 export default function AdminCommerceSupportPanel({
   userId,
   wallet,
+  walletDisplayLabel,
   recentPayments,
   initialActions
 }: {
   userId: string;
   wallet: { balanceNaira: number; credits: number };
+  walletDisplayLabel?: string;
   recentPayments: PaymentRow[];
   initialActions: SupportActionRow[];
 }) {
@@ -226,12 +228,12 @@ export default function AdminCommerceSupportPanel({
       <div className="card">
         <h3>Wallet and credit remediation</h3>
         <p className="muted">
-          Current balance: {formatRecordedCharge({ amountMinor: walletState.balanceNaira * 100, amountNaira: walletState.balanceNaira, currency: 'NGN' })} | {formatCredits(getCreditsForNaira(walletState.balanceNaira))} value
+          Current balance: {walletDisplayLabel ?? formatRecordedCharge({ amountMinor: walletState.balanceNaira * 100, amountNaira: walletState.balanceNaira, currency: 'NGN' })} | {formatCredits(getCreditsForNaira(walletState.balanceNaira))} value
         </p>
         <p className="muted">Stored credits: {formatCredits(walletState.credits)}</p>
         <div className="field-grid field-grid-2">
           <label className="field">
-            <span className="field-label">Wallet delta (NGN)</span>
+            <span className="field-label">Wallet delta (ledger value)</span>
             <input className="input" type="number" value={amountNairaDelta} onChange={(event) => setAmountNairaDelta(Math.round(Number(event.target.value || '0')))} />
           </label>
           <label className="field">
@@ -293,7 +295,16 @@ export default function AdminCommerceSupportPanel({
                   <p className="muted" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{action.note}</p>
                 </div>
                 <div className="stack-list" style={{ gap: 4 }}>
-                  {action.amountNairaDelta !== 0 ? <span className="muted">NGN {action.amountNairaDelta > 0 ? '+' : ''}{action.amountNairaDelta}</span> : null}
+                  {action.amountNairaDelta !== 0 ? (
+                    <span className="muted">
+                      {action.amountNairaDelta > 0 ? '+' : '-'}
+                      {formatRecordedCharge({
+                        amountMinor: Math.abs(action.amountNairaDelta) * 100,
+                        amountNaira: Math.abs(action.amountNairaDelta),
+                        currency: 'NGN'
+                      })}
+                    </span>
+                  ) : null}
                   {action.creditsDelta !== 0 ? <span className="muted">{action.creditsDelta > 0 ? '+' : ''}{action.creditsDelta} credits</span> : null}
                 </div>
               </div>

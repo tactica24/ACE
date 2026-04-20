@@ -106,6 +106,19 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
   }
 
   const creatorSettlements = user.creator?.settlements ?? [];
+  const paymentIncidentTickets = user.supportTickets.filter((ticket) => ticket.category === 'PAYMENT');
+  const p2pUnlockSettlements = await prisma.p2PUnlockSettlement.findMany({
+    where: {
+      OR: [{ senderUserId: user.id }, { recipientUserId: user.id }]
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    include: {
+      video: { select: { title: true } },
+      sender: { select: { email: true } },
+      recipient: { select: { email: true } }
+    }
+  });
 
   return (
     <DashboardShell
@@ -308,6 +321,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                 balanceNaira: user.wallet?.balanceNaira ?? 0,
                 credits: storedUnitsToCredits(user.wallet?.credits ?? 0)
               }}
+              walletDisplayLabel={formatMoney(user.wallet?.balanceNaira ?? 0)}
               recentPayments={user.payments.map((payment) => ({
                 id: payment.id,
                 reference: payment.reference,
@@ -338,7 +352,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           description="Expand for recent tickets, settlement history, and payout requests tied to this account."
           badge="History"
         >
-          <div className="grid">
+          <div id="support-history" className="grid">
             <div className="card">
               <h3>Recent support requests</h3>
               {user.supportTickets.length ? (
@@ -355,6 +369,46 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                 </div>
               ) : (
                 <p className="muted">No support messages for this account yet.</p>
+              )}
+            </div>
+
+            <div id="payment-incidents" className="card">
+              <h3>Payment incident timeline</h3>
+              {paymentIncidentTickets.length ? (
+                <div className="stack-list">
+                  {paymentIncidentTickets.map((ticket) => (
+                    <div key={ticket.id} className="stack-row">
+                      <div>
+                        <strong>{ticket.subject}</strong>
+                        <p className="muted">{ticket.status} | {ticket.createdAt.toISOString().slice(0, 10)}</p>
+                      </div>
+                      <span className="muted">Support case</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">No payment-tagged support incidents for this account.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>P2P unlock settlements</h3>
+              {p2pUnlockSettlements.length ? (
+                <div className="stack-list">
+                  {p2pUnlockSettlements.map((settlement) => (
+                    <div key={settlement.id} className="stack-row">
+                      <div>
+                        <strong>{settlement.video.title}</strong>
+                        <p className="muted">
+                          {settlement.createdAt.toISOString().slice(0, 10)} | sender: {settlement.sender.email} | recipient: {settlement.recipient.email}
+                        </p>
+                      </div>
+                      <span>{formatMoney(settlement.amountNaira)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">No P2P unlock settlement records for this account yet.</p>
               )}
             </div>
 

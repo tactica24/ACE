@@ -171,6 +171,8 @@ model User {
   subscriptions SubscriptionPass[]
   moderation   ModerationItem[] @relation("Moderator")
   p2pTransfers P2PTransfer[]   @relation("P2PSender")
+  p2pUnlocksAsSender P2PUnlockSettlement[] @relation("P2PUnlockSettlementSender")
+  p2pUnlocksAsRecipient P2PUnlockSettlement[] @relation("P2PUnlockSettlementRecipient")
   payments     Payment[]
   referralLinks ReferralLink[]
   familyLinks  FamilyLink[]
@@ -255,6 +257,7 @@ model Video {
   contracts   Contract[]
   moderation  ModerationItem?
   p2pTransfers P2PTransfer[]
+  p2pUnlockSettlements P2PUnlockSettlement[]
   referralLinks ReferralLink[] @relation("VideoReferralLinks")
   settlements UnlockSettlement[]
   watchHistory WatchHistory[]
@@ -448,9 +451,28 @@ model P2PTransfer {
   unlockFee     Int
   status        P2PStatus @default(CREATED)
   createdAt     DateTime  @default(now())
+  settlement    P2PUnlockSettlement?
   sender        User      @relation("P2PSender", fields: [senderId], references: [id])
   video         Video     @relation(fields: [videoId], references: [id])
   @@index([recipientPhone])
+}
+
+model P2PUnlockSettlement {
+  id              String   @id @default(cuid())
+  transferId      String   @unique
+  senderUserId    String
+  recipientUserId String
+  videoId         String
+  amountNaira     Int
+  createdAt       DateTime @default(now())
+  transfer        P2PTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  sender          User     @relation("P2PUnlockSettlementSender", fields: [senderUserId], references: [id])
+  recipient       User     @relation("P2PUnlockSettlementRecipient", fields: [recipientUserId], references: [id])
+  video           Video    @relation(fields: [videoId], references: [id])
+
+  @@index([senderUserId, createdAt])
+  @@index([recipientUserId, createdAt])
+  @@index([videoId, createdAt])
 }
 
 model Payment {

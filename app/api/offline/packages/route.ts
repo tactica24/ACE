@@ -6,6 +6,11 @@ import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { ensureCached } from '@/lib/stream';
+import {
+  cleanupExpiredOfflinePackages,
+  getOfflinePackageRetentionCutoff,
+  getOfflinePackageRetentionDays
+} from '@/lib/offline-retention';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
@@ -18,9 +23,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  await cleanupExpiredOfflinePackages({ limit: 20 });
+  const retentionCutoff = getOfflinePackageRetentionCutoff();
+
   const [packages, unlocks] = await Promise.all([
     prisma.offlinePackage.findMany({
-      where: { ownerId: auth.sub, status: { not: 'REVOKED' } },
+      where: {
+        ownerId: auth.sub,
+        status: { not: 'REVOKED' },
+        createdAt: { gte: retentionCutoff }
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         video: {
@@ -62,7 +74,8 @@ export async function GET(req: NextRequest) {
             id: existingPackage.id,
             aceFileKey: existingPackage.aceFileKey,
             status: existingPackage.status,
-            createdAt: existingPackage.createdAt
+            createdAt: existingPackage.createdAt,
+            expiresAt: new Date(existingPackage.createdAt.getTime() + getOfflinePackageRetentionDays() * 24 * 60 * 60 * 1000)
           }
         : null
     };
@@ -91,6 +104,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many offline package requests right now. Please wait a moment and try again.' }, { status: 429 });
   }
 
+  await cleanupExpiredOfflinePackages({ limit: 12 });
+  const retentionCutoff = getOfflinePackageRetentionCutoff();
+
   const body = await req.json();
   const videoId = typeof body.videoId === 'string' ? body.videoId.trim() : '';
   if (!videoId) {
@@ -113,7 +129,8 @@ export async function POST(req: NextRequest) {
       where: {
         ownerId: auth.sub,
         videoId,
-        status: { in: ['PREPARING', 'READY'] }
+        status: { in: ['PREPARING', 'READY'] },
+        createdAt: { gte: retentionCutoff }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -141,7 +158,8 @@ export async function POST(req: NextRequest) {
       package: {
         id: packageRecord.package.id,
         aceFileKey: packageRecord.package.aceFileKey,
-        status: packageRecord.package.status
+        status: packageRecord.package.status,
+        expiresAt: new Date(packageRecord.package.createdAt.getTime() + getOfflinePackageRetentionDays() * 24 * 60 * 60 * 1000)
       }
     });
   }
@@ -167,7 +185,8 @@ export async function POST(req: NextRequest) {
       package: {
         id: readyPackage.id,
         aceFileKey: readyPackage.aceFileKey,
-        status: readyPackage.status
+        status: readyPackage.status,
+        expiresAt: new Date(readyPackage.createdAt.getTime() + getOfflinePackageRetentionDays() * 24 * 60 * 60 * 1000)
       }
     });
   } catch {

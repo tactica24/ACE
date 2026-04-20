@@ -22,12 +22,6 @@ const allowedOrigins = Array.from(
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   experimental: {
     serverActions: {
       allowedOrigins,

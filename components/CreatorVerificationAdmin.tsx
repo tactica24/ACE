@@ -16,6 +16,7 @@ export type CreatorRow = {
   creator: null | {
     creatorNumber?: string | null;
     earningsBalanceNaira?: number;
+    earningsBalanceLabel?: string;
     displayName: string;
     phoneVerified: boolean;
     emailVerified: boolean;
@@ -184,7 +185,7 @@ export default function CreatorVerificationAdmin({ initialUsers }: { initialUser
                     <div className="stack-list" style={{ gap: 6, minWidth: 220 }}>
                       <strong>{user.creator.displayName}</strong>
                       <span className="muted">{user.creator.creatorNumber || 'No producer number yet'}</span>
-                      <span className="muted">Earnings wallet: NGN {user.creator.earningsBalanceNaira ?? 0}</span>
+                      <span className="muted">Earnings wallet: {user.creator.earningsBalanceLabel ?? user.creator.earningsBalanceNaira ?? 0}</span>
                       <span className="muted">{user.creator.address || 'No address on file'}</span>
                       <span className="muted">{user.creator.idCardNumber || 'No ID number on file'}</span>
                       <span className="muted">{user.creator.bankName || 'No bank on file'}</span>

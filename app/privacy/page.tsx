@@ -36,6 +36,14 @@ export default function PrivacyPage() {
           ]
         },
         {
+          title: 'Mobile auth, downloads, and checkout boundaries',
+          body: [
+            'Mobile sign-in is handled through Firebase authentication and account session records required to keep users signed in across supported devices.',
+            'Offline playback packages are encrypted and managed with retention cleanup policies so obsolete package files and records do not persist indefinitely.',
+            'Digital purchase checkout flows are handled through approved payment channels outside restricted in-app purchase surfaces when required by platform policy.'
+          ]
+        },
+        {
           title: 'Questions',
           body: [
             'Questions about privacy, stored data, or account-related records can be directed to info@acestudio.ng.',

@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
+import { resolvePayoutTransition } from '@/lib/payout-lifecycle';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -34,44 +35,20 @@ export async function POST(req: NextRequest) {
 
         const nextAdminNote = adminNote || payout.adminNote || null;
         const now = new Date();
+        const transition = resolvePayoutTransition(payout.status, action as 'approve' | 'reject' | 'mark_paid');
 
-        if (action === 'approve') {
-          if (payout.status !== 'PENDING') {
-            throw new Error('Only pending payout requests can be approved.');
+        const updated = await tx.creatorPayoutRequest.update({
+          where: { id: payoutRequestId },
+          data: {
+            status: transition.nextStatus,
+            adminNote: nextAdminNote,
+            reviewerId: auth.sub,
+            reviewedAt: transition.shouldSetReviewedAt ? payout.reviewedAt ?? now : payout.reviewedAt,
+            paidAt: transition.shouldSetPaidAt ? now : null
           }
+        });
 
-          const updated = await tx.creatorPayoutRequest.update({
-            where: { id: payoutRequestId },
-            data: {
-              status: 'APPROVED',
-              adminNote: nextAdminNote,
-              reviewerId: auth.sub,
-              reviewedAt: now
-            }
-          });
-
-          return { payout: updated };
-        }
-
-        if (action === 'reject') {
-          if (payout.status === 'REJECTED') {
-            throw new Error('This payout request has already been rejected.');
-          }
-          if (payout.status === 'PAID') {
-            throw new Error('A paid payout request cannot be rejected.');
-          }
-
-          const updated = await tx.creatorPayoutRequest.update({
-            where: { id: payoutRequestId },
-            data: {
-              status: 'REJECTED',
-              adminNote: nextAdminNote,
-              reviewerId: auth.sub,
-              reviewedAt: now,
-              paidAt: null
-            }
-          });
-
+        if (transition.shouldRestoreReservedBalance) {
           await tx.creatorProfile.update({
             where: { id: payout.creatorProfileId },
             data: {
@@ -80,24 +57,7 @@ export async function POST(req: NextRequest) {
               }
             }
           });
-
-          return { payout: updated };
         }
-
-        if (payout.status !== 'APPROVED') {
-          throw new Error('Only approved payout requests can be marked as paid.');
-        }
-
-        const updated = await tx.creatorPayoutRequest.update({
-          where: { id: payoutRequestId },
-          data: {
-            status: 'PAID',
-            adminNote: nextAdminNote,
-            reviewerId: auth.sub,
-            reviewedAt: payout.reviewedAt ?? now,
-            paidAt: now
-          }
-        });
 
         return { payout: updated };
       },

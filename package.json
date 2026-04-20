@@ -26,6 +26,7 @@
     "publish:hls": "node scripts/publish-hls.mjs",
     "transcode:dash": "node scripts/transcode-dash.mjs",
     "publish:dash": "node scripts/publish-dash.mjs",
+    "cleanup:storage": "tsx scripts/cleanup-storage.ts",
     "prebuild": "npm run prisma:generate"
   },
   "dependencies": {

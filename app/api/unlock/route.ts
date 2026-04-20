@@ -2,12 +2,13 @@ import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
-import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditValueNairaFromStoredUnits, getCreditsForNaira } from '@/lib/credits';
+import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '@/lib/credits';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { isPlayableVideo, isSeriesContainer } from '@/lib/video-access';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
+import { planUnlockDebit } from '@/lib/unlock-debit';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -68,33 +69,30 @@ export async function POST(req: NextRequest) {
           where: { userId: auth.sub, expiresAt: { gt: new Date() }, creditsRemaining: { gt: 0 } },
           orderBy: { expiresAt: 'asc' }
         });
-        let remainingCreditUnits = creditsRequiredUnits;
-        let passCreditUnitsUsed = 0;
+        const wallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
+        const debitPlan = planUnlockDebit({
+          creditsRequiredUnits,
+          passCreditsRemainingUnits: activePasses.map((pass) => pass.creditsRemaining),
+          walletCreditsUnits: wallet?.credits ?? 0,
+          walletBalanceNaira: wallet?.balanceNaira ?? 0
+        });
 
-        for (const pass of activePasses) {
-          if (remainingCreditUnits <= 0) {
-            break;
-          }
-
-          const creditUnitsToUse = Math.min(pass.creditsRemaining, remainingCreditUnits);
-          if (creditUnitsToUse <= 0) {
+        for (let index = 0; index < activePasses.length; index += 1) {
+          const usage = debitPlan.passUsageUnits[index] ?? 0;
+          if (usage <= 0) {
             continue;
           }
 
           await tx.subscriptionPass.update({
-            where: { id: pass.id },
-            data: { creditsRemaining: { decrement: creditUnitsToUse } }
+            where: { id: activePasses[index].id },
+            data: { creditsRemaining: { decrement: usage } }
           });
-          passCreditUnitsUsed += creditUnitsToUse;
-          remainingCreditUnits -= creditUnitsToUse;
         }
 
-        const wallet = await tx.wallet.findUnique({ where: { userId: auth.sub } });
-        const walletCreditUnitsUsed = Math.min(wallet?.credits ?? 0, remainingCreditUnits);
-        remainingCreditUnits -= walletCreditUnitsUsed;
-        const walletBalanceNeeded = getCreditValueNairaFromStoredUnits(remainingCreditUnits);
+        const walletCreditUnitsUsed = debitPlan.walletCreditUnitsUsed;
+        const walletBalanceNeeded = debitPlan.walletBalanceNeeded;
 
-        if (walletBalanceNeeded > 0 && (wallet?.balanceNaira ?? 0) < walletBalanceNeeded) {
+        if (!debitPlan.sufficientBalance) {
           throw new Error('INSUFFICIENT_BALANCE');
         }
 
@@ -113,9 +111,7 @@ export async function POST(req: NextRequest) {
         }
 
         source =
-          passCreditUnitsUsed === creditsRequiredUnits && walletCreditUnitsUsed === 0 && walletBalanceNeeded === 0
-            ? 'PASS'
-            : 'WALLET';
+          debitPlan.source;
 
         const unlock = await tx.unlock.create({
           data: {

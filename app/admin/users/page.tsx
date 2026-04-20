@@ -1,8 +1,10 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
+import { headers } from 'next/headers';
 import CreatorVerificationAdmin, { type CreatorRow } from '@/components/CreatorVerificationAdmin';
 import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +22,7 @@ type UserWithCreator = {
 
 export default async function UsersPage() {
   await requireAdminUser('/admin/users');
+  const requestHeaders = headers();
 
   let users: UserWithCreator[] = [];
   let openSupport = 0;
@@ -53,6 +56,7 @@ export default async function UsersPage() {
           displayName: user.creator.displayName,
           creatorNumber: user.creator.creatorNumber,
           earningsBalanceNaira: user.creator.earningsBalanceNaira,
+          earningsBalanceLabel: getRegionalMoneyDisplay(requestHeaders, user.creator.earningsBalanceNaira).label,
           phoneVerified: user.creator.phoneVerified,
           emailVerified: user.creator.emailVerified,
           ninVerified: user.creator.ninVerified,

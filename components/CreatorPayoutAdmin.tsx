@@ -139,7 +139,7 @@ export default function CreatorPayoutAdmin({
           </div>
           <div className="detail-card">
             <span className="detail-label">Reserved exposure</span>
-            <strong>{reservedExposureLabel ?? `NGN ${counts.totalReservedNaira}`}</strong>
+            <strong>{reservedExposureLabel ?? `${counts.totalReservedNaira.toLocaleString()} ledger units`}</strong>
           </div>
         </div>
       </div>

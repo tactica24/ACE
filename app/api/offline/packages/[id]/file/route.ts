@@ -4,6 +4,11 @@ import { NextRequest } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getAcePath } from '@/lib/cache';
+import {
+  cleanupExpiredOfflinePackages,
+  isOfflinePackageExpired,
+  removeOfflinePackageRecord
+} from '@/lib/offline-retention';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,9 +24,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return new Response('Unauthorized', { status: 401 });
   }
 
+  await cleanupExpiredOfflinePackages({ limit: 10 });
+
   const offlinePackage = await prisma.offlinePackage.findUnique({ where: { id: params.id } });
   if (!offlinePackage || offlinePackage.ownerId !== auth.sub || offlinePackage.status !== 'READY') {
     return new Response('Not found', { status: 404 });
+  }
+
+  if (isOfflinePackageExpired(offlinePackage.createdAt)) {
+    await removeOfflinePackageRecord({ id: offlinePackage.id, aceFileKey: offlinePackage.aceFileKey });
+    return new Response('Offline package expired. Generate a fresh package from your library.', { status: 410 });
   }
 
   const acePath = getAcePath(offlinePackage.aceFileKey);

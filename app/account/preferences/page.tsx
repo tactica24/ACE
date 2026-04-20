@@ -268,35 +268,24 @@ export default function PreferencesPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
-    // Load user profile and preferences
-    loadUserProfile();
-  }, []);
-
-  const loadUserProfile = async () => {
-    try {
-      // Mock data - replace with actual API call
-      const mockProfile: UserProfile = {
-        id: 'user_123',
-        name: 'John Doe',
-        email: 'john@example.com',
-        avatar: '/api/placeholder/user/123',
-        createdAt: new Date('2024-01-15'),
-        subscriptionTier: 'premium',
-        preferences: preferences,
-        stats: {
-          totalWatchTime: 1250, // hours
-          moviesWatched: 342,
-          averageRating: 4.2,
-          favoriteGenres: ['Action', 'Drama', 'Sci-Fi'],
-          lastActive: new Date(),
-          joinDate: new Date('2024-01-15')
-        }
-      };
-      setProfile(mockProfile);
-    } catch (error) {
-      console.error('Failed to load user profile:', error);
-    }
-  };
+    setProfile({
+      id: 'user_123',
+      name: 'John Doe',
+      email: 'john@example.com',
+      avatar: '/api/placeholder/user/123',
+      createdAt: new Date('2024-01-15'),
+      subscriptionTier: 'premium',
+      preferences,
+      stats: {
+        totalWatchTime: 1250,
+        moviesWatched: 342,
+        averageRating: 4.2,
+        favoriteGenres: ['Action', 'Drama', 'Sci-Fi'],
+        lastActive: new Date(),
+        joinDate: new Date('2024-01-15')
+      }
+    });
+  }, [preferences]);
 
   const handleSavePreferences = async () => {
     setIsLoading(true);

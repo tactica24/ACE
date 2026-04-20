@@ -1,20 +1,14 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { createCreatorAccessLinkToken, resolveCreatorFromAccessToken } from '@/lib/creator-access-links';
 import { prisma } from '@/lib/db';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
 function firstValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function formatNaira(amount: number) {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    maximumFractionDigits: 0
-  }).format(amount);
 }
 
 export default async function CreatorReportLinkPage({
@@ -23,6 +17,9 @@ export default async function CreatorReportLinkPage({
   searchParams?: { token?: string | string[] };
 }) {
   const token = firstValue(searchParams?.token)?.trim() ?? '';
+  const requestHeaders = headers();
+  const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
+
   if (!token) {
     notFound();
   }
@@ -106,7 +103,7 @@ export default async function CreatorReportLinkPage({
           </div>
           <div className="detail-card">
             <span className="detail-label">Total earnings</span>
-            <strong>{formatNaira(totalEarnings)}</strong>
+            <strong>{formatMoney(totalEarnings)}</strong>
           </div>
           <div className="detail-card">
             <span className="detail-label">Sales records</span>
@@ -137,7 +134,7 @@ export default async function CreatorReportLinkPage({
                       <td>{row.status}</td>
                       <td>{row.uploadedAt}</td>
                       <td>{row.unlocks}</td>
-                      <td>{row.earningsNaira > 0 ? formatNaira(row.earningsNaira) : 'No records'}</td>
+                      <td>{row.earningsNaira > 0 ? formatMoney(row.earningsNaira) : 'No records'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -153,4 +150,3 @@ export default async function CreatorReportLinkPage({
     </div>
   );
 }
-

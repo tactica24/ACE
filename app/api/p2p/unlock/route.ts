@@ -38,7 +38,20 @@ export async function POST(req: NextRequest) {
           throw new Error('INVALID_UNLOCK_FEE');
         }
 
+        const settlementData = {
+          transferId,
+          senderUserId: transfer.senderId,
+          recipientUserId: auth.sub,
+          videoId: transfer.videoId,
+          amountNaira: transfer.unlockFee
+        };
+
         if (transfer.status === 'UNLOCKED') {
+          await tx.p2PUnlockSettlement.upsert({
+            where: { transferId },
+            update: {},
+            create: settlementData
+          });
           return;
         }
 
@@ -60,6 +73,12 @@ export async function POST(req: NextRequest) {
         await tx.p2PTransfer.update({
           where: { id: transferId },
           data: { status: 'UNLOCKED' }
+        });
+
+        await tx.p2PUnlockSettlement.upsert({
+          where: { transferId },
+          update: {},
+          create: settlementData
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

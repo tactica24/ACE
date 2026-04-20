@@ -186,6 +186,11 @@ function SupportCard({
               <a className="btn btn-ghost" href={`/admin/users/${ticket.user.id}`}>
                 Open support tools
               </a>
+              {ticket.category === 'PAYMENT' ? (
+                <a className="btn btn-ghost" href={`/admin/users/${ticket.user.id}#payment-incidents`}>
+                  Open payment incidents
+                </a>
+              ) : null}
               <button className="btn btn-ghost" disabled={saving} onClick={() => onSave(ticket.id, 'IN_PROGRESS', notes)}>
                 In progress
               </button>
