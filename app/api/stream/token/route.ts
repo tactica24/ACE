@@ -2,6 +2,8 @@
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { getDashManifestKey } from '@/lib/dash';
+import { getHlsMasterKey } from '@/lib/hls';
 import { getObjectMetadata } from '@/lib/r2';
 import { ensureStreamSession } from '@/lib/stream-sessions';
 import { canPreviewVideo, isPlayableVideo } from '@/lib/video-access';
@@ -87,6 +89,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const hasObject = async (key: string) => {
+    try {
+      await getObjectMetadata(key);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const [hlsAvailable, dashAvailable] = await Promise.all([
+    hasObject(getHlsMasterKey(videoId)),
+    fullAccess ? hasObject(getDashManifestKey(videoId)) : Promise.resolve(false)
+  ]);
+
   const token = auth
     ? createStreamToken({
         userId: auth.sub,
@@ -108,7 +124,23 @@ export async function GET(req: NextRequest) {
         streamBytes,
         streamContentType
       });
-  return NextResponse.json({ token, guest: !auth });
+
+  const progressiveUrl = `/api/stream/${videoId}?token=${encodeURIComponent(token)}`;
+  const hlsUrl = hlsAvailable ? `/api/hls/${videoId}/master.m3u8?token=${encodeURIComponent(token)}` : null;
+  const dashUrl = dashAvailable ? `/api/dash/${videoId}/manifest.mpd?token=${encodeURIComponent(token)}` : null;
+
+  return NextResponse.json({
+    token,
+    guest: !auth,
+    playback: {
+      progressiveUrl,
+      hlsUrl,
+      dashUrl,
+      hlsAvailable,
+      dashAvailable,
+      preferred: hlsAvailable ? 'hls' : dashAvailable ? 'dash' : 'progressive'
+    }
+  });
 }
 
 

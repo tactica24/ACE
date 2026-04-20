@@ -21,6 +21,7 @@ type Item = {
     genres?: string[];
     contentWarnings?: string[];
     posterKey?: string | null;
+    trailerDownloadHref?: string | null;
     createdAt?: string;
     creatorName?: string;
   };
@@ -347,6 +348,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <button className="btn btn-ghost" onClick={() => setEditingId((current) => current === item.video.id ? null : item.video.id)}>
                   {editingId === item.video.id ? 'Close editor' : 'Edit details'}
                 </button>
+                {item.video.trailerDownloadHref ? (
+                  <a className="btn btn-ghost" href={item.video.trailerDownloadHref}>
+                    Download trailer
+                  </a>
+                ) : null}
                 {item.status === 'PENDING' ? (
                   <button className="btn btn-primary" onClick={() => handleAction(item, 'approve')}>
                     Approve title

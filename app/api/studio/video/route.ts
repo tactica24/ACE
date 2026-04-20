@@ -37,6 +37,7 @@ type DeliveryMetadataPayload = {
   has4kMaster?: boolean;
   deliveryFormat?: string;
   deliveryNotes?: string;
+  trailerKey?: string | null;
   promotionalStillKeys?: string[];
   castCredits?: unknown;
   crewCredits?: unknown;
@@ -50,6 +51,7 @@ type NormalizedDeliveryMetadata = {
   has4kMaster: boolean;
   deliveryFormat: string | null;
   deliveryNotes: string | null;
+  trailerKey: string | null;
   promotionalStillKeys: string[];
   castCredits: string[];
   crewCredits: string[];
@@ -95,7 +97,7 @@ function normalizeSubtitlePayload(tracks: SubtitlePayload[] | undefined) {
 function validateOwnedKey(
   key: string | null | undefined,
   userId: string,
-  purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master'
+  purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master' | 'audio_master'
 ) {
   if (!key) {
     return false;
@@ -151,6 +153,7 @@ function normalizeDeliveryMetadata(payload: DeliveryMetadataPayload | undefined,
   const normalizedResolution = payload.deliveryResolution?.trim().toUpperCase() === '4K' ? '4K' : 'HD';
   const normalizedFormat = payload.deliveryFormat?.trim() ? payload.deliveryFormat.trim().slice(0, 120) : null;
   const normalizedNotes = payload.deliveryNotes?.trim() ? payload.deliveryNotes.trim().slice(0, 4000) : null;
+  const trailerKey = payload.trailerKey?.trim() || null;
   const promotionalStillKeys = Array.from(
     new Set(
       (payload.promotionalStillKeys ?? [])
@@ -170,6 +173,7 @@ function normalizeDeliveryMetadata(payload: DeliveryMetadataPayload | undefined,
     has4kMaster: Boolean(payload.has4kMaster) || normalizedResolution === '4K',
     deliveryFormat: normalizedFormat,
     deliveryNotes: normalizedNotes,
+    trailerKey,
     promotionalStillKeys,
     castCredits,
     crewCredits,
@@ -189,6 +193,7 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null) {
     has4kMaster: metadata.has4kMaster,
     deliveryFormat: metadata.deliveryFormat,
     deliveryNotes: metadata.deliveryNotes,
+    trailerKey: metadata.trailerKey,
     promotionalStillKeys: metadata.promotionalStillKeys,
     englishSubtitlesProvided: metadata.englishSubtitlesProvided,
     cleanAudioMasterKey: metadata.cleanAudioMasterKey,
@@ -329,6 +334,10 @@ export async function POST(req: NextRequest) {
 
   if (safeDeliveryMetadata?.masterDeliveryKey && !validateOwnedKey(safeDeliveryMetadata.masterDeliveryKey, auth.sub, 'master')) {
     return NextResponse.json({ error: 'The delivery master upload is invalid for this studio account.' }, { status: 400 });
+  }
+
+  if (safeDeliveryMetadata?.trailerKey && !validateOwnedKey(safeDeliveryMetadata.trailerKey, auth.sub, 'trailer')) {
+    return NextResponse.json({ error: 'The trailer upload is invalid for this studio account.' }, { status: 400 });
   }
 
   if (safeVideoType !== 'SERIES') {

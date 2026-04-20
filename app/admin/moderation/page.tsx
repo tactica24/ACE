@@ -14,7 +14,18 @@ export default async function ModerationPage() {
     const [items, orphanApprovedVideos] = await Promise.all([
       prisma.moderationItem.findMany({
         where: { status: { in: ['PENDING', 'APPROVED'] } },
-        include: { video: { include: { creator: { include: { creator: true } } } } },
+        include: {
+          video: {
+            include: {
+              creator: { include: { creator: true } },
+              technicalMetadata: {
+                select: {
+                  trailerKey: true
+                }
+              }
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
         take: 50
       }),
@@ -26,6 +37,11 @@ export default async function ModerationPage() {
         include: {
           creator: {
             include: { creator: true }
+          },
+          technicalMetadata: {
+            select: {
+              trailerKey: true
+            }
           }
         },
         orderBy: { createdAt: 'desc' },
@@ -53,6 +69,9 @@ export default async function ModerationPage() {
           genres: item.video.genres,
           contentWarnings: item.video.contentWarnings,
           posterKey: item.video.posterKey,
+          trailerDownloadHref: item.video.technicalMetadata?.trailerKey
+            ? `/api/admin/videos/${item.video.id}/trailer`
+            : null,
           createdAt: item.video.createdAt.toISOString(),
           creatorName: item.video.creator.creator?.displayName ?? item.video.creator.email
         }
@@ -76,6 +95,9 @@ export default async function ModerationPage() {
           genres: video.genres,
           contentWarnings: video.contentWarnings,
           posterKey: video.posterKey,
+          trailerDownloadHref: video.technicalMetadata?.trailerKey
+            ? `/api/admin/videos/${video.id}/trailer`
+            : null,
           createdAt: video.createdAt.toISOString(),
           creatorName: video.creator.creator?.displayName ?? video.creator.email
         }

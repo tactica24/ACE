@@ -1,4 +1,4 @@
-type UploadPurpose = 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master';
+type UploadPurpose = 'video' | 'trailer' | 'poster' | 'subtitle' | 'master' | 'audio_master';
 
 type UploadPolicy = {
   contentTypes: string[];
@@ -11,6 +11,11 @@ const UPLOAD_POLICIES: Record<UploadPurpose, UploadPolicy> = {
     contentTypes: ['video/mp4', 'video/webm'],
     extensions: ['.mp4', '.webm'],
     maxBytes: 8 * 1024 * 1024 * 1024
+  },
+  trailer: {
+    contentTypes: ['video/mp4', 'application/octet-stream'],
+    extensions: ['.mp4'],
+    maxBytes: 2 * 1024 * 1024 * 1024
   },
   poster: {
     contentTypes: ['image/jpeg', 'image/png', 'image/webp'],
@@ -54,7 +59,7 @@ export function sanitizeUploadFilename(filename: string) {
 }
 
 export function isUploadPurpose(value: string | undefined): value is UploadPurpose {
-  return value === 'video' || value === 'poster' || value === 'subtitle' || value === 'master' || value === 'audio_master';
+  return value === 'video' || value === 'trailer' || value === 'poster' || value === 'subtitle' || value === 'master' || value === 'audio_master';
 }
 
 export function buildOwnedUploadKey({
@@ -94,6 +99,8 @@ export function validateUploadRequest({
       error:
         purpose === 'video'
           ? 'Upload MP4 or WebM video files.'
+          : purpose === 'trailer'
+            ? 'Upload MP4 trailer files.'
           : purpose === 'poster'
             ? 'Upload JPG, PNG, or WEBP poster images.'
             : purpose === 'subtitle'

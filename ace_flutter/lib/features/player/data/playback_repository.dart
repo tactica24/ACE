@@ -40,6 +40,24 @@ class PlaybackRepository {
 
     final payload = await apiClient.getJson('/api/stream/token', query: query) as Map<String, dynamic>;
     final token = payload['token'] as String;
+    final playback = payload['playback'];
+    if (playback is Map<String, dynamic>) {
+      final hlsUrl = playback['hlsUrl'];
+      if (hlsUrl is String && hlsUrl.isNotEmpty) {
+        return apiClient.resolve(hlsUrl).toString();
+      }
+
+      final dashUrl = playback['dashUrl'];
+      if (dashUrl is String && dashUrl.isNotEmpty) {
+        return apiClient.resolve(dashUrl).toString();
+      }
+
+      final progressiveUrl = playback['progressiveUrl'];
+      if (progressiveUrl is String && progressiveUrl.isNotEmpty) {
+        return apiClient.resolve(progressiveUrl).toString();
+      }
+    }
+
     return apiClient.streamUrl(titleId, token);
   }
 }

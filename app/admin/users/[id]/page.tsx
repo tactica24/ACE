@@ -85,7 +85,12 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             }
           },
           seasonNumber: true,
-          episodeNumber: true
+          episodeNumber: true,
+          technicalMetadata: {
+            select: {
+              trailerKey: true
+            }
+          }
         }
       },
       unlocks: {
@@ -242,7 +247,10 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     createdAt: video.createdAt.toISOString(),
                     seriesTitle: video.series?.title ?? null,
                     seasonNumber: video.seasonNumber,
-                    episodeNumber: video.episodeNumber
+                    episodeNumber: video.episodeNumber,
+                    trailerDownloadHref: video.technicalMetadata?.trailerKey
+                      ? `/api/admin/videos/${video.id}/trailer`
+                      : null
                   }))}
                 />
               </div>

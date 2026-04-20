@@ -24,6 +24,8 @@
     "db:migrate:deploy": "node scripts/run-prisma.mjs migrate deploy",
     "transcode:hls": "node scripts/transcode-hls.mjs",
     "publish:hls": "node scripts/publish-hls.mjs",
+    "transcode:dash": "node scripts/transcode-dash.mjs",
+    "publish:dash": "node scripts/publish-dash.mjs",
     "prebuild": "npm run prisma:generate"
   },
   "dependencies": {

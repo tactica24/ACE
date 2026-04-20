@@ -9,6 +9,15 @@ const AUTO_UNLOCK_LEAD_SECONDS = 20;
 const HISTORY_SYNC_SECONDS = 5;
 const PLAYBACK_RATE_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
 
+function browserCanPlay(manifestType: string) {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const media = document.createElement('video');
+  return Boolean(media.canPlayType(manifestType));
+}
+
 function getProgressStorageKey(videoId: string) {
   return `ace-progress:${videoId}`;
 }
@@ -326,7 +335,32 @@ export default function AcePlayer({
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
 
-    setStreamUrl(`/api/stream/${videoId}?token=${data.token}`);
+    const playback = data && typeof data.playback === 'object'
+      ? (data.playback as {
+          progressiveUrl?: string;
+          hlsUrl?: string | null;
+          dashUrl?: string | null;
+          hlsAvailable?: boolean;
+          dashAvailable?: boolean;
+        })
+      : null;
+    const progressiveUrl = playback?.progressiveUrl && typeof playback.progressiveUrl === 'string'
+      ? playback.progressiveUrl
+      : `/api/stream/${videoId}?token=${data.token}`;
+    const hlsUrl = playback?.hlsAvailable && typeof playback.hlsUrl === 'string' ? playback.hlsUrl : null;
+    const dashUrl = playback?.dashAvailable && typeof playback.dashUrl === 'string' ? playback.dashUrl : null;
+
+    if (hlsUrl && browserCanPlay('application/vnd.apple.mpegurl')) {
+      setStreamUrl(hlsUrl);
+      return;
+    }
+
+    if (dashUrl && browserCanPlay('application/dash+xml')) {
+      setStreamUrl(dashUrl);
+      return;
+    }
+
+    setStreamUrl(progressiveUrl);
   }, [initialStreamUrl, isAuthenticated, videoId]);
 
   const syncHistory = useCallback(async ({

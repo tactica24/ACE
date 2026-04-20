@@ -13,6 +13,7 @@ type ProducerVideo = {
   seriesTitle?: string | null;
   seasonNumber?: number | null;
   episodeNumber?: number | null;
+  trailerDownloadHref?: string | null;
 };
 
 function getStatusTone(status: string) {
@@ -152,6 +153,11 @@ export default function AdminProducerVideoManager({
                     <td>{formatCreatedAt(video.createdAt)}</td>
                     <td>
                       <div className="action-list">
+                        {video.trailerDownloadHref ? (
+                          <a className="btn btn-ghost" href={video.trailerDownloadHref}>
+                            Trailer
+                          </a>
+                        ) : null}
                         <button
                           className={video.status === 'APPROVED' ? 'btn btn-ghost' : 'btn btn-primary'}
                           type="button"

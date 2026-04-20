@@ -104,6 +104,7 @@ export default function TopNav() {
     { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
     { label: 'Series', href: '/browse?type=SERIES' },
+    { label: 'Android App', href: '/download' },
     { label: 'My List', href: '/#continue-watching' },
     { label: 'Categories', href: '/#categories' }
   ];

@@ -103,6 +103,8 @@ const initialState: UploadState = {
 
 const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.webm'];
 const SUPPORTED_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'];
+const SUPPORTED_TRAILER_EXTENSIONS = ['.mp4'];
+const SUPPORTED_TRAILER_MIME_TYPES = ['video/mp4'];
 
 const initialDeliveryMetadataState: DeliveryMetadataState = {
   deliveryResolution: 'HD',
@@ -180,6 +182,17 @@ function isSupportedVideoFile(file: File | null) {
   return hasSupportedExtension && hasSupportedMimeType;
 }
 
+function isSupportedTrailerFile(file: File | null) {
+  if (!file) {
+    return true;
+  }
+
+  const lowerName = file.name.toLowerCase();
+  const hasSupportedExtension = SUPPORTED_TRAILER_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
+  const hasSupportedMimeType = !file.type || SUPPORTED_TRAILER_MIME_TYPES.includes(file.type);
+  return hasSupportedExtension && hasSupportedMimeType;
+}
+
 function normalizeCreditEntries(value: string) {
   return Array.from(
     new Set(
@@ -208,6 +221,7 @@ export default function UploadForm({
   const [selectedSeriesId, setSelectedSeriesId] = useState(initialSeriesId ?? seriesOptions[0]?.id ?? '');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [promotionalStillFiles, setPromotionalStillFiles] = useState<File[]>([]);
   const [masterDeliveryFile, setMasterDeliveryFile] = useState<File | null>(null);
   const [cleanAudioMasterFile, setCleanAudioMasterFile] = useState<File | null>(null);
@@ -291,7 +305,7 @@ export default function UploadForm({
 
   const uploadAsset = async (
     file: File,
-    purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master',
+    purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master' | 'audio_master',
     onProgress: (loaded: number, total: number) => void
   ) => {
     const presign = await fetch(uploadEndpoint, {
@@ -322,6 +336,10 @@ export default function UploadForm({
         setMessage('Upload MP4 or WebM video files for reliable preview and viewer playback.');
         return;
       }
+      if (!isSupportedTrailerFile(trailerFile)) {
+        setMessage('Trailer upload must be an MP4 file.');
+        return;
+      }
       if (subtitleTracks.some((track) => !track.file)) {
         setMessage('Each subtitle row needs a subtitle file before submission.');
         return;
@@ -334,6 +352,10 @@ export default function UploadForm({
         return;
       }
     } else {
+      if (!isSupportedTrailerFile(trailerFile)) {
+        setMessage('Trailer upload must be an MP4 file.');
+        return;
+      }
       if (isAddingToExistingSeries && !selectedSeries) {
         setMessage('Choose the series you want to add episodes to.');
         return;
@@ -362,7 +384,7 @@ export default function UploadForm({
           id: string;
           label: string;
           file: File;
-          purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master';
+          purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master' | 'audio_master';
           posterRole?: 'primary' | 'promotional';
           subtitleMeta?: {
             label: string;
@@ -386,6 +408,14 @@ export default function UploadForm({
                 file: posterFile,
                 purpose: 'poster' as const,
                 posterRole: 'primary' as const
+              }]
+            : []),
+          ...(trailerFile
+            ? [{
+                id: 'trailer',
+                label: `Uploading trailer: ${trailerFile.name}`,
+                file: trailerFile,
+                purpose: 'trailer' as const
               }]
             : []),
           ...promotionalStillFiles.map((file, index) => ({
@@ -429,6 +459,7 @@ export default function UploadForm({
         let completedBytes = 0;
         let storedVideoKey = '';
         let storedPosterKey: string | null = null;
+        let storedTrailerKey: string | null = null;
         let storedMasterDeliveryKey: string | null = null;
         let storedCleanAudioMasterKey: string | null = null;
         const promotionalStillKeys: string[] = [];
@@ -452,6 +483,8 @@ export default function UploadForm({
 
           if (item.purpose === 'video') {
             storedVideoKey = fileKey;
+          } else if (item.purpose === 'trailer') {
+            storedTrailerKey = fileKey;
           } else if (item.purpose === 'poster') {
             if (item.posterRole === 'promotional') {
               promotionalStillKeys.push(fileKey);
@@ -505,6 +538,7 @@ export default function UploadForm({
               has4kMaster: deliveryMetadata.has4kMaster,
               deliveryFormat: deliveryMetadata.deliveryFormat,
               deliveryNotes: deliveryMetadata.deliveryNotes,
+              trailerKey: storedTrailerKey,
               promotionalStillKeys,
               castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
               crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
@@ -530,6 +564,7 @@ export default function UploadForm({
         ? 0
         : (posterFile?.size ?? 0)
           + promotionalStillFiles.reduce((sum, file) => sum + file.size, 0)
+          + (trailerFile?.size ?? 0)
           + (masterDeliveryFile?.size ?? 0)
           + (cleanAudioMasterFile?.size ?? 0);
       const totalBytes =
@@ -537,6 +572,7 @@ export default function UploadForm({
         + metadataAssetBytes;
       let completedBytes = 0;
       let storedSeriesPosterKey: string | null = null;
+      let storedSeriesTrailerKey: string | null = null;
       let storedSeriesMasterDeliveryKey: string | null = null;
       let storedSeriesCleanAudioMasterKey: string | null = null;
       const storedSeriesPromotionalStillKeys: string[] = [];
@@ -570,6 +606,16 @@ export default function UploadForm({
             setUploadProgress(Math.min(75, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
           });
           completedBytes += cleanAudioMasterFile.size;
+        }
+
+        if (trailerFile) {
+          setUploadLabel(`Uploading trailer: ${trailerFile.name}`);
+          storedSeriesTrailerKey = await uploadAsset(trailerFile, 'trailer', (loaded, total) => {
+            const safeTotal = total || trailerFile.size || 1;
+            const overallLoaded = completedBytes + Math.min(loaded, safeTotal);
+            setUploadProgress(Math.min(80, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
+          });
+          completedBytes += trailerFile.size;
         }
 
         if (masterDeliveryFile) {
@@ -656,6 +702,7 @@ export default function UploadForm({
                   has4kMaster: deliveryMetadata.has4kMaster,
                   deliveryFormat: deliveryMetadata.deliveryFormat,
                   deliveryNotes: deliveryMetadata.deliveryNotes,
+                  trailerKey: storedSeriesTrailerKey,
                   promotionalStillKeys: storedSeriesPromotionalStillKeys,
                   castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
                   crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
@@ -1140,6 +1187,16 @@ export default function UploadForm({
               />
               <span className="field-hint">ProRes is preferred. High-quality delivery masters are also accepted.</span>
             </label>
+            <label className="field">
+              <span className="field-label">Marketing trailer (MP4, admin only)</span>
+              <input
+                className="input"
+                type="file"
+                accept=".mp4,video/mp4"
+                onChange={(event) => setTrailerFile(event.target.files?.[0] ?? null)}
+              />
+              <span className="field-hint">Optional trailer upload for admin marketing use and download.</span>
+            </label>
 
             <div className="stack-list">
               <div className="stack-row">
@@ -1231,6 +1288,16 @@ export default function UploadForm({
                 onChange={(event) => setMasterDeliveryFile(event.target.files?.[0] ?? null)}
               />
               <span className="field-hint">Upload ProRes where available, or another high-quality mezzanine file.</span>
+            </label>
+            <label className="field">
+              <span className="field-label">Marketing trailer (MP4, admin only)</span>
+              <input
+                className="input"
+                type="file"
+                accept=".mp4,video/mp4"
+                onChange={(event) => setTrailerFile(event.target.files?.[0] ?? null)}
+              />
+              <span className="field-hint">Optional trailer upload for admin marketing use and download.</span>
             </label>
           </div>
         ) : null}

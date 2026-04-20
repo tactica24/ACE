@@ -275,6 +275,7 @@ model VideoTechnicalMetadata {
   has4kMaster              Boolean  @default(false)
   deliveryFormat           String?
   deliveryNotes            String?
+  trailerKey               String?
   promotionalStillKeys     String[] @default([])
   castCredits              Json?
   crewCredits              Json?
