@@ -72,6 +72,16 @@ type EpisodeDraft = {
   posterFile: File | null;
 };
 
+type DeliveryMetadataState = {
+  deliveryResolution: 'HD' | '4K';
+  has4kMaster: boolean;
+  deliveryFormat: string;
+  deliveryNotes: string;
+  castCredits: string;
+  crewCredits: string;
+  englishSubtitlesProvided: boolean;
+};
+
 const initialState: UploadState = {
   title: '',
   description: '',
@@ -93,6 +103,16 @@ const initialState: UploadState = {
 
 const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.webm'];
 const SUPPORTED_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'];
+
+const initialDeliveryMetadataState: DeliveryMetadataState = {
+  deliveryResolution: 'HD',
+  has4kMaster: false,
+  deliveryFormat: 'ProRes',
+  deliveryNotes: '',
+  castCredits: '',
+  crewCredits: '',
+  englishSubtitlesProvided: false
+};
 
 function createId() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -160,6 +180,17 @@ function isSupportedVideoFile(file: File | null) {
   return hasSupportedExtension && hasSupportedMimeType;
 }
 
+function normalizeCreditEntries(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\r\n,]+/g)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 80);
+}
+
 export default function UploadForm({
   initialSeriesId = null,
   seriesOptions,
@@ -177,6 +208,10 @@ export default function UploadForm({
   const [selectedSeriesId, setSelectedSeriesId] = useState(initialSeriesId ?? seriesOptions[0]?.id ?? '');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [promotionalStillFiles, setPromotionalStillFiles] = useState<File[]>([]);
+  const [masterDeliveryFile, setMasterDeliveryFile] = useState<File | null>(null);
+  const [cleanAudioMasterFile, setCleanAudioMasterFile] = useState<File | null>(null);
+  const [deliveryMetadata, setDeliveryMetadata] = useState<DeliveryMetadataState>(initialDeliveryMetadataState);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleDraft[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeDraft[]>([createEpisodeDraft()]);
   const [loading, setLoading] = useState(false);
@@ -190,6 +225,10 @@ export default function UploadForm({
 
   const updateField = <K extends keyof UploadState>(key: K, value: UploadState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateDeliveryField = <K extends keyof DeliveryMetadataState>(key: K, value: DeliveryMetadataState[K]) => {
+    setDeliveryMetadata((current) => ({ ...current, [key]: value }));
   };
 
   const toggleAudioLanguage = (languageCode: string) => {
@@ -252,7 +291,7 @@ export default function UploadForm({
 
   const uploadAsset = async (
     file: File,
-    purpose: 'video' | 'poster' | 'subtitle',
+    purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master',
     onProgress: (loaded: number, total: number) => void
   ) => {
     const presign = await fetch(uploadEndpoint, {
@@ -287,6 +326,13 @@ export default function UploadForm({
         setMessage('Each subtitle row needs a subtitle file before submission.');
         return;
       }
+      if (
+        deliveryMetadata.englishSubtitlesProvided &&
+        !subtitleTracks.some((track) => track.languageCode === 'en' && track.file)
+      ) {
+        setMessage('English subtitles were marked as available. Add an English subtitle track or turn that toggle off.');
+        return;
+      }
     } else {
       if (isAddingToExistingSeries && !selectedSeries) {
         setMessage('Choose the series you want to add episodes to.');
@@ -312,7 +358,21 @@ export default function UploadForm({
 
     try {
       if (!isSeriesUpload) {
-        const uploadQueue = [
+        type UploadQueueItem = {
+          id: string;
+          label: string;
+          file: File;
+          purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master';
+          posterRole?: 'primary' | 'promotional';
+          subtitleMeta?: {
+            label: string;
+            languageCode: string;
+            kind: SubtitleKindValue;
+            isDefault: boolean;
+          };
+        };
+
+        const uploadQueue: UploadQueueItem[] = [
           {
             id: 'video',
             label: `Uploading video: ${videoFile?.name}`,
@@ -324,7 +384,31 @@ export default function UploadForm({
                 id: 'poster',
                 label: `Uploading poster: ${posterFile.name}`,
                 file: posterFile,
-                purpose: 'poster' as const
+                purpose: 'poster' as const,
+                posterRole: 'primary' as const
+              }]
+            : []),
+          ...promotionalStillFiles.map((file, index) => ({
+            id: `promo-${index}`,
+            label: `Uploading promotional still ${index + 1}: ${file.name}`,
+            file,
+            purpose: 'poster' as const,
+            posterRole: 'promotional' as const
+          })),
+          ...(cleanAudioMasterFile
+            ? [{
+                id: 'audio-master',
+                label: `Uploading clean audio master: ${cleanAudioMasterFile.name}`,
+                file: cleanAudioMasterFile,
+                purpose: 'audio_master' as const
+              }]
+            : []),
+          ...(masterDeliveryFile
+            ? [{
+                id: 'master-delivery',
+                label: `Uploading delivery master: ${masterDeliveryFile.name}`,
+                file: masterDeliveryFile,
+                purpose: 'master' as const
               }]
             : []),
           ...subtitleTracks.map((track, index) => ({
@@ -345,6 +429,9 @@ export default function UploadForm({
         let completedBytes = 0;
         let storedVideoKey = '';
         let storedPosterKey: string | null = null;
+        let storedMasterDeliveryKey: string | null = null;
+        let storedCleanAudioMasterKey: string | null = null;
+        const promotionalStillKeys: string[] = [];
         const subtitlePayload: Array<{
           label: string;
           languageCode: string;
@@ -366,7 +453,15 @@ export default function UploadForm({
           if (item.purpose === 'video') {
             storedVideoKey = fileKey;
           } else if (item.purpose === 'poster') {
-            storedPosterKey = fileKey;
+            if (item.posterRole === 'promotional') {
+              promotionalStillKeys.push(fileKey);
+            } else {
+              storedPosterKey = fileKey;
+            }
+          } else if (item.purpose === 'audio_master') {
+            storedCleanAudioMasterKey = fileKey;
+          } else if (item.purpose === 'master') {
+            storedMasterDeliveryKey = fileKey;
           } else if ('subtitleMeta' in item && item.subtitleMeta) {
             subtitlePayload.push({
               ...item.subtitleMeta,
@@ -404,7 +499,19 @@ export default function UploadForm({
               .filter((value) => Number.isFinite(value)),
             subtitleTracks: subtitlePayload,
             r2Key: storedVideoKey,
-            posterKey: storedPosterKey
+            posterKey: storedPosterKey,
+            deliveryMetadata: {
+              deliveryResolution: deliveryMetadata.deliveryResolution,
+              has4kMaster: deliveryMetadata.has4kMaster,
+              deliveryFormat: deliveryMetadata.deliveryFormat,
+              deliveryNotes: deliveryMetadata.deliveryNotes,
+              promotionalStillKeys,
+              castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
+              crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
+              englishSubtitlesProvided: deliveryMetadata.englishSubtitlesProvided,
+              cleanAudioMasterKey: storedCleanAudioMasterKey,
+              masterDeliveryKey: storedMasterDeliveryKey
+            }
           })
         });
 
@@ -419,10 +526,20 @@ export default function UploadForm({
         return;
       }
 
-      const totalBytes = episodes.reduce((sum, episode) => sum + (episode.videoFile?.size ?? 0) + (episode.posterFile?.size ?? 0), 0)
-        + (posterFile?.size ?? 0);
+      const metadataAssetBytes = isAddingToExistingSeries
+        ? 0
+        : (posterFile?.size ?? 0)
+          + promotionalStillFiles.reduce((sum, file) => sum + file.size, 0)
+          + (masterDeliveryFile?.size ?? 0)
+          + (cleanAudioMasterFile?.size ?? 0);
+      const totalBytes =
+        episodes.reduce((sum, episode) => sum + (episode.videoFile?.size ?? 0) + (episode.posterFile?.size ?? 0), 0)
+        + metadataAssetBytes;
       let completedBytes = 0;
       let storedSeriesPosterKey: string | null = null;
+      let storedSeriesMasterDeliveryKey: string | null = null;
+      let storedSeriesCleanAudioMasterKey: string | null = null;
+      const storedSeriesPromotionalStillKeys: string[] = [];
 
       if (!isAddingToExistingSeries && posterFile) {
         setUploadLabel(`Uploading series poster: ${posterFile.name}`);
@@ -431,6 +548,39 @@ export default function UploadForm({
           setUploadProgress(Math.min(40, Math.round((Math.min(loaded, safeTotal) / Math.max(totalBytes, 1)) * 100)));
         });
         completedBytes += posterFile.size;
+      }
+
+      if (!isAddingToExistingSeries) {
+        for (const [index, stillFile] of promotionalStillFiles.entries()) {
+          setUploadLabel(`Uploading promotional still ${index + 1}: ${stillFile.name}`);
+          const stillKey = await uploadAsset(stillFile, 'poster', (loaded, total) => {
+            const safeTotal = total || stillFile.size || 1;
+            const overallLoaded = completedBytes + Math.min(loaded, safeTotal);
+            setUploadProgress(Math.min(70, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
+          });
+          storedSeriesPromotionalStillKeys.push(stillKey);
+          completedBytes += stillFile.size;
+        }
+
+        if (cleanAudioMasterFile) {
+          setUploadLabel(`Uploading clean audio master: ${cleanAudioMasterFile.name}`);
+          storedSeriesCleanAudioMasterKey = await uploadAsset(cleanAudioMasterFile, 'audio_master', (loaded, total) => {
+            const safeTotal = total || cleanAudioMasterFile.size || 1;
+            const overallLoaded = completedBytes + Math.min(loaded, safeTotal);
+            setUploadProgress(Math.min(75, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
+          });
+          completedBytes += cleanAudioMasterFile.size;
+        }
+
+        if (masterDeliveryFile) {
+          setUploadLabel(`Uploading delivery master: ${masterDeliveryFile.name}`);
+          storedSeriesMasterDeliveryKey = await uploadAsset(masterDeliveryFile, 'master', (loaded, total) => {
+            const safeTotal = total || masterDeliveryFile.size || 1;
+            const overallLoaded = completedBytes + Math.min(loaded, safeTotal);
+            setUploadProgress(Math.min(80, Math.round((overallLoaded / Math.max(totalBytes, 1)) * 100)));
+          });
+          completedBytes += masterDeliveryFile.size;
+        }
       }
 
       const episodePayload = [];
@@ -501,6 +651,18 @@ export default function UploadForm({
                 tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
                 releaseYear: form.releaseYear,
                 posterKey: storedSeriesPosterKey,
+                deliveryMetadata: {
+                  deliveryResolution: deliveryMetadata.deliveryResolution,
+                  has4kMaster: deliveryMetadata.has4kMaster,
+                  deliveryFormat: deliveryMetadata.deliveryFormat,
+                  deliveryNotes: deliveryMetadata.deliveryNotes,
+                  promotionalStillKeys: storedSeriesPromotionalStillKeys,
+                  castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
+                  crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
+                  englishSubtitlesProvided: deliveryMetadata.englishSubtitlesProvided,
+                  cleanAudioMasterKey: storedSeriesCleanAudioMasterKey,
+                  masterDeliveryKey: storedSeriesMasterDeliveryKey
+                },
                 episodes: episodePayload
               }
         )
@@ -704,6 +866,102 @@ export default function UploadForm({
         </div>
       ) : null}
 
+      {!isAddingToExistingSeries ? (
+        <div className="form-section">
+          <div>
+            <h3 className="form-section-title">Delivery package metadata</h3>
+            <p className="muted form-section-copy">
+              Capture the technical and editorial package that accompanies this title so operations, promotion, and device delivery stay aligned.
+            </p>
+          </div>
+
+          <div className="field-grid field-grid-3">
+            <label className="field">
+              <span className="field-label">Master resolution</span>
+              <select
+                className="input"
+                value={deliveryMetadata.deliveryResolution}
+                onChange={(event) => {
+                  const nextResolution = event.target.value === '4K' ? '4K' : 'HD';
+                  setDeliveryMetadata((current) => ({
+                    ...current,
+                    deliveryResolution: nextResolution,
+                    has4kMaster: nextResolution === '4K' ? true : current.has4kMaster
+                  }));
+                }}
+              >
+                <option value="HD">HD minimum</option>
+                <option value="4K">4K available</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Delivery format</span>
+              <select className="input" value={deliveryMetadata.deliveryFormat} onChange={(event) => updateDeliveryField('deliveryFormat', event.target.value)}>
+                <option value="ProRes">ProRes (preferred)</option>
+                <option value="High-quality mezzanine">High-quality mezzanine</option>
+                <option value="Broadcast mezzanine">Broadcast mezzanine</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label className="field" style={{ justifyContent: 'center' }}>
+              <span className="field-label">4K deliverable</span>
+              <button
+                className={deliveryMetadata.has4kMaster ? 'btn btn-primary' : 'btn btn-ghost'}
+                type="button"
+                onClick={() => updateDeliveryField('has4kMaster', !deliveryMetadata.has4kMaster)}
+              >
+                {deliveryMetadata.has4kMaster ? '4K ready' : 'Mark 4K as available'}
+              </button>
+            </label>
+          </div>
+
+          <label className="field">
+            <span className="field-label">Delivery notes</span>
+            <textarea
+              className="input"
+              rows={3}
+              value={deliveryMetadata.deliveryNotes}
+              onChange={(event) => updateDeliveryField('deliveryNotes', event.target.value)}
+              placeholder="Codec profile, frame rate, aspect ratio, mix notes, and any handoff context."
+            />
+          </label>
+
+          <div className="field-grid field-grid-2">
+            <label className="field">
+              <span className="field-label">Cast information</span>
+              <textarea
+                className="input"
+                rows={3}
+                value={deliveryMetadata.castCredits}
+                onChange={(event) => updateDeliveryField('castCredits', event.target.value)}
+                placeholder="Add cast names (comma or line-separated)."
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Crew information</span>
+              <textarea
+                className="input"
+                rows={3}
+                value={deliveryMetadata.crewCredits}
+                onChange={(event) => updateDeliveryField('crewCredits', event.target.value)}
+                placeholder="Add director, writer, producers, DOP, editor, and key crew."
+              />
+            </label>
+          </div>
+
+          <div className="detail-card">
+            <span className="detail-label">English subtitles availability</span>
+            <button
+              className={deliveryMetadata.englishSubtitlesProvided ? 'btn btn-primary' : 'btn btn-ghost'}
+              type="button"
+              onClick={() => updateDeliveryField('englishSubtitlesProvided', !deliveryMetadata.englishSubtitlesProvided)}
+            >
+              {deliveryMetadata.englishSubtitlesProvided ? 'English subtitles provided' : 'Mark English subtitles where applicable'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="form-section">
         <div>
           <h3 className="form-section-title">{isSeriesUpload ? 'Pricing and episode structure' : 'Pricing and playback'}</h3>
@@ -829,8 +1087,8 @@ export default function UploadForm({
           <h3 className="form-section-title">Upload assets</h3>
           <p className="muted form-section-copy">
             {isSeriesUpload
-              ? 'Add a show poster once, then upload episode video files. Viewers will see the selected episode artwork when they start watching.'
-              : 'Upload the playable movie file, optional poster, and subtitle tracks.'}
+              ? 'Add a show poster once, then upload episode video files. Include promotional stills and optional delivery masters for operational readiness.'
+              : 'Upload the playable movie file, poster/key art, promotional stills, subtitles, and optional master package files.'}
           </p>
         </div>
 
@@ -846,6 +1104,42 @@ export default function UploadForm({
                 <input className="input" type="file" accept="image/*" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} />
               </label>
             </div>
+            <div className="field-grid field-grid-2">
+              <label className="field">
+                <span className="field-label">Promotional stills</span>
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => setPromotionalStillFiles(Array.from(event.target.files ?? []))}
+                />
+                <span className="field-hint">
+                  {promotionalStillFiles.length
+                    ? `${promotionalStillFiles.length} still${promotionalStillFiles.length === 1 ? '' : 's'} ready for upload.`
+                    : 'Upload multiple stills for homepage and promotional placement.'}
+                </span>
+              </label>
+              <label className="field">
+                <span className="field-label">Clean audio master</span>
+                <input
+                  className="input"
+                  type="file"
+                  accept=".wav,.aiff,.aif,.flac,.m4a,.mp3,audio/*"
+                  onChange={(event) => setCleanAudioMasterFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+            <label className="field">
+              <span className="field-label">Master delivery file</span>
+              <input
+                className="input"
+                type="file"
+                accept=".mov,.mxf,.mp4,.webm,.mkv,video/*"
+                onChange={(event) => setMasterDeliveryFile(event.target.files?.[0] ?? null)}
+              />
+              <span className="field-hint">ProRes is preferred. High-quality delivery masters are also accepted.</span>
+            </label>
 
             <div className="stack-list">
               <div className="stack-row">
@@ -897,10 +1191,48 @@ export default function UploadForm({
             </div>
           </>
         ) : !isAddingToExistingSeries ? (
-          <label className="field">
-            <span className="field-label">Series poster artwork</span>
-            <input className="input" type="file" accept="image/*" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} />
-          </label>
+          <div className="stack-list">
+            <label className="field">
+              <span className="field-label">Series poster artwork</span>
+              <input className="input" type="file" accept="image/*" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} />
+            </label>
+            <div className="field-grid field-grid-2">
+              <label className="field">
+                <span className="field-label">Promotional stills</span>
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => setPromotionalStillFiles(Array.from(event.target.files ?? []))}
+                />
+                <span className="field-hint">
+                  {promotionalStillFiles.length
+                    ? `${promotionalStillFiles.length} still${promotionalStillFiles.length === 1 ? '' : 's'} ready for upload.`
+                    : 'Upload stills that can be featured on home and show detail areas.'}
+                </span>
+              </label>
+              <label className="field">
+                <span className="field-label">Clean audio master</span>
+                <input
+                  className="input"
+                  type="file"
+                  accept=".wav,.aiff,.aif,.flac,.m4a,.mp3,audio/*"
+                  onChange={(event) => setCleanAudioMasterFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+            <label className="field">
+              <span className="field-label">Master delivery file</span>
+              <input
+                className="input"
+                type="file"
+                accept=".mov,.mxf,.mp4,.webm,.mkv,video/*"
+                onChange={(event) => setMasterDeliveryFile(event.target.files?.[0] ?? null)}
+              />
+              <span className="field-hint">Upload ProRes where available, or another high-quality mezzanine file.</span>
+            </label>
+          </div>
         ) : null}
       </div>
 

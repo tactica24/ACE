@@ -260,11 +260,32 @@ model Video {
   watchHistory WatchHistory[]
   streamSessions StreamSession[]
   subtitleTracks SubtitleTrack[]
+  technicalMetadata VideoTechnicalMetadata?
   offlinePackages OfflinePackage[]
   @@index([status])
   @@index([priceTier])
   @@index([seriesId, seasonNumber, episodeNumber])
   @@unique([seriesId, seasonNumber, episodeNumber])
+}
+
+model VideoTechnicalMetadata {
+  id                       String   @id @default(cuid())
+  videoId                  String   @unique
+  deliveryResolution       String   @default("HD")
+  has4kMaster              Boolean  @default(false)
+  deliveryFormat           String?
+  deliveryNotes            String?
+  promotionalStillKeys     String[] @default([])
+  castCredits              Json?
+  crewCredits              Json?
+  englishSubtitlesProvided Boolean  @default(false)
+  cleanAudioMasterKey      String?
+  masterDeliveryKey        String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  video                    Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
 }
 
 model OfflinePackage {

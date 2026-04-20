@@ -15,6 +15,16 @@ export type CatalogVideo = {
   ageRating: string;
   category: string;
   createdAt: Date;
+  technicalMetadata?: {
+    deliveryResolution: string;
+    has4kMaster: boolean;
+    deliveryFormat: string | null;
+    englishSubtitlesProvided: boolean;
+    cleanAudioMasterKey: string | null;
+    castCredits: unknown;
+    crewCredits: unknown;
+    promotionalStillKeys: string[];
+  } | null;
 };
 
 export type HighlightCatalogVideo = CatalogVideo & {
@@ -26,7 +36,21 @@ const getApprovedCatalogVideosCached = unstable_cache(
     prisma.video.findMany({
       where: { status: 'APPROVED', seriesId: null },
       orderBy: { createdAt: 'desc' },
-      take: 60
+      take: 60,
+      include: {
+        technicalMetadata: {
+          select: {
+            deliveryResolution: true,
+            has4kMaster: true,
+            deliveryFormat: true,
+            englishSubtitlesProvided: true,
+            cleanAudioMasterKey: true,
+            castCredits: true,
+            crewCredits: true,
+            promotionalStillKeys: true
+          }
+        }
+      }
     }),
   ['approved-catalog-videos'],
   { revalidate: 60, tags: ['approved-catalog-videos'] }

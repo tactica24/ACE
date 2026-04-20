@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
+import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { isOwnedUploadKey } from '@/lib/upload-security';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
@@ -29,6 +30,32 @@ type EpisodePayload = {
   r2Key?: string;
   posterKey?: string | null;
   subtitleTracks?: SubtitlePayload[];
+};
+
+type DeliveryMetadataPayload = {
+  deliveryResolution?: string;
+  has4kMaster?: boolean;
+  deliveryFormat?: string;
+  deliveryNotes?: string;
+  promotionalStillKeys?: string[];
+  castCredits?: unknown;
+  crewCredits?: unknown;
+  englishSubtitlesProvided?: boolean;
+  cleanAudioMasterKey?: string | null;
+  masterDeliveryKey?: string | null;
+};
+
+type NormalizedDeliveryMetadata = {
+  deliveryResolution: 'HD' | '4K';
+  has4kMaster: boolean;
+  deliveryFormat: string | null;
+  deliveryNotes: string | null;
+  promotionalStillKeys: string[];
+  castCredits: string[];
+  crewCredits: string[];
+  englishSubtitlesProvided: boolean;
+  cleanAudioMasterKey: string | null;
+  masterDeliveryKey: string | null;
 };
 
 const PRICE_TIERS: PriceTierValue[] = ['SNACK', 'STANDARD', 'PREMIERE'];
@@ -65,7 +92,11 @@ function normalizeSubtitlePayload(tracks: SubtitlePayload[] | undefined) {
   );
 }
 
-function validateOwnedKey(key: string | null | undefined, userId: string, purpose: 'video' | 'poster' | 'subtitle') {
+function validateOwnedKey(
+  key: string | null | undefined,
+  userId: string,
+  purpose: 'video' | 'poster' | 'subtitle' | 'master' | 'audio_master'
+) {
   if (!key) {
     return false;
   }
@@ -86,8 +117,96 @@ function normalizeEpisodeNumber(value: number | undefined) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function normalizeCreditList(value: unknown) {
+  const items: string[] = Array.isArray(value)
+    ? value
+        .map((item) => {
+          if (typeof item === 'string') {
+            return item;
+          }
+          if (typeof item === 'object' && item && 'name' in item && typeof item.name === 'string') {
+            return item.name;
+          }
+          return '';
+        })
+    : typeof value === 'string'
+      ? value.split(/[\r\n,]+/g)
+      : [];
+
+  return Array.from(
+    new Set(
+      items
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => item.slice(0, 120))
+    )
+  ).slice(0, 80);
+}
+
+function normalizeDeliveryMetadata(payload: DeliveryMetadataPayload | undefined, subtitleTracks: ReturnType<typeof normalizeSubtitlePayload>) {
+  if (!payload) {
+    return null;
+  }
+
+  const normalizedResolution = payload.deliveryResolution?.trim().toUpperCase() === '4K' ? '4K' : 'HD';
+  const normalizedFormat = payload.deliveryFormat?.trim() ? payload.deliveryFormat.trim().slice(0, 120) : null;
+  const normalizedNotes = payload.deliveryNotes?.trim() ? payload.deliveryNotes.trim().slice(0, 4000) : null;
+  const promotionalStillKeys = Array.from(
+    new Set(
+      (payload.promotionalStillKeys ?? [])
+        .map((key) => key.trim())
+        .filter(Boolean)
+    )
+  );
+  const castCredits = normalizeCreditList(payload.castCredits);
+  const crewCredits = normalizeCreditList(payload.crewCredits);
+  const englishSubtitlesProvided =
+    Boolean(payload.englishSubtitlesProvided) || subtitleTracks.some((track) => track.languageCode === 'en');
+  const cleanAudioMasterKey = payload.cleanAudioMasterKey?.trim() || null;
+  const masterDeliveryKey = payload.masterDeliveryKey?.trim() || null;
+
+  return {
+    deliveryResolution: normalizedResolution,
+    has4kMaster: Boolean(payload.has4kMaster) || normalizedResolution === '4K',
+    deliveryFormat: normalizedFormat,
+    deliveryNotes: normalizedNotes,
+    promotionalStillKeys,
+    castCredits,
+    crewCredits,
+    englishSubtitlesProvided,
+    cleanAudioMasterKey,
+    masterDeliveryKey
+  } satisfies NormalizedDeliveryMetadata;
+}
+
+function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null) {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    deliveryResolution: metadata.deliveryResolution,
+    has4kMaster: metadata.has4kMaster,
+    deliveryFormat: metadata.deliveryFormat,
+    deliveryNotes: metadata.deliveryNotes,
+    promotionalStillKeys: metadata.promotionalStillKeys,
+    englishSubtitlesProvided: metadata.englishSubtitlesProvided,
+    cleanAudioMasterKey: metadata.cleanAudioMasterKey,
+    masterDeliveryKey: metadata.masterDeliveryKey,
+    ...(metadata.castCredits.length ? { castCredits: metadata.castCredits } : {}),
+    ...(metadata.crewCredits.length ? { crewCredits: metadata.crewCredits } : {})
+  };
+}
+
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
+  const [sessionAuth, creatorLinkAuth] = await Promise.all([
+    getAuthFromRequest(req),
+    getCreatorLinkAuthFromRequest(req, 'upload')
+  ]);
+  const auth =
+    sessionAuth && (sessionAuth.role === 'CREATOR' || sessionAuth.role === 'ADMIN')
+      ? sessionAuth
+      : creatorLinkAuth ?? sessionAuth;
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -113,6 +232,7 @@ export async function POST(req: NextRequest) {
     highlightSeconds,
     r2Key,
     posterKey,
+    deliveryMetadata,
     seriesId,
     episodes,
     targetCreatorUserId
@@ -136,6 +256,7 @@ export async function POST(req: NextRequest) {
     highlightSeconds?: number[];
     r2Key?: string;
     posterKey?: string | null;
+    deliveryMetadata?: DeliveryMetadataPayload;
     seriesId?: string;
     episodes?: EpisodePayload[];
     targetCreatorUserId?: string;
@@ -156,6 +277,8 @@ export async function POST(req: NextRequest) {
   const safeAudioLanguages = normalizeLanguageCodes([safeOriginalLanguage, ...(audioLanguages ?? [])]);
   const safeContentWarnings = normalizeContentWarnings(contentWarnings ?? []);
   const safeSubtitleTracks = normalizeSubtitlePayload(subtitleTracks);
+  const safeDeliveryMetadata = normalizeDeliveryMetadata(deliveryMetadata, safeSubtitleTracks);
+  const technicalMetadataInput = toTechnicalMetadataInput(safeDeliveryMetadata);
 
   const safeTeaserSec = Math.max(0, Math.floor(Number(teaserSec ?? 0)));
   const safeDurationSec = Math.max(0, Math.floor(Number(durationSec ?? 0)));
@@ -195,6 +318,18 @@ export async function POST(req: NextRequest) {
       displayName: targetUser.name?.trim() || targetUser.email.split('@')[0]
     }
   });
+
+  if (safeDeliveryMetadata?.promotionalStillKeys.some((key) => !validateOwnedKey(key, auth.sub, 'poster'))) {
+    return NextResponse.json({ error: 'One or more promotional still uploads are invalid for this studio account.' }, { status: 400 });
+  }
+
+  if (safeDeliveryMetadata?.cleanAudioMasterKey && !validateOwnedKey(safeDeliveryMetadata.cleanAudioMasterKey, auth.sub, 'audio_master')) {
+    return NextResponse.json({ error: 'The clean audio master upload is invalid for this studio account.' }, { status: 400 });
+  }
+
+  if (safeDeliveryMetadata?.masterDeliveryKey && !validateOwnedKey(safeDeliveryMetadata.masterDeliveryKey, auth.sub, 'master')) {
+    return NextResponse.json({ error: 'The delivery master upload is invalid for this studio account.' }, { status: 400 });
+  }
 
   if (safeVideoType !== 'SERIES') {
     if (!safeTitle || !safeDescription || !safeDurationSec || !safeR2Key) {
@@ -246,6 +381,11 @@ export async function POST(req: NextRequest) {
                 fileKey: track.fileKey,
                 isDefault: hasExplicitDefaultSubtitle ? track.isDefault : index === 0
               }))
+            }
+          : undefined,
+        technicalMetadata: technicalMetadataInput
+          ? {
+              create: technicalMetadataInput
             }
           : undefined
       }
@@ -349,6 +489,17 @@ export async function POST(req: NextRequest) {
     }
 
     const createdEpisodes = await prisma.$transaction(async (tx) => {
+      if (technicalMetadataInput) {
+        await tx.videoTechnicalMetadata.upsert({
+          where: { videoId: series.id },
+          update: technicalMetadataInput,
+          create: {
+            videoId: series.id,
+            ...technicalMetadataInput
+          }
+        });
+      }
+
       const items = [];
 
       for (const episode of safeEpisodes) {
@@ -443,7 +594,12 @@ export async function POST(req: NextRequest) {
         tags: safeTags,
         highlightSeconds: [],
         r2Key: null,
-        posterKey: safePosterKey
+        posterKey: safePosterKey,
+        technicalMetadata: technicalMetadataInput
+          ? {
+              create: technicalMetadataInput
+            }
+          : undefined
       }
     });
 

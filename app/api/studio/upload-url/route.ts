@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { createPresignedPutUrl } from '@/lib/r2';
 import { buildOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
+  const [sessionAuth, creatorLinkAuth] = await Promise.all([
+    getAuthFromRequest(req),
+    getCreatorLinkAuthFromRequest(req, 'upload')
+  ]);
+  const auth =
+    sessionAuth && (sessionAuth.role === 'CREATOR' || sessionAuth.role === 'ADMIN')
+      ? sessionAuth
+      : creatorLinkAuth ?? sessionAuth;
   if (!auth || (auth.role !== 'CREATOR' && auth.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
