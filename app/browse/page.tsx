@@ -69,7 +69,7 @@ export default async function BrowsePage({
             <span className="pill">Live catalog</span>
             <h1 className="hero-title" style={{ fontSize: '2.65rem', marginBottom: 8, marginTop: 14 }}>Browse</h1>
             <p className="muted" style={{ maxWidth: 720, marginBottom: 0 }}>
-              Search by title, discover by genre, and move through the ACE Studio catalog with a cleaner premium layout.
+              Search by title, discover by genre, and move through the ACE Studio catalog with a cleaner layout.
             </p>
           </div>
           <Link className="btn btn-ghost" href="/">Back to home</Link>

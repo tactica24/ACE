@@ -30,63 +30,14 @@ const footerGroups = [
   }
 ];
 
-const footerHighlights = [
-  'Account-based access across supported screens',
-  'Connected TV pairing for living-room playback',
-  'Professional support for viewers, producers, and partners'
-];
-
 type FooterProps = {
-  hidePremiumHero?: boolean;
   hideSupportEmailTagline?: boolean;
 };
 
-export default function Footer({ hidePremiumHero = false, hideSupportEmailTagline = false }: FooterProps) {
+export default function Footer({ hideSupportEmailTagline = false }: FooterProps) {
   return (
     <footer className="footer footer-premium">
       <div className="container footer-premium-shell">
-        {!hidePremiumHero ? (
-          <section className="footer-premium-hero">
-            <div className="footer-premium-copy">
-              <span className="footer-premium-label">ACE Studio</span>
-              <h2>Premium streaming for films and series, built to feel elegant for audiences and dependable for rightsholders, partners, and operators.</h2>
-              <p className="muted">
-                ACE Studio combines curated discovery, secure account-based access, connected TV playback, and the operational infrastructure needed to programme titles, onboard producers, support partners, and run a premium entertainment platform with confidence.
-              </p>
-              <div className="footer-app-buttons">
-                <Link className="btn btn-primary btn-compact" href="/tv">
-                  Watch on TV
-                </Link>
-                <Link className="btn btn-ghost btn-compact" href="/faq">
-                  Open FAQ
-                </Link>
-              </div>
-            </div>
-
-            <div className="footer-premium-side">
-              <div className="footer-premium-panel">
-                <span className="footer-premium-kicker">Viewing confidence</span>
-                <div className="footer-premium-list">
-                  {footerHighlights.map((item) => (
-                    <div key={item} className="footer-premium-item">
-                      <span className="footer-premium-bullet" aria-hidden="true" />
-                      <span>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="footer-premium-panel footer-premium-contact">
-                <span className="footer-premium-kicker">Contact</span>
-                <strong>info@acestudio.ng</strong>
-                <p className="muted">
-                  For support, producer onboarding, partnership enquiries, and business discussions.
-                </p>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
         <section className="footer-link-deck">
           {footerGroups.map((group) => (
             <div key={group.title} className="footer-link-panel">

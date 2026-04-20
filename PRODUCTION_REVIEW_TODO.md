@@ -36,4 +36,4 @@
 
 ## Quality
 - [ ] Add automated tests for wallet verify, unlock debit, payout lifecycle, TV pairing, offline package creation, and P2P unlock.
-- [ ] Add root and mobile typecheck/lint gates that can run in CI before deployment.
+- [x] Add root and mobile typecheck/lint gates that can run in CI before deployment. (Implemented via `.github/workflows/ci.yml` on April 20, 2026.)

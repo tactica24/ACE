@@ -3,32 +3,34 @@ name: CI
 on:
   push:
     branches:
-      - main
-      - master
+      - "**"
   pull_request:
 
 jobs:
-  web:
+  web-quality:
+    name: Web lint + typecheck
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Install web dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Generate Prisma client
-        run: npm run prisma:generate
+      - name: Lint
+        run: npm run lint
 
-      - name: Build web app
-        run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
 
-  mobile:
+  mobile-typecheck:
+    name: Mobile typecheck
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,13 +39,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
 
       - name: Install mobile dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Type-check mobile app
-        run: npx tsc --noEmit
+      - name: Typecheck mobile app
+        run: npm run typecheck
