@@ -440,7 +440,7 @@ export default async function HomePage() {
                   {featured ? 'Watch Now' : 'Browse Catalog'}
                 </Link>
                 <Link className="btn btn-ghost" href="/highlights">Watch Highlights</Link>
-                <Link className="btn btn-ghost" href="/download">Download Android App</Link>
+                <Link className="btn btn-ghost" href="/download">Download Android APK</Link>
               </div>
             </div>
 

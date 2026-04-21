@@ -8,6 +8,11 @@ android {
     namespace = 'ng.acestudio.mobile'
     compileSdk = flutter.compileSdkVersion
     ndkVersion = '28.2.13676358'
+    def releaseKeystorePath = System.getenv('ACE_ANDROID_KEYSTORE_PATH')
+    def hasReleaseKeystore = releaseKeystorePath &&
+        System.getenv('ACE_ANDROID_KEYSTORE_PASSWORD') &&
+        System.getenv('ACE_ANDROID_KEY_ALIAS') &&
+        System.getenv('ACE_ANDROID_KEY_PASSWORD')
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,9 +31,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseKeystore) {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv('ACE_ANDROID_KEYSTORE_PASSWORD')
+                keyAlias = System.getenv('ACE_ANDROID_KEY_ALIAS')
+                keyPassword = System.getenv('ACE_ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
+            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

@@ -79,8 +79,17 @@ You can launch without a dedicated relay node first. In that mode, approved titl
 - Wallet unlock to play: < 2 seconds
 - Cost per 90-minute view: < N5
 
+## Native Android APK
+The Flutter app in `ace_flutter/` is the current native Android path. To publish a direct website download before Play Store release, build the APK and place it at `public/downloads/ace-studio-android.apk`:
+
+```bash
+npm run build:android-apk
+```
+
+The script reads Firebase values from `.env.local`, `.env.production`, or `.env`, using the existing `NEXT_PUBLIC_FIREBASE_*` keys when matching `ACE_FIREBASE_*` keys are not set. For production release signing, set `ACE_ANDROID_KEYSTORE_PATH`, `ACE_ANDROID_KEYSTORE_PASSWORD`, `ACE_ANDROID_KEY_ALIAS`, and `ACE_ANDROID_KEY_PASSWORD`. You can also host the APK elsewhere and set `ACE_ANDROID_APK_URL`.
+
 ## Mobile app (React Native)
-The native app lives in `mobile/` (Expo + Expo Router).
+The older native app lives in `mobile/` (Expo + Expo Router).
 
 Setup:
 ```bash

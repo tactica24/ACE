@@ -27,6 +27,7 @@
     "transcode:dash": "node scripts/transcode-dash.mjs",
     "publish:dash": "node scripts/publish-dash.mjs",
     "cleanup:storage": "tsx scripts/cleanup-storage.ts",
+    "build:android-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-apk.ps1",
     "prebuild": "npm run prisma:generate"
   },
   "dependencies": {
