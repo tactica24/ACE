@@ -28,6 +28,7 @@
     "publish:dash": "node scripts/publish-dash.mjs",
     "cleanup:storage": "tsx scripts/cleanup-storage.ts",
     "build:android-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-apk.ps1",
+    "sync:github-android-secrets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-github-android-secrets.ps1",
     "prebuild": "npm run prisma:generate"
   },
   "dependencies": {

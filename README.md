@@ -88,6 +88,14 @@ npm run build:android-apk
 
 The script reads Firebase values from `.env.local`, `.env.production`, or `.env`, using the existing `NEXT_PUBLIC_FIREBASE_*` keys when matching `ACE_FIREBASE_*` keys are not set. For production release signing, set `ACE_ANDROID_KEYSTORE_PATH`, `ACE_ANDROID_KEYSTORE_PASSWORD`, `ACE_ANDROID_KEY_ALIAS`, and `ACE_ANDROID_KEY_PASSWORD`. You can also host the APK elsewhere and set `ACE_ANDROID_APK_URL`.
 
+To build in GitHub instead of on a local machine, install GitHub CLI, run `gh auth login`, then sync the Android secrets:
+
+```bash
+npm run sync:github-android-secrets
+```
+
+After that, run the `Flutter Mobile` workflow manually from GitHub Actions with `publish_release=true`. The website falls back to the `android-latest` GitHub Release APK when no `ACE_ANDROID_APK_URL` or local APK is configured.
+
 ## Mobile app (React Native)
 The older native app lives in `mobile/` (Expo + Expo Router).
 
