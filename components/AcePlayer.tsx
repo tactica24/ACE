@@ -1000,29 +1000,7 @@ export default function AcePlayer({
         {watermarkText}
       </div>
 
-      <div className="player-topbar">
-        <div className="player-topbar-group">
-          <button
-            className="player-topbar-control"
-            type="button"
-            onClick={() => {
-              if (watchMode) {
-                exitWatchMode();
-                return;
-              }
-
-              setWatchMode(true);
-            }}
-          >
-            {watchMode ? copy.exitWatchMode : copy.watchMode}
-          </button>
-          <div className="player-topbar-links">
-            <Link className="player-topbar-link" href="/browse" onClick={prepareForNavigation}>Browse</Link>
-            <Link className="player-topbar-link" href="/" onClick={prepareForNavigation}>Home</Link>
-            {isAuthenticated ? <Link className="player-topbar-link" href="/wallet" onClick={prepareForNavigation}>{copy.wallet}</Link> : null}
-          </div>
-        </div>
-      </div>
+      {/* Top navigation and watch mode removed per requirements (wallet is in profile) */}
 
       {activeVideoSrc ? (
         <div className="player-control-dock">
@@ -1186,10 +1164,10 @@ export default function AcePlayer({
                 <button className="btn btn-primary" type="button" onClick={() => { router.push(loginHref); }}>
                   {copy.signIn}
                 </button>
-              ) : unlockState === 'needs_topup' ? (
-                <a className="btn btn-primary" href="/wallet">
-                  {copy.topUpWallet}
-                </a>
+               ) : unlockState === 'needs_topup' ? (
+                <button className="btn btn-primary" type="button" onClick={() => router.push('/account')}>
+                  {copy.topUpWallet || 'Top up in profile'}
+                </button>
               ) : unlockState === 'verification_required' ? (
                 <a className="btn btn-primary" href="/account">
                   {copy.verifyAccount}
@@ -1207,11 +1185,7 @@ export default function AcePlayer({
                   {unlockState === 'unlocking' ? 'Unlocking...' : copy.tryAgain}
                 </button>
               )}
-              {isAuthenticated && unlockState !== 'needs_topup' ? (
-                <a className="btn btn-ghost" href="/wallet">
-                  {copy.wallet}
-                </a>
-              ) : null}
+              {/* Wallet link removed - available in user profile */}
             </div>
           </div>
         </div>

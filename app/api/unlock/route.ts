@@ -62,7 +62,16 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  const assetSnapshot = await getPlaybackAssetSnapshot(video.id, video.r2Key ?? video.technicalMetadata?.masterKey, video.fallbackR2Key);
+  let assetSnapshot;
+  try {
+    assetSnapshot = await getPlaybackAssetSnapshot(video.id, video.r2Key ?? video.technicalMetadata?.masterKey, video.fallbackR2Key);
+  } catch (snapshotErr) {
+    console.error('[unlock] getPlaybackAssetSnapshot failed', snapshotErr);
+    return NextResponse.json({
+      error: 'Unable to verify playback assets for this title. Please contact support.'
+    }, { status: 500 });
+  }
+
   if (!assetSnapshot.ready) {
     return NextResponse.json({
       error: assetSnapshot.storageConfigured
@@ -235,6 +244,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
+    console.error('[unlock] transaction failed for video', videoId, error);
+
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       return NextResponse.json({
         error: `You need ${creditsRequired} credits or NGN ${amountNaira} in value to unlock this title.`,
@@ -245,6 +256,8 @@ export async function POST(req: NextRequest) {
       }, { status: 402 });
     }
 
-    return NextResponse.json({ error: 'Unable to unlock this title right now.' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Unable to unlock this title right now. (Internal error - check server logs)' 
+    }, { status: 500 });
   }
 }
