@@ -1,0 +1,2 @@
+ALTER TABLE "Video"
+  ADD COLUMN "totalUnlocks" INTEGER NOT NULL DEFAULT 0;

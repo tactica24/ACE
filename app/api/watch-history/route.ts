@@ -1,0 +1,97 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthFromRequest } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { canPreviewVideo, isSeriesContainer } from '@/lib/video-access';
+
+export async function POST(req: NextRequest) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rateLimit = await consumeRateLimit({
+    key: `watch-history:${getRateLimitIdentity(req, auth.sub)}`,
+    limit: 180,
+    windowMs: 1000 * 60 * 10
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many playback sync events right now.' }, { status: 429 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const videoId = typeof body?.videoId === 'string' ? body.videoId : '';
+  const rawProgress = Number(body?.progressSec ?? 0);
+  const rawDuration = Number(body?.durationSec ?? 0);
+  const completed = Boolean(body?.completed);
+
+  if (!videoId) {
+    return NextResponse.json({ error: 'Missing videoId' }, { status: 400 });
+  }
+
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    select: {
+      id: true,
+      creatorId: true,
+      status: true,
+      teaserSec: true,
+      durationSec: true,
+      videoType: true,
+      seriesId: true,
+      r2Key: true,
+      fallbackR2Key: true
+    }
+  });
+
+  if (!video) {
+    return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+  }
+
+  if (isSeriesContainer(video)) {
+    return NextResponse.json({ error: 'This title does not support playback progress.' }, { status: 400 });
+  }
+
+  const previewAllowed = canPreviewVideo(video, auth);
+  if (!['APPROVED', 'PUBLISHED'].includes(video.status) && !previewAllowed) {
+    return NextResponse.json({ error: 'Video not available' }, { status: 403 });
+  }
+
+  const unlock = previewAllowed
+    ? { id: 'preview' }
+    : await prisma.unlock.findFirst({
+        where: {
+          userId: auth.sub,
+          videoId
+        },
+        select: { id: true }
+      });
+
+  const maxProgressSec = unlock ? Math.max(video.durationSec, 0) : Math.max(video.teaserSec, 0);
+  const progressSec = Math.min(maxProgressSec, Math.max(0, Math.floor(Number.isFinite(rawProgress) ? rawProgress : 0)));
+  const durationSec = rawDuration > 0 && Number.isFinite(rawDuration)
+    ? Math.min(Math.floor(rawDuration), Math.max(video.durationSec, 0))
+    : Math.max(video.durationSec, 0);
+  const markedCompleted = completed && Boolean(unlock);
+
+  const history = await prisma.watchHistory.upsert({
+    where: {
+      userId_videoId: {
+        userId: auth.sub,
+        videoId
+      }
+    },
+    update: {
+      progressSec: markedCompleted ? 0 : progressSec,
+      durationSec,
+      completedAt: markedCompleted ? new Date() : null
+    },
+    create: {
+      userId: auth.sub,
+      videoId,
+      progressSec: markedCompleted ? 0 : progressSec,
+      durationSec,
+      completedAt: markedCompleted ? new Date() : null
+    }
+  });
+
+  return NextResponse.json({ ok: true, history });
+}

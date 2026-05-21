@@ -1,0 +1,82 @@
+name: Repair Production Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_name:
+        description: "The failed Prisma migration name"
+        required: true
+        default: "202603170001_tv_pairing"
+        type: string
+      resolution:
+        description: "How to mark the failed migration in the production database"
+        required: true
+        default: "rolled-back"
+        type: choice
+        options:
+          - rolled-back
+          - applied
+      run_live_smoke:
+        description: "Verify the live production domain after repair"
+        required: true
+        default: true
+        type: boolean
+      base_url:
+        description: "Production base URL to verify"
+        required: true
+        default: "https://www.acestudio.ng"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-migration-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve failed migration as rolled back
+        if: ${{ inputs.resolution == 'rolled-back' }}
+        run: npx prisma migrate resolve --rolled-back "${{ inputs.migration_name }}"
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+
+      - name: Resolve failed migration as applied
+        if: ${{ inputs.resolution == 'applied' }}
+        run: npx prisma migrate resolve --applied "${{ inputs.migration_name }}"
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+
+      - name: Apply remaining production migrations
+        run: npm run db:migrate:deploy
+
+      - name: Verify health smoke
+        if: ${{ inputs.run_live_smoke }}
+        env:
+          ACE_SMOKE_TARGETS: ${{ inputs.base_url }}
+        run: npm run smoke:relay
+
+      - name: Verify live production proof
+        if: ${{ inputs.run_live_smoke }}
+        env:
+          ACE_PRODUCTION_SMOKE_BASE_URL: ${{ inputs.base_url }}
+        run: npm run smoke:production

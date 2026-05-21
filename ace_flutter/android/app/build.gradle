@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'dev.flutter.flutter-gradle-plugin'
+}
+
+android {
+    namespace = 'ng.acestudio.mobile'
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = '28.2.13676358'
+    def releaseKeystorePath = System.getenv('ACE_ANDROID_KEYSTORE_PATH')
+    def hasReleaseKeystore = releaseKeystorePath &&
+        System.getenv('ACE_ANDROID_KEYSTORE_PASSWORD') &&
+        System.getenv('ACE_ANDROID_KEY_ALIAS') &&
+        System.getenv('ACE_ANDROID_KEY_PASSWORD')
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    defaultConfig {
+        applicationId = 'ng.acestudio.mobile'
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseKeystore) {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv('ACE_ANDROID_KEYSTORE_PASSWORD')
+                keyAlias = System.getenv('ACE_ANDROID_KEY_ALIAS')
+                keyPassword = System.getenv('ACE_ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source = '../..'
+}

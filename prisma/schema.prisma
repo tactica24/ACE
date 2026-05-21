@@ -1,0 +1,837 @@
+// Prisma schema for ACE Studio
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  CREATOR
+  ADMIN
+}
+
+enum SignupIntent {
+  VIEWER
+  CREATOR
+}
+
+enum CreatorAccessStatus {
+  NONE
+  REQUESTED
+  INVITED
+  SUBMITTED
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SupportTicketCategory {
+  PAYMENT
+  ACCOUNT_ACCESS
+  CATALOG_HELP
+  CREATOR_ONBOARDING
+  VIDEO_UPLOAD
+  CONTRACTS
+  OTHER
+}
+
+enum RightsTier {
+  SHARED
+  EXCLUSIVE
+}
+
+enum PriceTier {
+  SNACK
+  STANDARD
+  PREMIERE
+}
+
+enum AgeRating {
+  ALL
+  PG13
+  PG16
+  PG18
+}
+
+enum VideoType {
+  FEATURE
+  SERIES
+  SHORT
+  SKIT
+  DOCUMENTARY
+  ADVERT
+}
+
+enum VideoStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  MASTER_UPLOADED
+  PROCESSING
+  HLS_UPLOADED
+  READY
+  PUBLISHED
+  ARCHIVED
+}
+
+enum UnlockSource {
+  WALLET
+  PASS
+  PAYSTACK
+  ADMIN
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum P2PStatus {
+  CREATED
+  TRANSFERRED
+  UNLOCKED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  REVERSED
+}
+
+enum AdminSupportActionType {
+  PAYMENT_VERIFY
+  PAYMENT_STATUS_UPDATE
+  WALLET_ADJUSTMENT
+  CREDIT_ADJUSTMENT
+  SUPPORT_COMPENSATION
+}
+
+enum Gateway {
+  PAYSTACK
+  STRIPE
+}
+
+enum PayoutRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum HomePageMode {
+  LIVE
+  LAUNCH
+}
+
+enum OfflinePackageStatus {
+  PREPARING
+  READY
+  REVOKED
+}
+
+enum PairingStatus {
+  PENDING
+  CLAIMED
+  COMPLETED
+  EXPIRED
+}
+
+enum ReportStatementStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  ISSUED
+  PAID
+  SUPERSEDED
+}
+
+model User {
+  id           String          @id @default(cuid())
+  firebaseUid  String?         @unique
+  name         String?
+  email        String          @unique
+  passwordHash String
+  role         Role            @default(USER)
+  signupIntent SignupIntent    @default(VIEWER)
+  creatorAccessStatus CreatorAccessStatus @default(NONE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  wallet       Wallet?
+  creator      CreatorProfile?
+  videos       Video[]         @relation("CreatorVideos")
+  unlocks      Unlock[]
+  subscriptions SubscriptionPass[]
+  moderation   ModerationItem[] @relation("Moderator")
+  p2pTransfers P2PTransfer[]   @relation("P2PSender")
+  p2pUnlocksAsSender P2PUnlockSettlement[] @relation("P2PUnlockSettlementSender")
+  p2pUnlocksAsRecipient P2PUnlockSettlement[] @relation("P2PUnlockSettlementRecipient")
+  payments     Payment[]
+  referralLinks ReferralLink[]
+  familyLinks  FamilyLink[]
+  tvPairings   TvPairingSession[] @relation("TvPairingOwner")
+  supportTickets SupportTicket[]
+  watchHistory WatchHistory[]
+  streamSessions StreamSession[]
+  offlinePackages OfflinePackage[] @relation("OfflinePackageOwner")
+  supportActionsReceived AdminSupportAction[] @relation("SupportActionUser")
+  supportActionsPerformed AdminSupportAction[] @relation("SupportActionAdmin")
+  playbackSessions       PlaybackSession[]
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balanceNaira  Int      @default(0)
+  credits       Int      @default(0) // stored in half-credit units
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model CreatorProfile {
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  creatorNumber      String? @unique
+  displayName        String
+  bio                String?
+  address            String?
+  emailVerified      Boolean @default(false)
+  ninNumber          String?
+  idCardNumber       String?
+  ninVerified        Boolean @default(false)
+  idCardUrl          String?
+  idVerified         Boolean @default(false)
+  bankName           String?
+  bankAccountName    String?
+  bankAccountNumber  String?
+  bankVerified       Boolean @default(false)
+  reliabilityNotes   String?
+  payoutSplitStandard Float  @default(0.6)
+  payoutSplitExclusive Float @default(0.6)
+  verified           Boolean @default(false)
+  earningsBalanceNaira Int   @default(0)
+  uploadAccessToken  String?
+  uploadAccessTokenExpiresAt DateTime?
+  user               User    @relation(fields: [userId], references: [id])
+  contracts          Contract[]
+  settlements UnlockSettlement[]
+  payoutRequests     CreatorPayoutRequest[]
+  producerEarnings   ProducerEarning[] @relation("CreatorProducerEarnings")
+}
+
+model Video {
+  id          String       @id @default(cuid())
+  creatorId   String
+  seriesId    String?
+  seasonNumber Int?
+  episodeNumber Int?
+  title       String
+  description String
+  videoType   VideoType    @default(FEATURE)
+  ageRating   AgeRating    @default(ALL)
+  category    String       @default("General")
+  originalLanguage String? @default("en")
+  audioLanguages String[]  @default([])
+  contentWarnings String[] @default([])
+  genres      String[]     @default([])
+  priceTier   PriceTier
+  rightsTier  RightsTier
+  status      VideoStatus @default(DRAFT)
+  releaseYear Int?
+  durationSec Int
+  teaserSec   Int
+  highlightSeconds Int[]   @default([])
+  r2Key       String?
+  fallbackR2Key String?
+  posterKey   String?
+  hlsUrl      String?
+  hlsVersion  String?
+  qualities   String[]     @default([])
+  unlockPrice Int?
+  producerRevenueShare Float @default(70)
+  platformRevenueShare Float @default(30)
+  taxRevenueShare Float @default(0)
+  isPublished Boolean      @default(false)
+  totalUnlocks Int          @default(0)
+  tags        String[]     @default([])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  creator     User         @relation("CreatorVideos", fields: [creatorId], references: [id])
+  series      Video?       @relation("SeriesEpisodes", fields: [seriesId], references: [id])
+  episodes    Video[]      @relation("SeriesEpisodes")
+  unlocks     Unlock[]
+  contracts   Contract[]
+  moderation  ModerationItem?
+  p2pTransfers P2PTransfer[]
+  p2pUnlockSettlements P2PUnlockSettlement[]
+  referralLinks ReferralLink[] @relation("VideoReferralLinks")
+  settlements UnlockSettlement[]
+  watchHistory WatchHistory[]
+  streamSessions StreamSession[]
+  subtitleTracks SubtitleTrack[]
+  technicalMetadata VideoTechnicalMetadata?
+  offlinePackages OfflinePackage[]
+  playbackSessions PlaybackSession[]
+  producerEarnings ProducerEarning[] @relation("VideoProducerEarnings")
+  @@index([status])
+  @@index([priceTier])
+  @@index([seriesId, seasonNumber, episodeNumber])
+  @@unique([seriesId, seasonNumber, episodeNumber])
+}
+
+model VideoTechnicalMetadata {
+  id                       String   @id @default(cuid())
+  videoId                  String   @unique
+  vendorId                 String?
+  studioReleaseTitle       String?
+  countriesOfOrigin        String[] @default([])
+  productionCountries      String[] @default([])
+  copyrightLine            String?
+  licensedTerritories      String[] @default([])
+  localizations            Json?
+  productAvailability      Json?
+  landscapeArtworkKey      String?
+  masterKey                String?
+  masterFileName           String?
+  masterFileSize           BigInt?
+  masterUploadedAt         DateTime?
+  masterUploadKey          String?
+  masterProcessingStatus   String?
+  processingStatus         String   @default("NO_MASTER")
+  encodingStartedAt        DateTime?
+  encodingCompletedAt      DateTime?
+  hlsUploadedAt            DateTime?
+  hlsPlaybackUrl           String?
+  hlsVerifiedAt            DateTime?
+  readyToStreamAt          DateTime?
+  playbackUrl              String?
+  availabilityRegion       String   @default("GLOBAL")
+  deliveryResolution       String   @default("HD")
+  has4kMaster              Boolean  @default(false)
+  deliveryFormat           String?
+  deliveryNotes            String?
+  trailerKey               String?
+  promotionalStillKeys     String[] @default([])
+  castCredits              Json?
+  crewCredits              Json?
+  englishSubtitlesProvided Boolean  @default(false)
+  cleanAudioMasterKey      String?
+  masterDeliveryKey        String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  video                    Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+model OfflinePackage {
+  id         String               @id @default(cuid())
+  ownerId    String
+  videoId    String
+  aceFileKey String               @unique
+  wrappedKey String
+  status     OfflinePackageStatus @default(PREPARING)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  owner      User                 @relation("OfflinePackageOwner", fields: [ownerId], references: [id])
+  video      Video                @relation(fields: [videoId], references: [id])
+
+  @@index([ownerId, createdAt])
+  @@index([videoId, createdAt])
+}
+
+model SubtitleTrack {
+  id           String   @id @default(cuid())
+  videoId       String
+  label         String
+  languageCode  String
+  kind          String   @default("subtitles")
+  fileKey       String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  video         Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId, languageCode])
+}
+
+model WatchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  videoId     String
+  progressSec Int      @default(0)
+  durationSec Int?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  video       Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+  @@index([userId, updatedAt])
+}
+
+model StreamSession {
+  id              String   @id @default(cuid())
+  userId          String
+  deviceSessionId String
+  videoId         String
+  createdAt       DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  revokedAt       DateTime?
+  user            User     @relation(fields: [userId], references: [id])
+  video           Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, deviceSessionId])
+  @@index([userId, lastSeenAt])
+  @@index([videoId, lastSeenAt])
+}
+
+model PlaybackSession {
+  id              String   @id @default(cuid())
+  userId          String
+  videoId         String
+  startedAt       DateTime @default(now())
+  lastProgressAt  DateTime @default(now())
+  progressSeconds Int      @default(0)
+  completed       Boolean  @default(false)
+  ipHash          String?
+  userAgent       String?
+  status          String   @default("active")
+  user            User     @relation(fields: [userId], references: [id])
+  video           Video    @relation(fields: [videoId], references: [id])
+
+  @@index([userId, startedAt])
+  @@index([videoId, startedAt])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+}
+
+model Unlock {
+  id            String       @id @default(cuid())
+  userId        String
+  videoId       String
+  amountNaira   Int
+  amountMinor   Int?         // charged amount in minor units for non-NGN
+  currency      String       @default("NGN")
+  source        UnlockSource
+  watermarkText String
+  referralCode  String?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id])
+  video         Video        @relation(fields: [videoId], references: [id])
+  settlement    UnlockSettlement?
+  producerEarnings ProducerEarning[] @relation("UnlockProducerEarnings")
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([videoId])
+}
+
+model SubscriptionPass {
+  id              String   @id @default(cuid())
+  userId          String
+  creditsRemaining Int // stored in half-credit units
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
+  @@index([userId])
+}
+
+model Contract {
+  id                 String         @id @default(cuid())
+  creatorId          String
+  videoId            String
+  rightsTier         RightsTier
+  contractText       String
+  documentHtml       String?
+  producerLegalName  String?
+  producerSignedName String?
+  platformSignatureKey String?
+  producerSignatureKey String?
+  producerAccepted   Boolean        @default(false)
+  effectiveDate      DateTime?
+  producerSignedAt   DateTime?
+  contractPdfKey     String?        // PDF generated for producer signing
+  signedContractPdfKey String?      // PDF uploaded after producer signs
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  creator            CreatorProfile @relation(fields: [creatorId], references: [id])
+  video              Video          @relation(fields: [videoId], references: [id])
+
+  @@index([creatorId, createdAt])
+  @@index([videoId, createdAt])
+}
+
+model ModerationItem {
+  id          String           @id @default(cuid())
+  videoId     String           @unique
+  status      ModerationStatus @default(PENDING)
+  reviewerId  String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  video       Video            @relation(fields: [videoId], references: [id])
+  reviewer    User?            @relation("Moderator", fields: [reviewerId], references: [id])
+}
+
+model NodeHealth {
+  id          String   @id @default(cuid())
+  nodeName    String
+  region      String
+  cpuLoad     Float
+  memoryUsed  Float
+  diskFreeGb  Float
+  cacheHitRate Float
+  latencyMs   Float
+  createdAt   DateTime @default(now())
+  @@index([nodeName])
+}
+
+model P2PTransfer {
+  id            String    @id @default(cuid())
+  senderId      String
+  recipientEmail String
+  videoId       String
+  aceFileKey    String
+  wrappedKey    String
+  unlockFee     Int
+  status        P2PStatus @default(CREATED)
+  createdAt     DateTime  @default(now())
+  settlement    P2PUnlockSettlement?
+  sender        User      @relation("P2PSender", fields: [senderId], references: [id])
+  video         Video     @relation(fields: [videoId], references: [id])
+  @@index([recipientEmail])
+}
+
+model P2PUnlockSettlement {
+  id              String   @id @default(cuid())
+  transferId      String   @unique
+  senderUserId    String
+  recipientUserId String
+  videoId         String
+  amountNaira     Int
+  createdAt       DateTime @default(now())
+  transfer        P2PTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  sender          User     @relation("P2PUnlockSettlementSender", fields: [senderUserId], references: [id])
+  recipient       User     @relation("P2PUnlockSettlementRecipient", fields: [recipientUserId], references: [id])
+  video           Video    @relation(fields: [videoId], references: [id])
+
+  @@index([senderUserId, createdAt])
+  @@index([recipientUserId, createdAt])
+  @@index([videoId, createdAt])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  reference   String        @unique
+  amountNaira Int
+  amountMinor Int?
+  currency    String        @default("NGN")
+  gateway     Gateway       @default(PAYSTACK)
+  feeMinor    Int?          // gateway fee in minor units
+  netMinor    Int?          // net after fees in minor units
+  referralCode String?
+  status      PaymentStatus @default(PENDING)
+  metadata    Json?
+  entitlementAppliedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
+  supportActions AdminSupportAction[]
+}
+
+model ReferralLink {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  promoterId       String
+  commissionPercent Int
+  targetVideoId    String?
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+  promoter         User     @relation(fields: [promoterId], references: [id])
+  targetVideo      Video?   @relation("VideoReferralLinks", fields: [targetVideoId], references: [id])
+  events           ReferralEvent[]
+}
+
+model ReferralEvent {
+  id           String    @id @default(cuid())
+  referralId   String
+  unlockId     String?
+  paymentId    String?
+  commissionNaira Int    @default(0)
+  createdAt    DateTime  @default(now())
+  referral     ReferralLink @relation(fields: [referralId], references: [id])
+}
+
+model AdminSupportAction {
+  id                   String                 @id @default(cuid())
+  adminUserId          String
+  userId               String
+  paymentId            String?
+  actionType           AdminSupportActionType
+  amountNairaDelta     Int                    @default(0)
+  creditsDelta         Int                    @default(0)
+  resultingBalanceNaira Int?
+  resultingCredits     Int?
+  note                 String
+  createdAt            DateTime               @default(now())
+  adminUser            User                   @relation("SupportActionAdmin", fields: [adminUserId], references: [id])
+  user                 User                   @relation("SupportActionUser", fields: [userId], references: [id])
+  payment              Payment?               @relation(fields: [paymentId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([paymentId, createdAt])
+}
+
+model FamilyLink {
+  id            String   @id @default(cuid())
+  ownerId       String
+  recipientEmail String
+  createdAt     DateTime @default(now())
+  owner         User     @relation(fields: [ownerId], references: [id])
+}
+
+model TvPairingSession {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  deviceName   String?
+  platform     String?
+  status       PairingStatus @default(PENDING)
+  claimedById  String?
+  expiresAt    DateTime
+  claimedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  claimedBy    User?         @relation("TvPairingOwner", fields: [claimedById], references: [id])
+  @@index([status, expiresAt])
+}
+
+model FinanceConfig {
+  id                 String   @id @default("default")
+  creatorSharePercent Float   @default(60)
+  platformSharePercent Float  @default(29.5)
+  gatewayFeePercent   Float   @default(3)
+  taxPercent          Float   @default(7.5)
+  snackNaira          Int      @default(50)
+  standardNaira       Int      @default(50)
+  premiereNaira       Int      @default(50)
+  snackUsdMinor       Int      @default(149)
+  standardUsdMinor    Int      @default(199)
+  premiereUsdMinor    Int      @default(249)
+  snackEurMinor       Int      @default(129)
+  standardEurMinor    Int      @default(179)
+  premiereEurMinor    Int      @default(229)
+  snackGbpMinor       Int      @default(99)
+  standardGbpMinor    Int      @default(149)
+  premiereGbpMinor    Int      @default(199)
+  snackCadMinor       Int      @default(199)
+  standardCadMinor    Int      @default(249)
+  premiereCadMinor    Int      @default(299)
+  familyPassUsdMinor  Int      @default(1000)
+  familyPassEurMinor  Int      @default(900)
+  familyPassGbpMinor  Int      @default(800)
+  familyPassCadMinor  Int      @default(1300)
+  updatedAt           DateTime @default(now()) @updatedAt
+}
+
+model SiteSettings {
+  id                String       @id @default("default")
+  homePageMode      HomePageMode @default(LIVE)
+  launchTitle       String       @default("ACE is launching soon")
+  launchMessage     String       @default("We are getting the catalog, producers, and launch details ready.")
+  launchCountdownAt DateTime?
+  launchCtaLabel    String?
+  launchCtaHref     String?
+  platformSignatureKey String?
+  updatedAt         DateTime     @default(now()) @updatedAt
+}
+
+model PlatformWallet {
+  id           String   @id @default("ace-platform")
+  balanceNaira Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model UnlockSettlement {
+  id                String   @id @default(cuid())
+  unlockId          String   @unique
+  videoId           String
+  creatorProfileId  String?
+  grossNaira        Int
+  creatorNaira      Int      @default(0)
+  platformNaira     Int      @default(0)
+  gatewayFeeNaira   Int      @default(0)
+  taxNaira          Int      @default(0)
+  referralNaira     Int      @default(0)
+  platformNetNaira  Int      @default(0)
+  createdAt         DateTime @default(now())
+  unlock            Unlock   @relation(fields: [unlockId], references: [id])
+  video             Video    @relation(fields: [videoId], references: [id])
+  creatorProfile    CreatorProfile? @relation(fields: [creatorProfileId], references: [id])
+
+  @@index([videoId, createdAt])
+  @@index([creatorProfileId, createdAt])
+}
+
+model ProducerEarning {
+  id                    String   @id @default(cuid())
+  producerId            String
+  videoId               String
+  unlockId              String
+  grossAmount           Int
+  producerShareAmount   Int
+  platformShareAmount   Int
+  currency              String   @default("NGN")
+  reportMonth           String   // YYYY-MM
+  createdAt             DateTime @default(now())
+  payoutStatus          String   @default("pending")
+  producer              CreatorProfile @relation("CreatorProducerEarnings", fields: [producerId], references: [id])
+  video                 Video    @relation("VideoProducerEarnings", fields: [videoId], references: [id])
+  unlock                Unlock   @relation("UnlockProducerEarnings", fields: [unlockId], references: [id])
+
+  @@index([producerId, reportMonth])
+  @@index([videoId, reportMonth])
+}
+
+model SupportTicket {
+  id         String              @id @default(cuid())
+  userId     String
+  category   SupportTicketCategory
+  status     SupportTicketStatus @default(OPEN)
+  subject    String
+  message    String
+  adminNotes String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  user       User                @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model CreatorPayoutRequest {
+  id                String              @id @default(cuid())
+  creatorProfileId  String
+  amountNaira       Int
+  bankName          String
+  bankAccountName   String
+  bankAccountNumber String
+  status            PayoutRequestStatus @default(PENDING)
+  adminNote         String?
+  reviewerId        String?
+  requestedAt       DateTime            @default(now())
+  reviewedAt        DateTime?
+  paidAt            DateTime?
+  creatorProfile    CreatorProfile      @relation(fields: [creatorProfileId], references: [id])
+
+  @@index([creatorProfileId, requestedAt])
+  @@index([status, requestedAt])
+}
+
+model ReportStatement {
+  id                         String                @id @default(cuid())
+  reportCode                 String                @unique
+  monthKey                   String
+  reportingEntity            String
+  rightsHolder               String
+  currency                   String                @default("NGN")
+  status                     ReportStatementStatus @default(DRAFT)
+  titleCount                 Int                   @default(0)
+  unlockCount                Int                   @default(0)
+  uniqueAccounts             Int                   @default(0)
+  watchHours                 Float                 @default(0)
+  grossNaira                 Int                   @default(0)
+  approvedDeductionsNaira    Int                   @default(0)
+  netRevenueNaira            Int                   @default(0)
+  licensorSharePercent       Float                 @default(0)
+  platformSharePercent       Float                 @default(0)
+  creatorNaira               Int                   @default(0)
+  platformNaira              Int                   @default(0)
+  platformNetNaira           Int                   @default(0)
+  openingBalanceNaira        Int                   @default(0)
+  amountPreviouslyPaidNaira  Int                   @default(0)
+  currentAmountDueNaira      Int                   @default(0)
+  closingBalanceNaira        Int                   @default(0)
+  exchangeRateLabel          String?
+  paymentDueLabel            String?
+  activeTerritories          Int                   @default(0)
+  topTerritory               String?
+  topDeviceType              String?
+  topDeviceTypeStatus        String?
+  promotionalAdjustmentsNote String?
+  contentStatus              String?
+  preparedBy                 String
+  reviewedBy                 String?
+  reviewedAt                 DateTime?
+  approvedBy                 String?
+  approvedAt                 DateTime?
+  issuedBy                   String?
+  issuedAt                   DateTime?
+  paidBy                     String?
+  paidAt                     DateTime?
+  notes                      String?
+  statementData              Json
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+  items                      ReportStatementItem[]
+
+  @@index([monthKey, createdAt])
+  @@index([status, createdAt])
+}
+
+model ReportStatementItem {
+  id               String          @id @default(cuid())
+  statementId      String
+  videoId          String?
+  title            String
+  territoryLabel   String?
+  periodLabel      String
+  views            Int             @default(0)
+  watchHours       Float           @default(0)
+  revenueBaseNaira Int             @default(0)
+  sharePercent     Float           @default(0)
+  amountDueNaira   Int             @default(0)
+  itemData         Json?
+  createdAt        DateTime        @default(now())
+  statement        ReportStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@index([statementId, createdAt])
+}
+
+model AuditTrail {
+  id               String          @id @default(cuid())
+  userId           String
+  action           String          // UNLOCK_ATTEMPT, UNLOCK_SUCCESS, UNLOCK_FAILED, CREDIT_DEDUCTED, CREATOR_PAID, TAX_CALCULATED
+  videoId          String?
+  amount           Float?
+  credits          Float?
+  metadata         Json?
+  timestamp        DateTime        @default(now())
+  ipAddress        String
+  userAgent        String
+  sessionId        String
+
+  @@index([userId, action, timestamp])
+  @@index([videoId, timestamp])
+  @@index([action, timestamp])
+}

@@ -1,0 +1,33 @@
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'Gateway') THEN
+    CREATE TYPE "Gateway" AS ENUM ('PAYSTACK', 'STRIPE');
+  END IF;
+END $$;
+
+ALTER TABLE IF EXISTS "Payment"
+  ADD COLUMN IF NOT EXISTS "amountMinor" INTEGER,
+  ADD COLUMN IF NOT EXISTS "currency" TEXT NOT NULL DEFAULT 'NGN',
+  ADD COLUMN IF NOT EXISTS "feeMinor" INTEGER,
+  ADD COLUMN IF NOT EXISTS "netMinor" INTEGER;
+
+ALTER TABLE IF EXISTS "Payment"
+  ADD COLUMN IF NOT EXISTS "gateway" "Gateway" NOT NULL DEFAULT 'PAYSTACK';
+
+ALTER TABLE IF EXISTS "Unlock"
+  ADD COLUMN IF NOT EXISTS "amountMinor" INTEGER,
+  ADD COLUMN IF NOT EXISTS "currency" TEXT NOT NULL DEFAULT 'NGN';
+
+UPDATE "Payment"
+SET "amountMinor" = "amountNaira" * 100
+WHERE "amountMinor" IS NULL AND "amountNaira" IS NOT NULL;
+
+UPDATE "Unlock"
+SET "amountMinor" = "amountNaira" * 100
+WHERE "amountMinor" IS NULL AND "amountNaira" IS NOT NULL;
+
+DROP INDEX IF EXISTS "User_phone_key";
+
+ALTER TABLE IF EXISTS "User"
+  DROP COLUMN IF EXISTS "phone",
+  DROP COLUMN IF EXISTS "phoneVerified";

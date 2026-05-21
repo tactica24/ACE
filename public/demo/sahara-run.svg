@@ -1,0 +1,12 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c2d12"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <path d="M0 270 C120 210 220 320 340 250 C470 180 520 290 640 230 L640 360 L0 360 Z" fill="#facc15" opacity="0.5"/>
+  <circle cx="518" cy="78" r="46" fill="#fde68a" opacity="0.55"/>
+  <text x="44" y="304" fill="#ffffff" font-size="44" font-family="Arial" font-weight="700">SAHARA RUN</text>
+</svg>

@@ -1,0 +1,536 @@
+export const UI_LANGUAGE_COOKIE = 'ace_ui_language';
+
+export const UI_LANGUAGE_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Francais' },
+  { code: 'ha', label: 'Hausa' },
+  { code: 'yo', label: 'Yoruba' },
+  { code: 'ig', label: 'Igbo' },
+  { code: 'sw', label: 'Swahili' }
+] as const;
+
+export type UILanguage = (typeof UI_LANGUAGE_OPTIONS)[number]['code'];
+
+type UiCopy = {
+  account: string;
+  audio: string;
+  audioOptions: string;
+  browse: string;
+  browseCatalog: string;
+  captions: string;
+  continueOnboarding: string;
+  configureLanguage: string;
+  continueFrom: string;
+  continueWatchingPrompt: string;
+  continueWatchingRow: string;
+  continueWatchingSummary: string;
+  continueWithAccount: string;
+  continueWithAccountSummary: string;
+  contentAdvisories: string;
+  contentAdvisorySummary: string;
+  createAccount: string;
+  creator: string;
+  creatorStudio: string;
+  defaultSubtitle: string;
+  exitWatchMode: string;
+  exclusiveRelease: string;
+  familyNight: string;
+  familyNightSummary: string;
+  freshReleases: string;
+  freshReleasesSummary: string;
+  generalAudience: string;
+  genresAndHighlights: string;
+  getSupport: string;
+  highlights: string;
+  keepWatching: string;
+  keepWatchingSummary: string;
+  language: string;
+  languages: string;
+  loadingStream: string;
+  manageWallet: string;
+  mins: string;
+  noSubtitles: string;
+  none: string;
+  nowStreaming: string;
+  off: string;
+  offlineShare: string;
+  offlineShareSummary: string;
+  openWallet: string;
+  originalAudio: string;
+  quickPicks: string;
+  quickPicksSummary: string;
+  resumeAt: string;
+  rightsTier: string;
+  sharedRightsRelease: string;
+  signIn: string;
+  signInToContinue: string;
+  signInToUnlockSummary: string;
+  signOut: string;
+  startOver: string;
+  subtitleOptions: string;
+  teaser: string;
+  topUpWallet: string;
+  trendingNow: string;
+  trendingNowSummary: string;
+  tryAgain: string;
+  trustFirstViewing: string;
+  trustFirstViewingSummary: string;
+  uiLanguage: string;
+  unlockedMovies: string;
+  unlockedMoviesSummary: string;
+  verifyAccount: string;
+  wallet: string;
+  watchMode: string;
+  watchNow: string;
+  watchStory: string;
+};
+
+const UI_COPY: Record<UILanguage, UiCopy> = {
+  en: {
+    account: 'Account',
+    audio: 'Audio',
+    audioOptions: 'Audio options',
+    browse: 'Browse',
+    browseCatalog: 'Browse catalog',
+    captions: 'Captions',
+    continueOnboarding: 'Continue onboarding',
+    configureLanguage: 'Choose how the app should speak to you.',
+    continueFrom: 'Continue from',
+    continueWatchingPrompt: 'Continue watching?',
+    continueWatchingRow: 'Continue watching',
+    continueWatchingSummary: 'Pick up right where you stopped across your devices.',
+    continueWithAccount: 'Continue with your account to unlock the full title',
+    continueWithAccountSummary: 'Viewers can watch the teaser first, then sign in to unlock the full release.',
+    contentAdvisories: 'Content advisories',
+    contentAdvisorySummary: 'These warnings help households decide if a title is suitable before playback begins.',
+    createAccount: 'Create account',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Default',
+    exitWatchMode: 'Exit watch mode',
+    exclusiveRelease: 'Exclusive release',
+    familyNight: 'Family night',
+    familyNightSummary: 'Friendly picks for households watching together.',
+    freshReleases: 'Fresh releases are loading',
+    freshReleasesSummary: 'Sign in or create an account to be ready when the catalog goes live.',
+    generalAudience: 'General audience',
+    genresAndHighlights: 'Genres and highlights',
+    getSupport: 'Get support',
+    highlights: 'Highlight scenes',
+    keepWatching: 'Keep watching',
+    keepWatchingSummary: 'We automatically use your pass, credits, or wallet balance first. Add funds if you need more to continue this title.',
+    language: 'Language',
+    languages: 'Languages',
+    loadingStream: 'Loading stream...',
+    manageWallet: 'Manage wallet',
+    mins: 'mins',
+    noSubtitles: 'No subtitle tracks uploaded for this title yet.',
+    none: 'None',
+    nowStreaming: 'Now streaming',
+    off: 'Off',
+    offlineShare: 'Offline share',
+    offlineShareSummary: 'Send an encrypted .ace file over Wi-Fi Direct and let the recipient unlock it with their wallet.',
+    openWallet: 'Open wallet',
+    originalAudio: 'Original audio',
+    quickPicks: 'Quick picks',
+    quickPicksSummary: 'Great when you want something good without a long commitment.',
+    resumeAt: 'We saved your place at',
+    rightsTier: 'Rights tier',
+    sharedRightsRelease: 'Shared rights release',
+    signIn: 'Sign in',
+    signInToContinue: 'Sign in to continue',
+    signInToUnlockSummary: 'Sign in and we will keep your progress and continue from where you stopped.',
+    signOut: 'Sign out',
+    startOver: 'Start over',
+    subtitleOptions: 'Subtitle options',
+    teaser: 'Teaser',
+    topUpWallet: 'Top up wallet',
+    trendingNow: 'Trending now',
+    trendingNowSummary: 'Fresh releases and the titles viewers are opening first.',
+    tryAgain: 'Try again',
+    trustFirstViewing: 'Trust-first viewing',
+    trustFirstViewingSummary: 'Every unlock uses pass credits first, then wallet credits, then wallet balance. Your progress, unlocked titles, and family access stay tied to your account, with playback protected to 3 active devices at a time.',
+    uiLanguage: 'UI language',
+    unlockedMovies: 'Unlocked movies',
+    unlockedMoviesSummary: 'Everything this account has already paid for or unlocked with credits.',
+    verifyAccount: 'Verify account',
+    wallet: 'Wallet',
+    watchMode: 'Watch mode',
+    watchNow: 'Watch now',
+    watchStory: 'Continue your story'
+  },
+  fr: {
+    account: 'Compte',
+    audio: 'Audio',
+    audioOptions: 'Options audio',
+    browse: 'Parcourir',
+    browseCatalog: 'Parcourir le catalogue',
+    captions: 'Sous-titres',
+    continueOnboarding: 'Continuer l inscription',
+    configureLanguage: "Choisissez la langue de l'interface.",
+    continueFrom: 'Continuer a',
+    continueWatchingPrompt: 'Continuer le visionnage ?',
+    continueWatchingRow: 'Reprendre le visionnage',
+    continueWatchingSummary: 'Reprenez exactement ou vous vous etiez arrete sur vos appareils.',
+    continueWithAccount: 'Connectez-vous pour debloquer le titre complet',
+    continueWithAccountSummary: "Les spectateurs peuvent regarder l'extrait puis se connecter pour debloquer le film complet.",
+    contentAdvisories: 'Avertissements de contenu',
+    contentAdvisorySummary: 'Ces avertissements aident les familles a decider si le titre convient avant la lecture.',
+    createAccount: 'Creer un compte',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Par defaut',
+    exitWatchMode: 'Quitter le mode cinema',
+    exclusiveRelease: 'Sortie exclusive',
+    familyNight: 'Soiree en famille',
+    familyNightSummary: 'Des choix adaptes aux foyers qui regardent ensemble.',
+    freshReleases: 'De nouvelles sorties arrivent',
+    freshReleasesSummary: 'Connectez-vous ou creez un compte pour etre pret quand le catalogue sera en direct.',
+    generalAudience: 'Grand public',
+    genresAndHighlights: 'Genres et temps forts',
+    getSupport: 'Obtenir de l aide',
+    highlights: 'Scenes fortes',
+    keepWatching: 'Continuer a regarder',
+    keepWatchingSummary: "Nous utilisons d'abord vos credits d'abonnement, puis vos credits de portefeuille, puis votre solde. Ajoutez des fonds si besoin.",
+    language: 'Langue',
+    languages: 'Langues',
+    loadingStream: 'Chargement du flux...',
+    manageWallet: 'Gerer le portefeuille',
+    mins: 'min',
+    noSubtitles: "Aucun fichier de sous-titres n'a encore ete ajoute.",
+    none: 'Aucun',
+    nowStreaming: 'En lecture',
+    off: 'Desactive',
+    offlineShare: 'Partage hors ligne',
+    offlineShareSummary: 'Envoyez un fichier .ace chiffre en Wi-Fi Direct et laissez le destinataire le debloquer avec son portefeuille.',
+    openWallet: 'Ouvrir le portefeuille',
+    originalAudio: 'Audio original',
+    quickPicks: 'Choix rapides',
+    quickPicksSummary: 'Ideal quand vous voulez quelque chose de bon sans long engagement.',
+    resumeAt: 'Nous avons garde votre place a',
+    rightsTier: 'Type de droits',
+    sharedRightsRelease: 'Sortie a droits partages',
+    signIn: 'Connexion',
+    signInToContinue: 'Connectez-vous pour continuer',
+    signInToUnlockSummary: 'Connectez-vous et nous garderons votre progression.',
+    signOut: 'Deconnexion',
+    startOver: 'Recommencer',
+    subtitleOptions: 'Options de sous-titres',
+    teaser: 'Extrait',
+    topUpWallet: 'Recharger le portefeuille',
+    trendingNow: 'Tendances actuelles',
+    trendingNowSummary: 'Nouvelles sorties et titres ouverts en premier par les spectateurs.',
+    tryAgain: 'Reessayer',
+    trustFirstViewing: 'Visionnage fonde sur la confiance',
+    trustFirstViewingSummary: 'Chaque debloquage utilise les credits du pass, puis les credits du portefeuille, puis le solde. La lecture est limitee a 3 appareils actifs.',
+    uiLanguage: "Langue de l'interface",
+    unlockedMovies: 'Films debloques',
+    unlockedMoviesSummary: 'Tout ce que ce compte a deja paye ou debloque avec des credits.',
+    verifyAccount: 'Verifier le compte',
+    wallet: 'Portefeuille',
+    watchMode: 'Mode cinema',
+    watchNow: 'Regarder',
+    watchStory: 'Reprenez votre histoire'
+  },
+  ha: {
+    account: 'Asusu',
+    audio: 'Sauti',
+    audioOptions: 'Zabukan sauti',
+    browse: 'Duba',
+    browseCatalog: 'Duba kundin fina-finai',
+    captions: 'Rubutun kasa',
+    continueOnboarding: 'Ci gaba da onboarding',
+    configureLanguage: 'Zabi harshen da app zai yi amfani da shi.',
+    continueFrom: 'Ci gaba daga',
+    continueWatchingPrompt: 'A ci gaba da kallo?',
+    continueWatchingRow: 'Ci gaba da kallo',
+    continueWatchingSummary: 'Ka dawo daidai inda ka tsaya a kowace naura.',
+    continueWithAccount: 'Shiga da asusunka domin bude cikakken fim',
+    continueWithAccountSummary: 'Mai kallo zai fara da teaser, sannan ya shiga domin bude cikakken fim.',
+    contentAdvisories: 'Sanarwar abin ciki',
+    contentAdvisorySummary: 'Wadannan sanarwar suna taimaka wa iyalai su san ko fim din ya dace kafin kallo.',
+    createAccount: 'Kirkiri asusu',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Na asali',
+    exitWatchMode: 'Fita daga yanayin kallo',
+    exclusiveRelease: 'Saki na musamman',
+    familyNight: 'Daren iyali',
+    familyNightSummary: 'Kyawawan zabuka ga iyalai masu kallo tare.',
+    freshReleases: 'Sabbin fina-finai na zuwa',
+    freshReleasesSummary: 'Shiga ko ka kirkiri asusu domin ka shirya idan kundin ya fito.',
+    generalAudience: 'Ga kowa',
+    genresAndHighlights: 'Nau i da manyan lokuta',
+    getSupport: 'Nemi taimako',
+    highlights: 'Manyan lokuta',
+    keepWatching: 'Ci gaba da kallo',
+    keepWatchingSummary: 'Za mu fara da credits na pass, sai credits na wallet, sannan balance. Ka cika idan ya kare.',
+    language: 'Harshe',
+    languages: 'Harsuna',
+    loadingStream: 'Ana loda bidiyo...',
+    manageWallet: 'Sarrafa wallet',
+    mins: 'minti',
+    noSubtitles: 'Ba a saka subtitle ga wannan fim din ba tukuna.',
+    none: 'Babu',
+    nowStreaming: 'Yanzu ake nunawa',
+    off: 'Kashe',
+    offlineShare: 'Raba ba tare da intanet ba',
+    offlineShareSummary: 'Aika fayil din .ace cikin sirri ta Wi-Fi Direct, mai karba kuma ya bude da wallet dinsa.',
+    openWallet: 'Bude wallet',
+    originalAudio: 'Asalin sauti',
+    quickPicks: 'Zabuka masu sauri',
+    quickPicksSummary: 'Lokacin da kake son abu mai kyau cikin gajeren lokaci.',
+    resumeAt: 'Mun ajiye inda ka tsaya a',
+    rightsTier: 'Nau in hakki',
+    sharedRightsRelease: 'Saki mai hakkoki na hadin gwiwa',
+    signIn: 'Shiga',
+    signInToContinue: 'Shiga domin ci gaba',
+    signInToUnlockSummary: 'Shiga kuma za mu adana cigabanka da inda ka tsaya.',
+    signOut: 'Fita',
+    startOver: 'Fara daga farko',
+    subtitleOptions: 'Zabukan subtitle',
+    teaser: 'Teaser',
+    topUpWallet: 'Cika wallet',
+    trendingNow: 'Masu tashe yanzu',
+    trendingNowSummary: 'Sabbin fina-finai da wadanda masu kallo suke budewa da wuri.',
+    tryAgain: 'Sake gwadawa',
+    trustFirstViewing: 'Kallo mai dogaro da amana',
+    trustFirstViewingSummary: 'Kowace budewa tana amfani da pass, sannan credits na wallet, sannan balance. Ana kare kallo zuwa naurori 3 masu aiki.',
+    uiLanguage: 'Harshen app',
+    unlockedMovies: 'Fina-finan da aka bude',
+    unlockedMoviesSummary: 'Duk abin da aka riga aka biya ko aka bude da credits a wannan asusun.',
+    verifyAccount: 'Tabbatar da asusu',
+    wallet: 'Wallet',
+    watchMode: 'Yanayin kallo',
+    watchNow: 'Kalli yanzu',
+    watchStory: 'Ci gaba da labarinka'
+  },
+  yo: {
+    account: 'Akaunti',
+    audio: 'Ohun',
+    audioOptions: 'Awon eto ohun',
+    browse: 'Wa kiri',
+    browseCatalog: 'Wa kiri ninu katalogi',
+    captions: 'Subitaitulu',
+    continueOnboarding: 'Tesiwaju onboarding',
+    configureLanguage: 'Yan ede ti app yoo fi ba o soro.',
+    continueFrom: 'Tesiwaju lati',
+    continueWatchingPrompt: 'Tesiwaju wiwo?',
+    continueWatchingRow: 'Tesiwaju wiwo',
+    continueWatchingSummary: 'Padabo si gangan ibi ti o duro lori gbogbo ero re.',
+    continueWithAccount: 'Wole pelu akaunti re lati si gbogbo fiimu',
+    continueWithAccountSummary: 'Olumulo le wo teaser ki o si wole lati si fiimu ni kikun.',
+    contentAdvisories: 'Ikilo akoonu',
+    contentAdvisorySummary: 'Awon ikilo yi n ran idile lowo lati mo boya fiimu naa dara fun won.',
+    createAccount: 'Da akaunti sile',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Aiyipada',
+    exitWatchMode: 'Jade kuro ni watch mode',
+    exclusiveRelease: 'Itusile pataki',
+    familyNight: 'Aale idile',
+    familyNightSummary: 'Awon yiyan to dara fun awon idile to n wo papo.',
+    freshReleases: 'Awon itusile tuntun n bo',
+    freshReleasesSummary: 'Wole tabi da akaunti sile ki o setan nigbati katalogi ba wa.',
+    generalAudience: 'Fun gbogbo eniyan',
+    genresAndHighlights: 'Orisi ati awon akoko pataki',
+    getSupport: 'Gba iranlowo',
+    highlights: 'Awon akoko pataki',
+    keepWatching: 'Maa wo siwaju',
+    keepWatchingSummary: 'A maa lo pass credits, ki o to lo wallet credits ati balance. Fi owo kun ti o ba nilo.',
+    language: 'Ede',
+    languages: 'Awon ede',
+    loadingStream: 'A n ko fidio wa...',
+    manageWallet: 'Sakoso wallet',
+    mins: 'iṣẹju',
+    noSubtitles: 'Ko si subtitle fun fiimu yi sibẹsibẹ.',
+    none: 'Ko si',
+    nowStreaming: 'N sise bayii',
+    off: 'Pa',
+    offlineShare: 'Pín lai si intanẹẹti',
+    offlineShareSummary: 'Fi faili .ace to ni aabo ranse nipase Wi-Fi Direct ki olugba le si i pelu wallet re.',
+    openWallet: 'Si wallet',
+    originalAudio: 'Ohun abinibi',
+    quickPicks: 'Awon yiyan yara',
+    quickPicksSummary: 'Dara nigba ti o fe nkan to dara lai lo akoko pupo.',
+    resumeAt: 'A ti fi ibi ti o duro pamọ ni',
+    rightsTier: 'Iru eto',
+    sharedRightsRelease: 'Itusile eto ifowosowopo',
+    signIn: 'Wole',
+    signInToContinue: 'Wole lati tesiwaju',
+    signInToUnlockSummary: 'Wole, a o si pa ibi ti o duro mo fun o.',
+    signOut: 'Jade',
+    startOver: 'Bere lati ibere',
+    subtitleOptions: 'Awon eto subtitle',
+    teaser: 'Teaser',
+    topUpWallet: 'Fi owo kun wallet',
+    trendingNow: 'Ohun to n gboro bayi',
+    trendingNowSummary: 'Awon itusile tuntun ati awon ti awon oluwo n si lakoko yi.',
+    tryAgain: 'Gbiyanju si',
+    trustFirstViewing: 'Iwo to da lori igbekele',
+    trustFirstViewingSummary: 'Gbogbo unlock maa lo pass credits, ki o si lo wallet credits ati balance. A fi idaabobo ero meta sile.',
+    uiLanguage: 'Ede app',
+    unlockedMovies: 'Awon fiimu ti a ti si',
+    unlockedMoviesSummary: 'Gbogbo ohun ti akaunti yi ti ti sanwo fun tabi ti ti unlock tele.',
+    verifyAccount: 'Jẹrisi akaunti',
+    wallet: 'Wallet',
+    watchMode: 'Ipo wiwo',
+    watchNow: 'Wo bayii',
+    watchStory: 'Tesiwaju itan re'
+  },
+  ig: {
+    account: 'Akauntu',
+    audio: 'Olu',
+    audioOptions: 'Nhoro olu',
+    browse: 'Choputa',
+    browseCatalog: 'Choputa katalọgụ',
+    captions: 'Subtitles',
+    continueOnboarding: 'Gaa nihu onboarding',
+    configureLanguage: 'Horo asusu interface i choro.',
+    continueFrom: 'Gaa nihu site na',
+    continueWatchingPrompt: 'Gaa nihu ikiri?',
+    continueWatchingRow: 'Gaa nihu ikiri',
+    continueWatchingSummary: 'Laghachi ozugbo ebe i kwusiri n ngwa gi nile.',
+    continueWithAccount: 'Banye na akauntu gi iji mepee ihe nkiri dum',
+    continueWithAccountSummary: 'Onye n ekiri nwere ike ibido na teaser, were banye iji mepee ihe nkiri dum.',
+    contentAdvisories: 'Nkowa ihe di na ya',
+    contentAdvisorySummary: 'Nkowa ndi a na enyere ezinulo aka ikpebi ma ihe nkiri a kwesiri tupu ikiri.',
+    createAccount: 'Mepee akauntu',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Ndabara',
+    exitWatchMode: 'Puo na watch mode',
+    exclusiveRelease: 'Mweputa puru iche',
+    familyNight: 'Abali ezinulo',
+    familyNightSummary: 'Nhoro mara mma nye ezinulo na-ekiri onu.',
+    freshReleases: 'Ihe ohuru na-abia',
+    freshReleasesSummary: 'Banye ma o bu mepee akauntu ka i di njikere mgbe katalọgụ ga-aputa.',
+    generalAudience: 'Maka onye obula',
+    genresAndHighlights: 'Udi na ihe kacha mkpa',
+    getSupport: 'Nweta enyemaka',
+    highlights: 'Ihe kacha mma',
+    keepWatching: 'Nọgide na-ekiri',
+    keepWatchingSummary: 'Anyi ga-eji pass credits buru uzo, soro wallet credits na balance. Tinye ego ma oburu na odi mkpa.',
+    language: 'Asusu',
+    languages: 'Asusu di iche iche',
+    loadingStream: 'A na-ebunye vidio...',
+    manageWallet: 'Jikwaa wallet',
+    mins: 'nkeji',
+    noSubtitles: 'Enweghi subtitle e tinyere n ihe nkiri a ugbua.',
+    none: 'Odighi',
+    nowStreaming: 'Na-egosi ugbu a',
+    off: 'Gbanyuo',
+    offlineShare: 'Kesa na-enweghị intaneti',
+    offlineShareSummary: 'Zipu faịlụ .ace e zoro ezo site na Wi-Fi Direct ka onye nnata jiri wallet ya mepee ya.',
+    openWallet: 'Mepee wallet',
+    originalAudio: 'Olu mbu',
+    quickPicks: 'Nhoro ngwa ngwa',
+    quickPicksSummary: 'Dabara adaba ma oburu na i choro ihe oma n oge mkpirikpi.',
+    resumeAt: 'Anyi debere ebe i kwusiri na',
+    rightsTier: 'Udi ikike',
+    sharedRightsRelease: 'Mweputa ikike nkekọrịta',
+    signIn: 'Banye',
+    signInToContinue: 'Banye iji gaa nihu',
+    signInToUnlockSummary: 'Banye, anyi ga-echekwa ebe i kwusiri.',
+    signOut: 'Puo',
+    startOver: 'Malite ozo',
+    subtitleOptions: 'Nhoro subtitle',
+    teaser: 'Teaser',
+    topUpWallet: 'Tinye ego na wallet',
+    trendingNow: 'Ihe na-aga nke oma ugbu a',
+    trendingNowSummary: 'Ihe ohuru na aha ndi ndi na-ekiri na-emepe mbu.',
+    tryAgain: 'Nwaa ozo',
+    trustFirstViewing: 'Ikiri nke dabere na ntụkwasị obi',
+    trustFirstViewingSummary: 'Unlock obula na-eji pass credits, wallet credits, na balance n usoro. A na-echebe ya ruo ngwaọrụ 3.',
+    uiLanguage: 'Asusu app',
+    unlockedMovies: 'Ihe nkiri emegorola',
+    unlockedMoviesSummary: 'Ihe nile akauntu a kwuola ugwo ma obu mepee site na credits.',
+    verifyAccount: 'Kwenye akauntu',
+    wallet: 'Wallet',
+    watchMode: 'Watch mode',
+    watchNow: 'Lee ugbu a',
+    watchStory: 'Gaa nihu n akuko gi'
+  },
+  sw: {
+    account: 'Akaunti',
+    audio: 'Sauti',
+    audioOptions: 'Chaguo za sauti',
+    browse: 'Vinjari',
+    browseCatalog: 'Vinjari katalogi',
+    captions: 'Manukuu',
+    continueOnboarding: 'Endelea na onboarding',
+    configureLanguage: 'Chagua lugha ya kiolesura cha app.',
+    continueFrom: 'Endelea kutoka',
+    continueWatchingPrompt: 'Endelea kutazama?',
+    continueWatchingRow: 'Endelea kutazama',
+    continueWatchingSummary: 'Rudi pale ulipoishia kwenye vifaa vyako vyote.',
+    continueWithAccount: 'Ingia kwa akaunti yako kufungua filamu nzima',
+    continueWithAccountSummary: 'Mtumiaji anaweza kuanza na teaser kisha akaingia kufungua toleo kamili.',
+    contentAdvisories: 'Tahadhari za maudhui',
+    contentAdvisorySummary: 'Tahadhari hizi husaidia familia kujua kama filamu inafaa kabla ya kuanza.',
+    createAccount: 'Fungua akaunti',
+    creator: 'Producer',
+    creatorStudio: 'Producer studio',
+    defaultSubtitle: 'Chaguomsingi',
+    exitWatchMode: 'Toka kwenye watch mode',
+    exclusiveRelease: 'Toleo la kipekee',
+    familyNight: 'Usiku wa familia',
+    familyNightSummary: 'Machaguo rafiki kwa kaya zinazotazama pamoja.',
+    freshReleases: 'Matoleo mapya yanakuja',
+    freshReleasesSummary: 'Ingia au fungua akaunti ili uwe tayari katalogi ikianza.',
+    generalAudience: 'Kwa wote',
+    genresAndHighlights: 'Aina na vivutio',
+    getSupport: 'Pata msaada',
+    highlights: 'Sehemu muhimu',
+    keepWatching: 'Endelea kutazama',
+    keepWatchingSummary: 'Tutatumia pass credits kwanza, kisha wallet credits, halafu balance. Ongeza fedha ikihitajika.',
+    language: 'Lugha',
+    languages: 'Lugha',
+    loadingStream: 'Inapakia video...',
+    manageWallet: 'Dhibiti wallet',
+    mins: 'dak',
+    noSubtitles: 'Hakuna subtitle zilizopakiwa kwa filamu hii bado.',
+    none: 'Hakuna',
+    nowStreaming: 'Inachezwa sasa',
+    off: 'Zima',
+    offlineShare: 'Shiriki nje ya mtandao',
+    offlineShareSummary: 'Tuma faili ya .ace iliyofungwa kwa Wi-Fi Direct na mpokeaji afungue kwa wallet yake.',
+    openWallet: 'Fungua wallet',
+    originalAudio: 'Sauti ya awali',
+    quickPicks: 'Machaguo ya haraka',
+    quickPicksSummary: 'Vizuri unapohitaji kitu kizuri bila muda mrefu.',
+    resumeAt: 'Tumehifadhi ulipoishia saa',
+    rightsTier: 'Aina ya haki',
+    sharedRightsRelease: 'Toleo la haki za pamoja',
+    signIn: 'Ingia',
+    signInToContinue: 'Ingia kuendelea',
+    signInToUnlockSummary: 'Ingia nasi tutahifadhi maendeleo yako na mahali ulipoishia.',
+    signOut: 'Toka',
+    startOver: 'Anza upya',
+    subtitleOptions: 'Chaguo za subtitle',
+    teaser: 'Teaser',
+    topUpWallet: 'Ongeza wallet',
+    trendingNow: 'Vinavyotrend sasa',
+    trendingNowSummary: 'Matoleo mapya na majina ambayo watazamaji wanafungua kwanza.',
+    tryAgain: 'Jaribu tena',
+    trustFirstViewing: 'Utazamaji unaojenga uaminifu',
+    trustFirstViewingSummary: 'Kila unlock hutumia pass credits, kisha wallet credits, kisha balance. Uchezaji unalindwa hadi vifaa 3 vya kazi.',
+    uiLanguage: 'Lugha ya app',
+    unlockedMovies: 'Filamu zilizofunguliwa',
+    unlockedMoviesSummary: 'Kila kitu ambacho akaunti hii tayari imelipia au kufungua kwa credits.',
+    verifyAccount: 'Thibitisha akaunti',
+    wallet: 'Wallet',
+    watchMode: 'Watch mode',
+    watchNow: 'Tazama sasa',
+    watchStory: 'Endelea na hadithi yako'
+  }
+};
+
+export function normalizeUiLanguage(value?: string | null): UILanguage {
+  const normalized = value?.trim().toLowerCase();
+  return UI_LANGUAGE_OPTIONS.find((option) => option.code === normalized)?.code ?? 'en';
+}
+
+export function getUiCopy(language?: string | null) {
+  return UI_COPY[normalizeUiLanguage(language)];
+}

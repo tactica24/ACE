@@ -1,0 +1,11 @@
+.dart_tool/
+.idea/
+*.iml
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+build/
+.gradle-user-home/
+ios/Flutter/.last_build_id
+android/.gradle/

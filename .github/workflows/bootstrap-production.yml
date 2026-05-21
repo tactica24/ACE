@@ -1,0 +1,72 @@
+name: Bootstrap Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_defaults:
+        description: "Seed default admin, creator, viewer, and sample titles"
+        required: true
+        default: false
+        type: boolean
+      run_live_smoke:
+        description: "Verify the live production domain after migrations finish"
+        required: true
+        default: true
+        type: boolean
+      base_url:
+        description: "Production base URL to verify"
+        required: true
+        default: "https://www.acestudio.ng"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+      FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Repair known failed migrations
+        run: npm run db:repair:known
+
+      - name: Apply production migrations
+        run: npm run db:migrate:deploy
+
+      - name: Seed default data
+        if: ${{ inputs.seed_defaults }}
+        run: npm run db:seed
+
+      - name: Verify health smoke
+        if: ${{ inputs.run_live_smoke }}
+        env:
+          ACE_SMOKE_TARGETS: ${{ inputs.base_url }}
+        run: npm run smoke:relay
+
+      - name: Verify live production proof
+        if: ${{ inputs.run_live_smoke }}
+        env:
+          ACE_PRODUCTION_SMOKE_BASE_URL: ${{ inputs.base_url }}
+        run: npm run smoke:production

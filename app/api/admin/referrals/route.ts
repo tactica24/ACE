@@ -1,0 +1,129 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getAuthFromRequest } from '@/lib/auth';
+import { env } from '@/lib/env';
+import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
+
+type ReferralEventRow = {
+  unlockId: string | null;
+  paymentId: string | null;
+  commissionNaira: number;
+  createdAt: Date;
+};
+
+type ReferralLinkRow = {
+  id: string;
+  code: string;
+  promoter: { id: string; email: string };
+  commissionPercent: number;
+  targetVideo: { id: string; title: string } | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  events: ReferralEventRow[];
+};
+
+function generateCode() {
+  return `ACE${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+}
+
+async function generateUniqueCode() {
+  for (let i = 0; i < 5; i += 1) {
+    const code = generateCode();
+    const existing = await prisma.referralLink.findUnique({ where: { code } });
+    if (!existing) return code;
+  }
+  return generateCode();
+}
+
+export async function GET(req: NextRequest) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const links = await prisma.referralLink.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      promoter: { select: { id: true, email: true } },
+      targetVideo: { select: { id: true, title: true } },
+      events: { select: { unlockId: true, paymentId: true, commissionNaira: true, createdAt: true } }
+    }
+  }) as ReferralLinkRow[];
+
+  const baseUrl = env.ACE_APP_BASE_URL.replace(/\/$/, '');
+  const data = links.map((link: ReferralLinkRow) => {
+    const unlocks = link.events.filter((event: ReferralEventRow) => event.unlockId).length;
+    const topups = link.events.filter((event: ReferralEventRow) => event.paymentId).length;
+    const commissionNaira = link.events.reduce((sum: number, event: ReferralEventRow) => sum + event.commissionNaira, 0);
+    let lastEventAt: Date | null = null;
+    for (const event of link.events) {
+      if (!lastEventAt || event.createdAt > lastEventAt) {
+        lastEventAt = event.createdAt;
+      }
+    }
+    return {
+      id: link.id,
+      code: link.code,
+      promoter: link.promoter,
+      commissionPercent: link.commissionPercent,
+      targetVideo: link.targetVideo,
+      expiresAt: link.expiresAt,
+      createdAt: link.createdAt,
+      metrics: { unlocks, topups, commissionNaira, lastEventAt },
+      linkUrl: `${baseUrl}/r/${link.code}`
+    };
+  });
+
+  return NextResponse.json({ links: data });
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth || auth.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const promoterId = body.promoterId as string | undefined;
+  const commissionPercent = Number(body.commissionPercent ?? 0);
+  const targetVideoId = body.targetVideoId as string | undefined;
+  const expiresAtRaw = body.expiresAt as string | undefined;
+
+  if (!promoterId) return NextResponse.json({ error: 'Missing promoterId' }, { status: 400 });
+  if (!Number.isFinite(commissionPercent) || commissionPercent <= 0 || commissionPercent > 100) {
+    return NextResponse.json({ error: 'Invalid commission percent' }, { status: 400 });
+  }
+
+  const promoter = await prisma.user.findUnique({ where: { id: promoterId } });
+  if (!promoter) {
+    return NextResponse.json({ error: 'Promoter not found' }, { status: 404 });
+  }
+
+  const code = await generateUniqueCode();
+  let expiresAt: Date | null = null;
+  if (expiresAtRaw) {
+    const parsed = new Date(expiresAtRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: 'Invalid expiry date' }, { status: 400 });
+    }
+    expiresAt = parsed;
+  }
+
+  const referral = await prisma.referralLink.create({
+    data: {
+      code,
+      promoterId,
+      commissionPercent,
+      targetVideoId: targetVideoId || null,
+      expiresAt
+    },
+    include: { promoter: { select: { id: true, email: true } }, targetVideo: { select: { id: true, title: true } } }
+  });
+
+  return NextResponse.json({
+    id: referral.id,
+    code: referral.code,
+    promoter: referral.promoter,
+    commissionPercent: referral.commissionPercent,
+    targetVideo: referral.targetVideo,
+    expiresAt: referral.expiresAt
+  });
+}
