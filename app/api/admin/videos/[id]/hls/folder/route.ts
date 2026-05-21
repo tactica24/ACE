@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
-import { getHlsAssetKey, getHlsBucket, getHlsContentType, getObjectBuffer, getObjectMetadata } from '@/lib/r2';
+import { getHlsBucket, getObjectBuffer, getObjectMetadata } from '@/lib/r2';
 import { getPlaybackUrl } from '@/lib/video-processing';
-import { getProcessingVideo } from '../../helpers';
+import { getProcessingVideo } from '../../../helpers';
 
 function normalizePath(path: string) {
   return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/');

@@ -421,6 +421,8 @@ export default async function VideoPage({
   const episodeTrailerKey = selectedEpisode?.technicalMetadata?.trailerKey?.trim() || null;
   const activeTrailerKey = episodeTrailerKey || seriesTrailerKey;
 
+  const loginHref = `/auth/login?next=${encodeURIComponent(`/v/${series.id}`)}`;
+
   return (
     <div className="section video-page-section">
       <div className="container detail-page video-page-shell">
