@@ -42,7 +42,6 @@ export default function VideoDetailScreen() {
   const [authRequired, setAuthRequired] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [deviceSessionId, setDeviceSessionId] = useState<string>('');
-  const [watermarkText, setWatermarkText] = useState('Ace Studio Preview');
 
   useEffect(() => {
     if (!id) return;
@@ -54,19 +53,6 @@ export default function VideoDetailScreen() {
   useEffect(() => {
     getDeviceSessionId()
       .then((value) => setDeviceSessionId(value))
-      .catch(() => null);
-  }, []);
-
-  useEffect(() => {
-    apiGet<{ user: { name?: string | null; email?: string | null } | null }>('/api/mobile/me')
-      .then((payload) => {
-        const preferredName = payload.user?.name?.trim();
-        const emailHandle = payload.user?.email?.split('@')[0]?.trim();
-        const nextWatermark = preferredName || emailHandle;
-        if (nextWatermark) {
-          setWatermarkText(nextWatermark);
-        }
-      })
       .catch(() => null);
   }, []);
 
@@ -133,9 +119,6 @@ export default function VideoDetailScreen() {
               }
             }}
           />
-          <View style={styles.watermark}>
-            <Text style={styles.watermarkText}>{watermarkText}</Text>
-          </View>
           {showAccessNotice && !hasAccess ? (
             <View style={styles.paywall}>
               <Text style={styles.paywallTitle}>Playback unavailable</Text>
@@ -204,16 +187,6 @@ const styles = StyleSheet.create({
   meta: { color: theme.muted, marginBottom: 8 },
   player: { backgroundColor: '#111', borderRadius: 16, overflow: 'hidden' },
   video: { width: '100%', height: 220 },
-  watermark: {
-    position: 'absolute',
-    right: 12,
-    bottom: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999
-  },
-  watermarkText: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
   paywall: {
     position: 'absolute',
     top: 0,

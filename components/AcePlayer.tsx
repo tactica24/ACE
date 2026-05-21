@@ -170,7 +170,6 @@ export default function AcePlayer({
   initialUnlocked,
   initialStreamUrl,
   initialProgress = 0,
-  watermarkText,
   posterSrc,
   highlightSeconds = [],
   subtitles = [],
@@ -186,7 +185,6 @@ export default function AcePlayer({
   initialUnlocked: boolean;
   initialStreamUrl?: string;
   initialProgress?: number;
-  watermarkText: string;
   posterSrc?: string;
   highlightSeconds?: number[];
   subtitles?: SubtitleTrackOption[];
@@ -202,6 +200,8 @@ export default function AcePlayer({
   const pendingAutoplayRef = useRef(false);
   const lastSyncedRef = useRef(0);
   const historyInFlightRef = useRef(false);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const copy = getUiCopy(uiLanguage);
   const subtitleTracks = subtitles.filter((track) => track.src);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -932,6 +932,22 @@ export default function AcePlayer({
   const previewSeconds = highlightSeconds.filter((sec) => sec >= 0);
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
 
+  const toggleFullscreen = useCallback(() => {
+    const container = playerContainerRef.current;
+    if (!container) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      (container as any).requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
   const formatTime = (sec: number) => {
     const minutes = Math.floor(sec / 60);
     const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
@@ -939,7 +955,7 @@ export default function AcePlayer({
   };
 
   return (
-    <div className={`player${watchMode ? ' player-watch-mode' : ''}`}>
+    <div ref={playerContainerRef} className={`player${watchMode ? ' player-watch-mode' : ''}`}>
       {trailerKey && (
         <div className="player-mode-selector">
           <button
@@ -993,13 +1009,6 @@ export default function AcePlayer({
         <div style={{ color: 'white', padding: '24px' }}>{feedback ?? copy.loadingStream}</div>
       )}
 
-      <div
-        className="watermark"
-        style={{ zIndex: 6, pointerEvents: 'none', textShadow: '0 2px 16px rgba(0, 0, 0, 0.85)' }}
-      >
-        {watermarkText}
-      </div>
-
       {/* Top navigation and watch mode removed per requirements (wallet is in profile) */}
 
       {activeVideoSrc ? (
@@ -1017,6 +1026,9 @@ export default function AcePlayer({
               </button>
               <button className="player-action-button" type="button" onClick={() => jumpPlayback(10)}>
                 +10s
+              </button>
+              <button className="player-action-button" type="button" onClick={toggleFullscreen}>
+                {isFullscreen ? '⤡' : '⛶'}
               </button>
             </div>
             <div className="player-readout">
@@ -1083,7 +1095,6 @@ export default function AcePlayer({
                     onClick={() => setSelectedSubtitleId(track.id)}
                   >
                     {track.label || getLanguageLabel(track.languageCode)}
-                    {track.isDefault ? ` · ${copy.defaultSubtitle}` : ''}
                   </button>
                 ))}
               </div>

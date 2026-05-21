@@ -154,7 +154,6 @@ export default async function VideoPage({
 
     let unlocked = false;
     let initialProgress = 0;
-    let watermarkText = 'Ace Studio Preview';
     const initialStreamUrl = null;
 
     if (user) {
@@ -174,7 +173,6 @@ export default async function VideoPage({
 
       unlocked = Boolean(unlock);
       initialProgress = watchHistory?.completedAt ? 0 : watchHistory?.progressSec ?? 0;
-      watermarkText = user.name?.trim() || user.email.split('@')[0] || user.email;
     }
 
     const primaryMeta = [
@@ -216,11 +214,10 @@ export default async function VideoPage({
                 videoId={requestedVideo.id}
                 teaserSec={requestedVideo.teaserSec}
                 priceLabel={priceLabel}
-                initialUnlocked={unlocked}
-                initialStreamUrl={initialStreamUrl ?? undefined}
-                initialProgress={initialProgress}
-                watermarkText={watermarkText}
-                posterSrc={posterUrl ?? undefined}
+                 initialUnlocked={unlocked}
+                 initialStreamUrl={initialStreamUrl ?? undefined}
+                 initialProgress={initialProgress}
+                 posterSrc={posterUrl ?? undefined}
                 highlightSeconds={requestedVideo.highlightSeconds}
                 audioLanguages={requestedVideo.audioLanguages}
                 subtitles={requestedVideo.subtitleTracks.map((track) => ({
@@ -380,7 +377,6 @@ export default async function VideoPage({
 
   let unlocked = false;
   let initialProgress = 0;
-  let watermarkText = 'Ace Studio Preview';
   const initialStreamUrl = null;
 
   if (user && selectedEpisode) {
@@ -400,7 +396,6 @@ export default async function VideoPage({
 
     unlocked = Boolean(unlock);
     initialProgress = watchHistory?.completedAt ? 0 : watchHistory?.progressSec ?? 0;
-    watermarkText = user.name?.trim() || user.email.split('@')[0] || user.email;
   }
 
   const seriesMeta = [
@@ -447,11 +442,10 @@ export default async function VideoPage({
                 videoId={selectedEpisode.id}
                 teaserSec={selectedEpisode.teaserSec}
                 priceLabel={priceLabel}
-                initialUnlocked={unlocked}
-                initialStreamUrl={initialStreamUrl ?? undefined}
-                initialProgress={initialProgress}
-                watermarkText={watermarkText}
-                posterSrc={selectedPosterUrl ?? undefined}
+                 initialUnlocked={unlocked}
+                 initialStreamUrl={initialStreamUrl ?? undefined}
+                 initialProgress={initialProgress}
+                 posterSrc={selectedPosterUrl ?? undefined}
                 highlightSeconds={selectedEpisode.highlightSeconds}
                 audioLanguages={selectedEpisode.audioLanguages}
                 subtitles={selectedEpisode.subtitleTracks.map((track) => ({

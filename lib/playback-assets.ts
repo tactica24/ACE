@@ -1,6 +1,7 @@
 import { getDashManifestKey } from './dash';
 import { getHlsMasterKey } from './hls';
 import { getAvailableProgressiveQualities, type ProgressivePlaybackQuality } from './playback-quality';
+import { env } from './env';
 import { getBucketForStorageKey, getObjectMetadata } from './r2';
 
 export type PlaybackAssetSnapshot = {
@@ -18,10 +19,11 @@ export type PlaybackAssetSnapshot = {
 };
 
 function hasConfiguredStorage() {
-  const accessKey = process.env.R2_ACCESS_KEY_ID?.trim() || process.env.AWS_ACCESS_KEY_ID?.trim();
-  const secretKey = process.env.R2_SECRET_ACCESS_KEY?.trim() || process.env.AWS_SECRET_ACCESS_KEY?.trim();
+  const endpoint = (env.R2_ENDPOINT || '').trim();
+  const accessKey = (env.R2_ACCESS_KEY_ID || '').trim();
+  const secretKey = (env.R2_SECRET_ACCESS_KEY || '').trim();
 
-  return Boolean(process.env.R2_ENDPOINT?.trim() && process.env.R2_BUCKET?.trim() && accessKey && secretKey);
+  return Boolean(endpoint && accessKey && secretKey);
 }
 
 async function objectExists(key: string | null, bucketName?: string) {
@@ -51,7 +53,7 @@ export async function getPlaybackAssetSnapshot(
   const hlsKey = getHlsMasterKey(videoId);
   const dashKey = getDashManifestKey(videoId);
   const storageConfigured = hasConfiguredStorage();
-  const hlsBucket = process.env.HLS_R2_BUCKET?.trim() || process.env.R2_BUCKET?.trim() || null;
+  const hlsBucket = (env.HLS_R2_BUCKET || env.R2_BUCKET || '').trim() || null;
 
   const [progressiveReady, fallbackProgressiveReady, hlsReady, dashReady] = await Promise.all([
     objectExists(normalizedProgressiveKey, getBucketForStorageKey(normalizedProgressiveKey)),
