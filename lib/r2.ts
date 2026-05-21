@@ -10,8 +10,10 @@ import {
   AbortMultipartUploadCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
-  type HeadObjectCommandOutput
+  type HeadObjectCommandOutput,
+  CopyObjectCommand
 } from '@aws-sdk/client-s3';
+
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
 
@@ -153,6 +155,20 @@ export async function putObject(key: string, body: Buffer | Uint8Array, contentT
 
 export async function deleteObject(key: string, bucketName?: string) {
   return createClient().send(new DeleteObjectCommand({ Bucket: getBucket(bucketName), Key: key }));
+}
+
+export async function copyObject(sourceKey: string, destinationKey: string, sourceBucket?: string, destBucket?: string) {
+  const client = createClient();
+  const sourceBucketName = getBucket(sourceBucket);
+  const destBucketName = getBucket(destBucket);
+
+  await client.send(
+    new CopyObjectCommand({
+      Bucket: destBucketName,
+      CopySource: `${sourceBucketName}/${encodeURIComponent(sourceKey)}`,
+      Key: destinationKey
+    })
+  );
 }
 
 export async function createPresignedPutUrl(key: string, contentType: string, bucketName?: string) {

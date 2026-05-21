@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { buildFfmpegCommand } from '@/lib/video-processing';
-import { MAX_HLS_ZIP_BYTES, MAX_MASTER_BYTES, MULTIPART_CHUNK_BYTES, SINGLE_PUT_SAFE_BYTES, formatUploadLimit } from '@/lib/upload-limits';
+import { getHlsContentType } from '@/lib/hls';
+import { MAX_MASTER_BYTES, MULTIPART_CHUNK_BYTES, SINGLE_PUT_SAFE_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
 type ProcessingVideo = {
   id: string;
@@ -61,10 +62,6 @@ function formatDate(value: string | null) {
 
 function isSupportedMasterFile(file: File) {
   return /\.(mp4|mov)$/i.test(file.name) && (!file.type || ['video/mp4', 'video/quicktime', 'application/octet-stream'].includes(file.type));
-}
-
-function isSupportedHlsZip(file: File) {
-  return /\.zip$/i.test(file.name) && (!file.type || ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'].includes(file.type));
 }
 
 async function uploadBlobToSignedUrl(url: string, blob: Blob): Promise<string> {
@@ -178,144 +175,6 @@ async function uploadMasterToStorage(file: File) {
   }
 }
 
-function uploadHlsZipWithProgress(
-  videoId: string,
-  file: File,
-  onProgress: (progress: number) => void
-): Promise<Record<string, any>> {
-  return (async () => {
-    if (!isSupportedHlsZip(file)) {
-      throw new Error('Upload a .zip file containing the HLS package.');
-    }
-
-    if (file.size > MAX_HLS_ZIP_BYTES) {
-      throw new Error(`HLS zip is too large. Keep it under ${formatUploadLimit(MAX_HLS_ZIP_BYTES)}.`);
-    }
-
-    onProgress(1);
-
-    const headers = { 'Content-Type': 'application/json' };
-    const commonPayload = {
-      filename: file.name,
-      contentType: file.type || 'application/zip',
-      fileSize: file.size,
-      purpose: 'hls'
-    };
-
-    if (file.size <= SINGLE_PUT_SAFE_BYTES) {
-      onProgress(5);
-
-      const presignRes = await fetch('/api/studio/upload-url', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify(commonPayload)
-      });
-      const presign = await presignRes.json().catch(() => ({}));
-      if (!presignRes.ok || !presign.url || !presign.key) {
-        throw new Error((presign.error ?? 'Unable to prepare HLS zip upload.') + ' (studio upload-url)');
-      }
-
-      onProgress(10);
-
-      const uploadRes = await fetch(presign.url as string, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/zip' },
-        body: file
-      });
-      if (!uploadRes.ok) throw new Error(`HLS zip upload failed with status ${uploadRes.status}.`);
-
-      onProgress(70);
-
-      const finRes = await fetch(`/api/admin/videos/${videoId}/hls/finalize`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ key: presign.key, fileName: file.name, fileSize: file.size })
-      });
-      const payload = await finRes.json().catch(() => ({}));
-      if (!finRes.ok) throw new Error(payload.error ?? 'HLS package finalization failed.');
-
-      onProgress(100);
-      return payload;
-    }
-
-    // multipart for large zips
-    onProgress(5);
-
-    const initRes = await fetch('/api/studio/multipart-upload', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ action: 'initiate', ...commonPayload })
-    });
-    const session = await initRes.json().catch(() => ({}));
-    if (!initRes.ok || !session.key || !session.uploadId) {
-      throw new Error((session.error ?? 'Unable to start large HLS zip upload.') + ' (studio multipart initiate)');
-    }
-
-    const key = session.key as string;
-    const uploadId = session.uploadId as string;
-    const parts: Array<{ ETag: string; PartNumber: number }> = [];
-    const totalParts = Math.max(1, Math.ceil(file.size / MULTIPART_CHUNK_BYTES));
-
-    try {
-      for (let i = 0; i < totalParts; i += 1) {
-        const partNumber = i + 1;
-        const start = i * MULTIPART_CHUNK_BYTES;
-        const blob = file.slice(start, Math.min(file.size, start + MULTIPART_CHUNK_BYTES));
-
-        const partPrepRes = await fetch('/api/studio/multipart-upload', {
-          method: 'POST',
-          headers,
-          credentials: 'include',
-          body: JSON.stringify({ action: 'part', key, uploadId, purpose: 'hls', partNumber })
-        });
-        const partPayload = await partPrepRes.json().catch(() => ({}));
-        if (!partPrepRes.ok || !partPayload.url) {
-          throw new Error(partPayload.error ?? `Unable to prepare upload part ${partNumber}.`);
-        }
-
-        const etag = await uploadBlobToSignedUrl(partPayload.url as string, blob);
-        parts.push({ ETag: etag, PartNumber: partNumber });
-
-        const approxProgress = Math.min(95, Math.round(((i + 1) / totalParts) * 85) + 10);
-        onProgress(approxProgress);
-      }
-
-      const completeRes = await fetch('/api/studio/multipart-upload', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ action: 'complete', key, uploadId, purpose: 'hls', parts })
-      });
-      const compPayload = await completeRes.json().catch(() => ({}));
-      if (!completeRes.ok) throw new Error(compPayload.error ?? 'Unable to finalize large HLS zip upload.');
-
-      onProgress(96);
-
-      const finRes = await fetch(`/api/admin/videos/${videoId}/hls/finalize`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ key, fileName: file.name, fileSize: file.size })
-      });
-      const payload = await finRes.json().catch(() => ({}));
-      if (!finRes.ok) throw new Error(payload.error ?? 'HLS package finalization failed.');
-
-      onProgress(100);
-      return payload;
-    } catch (error) {
-      await fetch('/api/studio/multipart-upload', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ action: 'abort', key, uploadId, purpose: 'hls' })
-      }).catch(() => null);
-      throw error;
-    }
-  })();
-}
 
 function getBucket(video: ProcessingVideo): ProducerBucket {
   if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)) {
@@ -337,7 +196,7 @@ function getBucketTone(bucket: ProducerBucket) {
   return 'status-review';
 }
 
-function HlsZipUploadButton({
+function HlsFolderUploadButton({
   videoId,
   busy,
   hasHls,
@@ -346,19 +205,24 @@ function HlsZipUploadButton({
   videoId: string;
   busy: boolean;
   hasHls: boolean;
-  onUpload: (videoId: string, file: File) => void;
+  onUpload: (videoId: string, files: File[]) => void;
 }) {
   return (
     <label className="btn btn-primary">
-      {busy ? 'Uploading HLS...' : hasHls ? 'Replace HLS ZIP' : 'Upload HLS ZIP'}
+      {busy ? 'Uploading HLS...' : hasHls ? 'Replace HLS Folder' : 'Upload HLS Folder'}
       <input
         type="file"
-        accept=".zip,application/zip,application/x-zip-compressed"
+        // @ts-expect-error - webkitdirectory is non-standard but widely supported
+        webkitdirectory="true"
+        multiple
         hidden
         disabled={busy}
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onUpload(videoId, file);
+          const fileList = event.target.files;
+          if (fileList && fileList.length > 0) {
+            const files = Array.from(fileList);
+            onUpload(videoId, files);
+          }
           event.currentTarget.value = '';
         }}
       />
@@ -451,61 +315,118 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     }
   }
 
-   async function uploadHlsZip(videoId: string, file: File) {
-     setPendingId(videoId);
-     setMessage(null);
-     setUploadStatuses((current) => ({
-       ...current,
-       [videoId]: {
-         phase: 'uploading',
-         progress: 0,
-         message: `Uploading ${file.name}`
-       }
-     }));
-     try {
-       const payload = await uploadHlsZipWithProgress(videoId, file, (progress) => {
-         setUploadStatuses((current) => ({
-           ...current,
-           [videoId]: {
-             phase: progress >= 100 ? 'processing' : 'uploading',
-             progress,
-             message: progress >= 100 ? 'Upload received. Verifying package...' : `Uploading ${file.name}`
-           }
-         }));
-       });
-       setUploadStatuses((current) => ({
-         ...current,
-         [videoId]: {
-           phase: 'processing',
-           progress: 100,
-           message: 'Upload received. Verifying package...'
-         }
-       }));
-       await refreshVideo(videoId, payload.video);
-       setUploadStatuses((current) => ({
-         ...current,
-         [videoId]: {
-           phase: 'done',
-           progress: 100,
-           message: payload.message ?? 'HLS package uploaded and verified.'
-         }
-       }));
-       setMessage('HLS package uploaded. Run complete processing after preview validation.');
-     } catch (error) {
-       const errorMessage = error instanceof Error ? error.message : 'Unable to upload HLS ZIP.';
-       setUploadStatuses((current) => ({
-         ...current,
-         [videoId]: {
-           phase: 'error',
-           progress: current[videoId]?.progress ?? 0,
-           message: errorMessage
-         }
-       }));
-       setMessage(errorMessage);
-     } finally {
-       setPendingId(null);
-     }
-   }
+
+    // New: Upload HLS directly as individual files (no zip, real folder structure)
+    async function uploadHlsFolder(videoId: string, files: File[]) {
+      setPendingId(videoId);
+      setMessage(null);
+
+      const total = files.length;
+      let uploaded = 0;
+
+      setUploadStatuses((current) => ({
+        ...current,
+        [videoId]: {
+          phase: 'uploading',
+          progress: 0,
+          message: `Uploading ${total} HLS files...`
+        }
+      }));
+
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        const relativePaths: string[] = [];
+
+        for (const file of files) {
+          const relativePath = (file as any).webkitRelativePath || file.name;
+          relativePaths.push(relativePath);
+
+          // Get presigned URL for final location
+          const presignRes = await fetch(`/api/admin/videos/${videoId}/hls/presign`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ relativePath })
+          });
+          const presign = await presignRes.json().catch(() => ({}));
+
+          if (!presignRes.ok || !presign.url) {
+            throw new Error(presign.error ?? `Failed to prepare upload for ${relativePath}`);
+          }
+
+          // Upload the file directly to final HLS location
+          const uploadRes = await fetch(presign.url, {
+            method: 'PUT',
+            headers: { 'Content-Type': getHlsContentType(relativePath) },
+            body: file
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error(`Failed to upload ${relativePath}: ${uploadRes.status}`);
+          }
+
+          uploaded += 1;
+          const progress = Math.round((uploaded / total) * 100);
+
+          setUploadStatuses((current) => ({
+            ...current,
+            [videoId]: {
+              phase: progress >= 100 ? 'processing' : 'uploading',
+              progress,
+              message: `Uploaded ${uploaded}/${total} files...`
+            }
+          }));
+        }
+
+        // All files uploaded directly — now finalize with full validation
+        setUploadStatuses((current) => ({
+          ...current,
+          [videoId]: {
+            phase: 'processing',
+            progress: 100,
+            message: 'Finalizing and validating HLS package...'
+          }
+        }));
+
+        const finalizeRes = await fetch(`/api/admin/videos/${videoId}/hls/folder`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ relativePaths })
+        });
+
+        const finalizePayload = await finalizeRes.json().catch(() => ({}));
+
+        if (!finalizeRes.ok) {
+          throw new Error(finalizePayload.error ?? 'Failed to finalize HLS package.');
+        }
+
+        await refreshVideo(videoId, finalizePayload.video ?? {});
+
+        setUploadStatuses((current) => ({
+          ...current,
+          [videoId]: {
+            phase: 'done',
+            progress: 100,
+            message: 'HLS folder uploaded and verified.'
+          }
+        }));
+
+        setMessage('HLS uploaded directly (no zip). Package verified.');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unable to upload HLS folder.';
+        setUploadStatuses((current) => ({
+          ...current,
+          [videoId]: {
+            phase: 'error',
+            progress: current[videoId]?.progress ?? 0,
+            message: errorMessage
+          }
+        }));
+        setMessage(errorMessage);
+      } finally {
+        setPendingId(null);
+      }
+    }
+
 
    async function completeProcessing(videoId: string) {
      setPendingId(videoId);
@@ -670,12 +591,13 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             <div className="action-list">
               {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download master</a> : null}
               <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy FFmpeg command</button>
-              <HlsZipUploadButton
-                videoId={video.id}
-                busy={busy}
-                hasHls={Boolean(video.hlsUrl)}
-                onUpload={(targetVideoId, file) => void uploadHlsZip(targetVideoId, file)}
-              />
+               <HlsFolderUploadButton
+                 videoId={video.id}
+                 busy={busy}
+                 hasHls={Boolean(video.hlsUrl)}
+                 onUpload={(targetVideoId, files) => void uploadHlsFolder(targetVideoId, files)}
+               />
+
               <button className="btn btn-primary" type="button" disabled={!video.hlsUrl || busy} onClick={() => void completeProcessing(video.id)}>
                 Complete processing
               </button>

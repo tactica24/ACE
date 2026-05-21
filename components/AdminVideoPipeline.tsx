@@ -113,27 +113,10 @@ export default function AdminVideoPipeline({ initialVideos }: AdminVideoPipeline
   };
 
   const handleHlsUpload = async (id: string) => {
-    const file = uploadQueue[id];
-    if (!file) {
-      setMessage('Choose a ZIP package to upload.');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('hlsZip', file);
-    const data = await runAction(id, `/api/admin/videos/${id}/hls-upload`, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (data?.ok) {
-      updateVideo(id, {
-        hlsPlaybackUrl: data.hlsPlaybackUrl,
-        hlsUploadedAt: new Date().toISOString(),
-        masterProcessingStatus: 'HLS_UPLOADED'
-      });
-      setUploadQueue((current) => ({ ...current, [id]: null }));
-    }
+    setMessage(
+      'HLS uploads are now done via "Upload HLS Folder" (no ZIP) in the main Admin Video Processing panel. ' +
+      'Please use the folder upload there for direct, real-structure HLS delivery.'
+    );
   };
 
   const handlePublish = async (id: string) => {
