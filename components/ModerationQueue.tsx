@@ -79,6 +79,45 @@ const labelize = (value?: string) =>
         .join(' ')
     : 'Not set';
 
+// Minimal upload helpers for trailer/poster assets during moderation edit (reuses studio presigned upload)
+const uploadFileToSignedUrl = async (url: string, file: File, contentType: string, onProgress?: (loaded: number, total: number) => void) => {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) onProgress(event.loaded, event.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error('Storage upload failed with status ' + xhr.status + (xhr.responseText ? ': ' + xhr.responseText : '')));
+    };
+    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
+    xhr.ontimeout = () => reject(new Error('Storage upload timed out before storage accepted the file.'));
+    xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
+    xhr.send(file);
+  });
+};
+
+const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster') => {
+  const response = await fetch('/api/studio/upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      purpose,
+      fileSize: file.size
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.url || !payload.key) {
+    throw new Error(payload.error || 'Could not prepare upload.');
+  }
+  await uploadFileToSignedUrl(payload.url, file, file.type || 'application/octet-stream');
+  return payload.key as string;
+};
+
 export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [items, setItems] = useState(initial);
   const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -163,45 +202,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     }));
   };
 
-  // Minimal upload helpers for trailer/poster assets during moderation edit (reuses studio presigned upload)
-  const uploadFileToSignedUrl = async (url: string, file: File, contentType: string, onProgress?: (loaded: number, total: number) => void) => {
-    return new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', url, true);
-      xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && onProgress) onProgress(event.loaded, event.total);
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(`Storage upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`));
-      };
-      xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-      xhr.ontimeout = () => reject(new Error('Storage upload timed out before storage accepted the file.'));
-      xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
-      xhr.send(file);
-    });
-  };
-
-  const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster') => {
-    const response = await fetch('/api/studio/upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: file.type || 'application/octet-stream',
-        purpose,
-        fileSize: file.size
-      })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.url || !payload.key) {
-      throw new Error(payload.error || 'Could not prepare upload.');
-    }
-    await uploadFileToSignedUrl(payload.url, file, file.type || 'application/octet-stream');
-    return payload.key as string;
-  };
-
   const saveEdit = async (item: Item) => {
     const draft = getDraft(item);
     const assets = getEditAssets(item.video.id);
@@ -246,7 +246,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
               video: {
                 ...entry.video,
                 ...data.video,
-                // ensure new keys are reflected for download links if returned
                 ...(trailerKey ? { trailerDownloadHref: `/api/admin/videos/${item.video.id}/trailer` } : {}),
                 ...(posterKey ? { posterDownloadHref: `/api/admin/videos/${item.video.id}/poster` } : {})
               }
@@ -555,12 +554,12 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     <span className="field-label">Licensed territories</span>
                     <input className="input" value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
                   </label>
-                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                   <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Description</span>
-                     <textarea className="input" rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)} />
+                     <textarea className="input" rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)}></textarea>
                    </label>
 
-                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                   <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Marketing trailer (MP4) — optional, replaces existing</span>
                      <input
                        type="file"
@@ -576,7 +575,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                      )}
                    </label>
 
-                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                   <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Poster / key art (JPG/PNG/WEBP) — optional, replaces existing</span>
                      <input
                        type="file"
@@ -592,7 +591,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                      )}
                    </label>
 
-                   <div className="moderation-actions" style={{ gridColumn: '1 / -1' }}>
+                   <div className="moderation-actions" style={{ gridColumn: '1/-1' }}>
                     <button className="btn btn-primary" onClick={() => saveEdit(item)}>Save changes</button>
                      <button className="btn btn-ghost" onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
