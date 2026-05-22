@@ -1,21 +1,40 @@
 import 'dart:math';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DeviceSessionStore {
   DeviceSessionStore();
 
   static const _deviceSessionKey = 'ace_device_session_id';
+  static const _legacyPrefsKey = 'ace_device_session_id';
+
+  final _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
   Future<String> getOrCreate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getString(_deviceSessionKey);
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
+    // 1. Try secure storage first (new installs + migrated)
+    final secureValue = await _secureStorage.read(key: _deviceSessionKey);
+    if (secureValue != null && secureValue.isNotEmpty) {
+      return secureValue;
     }
 
+    // 2. Migration: check old SharedPreferences value
+    final prefs = await SharedPreferences.getInstance();
+    final legacy = prefs.getString(_legacyPrefsKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      await _secureStorage.write(key: _deviceSessionKey, value: legacy);
+      await prefs.remove(_legacyPrefsKey); // clean up
+      return legacy;
+    }
+
+    // 3. Create new secure ID
     final nextValue = _generateId();
-    await prefs.setString(_deviceSessionKey, nextValue);
+    await _secureStorage.write(key: _deviceSessionKey, value: nextValue);
     return nextValue;
   }
 

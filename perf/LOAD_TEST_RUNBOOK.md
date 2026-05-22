@@ -28,6 +28,29 @@ Next tests to add after safe test credentials exist:
 - authenticated sign-in burst
 - wallet top-up callback verification
 - stream token generation
+
+### Recommended: k6 for authenticated + high-load scenarios (2026-05-22)
+
+```bash
+# Install k6 once
+# https://k6.io/docs/getting-started/installation/
+
+# Run critical endpoints test (unlock, stream/token, health)
+k6 run --vus 100 --duration 3m perf/k6-critical-endpoints.js
+
+# With env vars for real testing
+ACE_BASE_URL=https://staging.acestudio.ng \
+TEST_VIDEO_ID=your-real-video-id \
+TEST_FIREBASE_TOKEN=your-id-token \
+k6 run perf/k6-critical-endpoints.js
+```
+
+The k6 script (`perf/k6-critical-endpoints.js`) targets the exact hot paths:
+- `/api/stream/token` (video playback)
+- `/api/unlock`
+- Health + rate-limit behavior under spike (300 VUs)
+
+Use this for the real penetration + heavy usage validation before production traffic.
 - protected stream fetch cadence
 - admin report generation and save lifecycle
 

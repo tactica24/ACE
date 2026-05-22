@@ -47,7 +47,7 @@ class PlaybackRepository {
     }
   }
 
-  Future<String> createPlaybackUrl({
+  Future<PlaybackStreamUrls> createPlaybackUrls({
     required String titleId,
     required bool teaserOnly,
     required bool isSignedIn,
@@ -68,27 +68,48 @@ class PlaybackRepository {
 
     final payload = await apiClient.getJson('/api/stream/token', query: query)
         as Map<String, dynamic>;
-    final playback = payload['playback'];
-    if (playback is Map<String, dynamic>) {
-      final hlsUrl = playback['hlsUrl'];
-      if (hlsUrl is String && hlsUrl.isNotEmpty) {
-        return apiClient.resolve(hlsUrl).toString();
-      }
+    final playback = payload['playback'] as Map<String, dynamic>?;
 
-      final dashUrl = playback['dashUrl'];
-      if (dashUrl is String && dashUrl.isNotEmpty) {
-        return apiClient.resolve(dashUrl).toString();
-      }
+    String? hls;
+    String? dash;
+    String? progressive;
 
-      final progressiveUrl = playback['progressiveUrl'];
-      if (progressiveUrl is String && progressiveUrl.isNotEmpty) {
-        return apiClient.resolve(progressiveUrl).toString();
+    if (playback != null) {
+      final h = playback['hlsUrl'];
+      if (h is String && h.isNotEmpty) {
+        hls = apiClient.resolve(h).toString();
+      }
+      final d = playback['dashUrl'];
+      if (d is String && d.isNotEmpty) {
+        dash = apiClient.resolve(d).toString();
+      }
+      final p = playback['progressiveUrl'];
+      if (p is String && p.isNotEmpty) {
+        progressive = apiClient.resolve(p).toString();
       }
     }
 
-    throw ApiException(
-      'No playback stream is ready for this title right now.',
-      statusCode: 503,
-    );
+    if (hls == null && dash == null && progressive == null) {
+      throw ApiException(
+        'No playback stream is ready for this title right now.',
+        statusCode: 503,
+      );
+    }
+
+    return PlaybackStreamUrls(hlsUrl: hls, dashUrl: dash, progressiveUrl: progressive);
   }
+}
+
+class PlaybackStreamUrls {
+  const PlaybackStreamUrls({
+    this.hlsUrl,
+    this.dashUrl,
+    this.progressiveUrl,
+  });
+
+  final String? hlsUrl;
+  final String? dashUrl;
+  final String? progressiveUrl;
+
+  String? get preferredUrl => hlsUrl ?? dashUrl ?? progressiveUrl;
 }
