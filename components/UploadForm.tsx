@@ -660,67 +660,7 @@ export default function UploadForm({
     event.preventDefault();
     setMessage(null);
 
-    if (!isSeriesUpload && !allowNoMaster) {
-      if (!masterFile || !isSupportedMasterFile(masterFile)) {
-        setMessage('Upload a final 1080p Full HD delivery master (MP4 or MOV) before submitting.');
-        return;
-      }
-      const masterSizeError = validateFileSize(masterFile, MAX_MASTER_BYTES, 'Master');
-      if (masterSizeError) {
-        setMessage(masterSizeError);
-        return;
-      }
-      if (trailerFile) {
-        const trailerSizeError = validateFileSize(trailerFile, MAX_TRAILER_BYTES, 'Trailer');
-        if (trailerSizeError) {
-          setMessage(trailerSizeError);
-          return;
-        }
-      }
-      if (posterFile) {
-        const posterSizeError = validateFileSize(posterFile, MAX_POSTER_BYTES, 'Poster');
-        if (posterSizeError) {
-          setMessage(posterSizeError);
-          return;
-        }
-        if (!isSupportedImageFile(posterFile)) {
-          setMessage('Poster upload must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
-          return;
-        }
-      }
-      if (landscapeArtworkFile && !isSupportedImageFile(landscapeArtworkFile)) {
-        setMessage('16:9 key art upload must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
-        return;
-      }
-      if (promotionalStillFiles.some((file) => !isSupportedImageFile(file))) {
-        setMessage('Promotional stills must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
-        return;
-      }
-      if (!isSupportedTrailerFile(trailerFile)) {
-        setMessage('Trailer upload must be an MP4 file.');
-        return;
-      }
-      if (subtitleTracks.some((track) => !track.file)) {
-        setMessage('Each subtitle row needs a subtitle file before submitting.');
-        return;
-      }
-      for (const track of subtitleTracks) {
-        if (track.file) {
-          const subtitleSizeError = validateFileSize(track.file, MAX_SUBTITLE_BYTES, 'Subtitle');
-          if (subtitleSizeError) {
-            setMessage(subtitleSizeError);
-            return;
-          }
-        }
-      }
-      if (
-        deliveryMetadata.englishSubtitlesProvided &&
-        !subtitleTracks.some((track) => track.languageCode === 'en' && track.file)
-      ) {
-        setMessage('English subtitles were marked as available. Add an English subtitle track or turn that toggle off.');
-        return;
-      }
-    } else {
+    if (isSeriesUpload) {
       if (!isSupportedTrailerFile(trailerFile)) {
         setMessage('Trailer upload must be an MP4 file.');
         return;
@@ -789,6 +729,68 @@ export default function UploadForm({
         !episodes.some((episode) => episode.subtitleTracks.some((track) => track.languageCode === 'en' && track.file))
       ) {
         setMessage('English subtitles were marked as available. Add an English subtitle track to at least one episode or turn that toggle off.');
+        return;
+      }
+    } else {
+      if (!allowNoMaster) {
+        if (!masterFile || !isSupportedMasterFile(masterFile)) {
+          setMessage('Upload a final 1080p Full HD delivery master (MP4 or MOV) before submitting.');
+          return;
+        }
+        const masterSizeError = validateFileSize(masterFile, MAX_MASTER_BYTES, 'Master');
+        if (masterSizeError) {
+          setMessage(masterSizeError);
+          return;
+        }
+      }
+      if (trailerFile) {
+        const trailerSizeError = validateFileSize(trailerFile, MAX_TRAILER_BYTES, 'Trailer');
+        if (trailerSizeError) {
+          setMessage(trailerSizeError);
+          return;
+        }
+      }
+      if (posterFile) {
+        const posterSizeError = validateFileSize(posterFile, MAX_POSTER_BYTES, 'Poster');
+        if (posterSizeError) {
+          setMessage(posterSizeError);
+          return;
+        }
+        if (!isSupportedImageFile(posterFile)) {
+          setMessage('Poster upload must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
+          return;
+        }
+      }
+      if (landscapeArtworkFile && !isSupportedImageFile(landscapeArtworkFile)) {
+        setMessage('16:9 key art upload must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
+        return;
+      }
+      if (promotionalStillFiles.some((file) => !isSupportedImageFile(file))) {
+        setMessage('Promotional stills must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
+        return;
+      }
+      if (!isSupportedTrailerFile(trailerFile)) {
+        setMessage('Trailer upload must be an MP4 file.');
+        return;
+      }
+      if (subtitleTracks.some((track) => !track.file)) {
+        setMessage('Each subtitle row needs a subtitle file before submitting.');
+        return;
+      }
+      for (const track of subtitleTracks) {
+        if (track.file) {
+          const subtitleSizeError = validateFileSize(track.file, MAX_SUBTITLE_BYTES, 'Subtitle');
+          if (subtitleSizeError) {
+            setMessage(subtitleSizeError);
+            return;
+          }
+        }
+      }
+      if (
+        deliveryMetadata.englishSubtitlesProvided &&
+        !subtitleTracks.some((track) => track.languageCode === 'en' && track.file)
+      ) {
+        setMessage('English subtitles were marked as available. Add an English subtitle track or turn that toggle off.');
         return;
       }
     }
