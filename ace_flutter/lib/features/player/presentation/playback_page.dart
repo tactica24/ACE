@@ -570,16 +570,6 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     }
   }
 
-  Future<void> _playPrevious() async {
-    if (_currentIndex == 0) {
-      await _seekToSeconds(0);
-      return;
-    }
-
-    await _syncHistory(force: true);
-    await _loadEntry(_currentIndex - 1, autoplay: true, resumeFromSec: 0);
-  }
-
   Future<void> _togglePlayPause() async {
     final controller = _controller;
     if (controller == null) {

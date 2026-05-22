@@ -65,7 +65,7 @@ class OfflineDownloadRepository {
           'Only unlocked titles can be downloaded for offline playback.');
     }
 
-    final streamUrl = await playbackRepository.createPlaybackUrl(
+    final urls = await playbackRepository.createPlaybackUrls(
       titleId: detail.summary.id,
       teaserOnly: false,
       isSignedIn: true,
@@ -74,6 +74,10 @@ class OfflineDownloadRepository {
               ? 'High quality'
               : 'Data saver',
     );
+    final streamUrl = urls.progressiveUrl ?? urls.hlsUrl ?? urls.dashUrl;
+    if (streamUrl == null) {
+      throw Exception('No downloadable stream available for this title.');
+    }
 
     final request = http.Request('GET', Uri.parse(streamUrl));
     final streamed = await httpClient.send(request);
