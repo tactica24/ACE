@@ -462,7 +462,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (safeVideoType !== 'SERIES') {
-    if (!safeTitle || !safeDescription || !safeMasterUploadKey) {
+    const isAdminUpload = auth.role === 'ADMIN';
+    if (!safeTitle || !safeDescription || (!safeMasterUploadKey && !isAdminUpload)) {
       return NextResponse.json({ error: 'Please upload a final 1080p Full HD delivery master (MP4 or MOV) for your movie.' }, { status: 400 });
     }
 

@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
   const contentWarnings = normalizeList(body.contentWarnings);
   const licensedTerritories = normalizeList(body.licensedTerritories);
   const availabilityRegion = typeof body.availabilityRegion === 'string' ? body.availabilityRegion.trim() : 'GLOBAL';
+  const trailerKey = typeof body.trailerKey === 'string' ? body.trailerKey.trim() || null : null;
+  const posterKey = typeof body.posterKey === 'string' ? body.posterKey.trim() || null : null;
   const unlockPrice = Math.round(Number(body.unlockPrice ?? 0));
   const producerRevenueShare = Number(body.producerRevenueShare ?? 70);
   const platformRevenueShare = Number(body.platformRevenueShare ?? 30);
@@ -74,29 +76,37 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
     return NextResponse.json({ error: 'Revenue split must add up to 100%.' }, { status: 400 });
   }
 
+  const techData: Record<string, unknown> = { licensedTerritories, availabilityRegion };
+  if (trailerKey) techData.trailerKey = trailerKey;
+
+  const videoData: Record<string, unknown> = {
+    title,
+    description,
+    category,
+    videoType: videoType as (typeof VIDEO_TYPES)[number],
+    ageRating: ageRating as (typeof AGE_RATINGS)[number],
+    priceTier: priceTier as (typeof PRICE_TIERS)[number],
+    rightsTier: rightsTier as (typeof RIGHTS_TIERS)[number],
+    unlockPrice: unlockPrice > 0 ? unlockPrice : null,
+    producerRevenueShare,
+    platformRevenueShare,
+    taxRevenueShare,
+    releaseYear: safeReleaseYear,
+    originalLanguage,
+    genres,
+    contentWarnings
+  };
+  if (posterKey) videoData.posterKey = posterKey;
+
   const video = await prisma.video.update({
     where: { id: videoId },
     data: {
-      title,
-      description,
-      category,
-      videoType: videoType as (typeof VIDEO_TYPES)[number],
-      ageRating: ageRating as (typeof AGE_RATINGS)[number],
-      priceTier: priceTier as (typeof PRICE_TIERS)[number],
-      rightsTier: rightsTier as (typeof RIGHTS_TIERS)[number],
-      unlockPrice: unlockPrice > 0 ? unlockPrice : null,
-      producerRevenueShare,
-      platformRevenueShare,
-      taxRevenueShare,
-      releaseYear: safeReleaseYear,
-      originalLanguage,
-      genres,
-      contentWarnings,
+      ...videoData,
       technicalMetadata: {
         upsert: {
           where: { videoId },
-          create: { licensedTerritories, availabilityRegion },
-          update: { licensedTerritories, availabilityRegion }
+          create: techData,
+          update: techData
         }
       }
     },
@@ -117,10 +127,12 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
       originalLanguage: true,
       genres: true,
       contentWarnings: true,
+      posterKey: true,
       technicalMetadata: {
         select: {
           licensedTerritories: true,
-          availabilityRegion: true
+          availabilityRegion: true,
+          trailerKey: true
         }
       }
     }
@@ -131,7 +143,9 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
     video: {
       ...video,
       licensedTerritories: video.technicalMetadata?.licensedTerritories ?? [],
-      availabilityRegion: video.technicalMetadata?.availabilityRegion ?? 'GLOBAL'
+      availabilityRegion: video.technicalMetadata?.availabilityRegion ?? 'GLOBAL',
+      trailerKey: video.technicalMetadata?.trailerKey ?? null,
+      posterKey: video.posterKey ?? null
     }
   });
 }

@@ -41,6 +41,7 @@ type UploadFormProps = {
   requestHeaders?: Record<string, string>;
   successRedirectPath?: string;
   contractRedirectBasePath?: string | null;
+  allowNoMaster?: boolean;
 };
 
 type UploadState = {
@@ -371,7 +372,8 @@ export default function UploadForm({
   extraPayload,
   requestHeaders,
   successRedirectPath = '/studio/library',
-  contractRedirectBasePath = '/studio/upload?contractVideoId='
+  contractRedirectBasePath = '/studio/upload?contractVideoId=',
+  allowNoMaster = false
 }: UploadFormProps) {
   const [form, setForm] = useState<UploadState>({
     ...initialState,
@@ -658,7 +660,7 @@ export default function UploadForm({
     event.preventDefault();
     setMessage(null);
 
-    if (!isSeriesUpload) {
+    if (!isSeriesUpload && !allowNoMaster) {
       if (!masterFile || !isSupportedMasterFile(masterFile)) {
         setMessage('Upload a final 1080p Full HD delivery master (MP4 or MOV) before submitting.');
         return;
@@ -1754,9 +1756,10 @@ export default function UploadForm({
       <div className="form-section">
         <div>
           <h3 className="form-section-title">Upload assets</h3>
-          <p className="muted form-section-copy">
-            Deliver the final approved 1080p Full HD master. MP4 or MOV only; H.264/H.265 preferred. No watermark, no burned-in timecode, no rough cuts.
-          </p>
+           <p className="muted form-section-copy">
+             Deliver the final approved 1080p Full HD master. MP4 or MOV only; H.264/H.265 preferred. No watermark, no burned-in timecode, no rough cuts.
+             {allowNoMaster ? ' (Master optional if you will upload pre-built HLS directly.)' : ''}
+           </p>
         </div>
 
         {!isSeriesUpload ? (
@@ -1764,7 +1767,18 @@ export default function UploadForm({
             <div className="field-grid field-grid-2">
               <label className="field">
                 <span className="field-label">Final delivery master (1080p Full HD MP4 or MOV)</span>
-                <input className="input" type="file" accept=".mp4,.mov,video/mp4,video/quicktime" onChange={(event) => setMasterFile(event.target.files?.[0] ?? null)} required />
+                <input
+                  className="input"
+                  type="file"
+                  accept=".mp4,.mov,video/mp4,video/quicktime"
+                  onChange={(event) => setMasterFile(event.target.files?.[0] ?? null)}
+                  required={!allowNoMaster}
+                />
+                {allowNoMaster && (
+                  <span className="muted" style={{ display: 'block', marginTop: 4 }}>
+                    Optional when you already have the HLS package — upload HLS later from Admin Videos desk.
+                  </span>
+                )}
               </label>
               <label className="field">
                 <span className="field-label">Poster artwork</span>

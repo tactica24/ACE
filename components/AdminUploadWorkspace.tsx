@@ -118,6 +118,7 @@ export default function AdminUploadWorkspace({
           extraPayload={{ targetCreatorUserId: selectedProducerId }}
           successRedirectPath={`/admin/users/${selectedProducerId}`}
           contractRedirectBasePath={null}
+          allowNoMaster
         />
       </div>
     </div>

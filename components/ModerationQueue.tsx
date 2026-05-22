@@ -86,6 +86,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [successes, setSuccesses] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, VideoDraft>>({});
+  const [editAssets, setEditAssets] = useState<Record<string, { trailer: File | null; poster: File | null }>>({});
 
   const getDraft = (item: Item) =>
     drafts[item.video.id] ?? {
@@ -107,6 +108,32 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       licensedTerritories: (item.video.licensedTerritories ?? []).join(', '),
       availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL'
     };
+  };
+
+  const getEditAssets = (videoId: string) => editAssets[videoId] ?? { trailer: null, poster: null };
+
+  const setEditAsset = (videoId: string, type: 'trailer' | 'poster', file: File | null) => {
+    setEditAssets((prev) => ({
+      ...prev,
+      [videoId]: {
+        ...getEditAssets(videoId),
+        [type]: file
+      }
+    }));
+  };
+
+  const clearEditAssets = (videoId: string) => {
+    setEditAssets((prev) => {
+      const next = { ...prev };
+      delete next[videoId];
+      return next;
+    });
+  };
+
+  const closeEdit = (videoId: string) => {
+    clearEditAssets(videoId);
+    setEditingId(null);
+  };
 
   const updateDraft = (videoId: string, key: keyof VideoDraft, value: string) => {
     setDrafts((prev) => ({
@@ -136,15 +163,72 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     }));
   };
 
+  // Minimal upload helpers for trailer/poster assets during moderation edit (reuses studio presigned upload)
+  const uploadFileToSignedUrl = async (url: string, file: File, contentType: string, onProgress?: (loaded: number, total: number) => void) => {
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url, true);
+      xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) onProgress(event.loaded, event.total);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Storage upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`));
+      };
+      xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
+      xhr.ontimeout = () => reject(new Error('Storage upload timed out before storage accepted the file.'));
+      xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
+      xhr.send(file);
+    });
+  };
+
+  const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster') => {
+    const response = await fetch('/api/studio/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        purpose,
+        fileSize: file.size
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.url || !payload.key) {
+      throw new Error(payload.error || 'Could not prepare upload.');
+    }
+    await uploadFileToSignedUrl(payload.url, file, file.type || 'application/octet-stream');
+    return payload.key as string;
+  };
+
   const saveEdit = async (item: Item) => {
     const draft = getDraft(item);
+    const assets = getEditAssets(item.video.id);
+    let trailerKey: string | undefined;
+    let posterKey: string | undefined;
+
+    try {
+      if (assets.trailer) {
+        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer');
+      }
+      if (assets.poster) {
+        posterKey = await prepareAssetUpload(assets.poster, 'poster');
+      }
+    } catch (uploadErr: any) {
+      setErrors((prev) => ({ ...prev, [item.video.id]: uploadErr?.message || 'Failed to upload trailer or poster.' }));
+      return;
+    }
+
     const res = await fetch('/api/admin/videos/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         videoId: item.video.id,
         ...draft,
-        licensedTerritories: draft.licensedTerritories
+        licensedTerritories: draft.licensedTerritories,
+        ...(trailerKey ? { trailerKey } : {}),
+        ...(posterKey ? { posterKey } : {})
       })
     });
 
@@ -161,13 +245,17 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
               ...entry,
               video: {
                 ...entry.video,
-                ...data.video
+                ...data.video,
+                // ensure new keys are reflected for download links if returned
+                ...(trailerKey ? { trailerDownloadHref: `/api/admin/videos/${item.video.id}/trailer` } : {}),
+                ...(posterKey ? { posterDownloadHref: `/api/admin/videos/${item.video.id}/poster` } : {})
               }
             }
           : entry
       )
     );
     setEditingId(null);
+    clearEditAssets(item.video.id);
     setErrors((prev) => {
       const next = { ...prev };
       delete next[item.video.id];
@@ -183,27 +271,34 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     }, 2500);
   };
 
-  const handleAction = async (item: Item, action: 'approve' | 'reject' | 'remove') => {
+  const handleAction = async (item: Item, action: 'approve' | 'reject' | 'deactivate' | 'activate') => {
     if ((action === 'approve' || action === 'reject') && !item.hasModerationRecord) {
       setErrors((prev) => ({
         ...prev,
-        [item.video.id]: 'This title has no moderation record yet. Use "Deactivate for viewers" to hide it from the catalog.'
+        [item.video.id]: 'This title has no moderation record yet. Use the visibility toggle below to hide or reactivate it.'
       }));
       return;
     }
 
-    const endpoint = action === 'remove' ? '/api/admin/videos/delete' : `/api/admin/moderation/${action}`;
-    const reason = (reasons[item.video.id] ?? '').trim();
+    const isVisibilityToggle = action === 'deactivate' || action === 'activate';
+    const targetStatus = action === 'deactivate' ? 'DRAFT' : action === 'activate' ? 'APPROVED' : null;
 
-    if (action === 'remove' && !reason) {
-      setErrors((prev) => ({ ...prev, [item.video.id]: 'Add a note before hiding this title from viewers.' }));
-      return;
+    let endpoint: string;
+    let payload: Record<string, unknown>;
+
+    if (isVisibilityToggle) {
+      endpoint = '/api/admin/videos/status';
+      const reason = (reasons[item.video.id] ?? '').trim();
+      if (action === 'deactivate' && !reason) {
+        setErrors((prev) => ({ ...prev, [item.video.id]: 'Add a note before hiding this title from viewers.' }));
+        return;
+      }
+      payload = { videoId: item.video.id, status: targetStatus, reason: reason || undefined };
+    } else {
+      endpoint = `/api/admin/moderation/${action}`;
+      const reason = (reasons[item.video.id] ?? '').trim();
+      payload = { id: item.id, reason };
     }
-
-    const payload =
-      action === 'remove'
-        ? { videoId: item.video.id, reason }
-        : { id: item.id, reason };
 
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -217,7 +312,34 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
         delete next[item.video.id];
         return next;
       });
-      setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+
+      if (isVisibilityToggle) {
+        // Flip the status locally so button updates without reload; keep in list for reactivate/deactivate toggle
+        setItems((prev) =>
+          prev.map((entry) =>
+            entry.video.id === item.video.id
+              ? {
+                  ...entry,
+                  video: {
+                    ...entry.video,
+                    status: targetStatus!
+                  }
+                }
+              : entry
+          )
+        );
+        const newStatus = targetStatus === 'DRAFT' ? 'hidden' : 'live';
+        setSuccesses((prev) => ({ ...prev, [item.video.id]: `Title is now ${newStatus} for viewers.` }));
+        setTimeout(() => {
+          setSuccesses((prev) => {
+            const next = { ...prev };
+            delete next[item.video.id];
+            return next;
+          });
+        }, 2500);
+      } else {
+        setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+      }
       return;
     }
 
@@ -433,19 +555,61 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     <span className="field-label">Licensed territories</span>
                     <input className="input" value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
                   </label>
-                  <label className="field" style={{ gridColumn: '1 / -1' }}>
-                    <span className="field-label">Description</span>
-                    <textarea className="input" rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)} />
-                  </label>
-                  <div className="moderation-actions" style={{ gridColumn: '1 / -1' }}>
+                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                     <span className="field-label">Description</span>
+                     <textarea className="input" rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)} />
+                   </label>
+
+                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                     <span className="field-label">Marketing trailer (MP4) — optional, replaces existing</span>
+                     <input
+                       type="file"
+                       accept="video/mp4,video/quicktime"
+                       onChange={(event) => setEditAsset(item.video.id, 'trailer', event.target.files?.[0] ?? null)}
+                     />
+                     {getEditAssets(item.video.id).trailer ? (
+                       <span className="muted">Selected: {getEditAssets(item.video.id).trailer?.name}</span>
+                     ) : item.video.trailerDownloadHref ? (
+                       <span className="muted">Current trailer attached — pick file above to replace</span>
+                     ) : (
+                       <span className="muted">No trailer yet — pick file to attach</span>
+                     )}
+                   </label>
+
+                   <label className="field" style={{ gridColumn: '1 / -1' }}>
+                     <span className="field-label">Poster / key art (JPG/PNG/WEBP) — optional, replaces existing</span>
+                     <input
+                       type="file"
+                       accept="image/jpeg,image/png,image/webp"
+                       onChange={(event) => setEditAsset(item.video.id, 'poster', event.target.files?.[0] ?? null)}
+                     />
+                     {getEditAssets(item.video.id).poster ? (
+                       <span className="muted">Selected: {getEditAssets(item.video.id).poster?.name}</span>
+                     ) : item.video.posterDownloadHref ? (
+                       <span className="muted">Current poster attached — pick file above to replace</span>
+                     ) : (
+                       <span className="muted">No poster yet — pick file to attach</span>
+                     )}
+                   </label>
+
+                   <div className="moderation-actions" style={{ gridColumn: '1 / -1' }}>
                     <button className="btn btn-primary" onClick={() => saveEdit(item)}>Save changes</button>
-                    <button className="btn btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
+                     <button className="btn btn-ghost" onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
                 </div>
               ) : null}
 
               <div className="moderation-actions">
-                <button className="btn btn-ghost" onClick={() => setEditingId((current) => current === item.video.id ? null : item.video.id)}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    if (editingId === item.video.id) {
+                      closeEdit(item.video.id);
+                    } else {
+                      setEditingId(item.video.id);
+                    }
+                  }}
+                >
                   {editingId === item.video.id ? 'Close editor' : 'Edit details'}
                 </button>
                 {item.video.posterDownloadHref ? (
@@ -468,8 +632,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     Reject title
                   </button>
                 ) : null}
-                <button className="btn btn-ghost" onClick={() => handleAction(item, 'remove')}>
-                  Deactivate for viewers
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => handleAction(item, item.video.status === 'DRAFT' ? 'activate' : 'deactivate')}
+                >
+                  {item.video.status === 'DRAFT' ? 'Activate for users' : 'Deactivate for viewers'}
                 </button>
               </div>
 
