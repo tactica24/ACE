@@ -249,7 +249,17 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     releaseYear: video.releaseYear,
   }));
 
-  const featuredRows = buildRows(videos, [], []);
+  const trendingItems = videos.slice(0, 5);
+  const featuredRows = trendingItems.length
+    ? [
+        {
+          id: 'trending',
+          title: 'Trending Now',
+          description: 'Stories viewers are returning to on ACE Studio.',
+          items: trendingItems
+        }
+      ]
+    : [];
 
   return (
     <div className="nmhp-landing">
@@ -341,7 +351,6 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
               <section key={row.id} className="home-shelf">
                 <div className="home-shelf-header">
                   <div>
-                    <span className="home-row-kicker">Featured on ACE</span>
                     <h2>{row.title}</h2>
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse all</Link>

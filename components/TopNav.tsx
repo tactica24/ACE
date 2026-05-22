@@ -113,7 +113,7 @@ export default function TopNav() {
       <div className="container nav-inner">
         <Link className="brand brand-premium" href={homeHref} aria-label="ACE Studio home">
           <span className="brand-mark brand-mark-image">
-            <Image src="/ace-studio-mark.svg" alt="" width={42} height={42} priority />
+            <Image src="/ace-studio-mark.svg" alt="" width={36} height={36} priority />
           </span>
           <span className="brand-wordmark" aria-hidden="true">
             <span className="brand-wordmark-ace">ACE</span>
@@ -149,17 +149,6 @@ export default function TopNav() {
             })}
           </div>
           <div className="nav-actions nav-actions-premium">
-            <form className="nav-search" action="/browse" method="get">
-              <input
-                className="nav-search-input"
-                type="search"
-                name="q"
-                placeholder="Search..."
-                aria-label="Search the ACE Studio catalog"
-                style={{ width: '180px' }}
-              />
-              <button className="nav-search-button" type="submit">Search</button>
-            </form>
             {user ? (
               <>
                 <Link className="nav-icon-link" href="/tv" aria-label="Open TV viewing and pairing">
