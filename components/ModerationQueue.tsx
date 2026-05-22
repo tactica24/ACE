@@ -147,7 +147,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       licensedTerritories: (item.video.licensedTerritories ?? []).join(', '),
       availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL'
     };
-  };
 
   const getEditAssets = (videoId: string) => editAssets[videoId] ?? { trailer: null, poster: null };
 

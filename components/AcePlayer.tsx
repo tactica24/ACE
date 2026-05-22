@@ -615,7 +615,7 @@ export default function AcePlayer({
       }
       return false;
     }
-  }, [isAuthenticated, loadStream, loginHref, videoId]);
+  }, [isAuthenticated, loadStream, loginHref, router, videoId]);
 
   useEffect(() => {
     loadStream({
