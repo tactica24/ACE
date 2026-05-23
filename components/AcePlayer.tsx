@@ -208,7 +208,7 @@ export default function AcePlayer({
   const [unlockState, setUnlockState] = useState<UnlockState>('idle');
   const [watchMode, setWatchMode] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string>('');
-  const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
+  const [isPlayingTrailer, setIsPlayingTrailer] = useState(Boolean(trailerKey));
   const [feedback, setFeedback] = useState<string | null>(null);
   const [resumePrompt, setResumePrompt] = useState<number | null>(null);
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string>(subtitleTracks.find((track) => track.isDefault)?.id ?? subtitleTracks[0]?.id ?? 'off');
@@ -606,11 +606,19 @@ export default function AcePlayer({
   }, [isAuthenticated, loadStream, loginHref, router, videoId]);
 
   useEffect(() => {
+    if (trailerKey) {
+      return;
+    }
+
     loadStream({
       resumeAt: Math.max(initialProgress, readSavedProgress(videoId)),
       autoplay: false
     }).catch(() => setFeedback('Unable to load the stream right now.'));
-  }, [initialProgress, loadStream, videoId]);
+  }, [initialProgress, loadStream, trailerKey, videoId]);
+
+  useEffect(() => {
+    setIsPlayingTrailer(Boolean(trailerKey));
+  }, [trailerKey, videoId]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -941,17 +949,6 @@ export default function AcePlayer({
         <div className="player-mode-selector">
           <button
             type="button"
-            className={`mode-btn${!isPlayingTrailer ? ' active' : ''}`}
-            onClick={() => {
-              setIsPlayingTrailer(false);
-              setShowPaywall(false);
-              setFeedback(null);
-            }}
-          >
-            🎬 {copy.watchNow || 'Watch Movie'}
-          </button>
-          <button
-            type="button"
             className={`mode-btn${isPlayingTrailer ? ' active' : ''}`}
             onClick={() => {
               setIsPlayingTrailer(true);
@@ -960,6 +957,18 @@ export default function AcePlayer({
             }}
           >
             🎥 {copy.teaser || 'Trailer'}
+          </button>
+          <button
+            type="button"
+            className={`mode-btn${!isPlayingTrailer ? ' active' : ''}`}
+            onClick={() => {
+              setIsPlayingTrailer(false);
+              setShowPaywall(false);
+              setFeedback(null);
+              void loadStream({ resumeAt: Math.max(initialProgress, readSavedProgress(videoId)), autoplay: false });
+            }}
+          >
+            🎬 {copy.watchNow || 'Watch Movie'}
           </button>
         </div>
       )}

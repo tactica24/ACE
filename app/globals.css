@@ -11395,6 +11395,162 @@ body::before {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* Professional layout polish */
+.info-page-shell {
+  max-width: 1120px;
+}
+
+.info-page-hero-panel,
+.info-page-body,
+.info-page-fact-strip {
+  align-items: stretch;
+}
+
+.info-page-title {
+  max-width: 880px;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.info-page-summary,
+.info-page-section-copy p,
+.faq-item p {
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+.info-page-section-card h2,
+.info-page-feature-card strong,
+.info-page-rail-card strong {
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.video-card {
+  min-width: 0;
+}
+
+.video-meta {
+  min-width: 0;
+}
+
+.video-meta-top {
+  min-width: 0;
+}
+
+.video-card-title {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.video-card-price {
+  max-width: 42%;
+  white-space: normal;
+  text-align: right;
+  line-height: 1.25;
+}
+
+.video-card-details span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.home-movie-hero {
+  min-height: min(76vh, 760px);
+  background: #05070d;
+}
+
+.home-movie-hero-backdrop {
+  opacity: 0.72;
+  filter: none;
+}
+
+.home-movie-hero-sweep,
+.home-movie-floating-layer,
+.home-movie-poster-badge {
+  display: none !important;
+}
+
+.home-movie-hero-meta-kicker {
+  color: rgba(245, 244, 240, 0.76);
+  letter-spacing: 0.08em;
+}
+
+.home-movie-hero-title {
+  max-width: 760px;
+  font-size: clamp(2.2rem, 5vw, 4.5rem);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.home-movie-hero-summary {
+  max-width: 680px;
+  color: rgba(245, 244, 240, 0.82);
+}
+
+.home-movie-hero-description-note {
+  display: none;
+}
+
+.home-carousel-marquee {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.home-carousel-marquee .home-carousel-item {
+  animation: ace-trending-marquee 34s linear infinite;
+}
+
+.home-carousel-marquee:hover .home-carousel-item,
+.home-carousel-marquee:focus-within .home-carousel-item {
+  animation-play-state: paused;
+}
+
+@keyframes ace-trending-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-100% - 16px));
+  }
+}
+
+.movie-details-section,
+.video-page-collection {
+  border-radius: 18px;
+}
+
+.video-page-title,
+.movie-synopsis,
+.video-page-meta-line {
+  overflow-wrap: anywhere;
+}
+
+.home-carousel-item .video-card {
+  width: 230px;
+}
+
+.nmhp-hero-bg {
+  opacity: 0.26;
+}
+
+.nmhp-hero-poster {
+  transform: none !important;
+  border-radius: 8px;
+}
+
+.nmhp-features {
+  display: none;
+}
+
 /* Responsive adjustments */
 @media (max-width: 960px) {
   .movie-split-top {

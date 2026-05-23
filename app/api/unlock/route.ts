@@ -13,6 +13,10 @@ import { planUnlockDebit } from '@/lib/unlock-debit';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
 import { revalidatePath } from 'next/cache';
 
+function isPrismaKnownError(error: unknown, code: string) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
+}
+
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -101,14 +105,14 @@ export async function POST(req: NextRequest) {
   const referralNaira = referral ? Math.round(split.platformNaira * (referral.commissionPercent / 100)) : 0;
   const platformNetNaira = Math.max(split.platformNaira - referralNaira, 0);
 
-  try {
-    const result = await prisma.$transaction(
+  async function createUnlockTransaction() {
+    return prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`unlock:${auth.sub}:${videoId}`}))`;
 
         const existing = await tx.unlock.findFirst({ where: { userId: auth.sub, videoId } });
         if (existing) {
-          return { unlocked: true, source: existing.source };
+          return { unlocked: true, source: existing.source, unlockId: existing.id, created: false };
         }
 
         let source: 'PASS' | 'WALLET' = 'WALLET';
@@ -172,11 +176,6 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        await tx.video.update({
-          where: { id: videoId },
-          data: { totalUnlocks: { increment: 1 } }
-        });
-
         await tx.platformWallet.upsert({
           where: { id: 'ace-platform' },
           update: { balanceNaira: { increment: platformNetNaira } },
@@ -190,46 +189,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        await tx.unlockSettlement.create({
-          data: {
-            unlockId: unlock.id,
-            videoId,
-            creatorProfileId,
-            grossNaira: amountNaira,
-            creatorNaira,
-            platformNaira: split.platformNaira,
-            gatewayFeeNaira: split.gatewayFeeNaira,
-            taxNaira: split.taxNaira,
-            referralNaira,
-            platformNetNaira
-          }
-        });
-
-        if (creatorProfileId && creatorNaira > 0) {
-          const now = new Date();
-          const reportMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          await tx.producerEarning.create({
-            data: {
-              producerId: creatorProfileId,
-              videoId,
-              unlockId: unlock.id,
-              grossAmount: amountNaira,
-              producerShareAmount: creatorNaira,
-              platformShareAmount: split.platformNaira,
-              currency: 'NGN',
-              reportMonth
-            }
-          });
-        }
-
         if (referral) {
-          await tx.referralEvent.create({
-            data: {
-              referralId: referral.id,
-              unlockId: unlock.id,
-              commissionNaira: referralNaira
-            }
-          });
           await tx.wallet.upsert({
             where: { userId: referral.promoterId },
             update: { balanceNaira: { increment: referralNaira } },
@@ -237,10 +197,80 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        return { unlocked: true, source };
+        return { unlocked: true, source, unlockId: unlock.id, created: true };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+  }
+
+  async function recordUnlockSideEffects(unlockId: string, created: boolean) {
+    if (!created) {
+      return;
+    }
+
+    await Promise.allSettled([
+      prisma.video.update({
+        where: { id: videoId },
+        data: { totalUnlocks: { increment: 1 } }
+      }),
+      prisma.unlockSettlement.create({
+        data: {
+          unlockId,
+          videoId,
+          creatorProfileId,
+          grossNaira: amountNaira,
+          creatorNaira,
+          platformNaira: split.platformNaira,
+          gatewayFeeNaira: split.gatewayFeeNaira,
+          taxNaira: split.taxNaira,
+          referralNaira,
+          platformNetNaira
+        }
+      }),
+      creatorProfileId && creatorNaira > 0
+        ? prisma.producerEarning.create({
+            data: {
+              producerId: creatorProfileId,
+              videoId,
+              unlockId,
+              grossAmount: amountNaira,
+              producerShareAmount: creatorNaira,
+              platformShareAmount: split.platformNaira,
+              currency: 'NGN',
+              reportMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+            }
+          })
+        : Promise.resolve(null),
+      referral
+        ? prisma.referralEvent.create({
+            data: {
+              referralId: referral.id,
+              unlockId,
+              commissionNaira: referralNaira
+            }
+          })
+        : Promise.resolve(null)
+    ]).then((results) => {
+      const failed = results.filter((result) => result.status === 'rejected');
+      if (failed.length) {
+        console.error('[unlock] non-blocking side effects failed', failed);
+      }
+    });
+  }
+
+  try {
+    let result;
+    try {
+      result = await createUnlockTransaction();
+    } catch (error) {
+      if (isPrismaKnownError(error, 'P2034')) {
+        result = await createUnlockTransaction();
+      } else {
+        throw error;
+      }
+    }
+
+    await recordUnlockSideEffects(result.unlockId, result.created);
 
     revalidatePath('/');
     revalidatePath('/account');
@@ -261,8 +291,22 @@ export async function POST(req: NextRequest) {
       }, { status: 402 });
     }
 
+    if (isPrismaKnownError(error, 'P2002')) {
+      const existing = await prisma.unlock.findFirst({ where: { userId: auth.sub, videoId } });
+      if (existing) {
+        return NextResponse.json({ ok: true, unlocked: true, source: existing.source });
+      }
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json({
+        error: 'Unable to unlock this title right now. Please try again in a moment.',
+        reason: error.code
+      }, { status: 500 });
+    }
+
     return NextResponse.json({ 
-      error: 'Unable to unlock this title right now. (Internal error - check server logs)' 
+      error: 'Unable to unlock this title right now. Please try again in a moment.' 
     }, { status: 500 });
   }
 }

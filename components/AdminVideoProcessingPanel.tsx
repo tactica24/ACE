@@ -315,6 +315,49 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     }
   }
 
+    async function uploadHlsFileThroughServer(videoId: string, relativePath: string, file: File) {
+      const formData = new FormData();
+      formData.set('relativePath', relativePath);
+      formData.set('file', file);
+
+      const response = await fetch(`/api/admin/videos/${videoId}/hls/file`, {
+        method: 'POST',
+        body: formData
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Failed to upload ${relativePath}.`);
+      }
+    }
+
+    async function uploadHlsFile(videoId: string, relativePath: string, file: File, headers: Record<string, string>) {
+      const presignRes = await fetch(`/api/admin/videos/${videoId}/hls/presign`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ relativePath })
+      });
+      const presign = await presignRes.json().catch(() => ({}));
+
+      if (!presignRes.ok || !presign.url) {
+        throw new Error(presign.error ?? `Failed to prepare upload for ${relativePath}`);
+      }
+
+      try {
+        const uploadRes = await fetch(presign.url, {
+          method: 'PUT',
+          headers: { 'Content-Type': getHlsContentType(relativePath) },
+          body: file
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Storage rejected ${relativePath}: ${uploadRes.status}`);
+        }
+      } catch {
+        await uploadHlsFileThroughServer(videoId, relativePath, file);
+      }
+    }
+
 
     // Upload HLS directly as individual files with the real folder structure.
     async function uploadHlsFolder(videoId: string, files: File[]) {
@@ -340,29 +383,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
         for (const file of files) {
           const relativePath = (file as any).webkitRelativePath || file.name;
           relativePaths.push(relativePath);
-
-          // Get presigned URL for final location
-          const presignRes = await fetch(`/api/admin/videos/${videoId}/hls/presign`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ relativePath })
-          });
-          const presign = await presignRes.json().catch(() => ({}));
-
-          if (!presignRes.ok || !presign.url) {
-            throw new Error(presign.error ?? `Failed to prepare upload for ${relativePath}`);
-          }
-
-          // Upload the file directly to final HLS location
-          const uploadRes = await fetch(presign.url, {
-            method: 'PUT',
-            headers: { 'Content-Type': getHlsContentType(relativePath) },
-            body: file
-          });
-
-          if (!uploadRes.ok) {
-            throw new Error(`Failed to upload ${relativePath}: ${uploadRes.status}`);
-          }
+          await uploadHlsFile(videoId, relativePath, file, headers);
 
           uploaded += 1;
           const progress = Math.round((uploaded / total) * 100);

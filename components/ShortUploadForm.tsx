@@ -109,6 +109,17 @@ async function uploadFileToSignedUrl(
   });
 }
 
+function toStorageUploadError(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Upload failed.';
+  if (message.toLowerCase().includes('network error') || message.toLowerCase().includes('failed to fetch')) {
+    return (
+      'Storage upload failed before R2 accepted the file. This usually means the R2 bucket CORS does not allow this website origin. ' +
+      'Allow both https://www.acestudio.ng and https://acestudio.ng on the upload bucket, then try again.'
+    );
+  }
+  return message;
+}
+
 export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps) {
   const [rows, setRows] = useState<ShortUploadRow[]>([
     { id: createId(), title: '', masterFile: null, trailerFile: null, trailerSubtitleFile: null, posterFile: null, subtitleFile: null, status: 'pending', progress: 0, error: null }
@@ -313,7 +324,7 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
         { id: createId(), title: '', masterFile: null, trailerFile: null, trailerSubtitleFile: null, posterFile: null, subtitleFile: null, status: 'pending', progress: 0, error: null }
       ]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Upload failed.');
+      setMessage(toStorageUploadError(error));
       if (error instanceof Error && error.message) {
         setRows((current) => current.map((row) => (row.status === 'uploading' ? { ...row, status: 'failed' } : row)));
       }

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import HomeMovieHero from '@/components/HomeMovieHero';
 import VideoCard from '@/components/VideoCard';
@@ -96,101 +96,13 @@ function formatRuntime(_durationSec?: number | null) {
   return '90m';
 }
 
-function buildRows(videos: HomeVideo[], continueWatching: HomeVideo[], unlockedVideos: HomeVideo[]) {
-  const rows: HomeRow[] = [];
-  const freshReleases = [...videos]
-    .sort((left, right) => getVideoCreatedTime(right) - getVideoCreatedTime(left))
-    .slice(0, 12);
-  const nollywood = pickVideos(videos, (video) => /nollywood|nigeria|naija/.test(normalizeVideoText(video)));
-  const africanOriginals = pickVideos(videos, (video) => /africa|african|ghana|kenya|south africa/.test(normalizeVideoText(video)));
-  const asianCinema = pickVideos(videos, (video) => /korean|asia|asian|k-drama/.test(normalizeVideoText(video)));
-  const actionThriller = pickVideos(videos, (video) => /action|thriller|crime|spy/.test(normalizeVideoText(video)));
-  const romance = pickVideos(videos, (video) => /romance|love|relationship/.test(normalizeVideoText(video)));
-  const family = pickVideos(
-    videos,
-    (video) =>
-      /family|kids|children|animation|faith/.test(normalizeVideoText(video)) ||
-      video.ageRating === 'ALL' ||
-      video.ageRating === 'PG13'
-  );
-
-  if (continueWatching.length) {
-    rows.push({
-      id: 'continue-watching',
-      title: 'Continue Watching',
-      description: 'Resume the titles you started most recently.',
-      items: continueWatching
-    });
-  }
-
-  if (unlockedVideos.length) {
-    rows.push({
-      id: 'my-library',
-      title: 'Top Picks for You',
-      description: 'Titles already available on your account.',
-      items: unlockedVideos
-    });
-  }
-
-  rows.push({
+function buildRows(videos: HomeVideo[]) {
+  return [{
     id: 'trending',
     title: 'Trending Now',
     description: 'Stories viewers are returning to on ACE Studio.',
-    items: videos.slice(0, 12)
-  });
-
-  const rowDefinitions = [
-    {
-      id: 'nollywood',
-      title: 'Nollywood Spotlight',
-      description: 'Premium local storytelling with a world-class presentation.',
-      items: nollywood
-    },
-    {
-      id: 'african-originals',
-      title: 'African Originals',
-      description: 'Curated voices, bold visuals, and new stories from across the continent.',
-      items: africanOriginals
-    },
-    {
-      id: 'asian-cinema',
-      title: 'Korean & Asian Cinema',
-      description: 'Elegant dramas, thrillers, and modern favorites from Asia.',
-      items: asianCinema
-    },
-    {
-      id: 'action-thriller',
-      title: 'Action & Thriller',
-      description: 'Tension, pace, and edge-of-your-seat momentum.',
-      items: actionThriller
-    },
-    {
-      id: 'romance',
-      title: 'Romance',
-      description: 'Relationship stories with warmth, longing, and emotional payoff.',
-      items: romance
-    },
-    {
-      id: 'family',
-      title: 'Family & Kids',
-      description: 'Friendly viewing options for shared moments and lighter nights.',
-      items: family
-    },
-    {
-      id: 'new-releases',
-      title: 'New Releases',
-      description: 'Fresh arrivals, recent drops, and titles worth discovering early.',
-      items: freshReleases
-    }
-  ];
-
-  for (const row of rowDefinitions) {
-    if (row.items.length >= 3) {
-      rows.push(row);
-    }
-  }
-
-  return rows.slice(0, 8);
+    items: videos.slice(0, 16)
+  }];
 }
 
 function buildEditorialCollections(videos: HomeVideo[]): EditorialCollection[] {
@@ -265,7 +177,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     <div className="nmhp-landing">
       {/* Netflix-style Hero Section (global TopNav provides ACE branding + auth) */}
       <section className="nmhp-hero">
-        {/* Artistic poster collage backdrop — premium cinematic feel */}
+        {/* Artistic poster collage backdrop â€” premium cinematic feel */}
         <div className="nmhp-hero-bg" aria-hidden="true">
           {videos.slice(0, 9).map((video, index) => {
             const posterUrl = getMediaAssetUrl(video.posterKey);
@@ -300,7 +212,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
           })}
         </div>
 
-        {/* Powerful cinematic overlay — text stays razor sharp */}
+        {/* Powerful cinematic overlay â€” text stays razor sharp */}
         <div className="nmhp-hero-overlay-strong" />
 
         <div className="nmhp-hero-content">
@@ -309,7 +221,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             Pay only for what you watch.
           </h1>
           <p className="nmhp-hero-subtitle">
-            As little as <strong>₦50 per movie</strong>. No subscriptions. No commitments.
+            As little as <strong>â‚¦50 per movie</strong>. No subscriptions. No commitments.
           </p>
           <div className="nmhp-hero-cta">
             <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">
@@ -325,23 +237,6 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="nmhp-features">
-        <div className="nmhp-features-grid">
-          <div className="nmhp-feature-card">
-            <h3>Pay as you go</h3>
-            <p>Only pay for the movies you want to watch. Starting at just ₦50.</p>
-          </div>
-          <div className="nmhp-feature-card">
-            <h3>Watch anywhere</h3>
-            <p>Stream instantly on your phone, tablet, computer or TV.</p>
-          </div>
-          <div className="nmhp-feature-card">
-            <h3>Premium African &amp; global films</h3>
-            <p>Curated selection of Nollywood, African cinema and international titles.</p>
-          </div>
-        </div>
-      </section>
 
       {/* Original Browse Content */}
       <div className="viewer-home guest-home">
@@ -355,9 +250,9 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse all</Link>
                 </div>
-                <div className="home-carousel">
-                  {row.items.map((video) => (
-                    <div key={video.id} className="home-carousel-item">
+                <div className="home-carousel home-carousel-marquee">
+                  {[...row.items, ...row.items].map((video, index) => (
+                    <div key={`${video.id}-${index}`} className="home-carousel-item">
                       <VideoCard
                         video={{
                           ...video,
@@ -477,8 +372,7 @@ export default async function HomePage() {
     }
   }
 
-  const rows = buildRows(videos, continueWatching, unlockedVideos);
-  const editorialCollections = buildEditorialCollections(videos);
+  const rows = buildRows(videos);
   const spotlightVideos = videos.slice(0, 5).map((video) => ({
     id: video.id,
     title: video.title,
@@ -503,15 +397,14 @@ export default async function HomePage() {
               <section key={row.id} id={row.id} className="home-shelf">
                 <div className="home-shelf-header">
                   <div>
-                    <span className="home-row-kicker">ACE selection</span>
                     <h2>{row.title}</h2>
                     <p className="muted" style={{ marginBottom: 0 }}>{row.description}</p>
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse more</Link>
                 </div>
-                <div className="home-carousel">
-                  {row.items.map((video) => (
-                    <div key={`${row.id}-${video.id}`} className="home-carousel-item">
+                <div className="home-carousel home-carousel-marquee">
+                  {[...row.items, ...row.items].map((video, index) => (
+                    <div key={`${row.id}-${video.id}-${index}`} className="home-carousel-item">
                       <VideoCard
                         video={{
                           ...video,
@@ -540,55 +433,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {editorialCollections.length ? (
-        <section className="section home-editorial-section">
-          <div className="container">
-            <div className="home-section-heading">
-              <div>
-                <span className="pill">Editorial collections</span>
-                <h2 className="section-title home-section-title">Curated discovery for standout storytelling</h2>
-                <p className="muted home-section-copy">
-                  Editorial picks, fresh shelves, and refined ways to find your next title.
-                </p>
-              </div>
-            </div>
-            <div className="home-editorial-grid">
-              {editorialCollections.map((collection) => {
-                const spotlightPoster = getMediaAssetUrl(collection.spotlight.posterKey);
-
-                return (
-                  <Link
-                    key={collection.title}
-                    className="home-editorial-card"
-                    href={collection.href}
-                    style={
-                      spotlightPoster
-                        ? {
-                            backgroundImage: `linear-gradient(180deg, rgba(8, 10, 17, 0.38), rgba(8, 10, 17, 0.9)), url(${spotlightPoster})`
-                          }
-                        : undefined
-                    }
-                  >
-                    <div className="home-editorial-copy">
-                      <span className="home-editorial-kicker">{collection.title}</span>
-                      <strong>{collection.spotlight.title}</strong>
-                      <p>{collection.description}</p>
-                    </div>
-                    <div className="home-editorial-supporting">
-                      {collection.supporting.map((video) => (
-                        <div key={video.id} className="home-editorial-supporting-item">
-                          <strong>{video.title}</strong>
-                          <span>{video.category} / {formatRuntime(video.durationSec) ?? video.videoType}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }

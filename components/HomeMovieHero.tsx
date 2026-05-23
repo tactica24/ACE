@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -117,6 +117,15 @@ function buildCardBackground(p: string | null): string {
     return `linear-gradient(180deg,rgba(7,8,16,.14) 0%,rgba(7,8,16,.68) 100%),url("${p}")`;
   }
   return `linear-gradient(135deg,rgba(7,8,16,.98) 0%,rgba(12,15,28,.98) 100%)`;
+}
+
+function buildHeroMeta(video: HeroCarouselVideo | null) {
+  if (!video) return 'Now Showing';
+  return [
+    video.releaseYear ? String(video.releaseYear) : null,
+    video.durationSec ? secondsToRuntime(video.durationSec) : null,
+    video.videoType || null
+  ].filter(Boolean).join(' / ') || 'Now Showing';
 }
 
 export default function HomeMovieHero(
@@ -252,7 +261,7 @@ export default function HomeMovieHero(
         }")`
       : undefined;
 
-  /* ── Render ─────────────────────────────── */
+  /* â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   // backdrop info for the first 3 poster slots
   const backCards: Array<{
@@ -273,26 +282,18 @@ export default function HomeMovieHero(
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >
-      {/* ── backdrop ─────────────────────────────────────────── */}
+      {/* â”€â”€ backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         className="home-movie-hero-backdrop"
         style={backdropImage ? { backgroundImage: backdropImage } : undefined}
         aria-hidden="true"
       />
 
-      {/* ── scan-line sweeps ─────────────────────────────────── */}
-      <div className="home-movie-hero-sweep one" aria-hidden="true" />
-      <div className="home-movie-hero-sweep two" aria-hidden="true" />
 
-      {/* ── hero copy ────────────────────────────────────────── */}
+      {/* â”€â”€ hero copy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="home-movie-hero-inner">
         <span className="home-movie-hero-meta-kicker">
-          {featured?.category ?? 'Now Showing'}
-          {featured?.releaseYear ? ` · ${featured.releaseYear}` : ''}
-          {featured?.durationSec
-            ? ` · ${secondsToRuntime(featured.durationSec)}`
-            : ''}
-          {featured?.videoType ? ` · ${featured.videoType}` : ''}
+          {buildHeroMeta(featured)}
         </span>
 
         <h1 className="home-movie-hero-title">
@@ -305,12 +306,6 @@ export default function HomeMovieHero(
             'Discover bold films, standout series, and a cinematic viewing journey built to feel premium from the first frame.'}
         </p>
 
-        {count > 0 ? (
-          <p className="home-movie-hero-description-note">
-            Now playing:{' '}
-            <span>{featured?.description}</span>
-          </p>
-        ) : null}
 
         <div className="home-movie-hero-actions">
           <Link
@@ -362,37 +357,8 @@ export default function HomeMovieHero(
         </div>
       </div>
 
-      {/* ── floating poster layer ────────────────────────────── */}
-      <div
-        className="home-movie-floating-layer"
-        aria-hidden="true"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-        {backCards.map((card) => (
-          <div
-            key={card.videoIdx}
-            className={`home-movie-poster${
-              entering === card.idx
-                ? ' home-movie-poster--fade-in'
-                : ' home-movie-poster--fade-out'
-            }`}
-            style={cardStyleFor(
-              card.idx,
-              buildCardBackground(posterFor(card.videoIdx, allVideos)),
-              card.variant,
-              entering,
-              card.offset,
-            )}
-          >
-            <span className="home-movie-poster-badge">
-              {allVideos[card.videoIdx]!.category}
-            </span>
-          </div>
-        ))}
-      </div>
 
-      {/* ── carousel controls ────────────────────────────────── */}
+      {/* â”€â”€ carousel controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         className="home-movie-carousel-controls"
         aria-label="Movie carousel"

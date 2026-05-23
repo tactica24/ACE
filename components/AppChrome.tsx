@@ -8,7 +8,10 @@ import TopNav from '@/components/TopNav';
 
 export default function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hidePublicShell = pathname?.startsWith('/admin') || pathname?.startsWith('/studio');
+  const hidePublicShell =
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/studio') ||
+    pathname?.startsWith('/creator');
   const isVideoDetailPage = pathname?.startsWith('/v/');
 
   useEffect(() => {
