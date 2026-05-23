@@ -68,7 +68,6 @@ function buildFfmpegCommand(video: AdminVideoItem) {
 
 export default function AdminVideoPipeline({ initialVideos }: AdminVideoPipelineProps) {
   const [videos, setVideos] = useState<AdminVideoItem[]>(initialVideos);
-  const [uploadQueue, setUploadQueue] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
 
@@ -110,13 +109,6 @@ export default function AdminVideoPipeline({ initialVideos }: AdminVideoPipeline
     if (data?.ok) {
       updateVideo(id, { masterProcessingStatus: data.status });
     }
-  };
-
-  const handleHlsUpload = async (id: string) => {
-    setMessage(
-      'HLS uploads are now done via "Upload HLS Folder" (no ZIP) in the main Admin Video Processing panel. ' +
-      'Please use the folder upload there for direct, real-structure HLS delivery.'
-    );
   };
 
   const handlePublish = async (id: string) => {
@@ -178,24 +170,18 @@ export default function AdminVideoPipeline({ initialVideos }: AdminVideoPipeline
             <div className="detail-card">
               <span className="detail-label">HLS preview</span>
               <strong>{video.hlsPlaybackUrl ? 'Available' : 'Pending'}</strong>
-              <span>{video.hlsUploadedAt ? new Date(video.hlsUploadedAt).toLocaleString() : 'Waiting for HLS package'}</span>
+              <span>{video.hlsUploadedAt ? new Date(video.hlsUploadedAt).toLocaleString() : 'Waiting for HLS folder'}</span>
             </div>
           </div>
 
           <div className="field-grid field-grid-3">
-            <label className="field">
-              <span className="field-label">HLS package</span>
-              <input
-                className="input"
-                type="file"
-                accept=".zip"
-                onChange={(event) => setUploadQueue((current) => ({ ...current, [video.id]: event.target.files?.[0] ?? null }))}
-              />
-            </label>
+            <div className="field">
+              <span className="field-label">HLS folder</span>
+              <Link className="btn btn-primary" href="/admin/videos">Open folder upload</Link>
+            </div>
             <div className="field">
               <span className="field-label">Actions</span>
               <div className="action-list" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn btn-ghost" type="button" onClick={() => handleHlsUpload(video.id)} disabled={loading[video.id]}>Upload HLS ZIP</button>
                 <button className="btn btn-ghost" type="button" onClick={() => handleCopyCommand(video)}>Copy FFmpeg command</button>
                 <button className="btn btn-ghost" type="button" onClick={() => handlePublish(video.id)} disabled={loading[video.id] || !video.hlsPlaybackUrl}>Publish</button>
               </div>

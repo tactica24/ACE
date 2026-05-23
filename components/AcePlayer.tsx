@@ -8,7 +8,6 @@ import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const AUTO_UNLOCK_LEAD_SECONDS = 20;
 const HISTORY_SYNC_SECONDS = 5;
-const PLAYBACK_RATE_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
 const HLS_JS_CDN_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js';
 
 type NetworkInformationLike = {
@@ -220,7 +219,6 @@ export default function AcePlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [playbackRate, setPlaybackRate] = useState(1);
   const [playbackSessionId, setPlaybackSessionId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -387,16 +385,6 @@ export default function AcePlayer({
     videoElement.muted = clampedVolume === 0;
     setVolume(clampedVolume);
     setIsMuted(clampedVolume === 0);
-  };
-
-  const updatePlaybackRate = (nextRate: number) => {
-    const videoElement = videoRef.current;
-    if (!videoElement) {
-      return;
-    }
-
-    videoElement.playbackRate = nextRate;
-    setPlaybackRate(nextRate);
   };
 
   const loadPreviewStream = useCallback(async ({ resumeAt, autoplay }: { resumeAt?: number; autoplay?: boolean } = {}) => {
@@ -691,7 +679,6 @@ export default function AcePlayer({
       setCurrentTime(Math.max(0, Math.floor(video.currentTime || 0)));
       setVolume(video.volume);
       setIsMuted(video.muted);
-      setPlaybackRate(video.playbackRate);
 
       if (pendingAutoplayRef.current || isPlayingTrailer) {
         video.play().catch(() => null);
@@ -805,10 +792,6 @@ export default function AcePlayer({
       setIsMuted(video.muted || video.volume === 0);
     };
 
-    const handleRateChange = () => {
-      setPlaybackRate(video.playbackRate);
-    };
-
     const handlePageHide = () => {
       if (!isPlayingTrailer && video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
@@ -823,7 +806,6 @@ export default function AcePlayer({
     video.addEventListener('error', handleError);
     video.addEventListener('seeking', handleSeeking);
     video.addEventListener('volumechange', handleVolumeChange);
-    video.addEventListener('ratechange', handleRateChange);
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
@@ -835,7 +817,6 @@ export default function AcePlayer({
       video.removeEventListener('error', handleError);
       video.removeEventListener('seeking', handleSeeking);
       video.removeEventListener('volumechange', handleVolumeChange);
-      video.removeEventListener('ratechange', handleRateChange);
       window.removeEventListener('pagehide', handlePageHide);
     };
   }, [
@@ -1057,67 +1038,49 @@ export default function AcePlayer({
                 aria-label="Volume"
                 onChange={(event) => updateVolume(Number(event.target.value))}
               />
-            </div>
-            <div className="player-rate-cluster">
-              {PLAYBACK_RATE_OPTIONS.map((rate) => (
-                <button
-                  key={rate}
-                  className={`player-settings-chip${playbackRate === rate ? ' active' : ''}`}
-                  type="button"
-                  onClick={() => updatePlaybackRate(rate)}
-                >
-                  {rate}x
-                </button>
-              ))}
+              {subtitleTracks.length ? (
+                <>
+                  <button
+                    className={`player-settings-chip${selectedSubtitleId === 'off' ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => setSelectedSubtitleId('off')}
+                  >
+                    {copy.off}
+                  </button>
+                  {subtitleTracks.map((track) => (
+                    <button
+                      key={track.id}
+                      className={`player-settings-chip${selectedSubtitleId === track.id ? ' active' : ''}`}
+                      type="button"
+                      onClick={() => setSelectedSubtitleId(track.id)}
+                    >
+                      {track.label || getLanguageLabel(track.languageCode)}
+                    </button>
+                  ))}
+                </>
+              ) : null}
             </div>
           </div>
         </div>
       ) : null}
 
-      {subtitleTracks.length || audioTrackOptions.length ? (
+      {audioTrackOptions.length > 1 ? (
         <div className="player-settings-panel">
-          {subtitleTracks.length ? (
-            <div className="player-settings-group">
-              <span className="player-settings-label">{copy.captions}</span>
-              <div className="player-settings-options">
+          <div className="player-settings-group">
+            <span className="player-settings-label">{copy.audio}</span>
+            <div className="player-settings-options">
+              {audioTrackOptions.map((track) => (
                 <button
-                  className={`player-settings-chip${selectedSubtitleId === 'off' ? ' active' : ''}`}
+                  key={track.index}
+                  className={`player-settings-chip${selectedAudioTrackIndex === track.index ? ' active' : ''}`}
                   type="button"
-                  onClick={() => setSelectedSubtitleId('off')}
+                  onClick={() => setAudioTrack(track.index)}
                 >
-                  {copy.off}
+                  {track.label}
                 </button>
-                {subtitleTracks.map((track) => (
-                  <button
-                    key={track.id}
-                    className={`player-settings-chip${selectedSubtitleId === track.id ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => setSelectedSubtitleId(track.id)}
-                  >
-                    {track.label || getLanguageLabel(track.languageCode)}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          ) : null}
-
-          {audioTrackOptions.length > 1 ? (
-            <div className="player-settings-group">
-              <span className="player-settings-label">{copy.audio}</span>
-              <div className="player-settings-options">
-                {audioTrackOptions.map((track) => (
-                  <button
-                    key={track.index}
-                    className={`player-settings-chip${selectedAudioTrackIndex === track.index ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => setAudioTrack(track.index)}
-                  >
-                    {track.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
 

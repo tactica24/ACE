@@ -1,5 +1,4 @@
 import {
-  MAX_HLS_ZIP_BYTES,
   MAX_MASTER_BYTES,
   MAX_POSTER_BYTES,
   MAX_SUBTITLE_BYTES,
@@ -8,7 +7,7 @@ import {
   formatUploadLimit
 } from './upload-limits';
 
-type UploadPurpose = 'video' | 'trailer' | 'poster' | 'subtitle' | 'master' | 'hls';
+type UploadPurpose = 'video' | 'trailer' | 'poster' | 'subtitle' | 'master';
 
 type UploadPolicy = {
   contentTypes: string[];
@@ -26,11 +25,6 @@ const UPLOAD_POLICIES: Record<UploadPurpose, UploadPolicy> = {
     contentTypes: ['video/mp4', 'video/quicktime', 'application/octet-stream'],
     extensions: ['.mp4', '.mov'],
     maxBytes: MAX_MASTER_BYTES
-  },
-  hls: {
-    contentTypes: ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
-    extensions: ['.zip'],
-    maxBytes: MAX_HLS_ZIP_BYTES
   },
   trailer: {
     contentTypes: ['video/mp4', 'application/octet-stream'],
@@ -59,8 +53,7 @@ export function isUploadPurpose(value: string | undefined): value is UploadPurpo
     value === 'trailer' ||
     value === 'poster' ||
     value === 'subtitle' ||
-    value === 'master' ||
-    value === 'hls'
+    value === 'master'
   );
 }
 
@@ -107,9 +100,7 @@ export function validateUploadRequest({
               ? 'Upload MP4 trailer files.'
               : purpose === 'poster'
                 ? 'Upload JPG, PNG, or WEBP poster images.'
-                : purpose === 'hls'
-                  ? 'Upload a .zip containing the complete HLS package.'
-                  : 'Upload WebVTT subtitle files.'
+                : 'Upload WebVTT subtitle files.'
     };
   }
 

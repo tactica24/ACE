@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
-import { getHlsBucket, getObjectBuffer, getObjectMetadata } from '@/lib/r2';
+import { deleteCachedPrefix } from '@/lib/cache';
+import { copyObject, getHlsBucket, getObjectBuffer, getObjectMetadata } from '@/lib/r2';
 import { getPlaybackUrl } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../../helpers';
 
@@ -36,6 +37,32 @@ function resolveRelative(baseFile: string, target: string): string {
     }
   }
   return parts.join('/');
+}
+
+async function normalizeCommonRootUpload({
+  bucket,
+  basePrefix,
+  normalizedPaths,
+  root
+}: {
+  bucket: string;
+  basePrefix: string;
+  normalizedPaths: string[];
+  root: string;
+}) {
+  const rootPrefix = `${root}/`;
+  await Promise.all(
+    normalizedPaths
+      .filter((path) => path.startsWith(rootPrefix))
+      .map((path) =>
+        copyObject(
+          `${basePrefix}${path}`,
+          `${basePrefix}${path.slice(rootPrefix.length)}`,
+          bucket,
+          bucket
+        )
+      )
+  );
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -79,7 +106,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const root = [...roots][0];
       const candidate = `${root}/master.m3u8`;
       if (entries.has(candidate)) {
-        masterRelative = candidate;
+        try {
+          await deleteCachedPrefix(`movies/${params.id}`);
+          await normalizeCommonRootUpload({ bucket, basePrefix, normalizedPaths, root });
+          const strippedPaths = normalizedPaths
+            .filter((path) => path.startsWith(`${root}/`))
+            .map((path) => path.slice(root.length + 1));
+          entries.clear();
+          strippedPaths.forEach((path) => entries.add(path));
+          masterRelative = 'master.m3u8';
+        } catch (error) {
+          console.error('[hls-folder] failed to normalize common root upload', error);
+          return NextResponse.json({ error: 'Unable to prepare nested HLS folder for playback.' }, { status: 500 });
+        }
       }
     }
   }
@@ -153,7 +192,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   if (segmentCount === 0) {
-    return NextResponse.json({ error: 'The HLS package does not contain any media segments.' }, { status: 400 });
+    return NextResponse.json({ error: 'The HLS folder does not contain any media segments.' }, { status: 400 });
   }
 
   const playbackUrl = getPlaybackUrl(params.id);
@@ -193,7 +232,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({
     ok: true,
-    message: 'HLS folder uploaded and fully validated (no zip).',
+    message: 'HLS folder uploaded and fully validated.',
     video: await getProcessingVideo(params.id)
   });
 }

@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
 
   let assetSnapshot;
   try {
-    assetSnapshot = await getPlaybackAssetSnapshot(video.id, video.r2Key ?? video.technicalMetadata?.masterKey, video.fallbackR2Key);
+    assetSnapshot = await getPlaybackAssetSnapshot(
+      video.id,
+      video.r2Key,
+      video.fallbackR2Key,
+      video.technicalMetadata?.masterKey
+    );
   } catch (snapshotErr) {
     console.error('[unlock] getPlaybackAssetSnapshot failed', snapshotErr);
     return NextResponse.json({

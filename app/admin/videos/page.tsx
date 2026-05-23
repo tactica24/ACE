@@ -70,7 +70,7 @@ export default async function AdminVideosPage() {
   return (
     <DashboardShell
       title="Admin videos"
-      description="Operate private masters, local encoding, HLS package verification, preview, cleanup, and publish gating from one desk."
+      description="Operate private masters, local encoding, HLS folder verification, preview, cleanup, and publish gating from one desk."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel

@@ -8,10 +8,9 @@ import {
   completeMultipartUpload,
   createMultipartUpload,
   createPresignedUploadPartUrl,
-  getHlsBucket,
   getMasterBucket
 } from '@/lib/r2';
-import { buildOwnedUploadKey, isOwnedUploadKey, validateUploadRequest } from '@/lib/upload-security';
+import { buildOwnedUploadKey, isOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
 import { getMultipartUploadRateLimit, type MultipartUploadAction } from '@/lib/upload-rate-limit';
 
 type MultipartAction = MultipartUploadAction;
@@ -33,12 +32,7 @@ async function getUploadAuth(req: NextRequest) {
 
 function getBucketForPurpose(purpose: string) {
   if (purpose === 'master') return getMasterBucket();
-  if (purpose === 'hls') return getHlsBucket();
   return undefined;
-}
-
-function isUploadPurpose(value: string) {
-  return value === 'video' || value === 'trailer' || value === 'poster' || value === 'subtitle' || value === 'master';
 }
 
 function normalizeParts(value: unknown) {

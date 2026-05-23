@@ -3,6 +3,7 @@ import { createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
 import { getPlayableHlsUrl, getPlayableProgressiveKey } from '@/lib/playback-delivery';
+import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { ensureStreamSession } from '@/lib/stream-sessions';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
 
@@ -54,13 +55,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not found' }, { status: 404 });
   }
 
-  const hlsUrl = getPlayableHlsUrl(video);
+  const candidateHlsUrl = getPlayableHlsUrl(video);
   const progressiveKey = getPlayableProgressiveKey(video);
+  const primaryProgressiveKey = video.r2Key?.trim() || null;
+  const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
+  const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
 
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!hlsUrl && !progressiveKey)) {
+  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!candidateHlsUrl && !progressiveKey)) {
     return NextResponse.json({ error: 'Movie not available' }, { status: 403 });
   }
-  const availability = getVideoAvailabilityDecision(video.technicalMetadata.availabilityRegion, req);
+  const availability = getVideoAvailabilityDecision(video.technicalMetadata?.availabilityRegion, req);
   if (!availability.allowed) {
     return NextResponse.json({
       error: 'This title is licensed for Africa only and cannot be watched from your current location.',
@@ -68,6 +72,22 @@ export async function POST(req: NextRequest) {
       availabilityRegion: availability.region,
       country: availability.country
     }, { status: 403 });
+  }
+
+  const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
+  const hlsUrl = candidateHlsUrl && assetSnapshot.hlsReady ? candidateHlsUrl : null;
+  const streamKey = assetSnapshot.progressiveReady
+    ? assetSnapshot.progressiveKey
+    : assetSnapshot.fallbackProgressiveReady
+      ? assetSnapshot.fallbackProgressiveKey
+      : assetSnapshot.masterProgressiveReady
+        ? assetSnapshot.masterProgressiveKey
+        : null;
+
+  if (!hlsUrl && !streamKey) {
+    return NextResponse.json({
+      error: 'Playback assets are not ready for this title yet.'
+    }, { status: 409 });
   }
 
   const unlock = await prisma.unlock.findFirst({
@@ -109,7 +129,7 @@ export async function POST(req: NextRequest) {
     deviceSessionId,
     role: auth.role,
     fullAccess: true,
-    streamKey: hlsUrl ? undefined : progressiveKey ?? undefined,
+    streamKey: hlsUrl ? undefined : streamKey ?? undefined,
     teaserSec: video.teaserSec,
     durationSec: video.durationSec
   });

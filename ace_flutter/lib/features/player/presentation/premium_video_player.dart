@@ -32,7 +32,6 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
   bool _isFullscreen = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-  double _playbackSpeed = 1.0;
   bool _subtitlesEnabled = false;
 
   @override
@@ -129,18 +128,6 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
-  }
-
-  void _changePlaybackSpeed() {
-    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-    final currentIndex = speeds.indexOf(_playbackSpeed);
-    final nextIndex = (currentIndex + 1) % speeds.length;
-
-    setState(() {
-      _playbackSpeed = speeds[nextIndex];
-    });
-
-    _controller?.setPlaybackSpeed(_playbackSpeed);
   }
 
   void _toggleSubtitles() {
@@ -374,35 +361,15 @@ class _PremiumVideoPlayerState extends ConsumerState<PremiumVideoPlayer> {
                               size: 48,
                             ),
                           ),
-                          IconButton(
-                            onPressed: _seekForward10Seconds,
-                            icon: const Icon(
-                              Icons.forward_10,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          GestureDetector(
-                            onTap: _changePlaybackSpeed,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white24,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                '${_playbackSpeed}x',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                           IconButton(
+                             onPressed: _seekForward10Seconds,
+                             icon: const Icon(
+                               Icons.forward_10,
+                               color: Colors.white,
+                               size: 32,
+                             ),
+                           ),
+                         ],
                       ),
                     ],
                   ),

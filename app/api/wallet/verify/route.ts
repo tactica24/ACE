@@ -23,6 +23,14 @@ export async function POST(req: NextRequest) {
     if (payment.status === 'FAILED') {
       return NextResponse.json({ error: 'Payment failed' }, { status: 400 });
     }
+    if (payment.status === 'SUCCESS' && !payment.entitlementAppliedAt) {
+      await markPaymentSuccessful({
+        reference,
+        amountMinor: payment.amountMinor,
+        currency: payment.currency
+      });
+      return NextResponse.json({ ok: true, credited: true });
+    }
 
     const metadata = (payment.metadata as { stripeSessionId?: string } | null) ?? null;
     if (!metadata?.stripeSessionId) {
@@ -64,6 +72,14 @@ export async function POST(req: NextRequest) {
 
   if (payment.status === 'SUCCESS' && payment.entitlementAppliedAt) {
     return NextResponse.json({ ok: true, credited: false });
+  }
+  if (payment.status === 'SUCCESS' && !payment.entitlementAppliedAt) {
+    await markPaymentSuccessful({
+      reference,
+      amountMinor: payment.amountMinor,
+      currency: payment.currency
+    });
+    return NextResponse.json({ ok: true, credited: true });
   }
 
   const verification = await verifyTransaction(reference);

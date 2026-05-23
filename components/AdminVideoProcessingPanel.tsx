@@ -316,7 +316,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
   }
 
 
-    // New: Upload HLS directly as individual files (no zip, real folder structure)
+    // Upload HLS directly as individual files with the real folder structure.
     async function uploadHlsFolder(videoId: string, files: File[]) {
       setPendingId(videoId);
       setMessage(null);
@@ -383,7 +383,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
           [videoId]: {
             phase: 'processing',
             progress: 100,
-            message: 'Finalizing and validating HLS package...'
+            message: 'Finalizing and validating HLS folder...'
           }
         }));
 
@@ -396,7 +396,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
         const finalizePayload = await finalizeRes.json().catch(() => ({}));
 
         if (!finalizeRes.ok) {
-          throw new Error(finalizePayload.error ?? 'Failed to finalize HLS package.');
+          throw new Error(finalizePayload.error ?? 'Failed to finalize HLS folder.');
         }
 
         await refreshVideo(videoId, finalizePayload.video ?? {});
@@ -410,7 +410,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
           }
         }));
 
-        setMessage('HLS uploaded directly (no zip). Package verified.');
+        setMessage('HLS folder uploaded and verified.');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unable to upload HLS folder.';
         setUploadStatuses((current) => ({
@@ -430,7 +430,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
    async function completeProcessing(videoId: string) {
      setPendingId(videoId);
-     setMessage('Validating HLS package...');
+     setMessage('Validating HLS folder...');
      try {
        const response = await fetch('/api/admin/videos/validate', {
          method: 'POST',
@@ -613,7 +613,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                       : uploadStatus.phase === 'done'
                         ? 'HLS upload complete'
                         : uploadStatus.phase === 'processing'
-                          ? 'HLS package processing'
+                          ? 'HLS folder processing'
                           : 'HLS upload progress'}
                   </span>
                   <strong>{uploadStatus.progress}%</strong>

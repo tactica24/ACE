@@ -8,10 +8,12 @@ export type PlaybackAssetSnapshot = {
   storageConfigured: boolean;
   progressiveKey: string | null;
   fallbackProgressiveKey: string | null;
+  masterProgressiveKey: string | null;
   hlsKey: string;
   dashKey: string;
   progressiveReady: boolean;
   fallbackProgressiveReady: boolean;
+  masterProgressiveReady: boolean;
   hlsReady: boolean;
   dashReady: boolean;
   availableProgressiveQualities: ProgressivePlaybackQuality[];
@@ -46,18 +48,21 @@ async function objectExists(key: string | null, bucketName?: string) {
 export async function getPlaybackAssetSnapshot(
   videoId: string,
   progressiveKey?: string | null,
-  fallbackProgressiveKey?: string | null
+  fallbackProgressiveKey?: string | null,
+  masterProgressiveKey?: string | null
 ): Promise<PlaybackAssetSnapshot> {
   const normalizedProgressiveKey = progressiveKey?.trim() || null;
   const normalizedFallbackProgressiveKey = fallbackProgressiveKey?.trim() || null;
+  const normalizedMasterProgressiveKey = masterProgressiveKey?.trim() || null;
   const hlsKey = getHlsMasterKey(videoId);
   const dashKey = getDashManifestKey(videoId);
   const storageConfigured = hasConfiguredStorage();
   const hlsBucket = (env.HLS_R2_BUCKET || env.R2_BUCKET || '').trim() || null;
 
-  const [progressiveReady, fallbackProgressiveReady, hlsReady, dashReady] = await Promise.all([
+  const [progressiveReady, fallbackProgressiveReady, masterProgressiveReady, hlsReady, dashReady] = await Promise.all([
     objectExists(normalizedProgressiveKey, getBucketForStorageKey(normalizedProgressiveKey)),
     objectExists(normalizedFallbackProgressiveKey, getBucketForStorageKey(normalizedFallbackProgressiveKey)),
+    objectExists(normalizedMasterProgressiveKey, getBucketForStorageKey(normalizedMasterProgressiveKey)),
     hlsBucket ? objectExists(hlsKey, hlsBucket) : Promise.resolve(false),
     objectExists(dashKey)
   ]);
@@ -66,16 +71,18 @@ export async function getPlaybackAssetSnapshot(
     storageConfigured,
     progressiveKey: normalizedProgressiveKey,
     fallbackProgressiveKey: normalizedFallbackProgressiveKey,
+    masterProgressiveKey: normalizedMasterProgressiveKey,
     hlsKey,
     dashKey,
     progressiveReady,
     fallbackProgressiveReady,
+    masterProgressiveReady,
     hlsReady,
     dashReady,
     availableProgressiveQualities: getAvailableProgressiveQualities({
       primaryReady: progressiveReady,
       fallbackReady: fallbackProgressiveReady
     }),
-    ready: progressiveReady || fallbackProgressiveReady || hlsReady || dashReady
+    ready: progressiveReady || fallbackProgressiveReady || masterProgressiveReady || hlsReady || dashReady
   };
 }

@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-import { createPresignedPutUrl, getHlsBucket, getMasterBucket } from '@/lib/r2';
+import { createPresignedPutUrl, getMasterBucket } from '@/lib/r2';
 import { buildOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
 
 export async function POST(req: NextRequest) {
@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required file information: filename, contentType, and purpose are required.' }, { status: 400 });
     }
 
+    if (!isUploadPurpose(purpose)) {
+      return NextResponse.json({ error: 'Invalid upload purpose.' }, { status: 400 });
+    }
+
     const validation = validateUploadRequest({ purpose, filename, contentType, fileSize });
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest) {
     const url = await createPresignedPutUrl(
       key,
       contentType,
-      purpose === 'master' ? getMasterBucket() : purpose === 'hls' ? getHlsBucket() : undefined
+      purpose === 'master' ? getMasterBucket() : undefined
     );
 
     return NextResponse.json({ url, key, purpose, contentType });

@@ -82,7 +82,7 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
       ) : (
         <div className="card">
           <h3>No HLS videos yet</h3>
-          <p className="muted">Uploaded HLS packages will appear here after admin processing.</p>
+          <p className="muted">Uploaded HLS folders will appear here after admin processing.</p>
         </div>
       )}
     </div>

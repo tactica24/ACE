@@ -1778,7 +1778,7 @@ export default function UploadForm({
                 />
                 {allowNoMaster && (
                   <span className="muted" style={{ display: 'block', marginTop: 4 }}>
-                    Optional when you already have the HLS package — upload HLS later from Admin Videos desk.
+                    Optional when you already have the HLS folder; upload HLS later from Admin Videos desk.
                   </span>
                 )}
               </label>
@@ -1908,10 +1908,7 @@ export default function UploadForm({
           <div className="upload-progress-track" aria-hidden="true">
             <span
               className="upload-progress-fill"
-              style={{
-                width: `${uploadProgress}%`,
-                background: `linear-gradient(135deg, ${uploadProgress < 50 ? '#ff6b6b' : uploadProgress < 80 ? '#ffa502' : '#22c55e'}, ${uploadProgress < 50 ? '#e53e3e' : uploadProgress < 80 ? '#ff8c00' : '#16a34a'})`
-              }}
+              style={{ width: `${uploadProgress}%` }}
             />
           </div>
           {uploadSteps.length ? (
@@ -1935,10 +1932,7 @@ export default function UploadForm({
                     <div className="upload-progress-track" aria-hidden="true">
                       <span
                         className="upload-progress-fill"
-                        style={{
-                          width: `${stepPercent}%`,
-                          background: `linear-gradient(135deg, ${stepPercent < 50 ? '#ff6b6b' : stepPercent < 80 ? '#ffa502' : '#22c55e'}, ${stepPercent < 50 ? '#e53e3e' : stepPercent < 80 ? '#ff8c00' : '#16a34a'})`
-                        }}
+                        style={{ width: `${stepPercent}%` }}
                       />
                     </div>
                   </div>

@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db';
 import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
-import { getPlayableHlsUrl, getPlayableProgressiveKey, hasPlayableHls } from '@/lib/playback-delivery';
+import { getPlayableHlsUrl, hasPlayableHls } from '@/lib/playback-delivery';
+import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { getBucketForStorageKey, getObjectMetadata } from '@/lib/r2';
 
 import { ensureStreamSession } from '@/lib/stream-sessions';
@@ -107,11 +108,22 @@ export async function GET(req: NextRequest) {
     ? video.technicalMetadata?.trailerKey?.trim() || null
     : null;
   const finalHlsUrl = getPlayableHlsUrl(video);
-  const finalProgressiveKey = getPlayableProgressiveKey(video);
+  const primaryProgressiveKey = video.r2Key?.trim() || null;
+  const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
+  const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
+  const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
+  const playableHlsUrl = finalHlsUrl && assetSnapshot.hlsReady ? finalHlsUrl : null;
+  const playableProgressiveKey = assetSnapshot.progressiveReady
+    ? assetSnapshot.progressiveKey
+    : assetSnapshot.fallbackProgressiveReady
+      ? assetSnapshot.fallbackProgressiveKey
+      : assetSnapshot.masterProgressiveReady
+        ? assetSnapshot.masterProgressiveKey
+        : null;
 
   let previewUsesTrailer = teaser && !fullAccess && Boolean(previewTrailerKey);
 
-  if (teaser && !fullAccess && !previewUsesTrailer && !finalHlsUrl && !finalProgressiveKey) {
+  if (teaser && !fullAccess && !previewUsesTrailer && !playableHlsUrl && !playableProgressiveKey) {
     return NextResponse.json(
       {
         error: 'Preview is not available for this title yet.',
@@ -121,10 +133,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (teaser && !fullAccess && !previewTrailerKey && finalHlsUrl) {
+  if (teaser && !fullAccess && !previewTrailerKey && playableHlsUrl) {
     previewUsesTrailer = true;
   }
-  if (!previewUsesTrailer && !finalHlsUrl && !finalProgressiveKey) {
+  if (!previewUsesTrailer && !playableHlsUrl && !playableProgressiveKey) {
     return NextResponse.json({
       error: 'Playback assets are not ready for this title yet.'
     }, { status: 409 });
@@ -135,9 +147,9 @@ export async function GET(req: NextRequest) {
         key: previewTrailerKey,
         quality: 'preview'
       }
-    : !finalHlsUrl && finalProgressiveKey
+    : !playableHlsUrl && playableProgressiveKey
     ? {
-        key: finalProgressiveKey,
+        key: playableProgressiveKey,
         quality: video.technicalMetadata?.masterKey ? 'master' : 'progressive'
       }
     : {
@@ -159,7 +171,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const hlsAvailable = hasPlayableHls(video) && !selectedProgressive.key;
+  const hlsAvailable = Boolean(playableHlsUrl) && hasPlayableHls(video) && !selectedProgressive.key;
   const dashAvailable = false;
 
   const token = auth
