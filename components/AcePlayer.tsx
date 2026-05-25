@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLanguageLabel } from '@/lib/media-types';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
-const AUTO_UNLOCK_LEAD_SECONDS = 20;
 const HISTORY_SYNC_SECONDS = 5;
 const HLS_JS_CDN_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js';
 
@@ -96,6 +95,10 @@ function getDeviceSessionId() {
 
 function isHlsUrl(url: string) {
   return /\.m3u8(?:\?|$)/i.test(url);
+}
+
+function getMediaRouteForKey(key: string) {
+  return `/api/media/${key.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`;
 }
 
 function loadHlsJs() {
@@ -202,7 +205,7 @@ export default function AcePlayer({
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const copy = getUiCopy(uiLanguage);
-  const subtitleTracks = subtitles.filter((track) => track.src);
+  const subtitleTracks = useMemo(() => subtitles.filter((track) => track.src), [subtitles]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [unlockState, setUnlockState] = useState<UnlockState>('idle');
@@ -221,8 +224,17 @@ export default function AcePlayer({
   const [volume, setVolume] = useState(1);
   const [playbackSessionId, setPlaybackSessionId] = useState<string | null>(null);
   const router = useRouter();
+  const defaultSubtitleId = useMemo(
+    () => subtitleTracks.find((track) => track.isDefault)?.id ?? subtitleTracks[0]?.id ?? 'off',
+    [subtitleTracks]
+  );
+  const subtitleSignature = useMemo(
+    () => subtitleTracks.map((track) => `${track.id}:${track.src}:${track.isDefault ? '1' : '0'}`).join('|'),
+    [subtitleTracks]
+  );
 
-  const activeVideoSrc = isPlayingTrailer && trailerKey ? `/api/media/${encodeURIComponent(trailerKey)}` : streamUrl;
+  const activeVideoSrc = isPlayingTrailer && trailerKey ? getMediaRouteForKey(trailerKey) : streamUrl;
+  const isMovieMode = !isPlayingTrailer;
 
   const seekToTime = useCallback((targetSec: number, shouldPlay = true) => {
     const videoElement = videoRef.current;
@@ -336,11 +348,11 @@ export default function AcePlayer({
 
     if (!unlocked && targetSec > safeTarget + 0.1) {
       setShowPaywall(true);
-      setFeedback(isAuthenticated ? `${copy.keepWatchingSummary} ${priceLabel}.` : copy.signInToUnlockSummary);
+      setFeedback(isAuthenticated ? `Unlock the movie for ${priceLabel}.` : copy.signInToUnlockSummary);
     }
 
     seekToTime(safeTarget, shouldPlay);
-  }, [copy.keepWatchingSummary, copy.signInToUnlockSummary, getPlayableLimit, isAuthenticated, priceLabel, seekToTime, unlocked]);
+  }, [copy.signInToUnlockSummary, getPlayableLimit, isAuthenticated, priceLabel, seekToTime, unlocked]);
 
   const jumpPlayback = useCallback((deltaSec: number) => {
     const videoElement = videoRef.current;
@@ -551,7 +563,7 @@ export default function AcePlayer({
      }
 
     setUnlockState('unlocking');
-    setFeedback(immediatePrompt ? 'Unlocking your full video...' : null);
+    setFeedback(immediatePrompt ? 'Unlocking the movie...' : null);
 
     try {
       const res = await fetch('/api/unlock', {
@@ -610,15 +622,11 @@ export default function AcePlayer({
   }, [isAuthenticated, loadStream, loginHref, router, videoId]);
 
   useEffect(() => {
-    if (trailerKey) {
-      return;
-    }
-
     loadStream({
       resumeAt: Math.max(initialProgress, readSavedProgress(videoId)),
       autoplay: false
-    }).catch(() => setFeedback('Unable to load the stream right now.'));
-  }, [initialProgress, loadStream, trailerKey, videoId]);
+    }).catch(() => setFeedback('Unable to load the movie stream right now.'));
+  }, [initialProgress, loadStream, videoId]);
 
   useEffect(() => {
     setIsPlayingTrailer(Boolean(trailerKey));
@@ -654,10 +662,10 @@ export default function AcePlayer({
   }, [activeVideoSrc]);
 
   useEffect(() => {
-    setSelectedSubtitleId(subtitles.find((track) => track.isDefault && track.src)?.id ?? subtitleTracks[0]?.id ?? 'off');
-    setAudioTrackOptions([]);
+    setSelectedSubtitleId(defaultSubtitleId);
+    setAudioTrackOptions((current) => (current.length ? [] : current));
     setSelectedAudioTrackIndex(0);
-  }, [subtitleTracks, subtitles, videoId]);
+  }, [defaultSubtitleId, subtitleSignature, videoId]);
 
   useEffect(() => {
     applySubtitleSelection();
@@ -725,7 +733,7 @@ export default function AcePlayer({
       }
 
       if (unlockState === 'unlocking') {
-        lockAtBoundary('Unlocking your full video...');
+        lockAtBoundary('Unlocking the movie...');
         setShowPaywall(true);
         return;
       }
@@ -737,7 +745,7 @@ export default function AcePlayer({
       }
 
       unlockAttemptedRef.current = true;
-      lockAtBoundary('Unlocking your full video...');
+      lockAtBoundary('Unlocking the movie...');
       void unlockVideo({ resumeAt: video.currentTime, immediatePrompt: true });
     };
 
@@ -752,21 +760,8 @@ export default function AcePlayer({
       const currentTime = video.currentTime;
       setCurrentTime(Math.max(0, Math.floor(currentTime)));
 
-      if (isPlayingTrailer) {
+      if (!isMovieMode) {
         return;
-      }
-
-      const unlockTriggerTime = Math.max(teaserSec - AUTO_UNLOCK_LEAD_SECONDS, 0);
-
-      if (
-        isAuthenticated &&
-        !unlocked &&
-        unlockState !== 'unlocking' &&
-        !unlockAttemptedRef.current &&
-        currentTime >= unlockTriggerTime
-      ) {
-        unlockAttemptedRef.current = true;
-        void unlockVideo({ resumeAt: currentTime });
       }
 
       if (!unlocked && currentTime >= teaserSec) {
@@ -781,7 +776,7 @@ export default function AcePlayer({
 
     const handlePause = () => {
       setIsPlaying(false);
-      if (!isPlayingTrailer && video.currentTime > 0 && !video.ended) {
+      if (isMovieMode && video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
       }
     };
@@ -790,7 +785,7 @@ export default function AcePlayer({
       setIsPlaying(false);
       setWatchMode(false);
       setShowPaywall(false);
-      if (!isPlayingTrailer) {
+      if (isMovieMode) {
         void syncHistory({ progressSec: 0, completed: true, keepalive: true });
       }
     };
@@ -800,7 +795,7 @@ export default function AcePlayer({
     };
 
     const handleSeeking = () => {
-      if (!isPlayingTrailer && !unlocked && video.currentTime >= teaserSec) {
+      if (isMovieMode && !unlocked && video.currentTime >= teaserSec) {
         promptUnlock();
       }
     };
@@ -811,7 +806,7 @@ export default function AcePlayer({
     };
 
     const handlePageHide = () => {
-      if (!isPlayingTrailer && video.currentTime > 0 && !video.ended) {
+      if (isMovieMode && video.currentTime > 0 && !video.ended) {
         void syncHistory({ progressSec: video.currentTime, keepalive: true });
       }
     };
@@ -849,6 +844,7 @@ export default function AcePlayer({
     unlockVideo,
     unlocked,
     videoId,
+    isMovieMode,
     isPlayingTrailer
   ]);
 
@@ -978,7 +974,7 @@ export default function AcePlayer({
               setFeedback(null);
             }}
           >
-            🎥 {copy.teaser || 'Trailer'}
+            Trailer
           </button>
           <button
             type="button"
@@ -990,7 +986,7 @@ export default function AcePlayer({
               void loadStream({ resumeAt: Math.max(initialProgress, readSavedProgress(videoId)), autoplay: false });
             }}
           >
-            🎬 {copy.watchNow || 'Watch Movie'}
+            Movie
           </button>
         </div>
       )}
@@ -1004,8 +1000,8 @@ export default function AcePlayer({
           playsInline
           preload="metadata"
           poster={posterSrc}
-          autoPlay={!unlocked || isPlayingTrailer}
-          muted={!unlocked && !isPlayingTrailer}
+          autoPlay={isPlayingTrailer}
+          muted={isPlayingTrailer}
         >
           {subtitleTracks.map((track) => (
             <track
@@ -1046,7 +1042,7 @@ export default function AcePlayer({
             </div>
             <div className="player-readout">
               <span>{formatTime(currentTime)} / {formatTime(durationSec)}</span>
-              {!unlocked && !isPlayingTrailer ? <span>{copy.teaser}: {formatTime(teaserSec)}</span> : null}
+              {!unlocked && isMovieMode ? <span>Free movie preview: {formatTime(teaserSec)}</span> : null}
             </div>
           </div>
           <div className="player-progress-track" aria-hidden="true">
@@ -1162,7 +1158,7 @@ export default function AcePlayer({
               {feedback
                 ? feedback
                 : isAuthenticated
-                  ? `${copy.keepWatchingSummary} ${priceLabel}.`
+                  ? `Unlock the movie for ${priceLabel}.`
                   : copy.signInToUnlockSummary}
             </p>
             <div className="player-overlay-actions">
@@ -1188,7 +1184,7 @@ export default function AcePlayer({
                   }}
                   disabled={unlockState === 'unlocking'}
                 >
-                  {unlockState === 'unlocking' ? 'Unlocking...' : copy.tryAgain}
+                  {unlockState === 'unlocking' ? 'Unlocking...' : `Unlock movie for ${priceLabel}`}
                 </button>
               )}
               {/* Wallet link removed - available in user profile */}

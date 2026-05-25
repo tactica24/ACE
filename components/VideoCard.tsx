@@ -57,7 +57,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   const [previewReady, setPreviewReady] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
 
-  const priceLabel = `Unlock: ${formatCurrencyMinor(priceMinor, currencyCode)}`;
+  const priceLabel = formatCurrencyMinor(priceMinor, currencyCode);
   const genreLabel = video.genres?.filter(Boolean).slice(0, 2).join(' / ') || labelize(video.videoType);
 
   useEffect(() => {
@@ -103,12 +103,15 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
         return;
       }
 
-      const tokenPayload = (await tokenResponse.json()) as { token?: string };
-      if (!tokenPayload.token) {
+      const tokenPayload = (await tokenResponse.json()) as {
+        token?: string;
+        playback?: { progressiveUrl?: string | null };
+      };
+      const source = tokenPayload.playback?.progressiveUrl ?? null;
+      if (!source) {
         return;
       }
 
-      const source = `/api/stream/${encodeURIComponent(video.id)}?token=${encodeURIComponent(tokenPayload.token)}`;
       setPreviewSource(source);
       setPreviewReady(true);
     } catch {
@@ -221,7 +224,6 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
             ) : null}
             <span>Age: {ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
             <span>{runtimeLabel}</span>
-            <span>{priceLabel}</span>
           </div>
         </div>
       </div>

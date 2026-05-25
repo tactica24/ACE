@@ -6,7 +6,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
@@ -174,73 +173,9 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     : [];
 
   return (
-    <div className="nmhp-landing">
-      {/* Netflix-style Hero Section (global TopNav provides ACE branding + auth) */}
-      <section className="nmhp-hero">
-        {/* Artistic poster collage backdrop â€” premium cinematic feel */}
-        <div className="nmhp-hero-bg" aria-hidden="true">
-          {videos.slice(0, 9).map((video, index) => {
-            const posterUrl = getMediaAssetUrl(video.posterKey);
-            if (!posterUrl) return null;
-
-            // Deliberate artistic placement + subtle rotations for depth
-            const positions = [
-              { left: '8%', top: '12%', scale: 1.05, rot: -6 },
-              { left: '32%', top: '8%', scale: 0.92, rot: 5 },
-              { left: '58%', top: '15%', scale: 1.08, rot: -4 },
-              { left: '78%', top: '10%', scale: 0.88, rot: 7 },
-              { left: '5%', top: '48%', scale: 0.95, rot: 4 },
-              { left: '25%', top: '55%', scale: 1.1, rot: -5 },
-              { left: '52%', top: '52%', scale: 0.9, rot: 3 },
-              { left: '72%', top: '45%', scale: 1.02, rot: -7 },
-              { left: '15%', top: '78%', scale: 0.85, rot: 6 },
-            ];
-            const pos = positions[index % positions.length];
-
-            return (
-              <div
-                key={video.id}
-                className="nmhp-hero-poster"
-                style={{
-                  backgroundImage: `url(${posterUrl})`,
-                  left: pos.left,
-                  top: pos.top,
-                  transform: `scale(${pos.scale}) rotate(${pos.rot}deg)`,
-                }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Powerful cinematic overlay â€” text stays razor sharp */}
-        <div className="nmhp-hero-overlay-strong" />
-
-        <div className="nmhp-hero-content">
-          <h1 className="nmhp-hero-title">
-            Watch premium African &amp; global films.<br />
-            Pay only for what you watch.
-          </h1>
-          <p className="nmhp-hero-subtitle">
-            As little as <strong>₦50 per movie</strong>. No subscriptions. No commitments.
-          </p>
-          <div className="nmhp-hero-cta">
-            <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">
-              Register now
-            </Link>
-            <Link href="/auth/login" className="nmhp-cta-btn nmhp-cta-secondary">
-              Sign In
-            </Link>
-          </div>
-          <p className="nmhp-hero-disclaimer">
-            Cancel anytime. Watch instantly on any device.
-          </p>
-        </div>
-      </section>
-
-
-      {/* Original Browse Content */}
-      <div className="viewer-home guest-home">
-        <section className="home-shelves" id="discover">
+    <div className="viewer-home guest-home">
+      <HomeMovieHero videos={heroVideos} />
+      <section className="home-shelves" id="discover">
           <div className="container">
             {featuredRows.length > 0 && featuredRows.map((row) => (
               <section key={row.id} className="home-shelf">
@@ -270,7 +205,6 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             ))}
           </div>
         </section>
-      </div>
     </div>
   );
 }

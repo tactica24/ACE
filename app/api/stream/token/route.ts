@@ -104,9 +104,6 @@ export async function GET(req: NextRequest) {
   }
 
   const requestedQuality = normalizePlaybackQualityPreference(req.nextUrl.searchParams.get('quality'));
-  const previewTrailerKey = teaser
-    ? video.technicalMetadata?.trailerKey?.trim() || null
-    : null;
   const finalHlsUrl = getPlayableHlsUrl(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
@@ -121,33 +118,23 @@ export async function GET(req: NextRequest) {
         ? assetSnapshot.masterProgressiveKey
         : null;
 
-  let previewUsesTrailer = teaser && !fullAccess && Boolean(previewTrailerKey);
-
-  if (teaser && !fullAccess && !previewUsesTrailer && !playableHlsUrl && !playableProgressiveKey) {
+  if (teaser && !fullAccess && !playableHlsUrl && !playableProgressiveKey) {
     return NextResponse.json(
       {
-        error: 'Preview is not available for this title yet.',
+        error: 'Movie preview is not available for this title yet.',
         reason: 'PREVIEW_UNAVAILABLE'
       },
       { status: 409 }
     );
   }
 
-  if (teaser && !fullAccess && !previewTrailerKey && playableHlsUrl) {
-    previewUsesTrailer = true;
-  }
-  if (!previewUsesTrailer && !playableHlsUrl && !playableProgressiveKey) {
+  if (!playableHlsUrl && !playableProgressiveKey) {
     return NextResponse.json({
       error: 'Playback assets are not ready for this title yet.'
     }, { status: 409 });
   }
 
-  const selectedProgressive = previewUsesTrailer && previewTrailerKey
-    ? {
-        key: previewTrailerKey,
-        quality: 'preview'
-      }
-    : !playableHlsUrl && playableProgressiveKey
+  const selectedProgressive = !playableHlsUrl && playableProgressiveKey
     ? {
         key: playableProgressiveKey,
         quality: video.technicalMetadata?.masterKey ? 'master' : 'progressive'
@@ -181,7 +168,7 @@ export async function GET(req: NextRequest) {
         deviceSessionId,
         role: auth.role,
         fullAccess,
-        previewAsset: previewUsesTrailer,
+        previewAsset: false,
         streamKey: selectedProgressive.key ?? undefined,
         teaserSec: video.teaserSec,
         durationSec: video.durationSec,
@@ -190,7 +177,7 @@ export async function GET(req: NextRequest) {
       })
     : createGuestPreviewStreamToken({
         videoId,
-        previewAsset: previewUsesTrailer,
+        previewAsset: false,
         streamKey: selectedProgressive.key ?? undefined,
         teaserSec: video.teaserSec,
         durationSec: video.durationSec,
@@ -212,17 +199,13 @@ export async function GET(req: NextRequest) {
     playback: {
       progressiveUrl,
       progressiveQuality: selectedProgressive.quality,
-      availableProgressiveQualities: previewUsesTrailer && previewTrailerKey
-        ? ['preview']
-        : [],
+      availableProgressiveQualities: selectedProgressive.key ? [selectedProgressive.quality ?? 'progressive'] : [],
       hlsUrl,
       dashUrl,
       hlsAvailable,
       dashAvailable,
       requestedQuality,
-      preferred: previewTrailerKey && !fullAccess && teaser
-        ? 'progressive-preview'
-        : hlsAvailable
+      preferred: hlsAvailable
         ? 'hls'
         : progressiveUrl
         ? 'progressive'

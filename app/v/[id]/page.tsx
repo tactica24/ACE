@@ -50,11 +50,13 @@ function formatEpisodeLabel(seasonNumber?: number | null, episodeNumber?: number
 }
 
 function formatUnlockPriceLabel(amountMinor: number, currency: string, unit: 'movie' | 'episode') {
-  const price = currency === 'NGN'
+  return `${formatPriceAmountLabel(amountMinor, currency)} to unlock this ${unit}`;
+}
+
+function formatPriceAmountLabel(amountMinor: number, currency: string) {
+  return currency === 'NGN'
     ? `₦${Math.round(amountMinor / 100).toLocaleString('en-NG')}`
     : formatCurrencyMinor(amountMinor, currency);
-
-  return `${price} to unlock this ${unit}`;
 }
 
 function getLanguageSummary(languages: string[]) {
@@ -148,6 +150,7 @@ export default async function VideoPage({
     const landscapeArtworkUrl = getMediaAssetUrl(requestedVideo.technicalMetadata?.landscapeArtworkKey ?? null);
     const backdropUrl = landscapeArtworkUrl ?? posterUrl;
     const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'movie');
+    const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
     const relatedTitleCandidates = await prisma.video.findMany({
       where: {
         AND: [
@@ -216,12 +219,34 @@ export default async function VideoPage({
           />
           
           <div className="movie-split-top">
-            <div className="detail-poster card-soft">
-              <div
-                className="detail-poster-image"
-                style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-              >
-                {!posterUrl ? <span>Ace Studio</span> : null}
+            <div className="movie-info-panel">
+              <div className="detail-poster card-soft">
+                <div
+                  className="detail-poster-image"
+                  style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                >
+                  {!posterUrl ? <span>Ace Studio</span> : null}
+                </div>
+              </div>
+
+              <div className="detail-copy movie-info-copy">
+                <MovieAccessDetails
+                  videoId={requestedVideo.id}
+                  title={requestedVideo.title}
+                  details={primaryMeta as string[]}
+                  priceLabel={priceLabel}
+                  initiallyUnlocked={unlocked}
+                  unitLabel="movie"
+                />
+                <p className="movie-synopsis">{requestedVideo.description || 'No synopsis available.'}</p>
+                <div className="video-page-actions">
+                  <Link className="btn btn-ghost" href="/browse">Browse more titles</Link>
+                  {!user ? (
+                    <Link className="btn btn-ghost" href={`/auth/login?next=${encodeURIComponent(`/v/${requestedVideo.id}`)}`}>Sign in</Link>
+                  ) : (
+                    <Link className="btn btn-ghost" href="/account">My account</Link>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -229,7 +254,7 @@ export default async function VideoPage({
               <AcePlayer
                 videoId={requestedVideo.id}
                 teaserSec={requestedVideo.teaserSec}
-                priceLabel={priceLabel}
+                priceLabel={priceAmountLabel}
                  initialUnlocked={unlocked}
                  initialStreamUrl={initialStreamUrl ?? undefined}
                  initialProgress={initialProgress}
@@ -251,30 +276,6 @@ export default async function VideoPage({
               />
             </div>
           </div>
-
-          <div className="movie-details-section">
-            <div className="detail-copy">
-              <MovieAccessDetails
-                videoId={requestedVideo.id}
-                title={requestedVideo.title}
-                details={primaryMeta as string[]}
-                priceLabel={priceLabel}
-                initiallyUnlocked={unlocked}
-                unitLabel="movie"
-              />
-              <p className="movie-synopsis">{requestedVideo.description || 'No synopsis available.'}</p>
-              <div className="video-page-actions" style={{ marginTop: '1.5rem' }}>
-                <Link className="btn btn-ghost" href="/browse">Browse more titles</Link>
-                {!user ? (
-                  <Link className="btn btn-ghost" href={`/auth/login?next=${encodeURIComponent(`/v/${requestedVideo.id}`)}`}>Sign in</Link>
-                ) : (
-                  <Link className="btn btn-ghost" href="/account">My account</Link>
-                )}
-              </div>
-            </div>
-          </div>
-
-
 
           {!user ? (
             <div className="card video-page-secondary">
@@ -367,6 +368,7 @@ export default async function VideoPage({
 
   const regionalPrice = getRegionalPriceForVideo(requestHeaders, selectedEpisode ?? series, pricingConfig);
   const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'episode');
+  const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
   const seriesPosterUrl = getMediaAssetUrl(series.posterKey);
   const seriesLandscapeArtworkUrl = getMediaAssetUrl(series.technicalMetadata?.landscapeArtworkKey ?? null);
   const seriesBackdropUrl = seriesLandscapeArtworkUrl ?? seriesPosterUrl;
@@ -445,12 +447,53 @@ export default async function VideoPage({
         />
         
         <div className="movie-split-top">
-          <div className="detail-poster card-soft">
-            <div
-              className="detail-poster-image"
-              style={seriesPosterUrl ? { backgroundImage: `url(${seriesPosterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-            >
-              {!seriesPosterUrl ? <span>Ace Studio</span> : null}
+          <div className="movie-info-panel">
+            <div className="detail-poster card-soft">
+              <div
+                className="detail-poster-image"
+                style={seriesPosterUrl ? { backgroundImage: `url(${seriesPosterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {!seriesPosterUrl ? <span>Ace Studio</span> : null}
+              </div>
+            </div>
+
+            <div className="detail-copy movie-info-copy">
+              <MovieAccessDetails
+                videoId={selectedEpisode?.id ?? series.id}
+                title={series.title}
+                details={seriesMeta as string[]}
+                priceLabel={priceLabel}
+                initiallyUnlocked={unlocked}
+                unitLabel="episode"
+              />
+              <p className="movie-synopsis">{series.description || 'No synopsis available.'}</p>
+              <div className="video-page-meta-stack">
+                {selectedEpisode ? (
+                  <p className="muted video-page-meta-line">
+                    Now selected: {formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)} / {selectedEpisode.title}
+                  </p>
+                ) : null}
+                {currentEpisodeMeta.length ? (
+                  <p className="muted video-page-meta-line">{currentEpisodeMeta.join(' / ')}</p>
+                ) : null}
+              </div>
+              {selectedEpisode && (
+                <div className="series-player-header">
+                  <div>
+                    <span className="pill series-episode-pill">{formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)}</span>
+                    <h2 className="series-player-title">{selectedEpisode.title}</h2>
+                    <p className="muted series-player-summary">{selectedEpisode.description || 'No synopsis available.'}</p>
+                  </div>
+                </div>
+              )}
+              <div className="video-page-actions">
+                <Link className="btn btn-ghost" href="/browse?type=SERIES">Browse series</Link>
+                {!user ? (
+                  <Link className="btn btn-ghost" href={loginHref}>Sign in</Link>
+                ) : (
+                  <Link className="btn btn-ghost" href="/account">My account</Link>
+                )}
+              </div>
             </div>
           </div>
 
@@ -459,7 +502,7 @@ export default async function VideoPage({
               <AcePlayer
                 videoId={selectedEpisode.id}
                 teaserSec={selectedEpisode.teaserSec}
-                priceLabel={priceLabel}
+                priceLabel={priceAmountLabel}
                  initialUnlocked={unlocked}
                  initialStreamUrl={initialStreamUrl ?? undefined}
                  initialProgress={initialProgress}
@@ -485,47 +528,6 @@ export default async function VideoPage({
                 <p className="muted">This series page is live, but the first approved episode has not been published yet.</p>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="movie-details-section">
-          <div className="detail-copy">
-            <MovieAccessDetails
-              videoId={selectedEpisode?.id ?? series.id}
-              title={series.title}
-              details={seriesMeta as string[]}
-              priceLabel={priceLabel}
-              initiallyUnlocked={unlocked}
-              unitLabel="episode"
-            />
-            <p className="movie-synopsis">{series.description || 'No synopsis available.'}</p>
-            <div className="video-page-meta-stack">
-              {selectedEpisode ? (
-                <p className="muted video-page-meta-line">
-                  Now selected: {formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)} / {selectedEpisode.title}
-                </p>
-              ) : null}
-              {currentEpisodeMeta.length ? (
-                <p className="muted video-page-meta-line">{currentEpisodeMeta.join(' / ')}</p>
-              ) : null}
-            </div>
-            {selectedEpisode && (
-              <div className="series-player-header" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '1.5rem' }}>
-                <div>
-                  <span className="pill series-episode-pill">{formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)}</span>
-                  <h2 className="series-player-title" style={{ marginTop: '0.5rem' }}>{selectedEpisode.title}</h2>
-                  <p className="muted series-player-summary">{selectedEpisode.description || 'No synopsis available.'}</p>
-                </div>
-              </div>
-            )}
-            <div className="video-page-actions" style={{ marginTop: '1.5rem' }}>
-              <Link className="btn btn-ghost" href="/browse?type=SERIES">Browse series</Link>
-              {!user ? (
-                <Link className="btn btn-ghost" href={loginHref}>Sign in</Link>
-              ) : (
-                <Link className="btn btn-ghost" href="/account">My account</Link>
-              )}
-            </div>
           </div>
         </div>
 
