@@ -11332,7 +11332,7 @@ body::before {
 
 .movie-info-panel {
   display: grid;
-  grid-template-columns: minmax(170px, 0.44fr) minmax(0, 0.56fr);
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
   align-items: stretch;
@@ -11463,15 +11463,19 @@ body::before {
 
 /* Adjust detail poster in split layout to look very crisp */
 .movie-split-top .detail-poster {
+  display: block;
   height: 100%;
   margin: 0;
+  min-width: 0;
 }
 
 .movie-split-top .detail-poster-image {
   height: 100%;
-  min-height: 100%;
+  min-height: 320px;
   aspect-ratio: 2 / 3; /* Movie posters are vertical */
-  object-fit: cover;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
 /* Premium Segmented Mode Selector inside AcePlayer */
@@ -11515,8 +11519,8 @@ body::before {
 
 .player-control-dock {
   display: grid;
-  gap: 12px;
-  padding: 16px 18px 18px;
+  gap: 8px;
+  padding: 14px 16px 16px;
   background: linear-gradient(180deg, rgba(5, 8, 14, 0.92), rgba(8, 11, 20, 0.98));
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -11525,7 +11529,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -11542,25 +11546,27 @@ body::before {
 }
 
 .player-control-cluster-primary {
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .player-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: #f7f9fc;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
   transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+  white-space: nowrap;
 }
 
 .player-action-button:hover {
@@ -11573,8 +11579,8 @@ body::before {
 }
 
 .player-action-button-primary {
-  min-width: 142px;
-  padding: 0 22px;
+  min-width: 108px;
+  padding: 0 16px;
   border-color: rgba(88, 217, 255, 0.4);
   background: linear-gradient(135deg, rgba(88, 217, 255, 0.22), rgba(112, 157, 255, 0.18));
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
@@ -11592,11 +11598,12 @@ body::before {
 .player-readout {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   color: rgba(228, 235, 246, 0.82);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
+  margin-left: auto;
 }
 
 .player-progress-track {
@@ -11814,7 +11821,7 @@ body::before {
   }
 
   .movie-info-panel {
-    grid-template-columns: minmax(150px, 0.42fr) minmax(0, 0.58fr);
+    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr);
   }
   
   .movie-split-top .detail-poster {
@@ -11867,21 +11874,16 @@ body::before {
     width: 100%;
   }
 
+  .player-control-cluster-primary {
+    flex-wrap: wrap;
+  }
+
   .player-action-button {
     flex: 1 1 calc(50% - 8px);
   }
 
   .player-action-button-primary {
     min-width: 0;
-  }
-
-  .player-volume-block {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .player-volume-slider {
-    width: min(48vw, 190px);
   }
 }
 

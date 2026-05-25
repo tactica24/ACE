@@ -45,6 +45,7 @@ class TitleEpisode {
     required this.subtitleTracks,
     required this.access,
     required this.progressSec,
+    required this.trailerUrl,
     this.seasonNumber,
     this.episodeNumber,
   });
@@ -60,6 +61,7 @@ class TitleEpisode {
   final List<TitleSubtitleTrack> subtitleTracks;
   final TitleAccessState access;
   final int progressSec;
+  final String? trailerUrl;
   final int? seasonNumber;
   final int? episodeNumber;
 
@@ -91,6 +93,7 @@ class TitleEpisode {
           json['access'] as Map<String, dynamic>? ?? const {},
         ),
         progressSec: (json['progressSec'] as num?)?.toInt() ?? 0,
+        trailerUrl: json['trailerUrl'] as String?,
         seasonNumber: (json['seasonNumber'] as num?)?.toInt(),
         episodeNumber: (json['episodeNumber'] as num?)?.toInt(),
       );
@@ -106,6 +109,7 @@ class TitleDetail {
     required this.audioLanguages,
     required this.subtitleTracks,
     required this.progressSec,
+    required this.trailerUrl,
     this.seasonNumber,
     this.episodeNumber,
   });
@@ -118,6 +122,7 @@ class TitleDetail {
   final List<String> audioLanguages;
   final List<TitleSubtitleTrack> subtitleTracks;
   final int progressSec;
+  final String? trailerUrl;
   final int? seasonNumber;
   final int? episodeNumber;
 
@@ -144,6 +149,7 @@ class TitleDetail {
               TitleSubtitleTrack.fromJson(item as Map<String, dynamic>))
           .toList(),
       progressSec: (title['progressSec'] as num?)?.toInt() ?? 0,
+      trailerUrl: title['trailerUrl'] as String?,
       seasonNumber: (title['seasonNumber'] as num?)?.toInt(),
       episodeNumber: (title['episodeNumber'] as num?)?.toInt(),
     );

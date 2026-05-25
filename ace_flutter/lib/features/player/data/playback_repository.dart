@@ -51,8 +51,14 @@ class PlaybackRepository {
     required String titleId,
     required bool teaserOnly,
     required bool isSignedIn,
+    String? trailerUrl,
     String qualityPreference = 'Adaptive',
   }) async {
+    final trimmedTrailerUrl = trailerUrl?.trim();
+    if (teaserOnly && trimmedTrailerUrl != null && trimmedTrailerUrl.isNotEmpty) {
+      return PlaybackStreamUrls(progressiveUrl: apiClient.resolve(trimmedTrailerUrl).toString());
+    }
+
     final query = <String, String>{
       'videoId': titleId,
       if (teaserOnly) 'teaser': '1',

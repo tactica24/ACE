@@ -95,6 +95,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         audioLanguages: const [],
         subtitleTracks: const [],
         resumePositionSec: 0,
+        trailerUrl: null,
       ),
     ];
   }
@@ -205,6 +206,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
               titleId: entry.id,
               teaserOnly: entry.teaserOnly,
               isSignedIn: _isSignedIn,
+              trailerUrl: entry.trailerUrl,
               qualityPreference: preferences.playbackQuality,
             );
 
@@ -943,29 +945,9 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                                          overflow: TextOverflow.ellipsis,
                                                        ),
                                                      ),
-                                                     IconButton(
-                                                       onPressed: _showVolumeSheet,
-                                                       icon: Icon(
-                                                         _muted
-                                                             ? Icons.volume_off_rounded
-                                                             : Icons.volume_up_rounded,
-                                                         color: Colors.white,
-                                                       ),
-                                                       tooltip: 'Sound',
-                                                     ),
-                                                     IconButton(
-                                                       onPressed: _toggleFullscreen,
-                                                       icon: Icon(
-                                                         _fullscreen
-                                                             ? Icons.fullscreen_exit_rounded
-                                                             : Icons.fullscreen_rounded,
-                                                         color: Colors.white,
-                                                       ),
-                                                       tooltip: 'Fullscreen',
-                                                     ),
-                                                   ],
-                                                 ),
-                                               ),
+                                                  ],
+                                                ),
+                                              ),
                                                // Center play/pause (big) or unlock prompt
                                                Center(
                                                  child: (_currentEntry.teaserOnly || !_currentEntry.hasAccess)

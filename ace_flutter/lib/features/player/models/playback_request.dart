@@ -12,6 +12,7 @@ class PlaybackQueueEntry {
     required this.audioLanguages,
     required this.subtitleTracks,
     required this.resumePositionSec,
+    required this.trailerUrl,
     this.seasonNumber,
     this.episodeNumber,
   });
@@ -26,6 +27,7 @@ class PlaybackQueueEntry {
   final List<String> audioLanguages;
   final List<TitleSubtitleTrack> subtitleTracks;
   final int resumePositionSec;
+  final String? trailerUrl;
   final int? seasonNumber;
   final int? episodeNumber;
 
@@ -40,6 +42,7 @@ class PlaybackQueueEntry {
     List<String>? audioLanguages,
     List<TitleSubtitleTrack>? subtitleTracks,
     int? resumePositionSec,
+    String? trailerUrl,
     int? seasonNumber,
     int? episodeNumber,
   }) {
@@ -54,6 +57,7 @@ class PlaybackQueueEntry {
       audioLanguages: audioLanguages ?? this.audioLanguages,
       subtitleTracks: subtitleTracks ?? this.subtitleTracks,
       resumePositionSec: resumePositionSec ?? this.resumePositionSec,
+      trailerUrl: trailerUrl ?? this.trailerUrl,
       seasonNumber: seasonNumber ?? this.seasonNumber,
       episodeNumber: episodeNumber ?? this.episodeNumber,
     );

@@ -68,6 +68,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             audioLanguages: episode.audioLanguages,
             subtitleTracks: episode.subtitleTracks,
             resumePositionSec: episode.progressSec,
+            trailerUrl: episode.trailerUrl,
             seasonNumber: episode.seasonNumber,
             episodeNumber: episode.episodeNumber,
           ),
@@ -87,6 +88,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       audioLanguages: widget.detail.audioLanguages,
       subtitleTracks: widget.detail.subtitleTracks,
       resumePositionSec: widget.detail.progressSec,
+      trailerUrl: widget.detail.trailerUrl,
       seasonNumber: widget.detail.seasonNumber,
       episodeNumber: widget.detail.episodeNumber,
     );

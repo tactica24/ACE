@@ -146,7 +146,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         seriesId: title.seriesId,
         seasonNumber: title.seasonNumber,
         episodeNumber: title.episodeNumber,
-        previewAvailable: Boolean(title.technicalMetadata?.trailerKey?.trim()),
+        previewAvailable:
+          Boolean(title.technicalMetadata?.trailerKey?.trim()) ||
+          title.teaserSec > 0,
         metadata: {
           vendorId: title.technicalMetadata?.vendorId ?? null,
           studioReleaseTitle: title.technicalMetadata?.studioReleaseTitle ?? null,
@@ -159,6 +161,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           promotionalStillKeys: title.technicalMetadata?.promotionalStillKeys ?? []
         },
         progressSec: historyByVideoId.get(title.id) ?? 0,
+        trailerUrl: title.technicalMetadata?.trailerKey?.trim()
+          ? `/api/media/${title.technicalMetadata.trailerKey.trim()}`
+          : null,
         audioLanguages: title.audioLanguages,
         subtitleTracks: title.subtitleTracks.map(mapSubtitleTrack),
         episodes: title.episodes.map((episode) => ({
@@ -170,8 +175,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           posterKey: episode.posterKey,
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,
-          previewAvailable: Boolean(episode.technicalMetadata?.trailerKey?.trim()),
+          previewAvailable:
+            Boolean(episode.technicalMetadata?.trailerKey?.trim()) ||
+            episode.teaserSec > 0,
           progressSec: historyByVideoId.get(episode.id) ?? 0,
+          trailerUrl: episode.technicalMetadata?.trailerKey?.trim()
+            ? `/api/media/${episode.technicalMetadata.trailerKey.trim()}`
+            : null,
           audioLanguages: episode.audioLanguages,
           subtitleTracks: episode.subtitleTracks.map(mapSubtitleTrack),
           access: mapEpisodeAccess(episode.id)

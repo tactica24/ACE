@@ -203,7 +203,6 @@ export default function AcePlayer({
   const lastSyncedRef = useRef(0);
   const historyInFlightRef = useRef(false);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const copy = getUiCopy(uiLanguage);
   const subtitleTracks = useMemo(() => subtitles.filter((track) => track.src), [subtitles]);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -979,22 +978,6 @@ export default function AcePlayer({
   const previewSeconds = highlightSeconds.filter((sec) => sec >= 0);
   const maxPreview = unlocked ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
 
-  const toggleFullscreen = useCallback(() => {
-    const container = playerContainerRef.current;
-    if (!container) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      (container as any).requestFullscreen?.().catch(() => {});
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
-
   const formatTime = (sec: number) => {
     const minutes = Math.floor(sec / 60);
     const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
@@ -1071,30 +1054,10 @@ export default function AcePlayer({
               <button className="player-action-button player-action-button-subtle" type="button" onClick={() => jumpPlayback(10)}>
                 Forward 10s
               </button>
-              <button className="player-action-button player-action-button-subtle" type="button" onClick={toggleFullscreen}>
-                {isFullscreen ? 'Exit full screen' : 'Full screen'}
-              </button>
             </div>
             <div className="player-readout">
               <span>{formatTime(currentTime)} / {formatTime(durationSec)}</span>
               {!unlocked && isMovieMode ? <span>Free movie preview: {formatTime(teaserSec)}</span> : null}
-            </div>
-          </div>
-          <div className="player-control-row player-control-row-secondary">
-            <div className="player-control-cluster">
-              <div className="player-volume-block">
-                <span className="player-volume-label">Volume</span>
-                <input
-                  className="player-volume-slider"
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  aria-label="Volume"
-                  onChange={(event) => updateVolume(Number(event.target.value))}
-                />
-              </div>
             </div>
           </div>
         </div>
