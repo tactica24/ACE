@@ -590,40 +590,6 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     }
   }
 
-  Future<void> _toggleMute() async {
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
-
-    final nextMuted = !_muted;
-    await controller.setVolume(nextMuted ? 0 : (_volume == 0 ? 1 : _volume));
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _muted = nextMuted;
-      _volume = nextMuted ? 0 : (_volume == 0 ? 1 : _volume);
-    });
-  }
-
-  Future<void> _setVolume(double nextVolume) async {
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
-
-    final safeVolume = nextVolume.clamp(0, 1).toDouble();
-    await controller.setVolume(safeVolume);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _muted = safeVolume == 0;
-      _volume = safeVolume;
-    });
-  }
-
   Future<void> _seekToSeconds(int seconds) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {

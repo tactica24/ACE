@@ -96,6 +96,11 @@ function formatRuntime(_durationSec?: number | null) {
   return '90m';
 }
 
+function matchesNormalizedTitle(video: HomeVideo, allowedTitles: string[]) {
+  const title = (video.title || '').toLowerCase().trim();
+  return allowedTitles.some((allowed) => title.includes(allowed) || allowed.includes(title));
+}
+
 function buildRows(videos: HomeVideo[], continueWatching: HomeVideo[] = [], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
   const freshReleases = [...videos]
@@ -238,37 +243,37 @@ function buildEditorialCollections(videos: HomeVideo[]): EditorialCollection[] {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const heroVideos = videos.slice(0, 5).map((video) => ({
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    category: video.category,
-    durationSec: video.durationSec,
-    videoType: video.videoType,
-    posterKey: video.posterKey,
-    releaseYear: video.releaseYear,
-  }));
-
-  const featuredRows = buildRows(videos, [], []);
+  const guestHeroPosterTitles = [
+    'arctic void',
+    'manhattan romance',
+    'the caretaker',
+    'the naked umbrella'
+  ];
+  const heroPosters = guestHeroPosterTitles
+    .map((allowedTitle) => videos.find((video) => matchesNormalizedTitle(video, [allowedTitle])))
+    .filter((video): video is HomeVideo => Boolean(video));
+  const featuredRows = [
+    {
+      id: 'trending',
+      title: 'Trending Now',
+      description: 'Stories viewers are returning to on ACE Studio.',
+      items: videos.slice(0, 12)
+    }
+  ];
 
   return (
     <div className="nmhp-landing">
       <section className="nmhp-hero">
         <div className="nmhp-hero-bg" aria-hidden="true">
-          {videos.slice(0, 9).map((video, index) => {
+          {heroPosters.map((video, index) => {
             const posterUrl = getMediaAssetUrl(video.posterKey);
             if (!posterUrl) return null;
 
             const positions = [
-              { left: '8%', top: '12%', scale: 1.05, rot: -6 },
-              { left: '32%', top: '8%', scale: 0.92, rot: 5 },
-              { left: '58%', top: '15%', scale: 1.08, rot: -4 },
-              { left: '78%', top: '10%', scale: 0.88, rot: 7 },
-              { left: '5%', top: '48%', scale: 0.95, rot: 4 },
-              { left: '25%', top: '55%', scale: 1.1, rot: -5 },
-              { left: '52%', top: '52%', scale: 0.9, rot: 3 },
-              { left: '72%', top: '45%', scale: 1.02, rot: -7 },
-              { left: '15%', top: '78%', scale: 0.85, rot: 6 }
+              { left: '9%', top: '15%', scale: 1.02, rot: -5 },
+              { left: '31%', top: '10%', scale: 0.96, rot: 4 },
+              { left: '56%', top: '16%', scale: 1.04, rot: -3 },
+              { left: '77%', top: '11%', scale: 0.92, rot: 6 }
             ];
             const pos = positions[index % positions.length];
 
@@ -328,15 +333,14 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
       </section>
 
       <div className="viewer-home guest-home">
-        <HomeMovieHero videos={heroVideos} />
         <section className="home-shelves" id="discover">
           <div className="container">
             {featuredRows.length > 0 && featuredRows.map((row) => (
               <section key={row.id} className="home-shelf">
                 <div className="home-shelf-header">
                   <div>
-                    <span className="home-row-kicker">Featured on ACE</span>
                     <h2>{row.title}</h2>
+                    <p className="muted" style={{ marginBottom: 0 }}>{row.description}</p>
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse all</Link>
                 </div>
@@ -389,10 +393,7 @@ export default async function HomePage() {
     'manhattan romance',
     'the naked umbrella'
   ];
-  videos = videos.filter((video) => {
-    const title = (video.title || '').toLowerCase().trim();
-    return approvedLandingTitles.some((allowed) => title.includes(allowed) || allowed.includes(title));
-  });
+  videos = videos.filter((video) => matchesNormalizedTitle(video, approvedLandingTitles));
 
   let pricingConfig: any;
   try {
