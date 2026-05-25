@@ -41,10 +41,33 @@ export async function ensureCached(key: string, bucketName?: string) {
 
 function parseRange(rangeHeader: string | null, fileSize: number) {
   if (!rangeHeader) return null;
+  if (fileSize <= 0) return null;
+
+  const suffixMatch = /bytes=-(\d+)/.exec(rangeHeader);
+  if (suffixMatch) {
+    const suffixLength = parseInt(suffixMatch[1] ?? '0', 10);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
+
+    const clampedLength = Math.min(suffixLength, fileSize);
+    return {
+      start: Math.max(fileSize - clampedLength, 0),
+      end: fileSize - 1
+    };
+  }
+
   const match = /bytes=(\d+)-(\d+)?/.exec(rangeHeader);
   if (!match) return null;
+
   const start = parseInt(match[1] ?? '0', 10);
-  const end = match[2] ? parseInt(match[2], 10) : Math.min(start + 1024 * 1024 * 4 - 1, fileSize - 1);
+  const requestedEnd = match[2] ? parseInt(match[2], 10) : Math.min(start + 1024 * 1024 * 4 - 1, fileSize - 1);
+  const end = Math.min(requestedEnd, fileSize - 1);
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start) {
+    return null;
+  }
+
   return { start, end };
 }
 

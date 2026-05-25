@@ -1080,12 +1080,6 @@ export default function AcePlayer({
               {!unlocked && isMovieMode ? <span>Free movie preview: {formatTime(teaserSec)}</span> : null}
             </div>
           </div>
-          <div className="player-progress-track" aria-hidden="true">
-            <div
-              className="player-progress-fill"
-              style={{ width: `${durationSec > 0 ? Math.min((currentTime / durationSec) * 100, 100) : 0}%` }}
-            />
-          </div>
           <div className="player-control-row player-control-row-secondary">
             <div className="player-control-cluster">
               <div className="player-volume-block">
@@ -1101,27 +1095,6 @@ export default function AcePlayer({
                   onChange={(event) => updateVolume(Number(event.target.value))}
                 />
               </div>
-              {subtitleTracks.length ? (
-                <>
-                  <button
-                    className={`player-settings-chip${selectedSubtitleId === 'off' ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => setSelectedSubtitleId('off')}
-                  >
-                    {copy.off}
-                  </button>
-                  {subtitleTracks.map((track) => (
-                    <button
-                      key={track.id}
-                      className={`player-settings-chip${selectedSubtitleId === track.id ? ' active' : ''}`}
-                      type="button"
-                      onClick={() => setSelectedSubtitleId(track.id)}
-                    >
-                      {track.label || getLanguageLabel(track.languageCode)}
-                    </button>
-                  ))}
-                </>
-              ) : null}
             </div>
           </div>
         </div>
