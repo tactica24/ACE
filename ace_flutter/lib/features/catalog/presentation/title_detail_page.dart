@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_theme.dart';
+import '../../../core/network/media_url.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../downloads/data/offline_download_repository.dart';
@@ -276,99 +278,82 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            gradient: AppTheme.premiumPanelGradient,
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title.title,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title.description,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.textMuted,
-                      height: 1.6,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _DetailChip(label: title.category),
-                  _DetailChip(label: title.videoType),
-                  _DetailChip(label: title.ageRating),
-                  if (title.releaseYear != null)
-                    _DetailChip(label: '${title.releaseYear}'),
-                  if (title.audioLanguages.isNotEmpty)
-                    ...title.audioLanguages
-                        .take(2)
-                        .map((language) => _DetailChip(label: language)),
-                ],
-              ),
-              const SizedBox(height: 22),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (_isSeriesContainer && firstPlayableEpisode != null)
-                    ElevatedButton(
-                      onPressed: firstPlayableEpisode.hasAccess ||
-                              firstPlayableEpisode.previewAvailable
-                          ? () => _launchPlayback(
-                                entry: firstPlayableEpisode,
-                                index: seriesQueue.indexOf(firstPlayableEpisode),
-                                queue: seriesQueue,
-                              )
-                          : null,
-                      child: Text(
-                        firstPlayableEpisode.hasAccess
-                            ? 'Start series'
-                            : firstPlayableEpisode.previewAvailable
-                                ? 'Watch preview'
-                                : 'Preview unavailable',
+        if (_isSeriesContainer) ...[
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              gradient: AppTheme.premiumPanelGradient,
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.title,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1,
                       ),
-                    )
-                  else
-                    ElevatedButton(
-                      onPressed: widget.detail.access.hasAccess ||
-                              widget.detail.previewAvailable
-                          ? () => _launchPlayback(
-                                entry: _buildStandaloneEntry(),
-                                index: 0,
-                                queue: [_buildStandaloneEntry()],
-                              )
-                          : null,
-                      child: Text(
-                        widget.detail.access.hasAccess
-                            ? 'Watch now'
-                            : widget.detail.previewAvailable
-                                ? 'Watch preview'
-                                : 'Preview unavailable',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title.description,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.textMuted,
+                        height: 1.6,
                       ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _DetailChip(label: title.category),
+                    _DetailChip(label: title.videoType),
+                    _DetailChip(label: title.ageRating),
+                    if (title.releaseYear != null)
+                      _DetailChip(label: '${title.releaseYear}'),
+                    if (title.audioLanguages.isNotEmpty)
+                      ...title.audioLanguages
+                          .take(2)
+                          .map((language) => _DetailChip(label: language)),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (firstPlayableEpisode != null)
+                      ElevatedButton(
+                        onPressed: firstPlayableEpisode.hasAccess ||
+                                firstPlayableEpisode.previewAvailable
+                            ? () => _launchPlayback(
+                                  entry: firstPlayableEpisode,
+                                  index:
+                                      seriesQueue.indexOf(firstPlayableEpisode),
+                                  queue: seriesQueue,
+                                )
+                            : null,
+                        child: Text(
+                          firstPlayableEpisode.hasAccess
+                              ? 'Start series'
+                              : firstPlayableEpisode.previewAvailable
+                                  ? 'Watch preview'
+                                  : 'Preview unavailable',
+                        ),
+                      ),
+                    OutlinedButton(
+                      onPressed: () => context.go('/library'),
+                      child: const Text('My Access'),
                     ),
-                  OutlinedButton(
-                    onPressed: () => context.go('/library'),
-                    child: const Text('My Access'),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        if (_isSeriesContainer)
+          const SizedBox(height: 20),
           _SeriesAccessCard(
             detail: widget.detail,
             isSignedIn: isSignedIn,
@@ -379,9 +364,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               index: episodeIndex,
               queue: seriesQueue,
             ),
-          )
-        else
-          _MovieAccessCard(
+          ),
+        ] else
+          _MovieOverviewCard(
             detail: widget.detail,
             isSignedIn: isSignedIn,
             busyUnlock: _busyUnlockIds.contains(title.id),
@@ -398,6 +383,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             onRemoveDownload: _removeOfflineDownload,
             onPlayOffline: (downloaded) =>
                 context.push('/offline-player', extra: downloaded),
+            onOpenLibrary: () => context.go('/library'),
           ),
         if (_downloadError != null) ...[
           const SizedBox(height: 10),
@@ -424,8 +410,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 }
 
-class _MovieAccessCard extends StatelessWidget {
-  const _MovieAccessCard({
+class _MovieOverviewCard extends StatelessWidget {
+  const _MovieOverviewCard({
     required this.detail,
     required this.isSignedIn,
     required this.busyUnlock,
@@ -437,6 +423,7 @@ class _MovieAccessCard extends StatelessWidget {
     required this.onDownload,
     required this.onRemoveDownload,
     required this.onPlayOffline,
+    required this.onOpenLibrary,
   });
 
   final TitleDetail detail;
@@ -450,157 +437,433 @@ class _MovieAccessCard extends StatelessWidget {
   final VoidCallback onDownload;
   final VoidCallback onRemoveDownload;
   final ValueChanged<DownloadedTitle> onPlayOffline;
+  final VoidCallback onOpenLibrary;
 
   @override
   Widget build(BuildContext context) {
+    final title = detail.summary;
     final canWatch = detail.access.hasAccess;
-    final accessMessage = canWatch
-        ? detail.access.message
-        : 'This account does not currently have access to this title.';
+    final posterUrl = resolveMediaUrl(title.posterKey);
+    final metaChips = <Widget>[
+      _DetailChip(label: title.category),
+      _DetailChip(label: title.videoType),
+      _DetailChip(label: title.ageRating),
+      if (title.releaseYear != null) _DetailChip(label: '${title.releaseYear}'),
+      ...title.audioLanguages.take(2).map((language) => _DetailChip(label: language)),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        gradient: AppTheme.premiumPanelGradient,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Access status',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            accessMessage,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textMuted,
-                  height: 1.5,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showSideBySide = constraints.maxWidth >= 680;
+
+          return Flex(
+            direction: showSideBySide ? Axis.horizontal : Axis.vertical,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: showSideBySide ? 190 : double.infinity,
+                child: AspectRatio(
+                  aspectRatio: 2 / 3,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: posterUrl == null
+                        ? _MoviePosterFallback(title: title.title)
+                        : CachedNetworkImage(
+                            imageUrl: posterUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) =>
+                                _MoviePosterFallback(title: title.title),
+                            placeholder: (_, __) => const ColoredBox(
+                              color: AppTheme.surfaceElevated,
+                            ),
+                          ),
+                  ),
                 ),
-          ),
-          const SizedBox(height: 16),
-          downloadedAsync.when(
-            data: (downloaded) {
-              if (!canWatch) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              ),
+              SizedBox(
+                width: showSideBySide ? 20 : 0,
+                height: showSideBySide ? 0 : 18,
+              ),
+              showSideBySide
+                  ? Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title.title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: metaChips,
+                          ),
+                          if (title.description.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              title.description,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.textMuted,
+                                    height: 1.55,
+                                  ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          Text(
+                            canWatch
+                                ? detail.access.message
+                                : 'Preview is available now. Unlock the full movie to continue watching and download it in the app.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: AppTheme.textMuted,
+                                  height: 1.45,
+                                ),
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: canWatch || detail.previewAvailable
+                                    ? onPreview
+                                    : null,
+                                icon: Icon(
+                                  canWatch
+                                      ? Icons.play_circle_fill_rounded
+                                      : Icons.play_circle_outline_rounded,
+                                ),
+                                label:
+                                    Text(canWatch ? 'Watch now' : 'Watch preview'),
+                              ),
+                              if (!canWatch)
+                                ElevatedButton.icon(
+                                  onPressed: busyUnlock
+                                      ? null
+                                      : isSignedIn
+                                          ? onUnlock
+                                          : null,
+                                  icon: busyUnlock
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.lock_open_rounded),
+                                  label: Text(
+                                    busyUnlock
+                                        ? 'Unlocking...'
+                                        : isSignedIn
+                                            ? 'Unlock full movie'
+                                            : 'Sign in to unlock',
+                                  ),
+                                ),
+                              OutlinedButton(
+                                onPressed: onOpenLibrary,
+                                child: const Text('My Access'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          downloadedAsync.when(
+                            data: (downloaded) {
+                              if (!canWatch) {
+                                return Text(
+                                  detail.previewAvailable
+                                      ? 'Offline download becomes available immediately after unlock.'
+                                      : 'Preview is not available for this title yet. Offline download becomes available after unlock.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppTheme.textMuted,
+                                      ),
+                                );
+                              }
+
+                              if (isDownloading) {
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Saving for offline playback...',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    LinearProgressIndicator(
+                                      value: downloadProgress,
+                                      backgroundColor:
+                                          const Color(0x22FFFFFF),
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                        AppTheme.gold,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              if (downloaded == null) {
+                                return OutlinedButton.icon(
+                                  onPressed: onDownload,
+                                  icon: const Icon(Icons.download_rounded),
+                                  label: const Text('Download in app'),
+                                );
+                              }
+
+                              return Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () => onPlayOffline(downloaded),
+                                    icon: const Icon(
+                                      Icons.play_circle_fill_rounded,
+                                    ),
+                                    label: const Text('Play offline'),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: onRemoveDownload,
+                                    icon:
+                                        const Icon(Icons.delete_outline_rounded),
+                                    label: const Text('Remove download'),
+                                  ),
+                                ],
+                              );
+                            },
+                            loading: () => const SizedBox(
+                              height: 20,
+                              child: Center(
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            error: (error, _) => Text(
+                              error.toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: Colors.redAccent),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                      title.title,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: metaChips,
+                    ),
+                    if (title.description.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        title.description,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.textMuted,
+                              height: 1.55,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Text(
+                      canWatch
+                          ? detail.access.message
+                          : 'Preview is available now. Unlock the full movie to continue watching and download it in the app.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textMuted,
+                            height: 1.45,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: busyUnlock
-                              ? null
-                              : isSignedIn
-                                  ? onUnlock
-                                  : null,
-                          icon: busyUnlock
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.lock_open_rounded),
-                          label: Text(
-                            busyUnlock
-                                ? 'Unlocking...'
-                                : isSignedIn
-                                    ? 'Unlock full title'
-                                    : 'Sign in to unlock',
+                          onPressed: canWatch || detail.previewAvailable
+                              ? onPreview
+                              : null,
+                          icon: Icon(
+                            canWatch
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.play_circle_outline_rounded,
                           ),
+                          label: Text(canWatch ? 'Watch now' : 'Watch preview'),
                         ),
-                        if (detail.previewAvailable)
-                          OutlinedButton.icon(
-                            onPressed: onPreview,
-                            icon:
-                                const Icon(Icons.play_circle_outline_rounded),
-                            label: const Text('Watch preview'),
+                        if (!canWatch)
+                          ElevatedButton.icon(
+                            onPressed: busyUnlock
+                                ? null
+                                : isSignedIn
+                                    ? onUnlock
+                                    : null,
+                            icon: busyUnlock
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.lock_open_rounded),
+                            label: Text(
+                              busyUnlock
+                                  ? 'Unlocking...'
+                                  : isSignedIn
+                                      ? 'Unlock full movie'
+                                      : 'Sign in to unlock',
+                            ),
                           ),
+                        OutlinedButton(
+                          onPressed: onOpenLibrary,
+                          child: const Text('My Access'),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      detail.previewAvailable
-                          ? 'Offline download is available after the title is unlocked.'
-                          : 'Preview is not available for this title yet. Offline download is available after the title is unlocked.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textMuted,
-                          ),
-                    ),
-                  ],
-                );
-              }
+                    const SizedBox(height: 16),
+                    downloadedAsync.when(
+                      data: (downloaded) {
+                        if (!canWatch) {
+                          return Text(
+                            detail.previewAvailable
+                                ? 'Offline download becomes available immediately after unlock.'
+                                : 'Preview is not available for this title yet. Offline download becomes available after unlock.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textMuted,
+                                ),
+                          );
+                        }
 
-              if (isDownloading) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Saving for offline playback...',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: downloadProgress,
-                      backgroundColor: const Color(0x22FFFFFF),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppTheme.gold,
+                        if (isDownloading) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Saving for offline playback...',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 10),
+                              LinearProgressIndicator(
+                                value: downloadProgress,
+                                backgroundColor: const Color(0x22FFFFFF),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppTheme.gold,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        if (downloaded == null) {
+                          return OutlinedButton.icon(
+                            onPressed: onDownload,
+                            icon: const Icon(Icons.download_rounded),
+                            label: const Text('Download in app'),
+                          );
+                        }
+
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => onPlayOffline(downloaded),
+                              icon: const Icon(Icons.play_circle_fill_rounded),
+                              label: const Text('Play offline'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: onRemoveDownload,
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              label: const Text('Remove download'),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox(
+                        height: 20,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      error: (error, _) => Text(
+                        error.toString(),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.redAccent),
                       ),
                     ),
                   ],
-                );
-              }
-
-              if (downloaded == null) {
-                return OutlinedButton.icon(
-                  onPressed: onDownload,
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Download in app'),
-                );
-              }
-
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => onPlayOffline(downloaded),
-                    icon: const Icon(Icons.play_circle_fill_rounded),
-                    label: const Text('Play offline'),
+                    ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: onRemoveDownload,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Remove download'),
-                  ),
-                ],
-              );
-            },
-            loading: () => const SizedBox(
-              height: 20,
-              child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-            error: (error, _) => Text(
-              error.toString(),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.redAccent),
-            ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MoviePosterFallback extends StatelessWidget {
+  const _MoviePosterFallback({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: AppTheme.premiumPanelGradient,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: Text(
+            title,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
           ),
-        ],
+        ),
       ),
     );
   }

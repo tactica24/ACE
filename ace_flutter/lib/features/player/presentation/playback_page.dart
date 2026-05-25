@@ -32,7 +32,6 @@ class PlaybackPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<PlaybackPage> createState() => _PlaybackPageState();
 }
-
 class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   VideoPlayerController? _controller;
   String? _error;
@@ -209,41 +208,41 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
               trailerUrl: entry.trailerUrl,
               qualityPreference: preferences.playbackQuality,
             );
-
-    // Prefer HLS (best quality/adaptive), fallback to progressive MP4 if HLS fails to initialize
-    final primaryUrl = urls.hlsUrl ?? urls.progressiveUrl ?? urls.dashUrl;
-    if (primaryUrl == null) {
+    final playbackCandidates = <String>[
+      if (urls.progressiveUrl != null && urls.progressiveUrl!.isNotEmpty)
+        urls.progressiveUrl!,
+      if (urls.hlsUrl != null && urls.hlsUrl!.isNotEmpty) urls.hlsUrl!,
+      if (urls.dashUrl != null && urls.dashUrl!.isNotEmpty) urls.dashUrl!,
+    ];
+    if (playbackCandidates.isEmpty) {
       throw Exception('No playback stream available for this title.');
     }
-
-    VideoPlayerController controller =
-        VideoPlayerController.networkUrl(Uri.parse(primaryUrl));
-
-    try {
-      await controller.initialize();
-    } on PlatformException catch (e) {
-      // HLS failed — try progressive MP4 fallback if available
-      if (urls.progressiveUrl != null && urls.progressiveUrl != primaryUrl) {
-        await controller.dispose();
-        controller = VideoPlayerController.networkUrl(
-            Uri.parse(urls.progressiveUrl!));
-        await controller.initialize(); // let it throw if this also fails
-      } else {
-        throw Exception(
-          'Video source error (HLS). Check your connection or try a different title. '
-          '(${e.message ?? e.code})',
-        );
+    VideoPlayerController? controller;
+    String? playbackError;
+    for (final url in playbackCandidates) {
+      final nextController = VideoPlayerController.networkUrl(Uri.parse(url));
+      try {
+        await nextController.initialize();
+        controller = nextController;
+        break;
+      } on PlatformException catch (error) {
+        playbackError = error.message ?? error.code;
+        await nextController.dispose();
+      } catch (error) {
+        playbackError = error.toString();
+        await nextController.dispose();
       }
-    } catch (e) {
-      rethrow;
     }
-
+    if (controller == null) {
+      throw Exception(
+        'Video player had an error loading this stream. '
+        '${playbackError ?? 'Please try a different title.'}',
+      );
+    }
     final shouldMute = preferences.startPlaybackMuted ||
         (entry.teaserOnly && preferences.previewSilently);
     final defaultSubtitleId = _defaultSubtitleIdFor(entry, preferences);
-
     await controller.setVolume(shouldMute ? 0 : _volume);
-
     final safeResume = resumeFromSec > 3
         ? Duration(
             seconds: resumeFromSec
@@ -256,31 +255,30 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                 .toInt(),
           )
         : Duration.zero;
-
     if (safeResume > Duration.zero) {
       await controller.seekTo(safeResume);
     }
-
     _selectedSubtitleId = defaultSubtitleId;
-    await _applySubtitleSelectionToController(
-      controller,
-      entry,
-      defaultSubtitleId,
-    );
-
+    try {
+      await _applySubtitleSelectionToController(
+        controller,
+        entry,
+        defaultSubtitleId,
+      );
+    } catch (_) {
+      _selectedSubtitleId = 'off';
+      await controller.setClosedCaptionFile(null);
+    }
     if (controller.isAudioTrackSupportAvailable()) {
       final tracks = await controller.getAudioTracks();
       _audioTracks = tracks;
     } else {
       _audioTracks = const [];
     }
-
     controller.addListener(_handleControllerUpdate);
-
     if (autoplay) {
       await controller.play();
     }
-
     return controller;
   }
 
@@ -828,7 +826,222 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0;
     final sliderValue =
         _position.inSeconds.clamp(0, sliderMax.toInt()).toDouble();
-
+    final videoAspectRatio = controller != null &&
+            controller.value.isInitialized &&
+            controller.value.aspectRatio > 0
+        ? controller.value.aspectRatio
+        : 16 / 9;
+    Widget playerSurface() {
+      return Container(
+        color: Colors.black,
+        child: AspectRatio(
+          aspectRatio: videoAspectRatio,
+          child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppTheme.gold),
+                )
+              : controller != null && controller.value.isInitialized
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        VideoPlayer(controller),
+                        if (controller.value.isBuffering)
+                          const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.gold,
+                            ),
+                          ),
+                        if (_selectedSubtitleId != 'off')
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 18,
+                                right: 18,
+                                bottom: 24,
+                              ),
+                              child: ClosedCaption(
+                                text: controller.value.caption.text,
+                                textStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _toggleControls,
+                            child: AnimatedOpacity(
+                              opacity: _showControls ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: _showControls
+                                  ? Container(
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.black54,
+                                            Colors.transparent,
+                                            Colors.transparent,
+                                            Colors.black45,
+                                          ],
+                                          stops: [0.0, 0.2, 0.7, 1.0],
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Positioned(
+                                            top: 8,
+                                            left: 12,
+                                            right: 12,
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    playbackTitle,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  onPressed: _toggleFullscreen,
+                                                  icon: Icon(
+                                                    _fullscreen
+                                                        ? Icons.fullscreen_exit_rounded
+                                                        : Icons.fullscreen_rounded,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Center(
+                                            child: (_currentEntry.teaserOnly ||
+                                                    !_currentEntry.hasAccess)
+                                                ? ElevatedButton.icon(
+                                                    onPressed: _unlockingNext
+                                                        ? null
+                                                        : _unlockCurrentAndReload,
+                                                    icon: const Icon(
+                                                      Icons.lock_open_rounded,
+                                                    ),
+                                                    label: Text(
+                                                      _unlockingNext
+                                                          ? 'Unlocking...'
+                                                          : 'Unlock full movie',
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: AppTheme.gold,
+                                                      foregroundColor:
+                                                          AppTheme.background,
+                                                    ),
+                                                  )
+                                                : IconButton(
+                                                    onPressed: _togglePlayPause,
+                                                    iconSize: 72,
+                                                    icon: Icon(
+                                                      isPlaying
+                                                          ? Icons.pause_circle_filled_rounded
+                                                          : Icons.play_circle_filled_rounded,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                          ),
+                                          Positioned(
+                                            left: 12,
+                                            right: 12,
+                                            bottom: 8,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SliderTheme(
+                                                  data: SliderTheme.of(context)
+                                                      .copyWith(
+                                                    trackHeight: 3,
+                                                    thumbShape:
+                                                        const RoundSliderThumbShape(
+                                                      enabledThumbRadius: 7,
+                                                    ),
+                                                    overlayShape:
+                                                        const RoundSliderOverlayShape(
+                                                      overlayRadius: 14,
+                                                    ),
+                                                    activeTrackColor:
+                                                        AppTheme.gold,
+                                                    inactiveTrackColor:
+                                                        Colors.white30,
+                                                    thumbColor: AppTheme.gold,
+                                                  ),
+                                                  child: Slider(
+                                                    value: sliderValue,
+                                                    max: sliderMax,
+                                                    onChanged: (v) =>
+                                                        _seekToSeconds(v.toInt()),
+                                                  ),
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      _formatDuration(_position),
+                                                      style: const TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                    Text(
+                                                      _formatDuration(_duration),
+                                                      style: const TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : _PlayerErrorState(
+                      message:
+                          _error ?? 'Playback is not available right now.',
+                    ),
+        ),
+      );
+    }
+    if (_fullscreen) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: SizedBox.expand(
+          child: Center(
+            child: playerSurface(),
+          ),
+        ),
+      );
+    }
     return PremiumScaffold(
       title: 'Playback',
       currentLocation: '/browse',
@@ -859,191 +1072,16 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                   ),
             ),
           ],
-           const SizedBox(height: 12),
-           // Video player area - edge to edge, no decorative card (web-like)
-           Container(
-             color: Colors.black,
-             child: AspectRatio(
-               aspectRatio: 16 / 9,
-               child: _loading
-                   ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
-                   : controller != null && controller.value.isInitialized
-                       ? Stack(
-                           fit: StackFit.expand,
-                           children: [
-                             VideoPlayer(controller),
-                             if (controller.value.isBuffering)
-                               const Center(
-                                 child: CircularProgressIndicator(color: AppTheme.gold),
-                               ),
-                             if (_selectedSubtitleId != 'off')
-                               Align(
-                                 alignment: Alignment.bottomCenter,
-                                 child: Padding(
-                                   padding: const EdgeInsets.only(
-                                     left: 18,
-                                     right: 18,
-                                     bottom: 24,
-                                   ),
-                                   child: ClosedCaption(
-                                     text: controller.value.caption.text,
-                                     textStyle: const TextStyle(
-                                       color: Colors.white,
-                                       fontSize: 18,
-                                       fontWeight: FontWeight.w700,
-                                       shadows: [
-                                         Shadow(
-                                           blurRadius: 10,
-                                           color: Colors.black,
-                                         ),
-                                       ],
-                                     ),
-                                   ),
-                                 ),
-                               ),
-                             // Tap anywhere on video to toggle simple overlay controls
-                             Positioned.fill(
-                               child: GestureDetector(
-                                 behavior: HitTestBehavior.opaque,
-                                 onTap: _toggleControls,
-                                 child: AnimatedOpacity(
-                                   opacity: _showControls ? 1.0 : 0.0,
-                                   duration: const Duration(milliseconds: 200),
-                                   child: _showControls
-                                       ? Container(
-                                           decoration: const BoxDecoration(
-                                             gradient: LinearGradient(
-                                               begin: Alignment.topCenter,
-                                               end: Alignment.bottomCenter,
-                                               colors: [
-                                                 Colors.black54,
-                                                 Colors.transparent,
-                                                 Colors.transparent,
-                                                 Colors.black45,
-                                               ],
-                                               stops: [0.0, 0.2, 0.7, 1.0],
-                                             ),
-                                           ),
-                                           child: Stack(
-                                             children: [
-                                               // Top bar
-                                               Positioned(
-                                                 top: 8,
-                                                 left: 12,
-                                                 right: 12,
-                                                 child: Row(
-                                                   children: [
-                                                     Expanded(
-                                                       child: Text(
-                                                         playbackTitle,
-                                                         style: const TextStyle(
-                                                           color: Colors.white,
-                                                           fontSize: 14,
-                                                           fontWeight: FontWeight.w600,
-                                                         ),
-                                                         maxLines: 1,
-                                                         overflow: TextOverflow.ellipsis,
-                                                       ),
-                                                     ),
-                                                  ],
-                                                ),
-                                              ),
-                                               // Center play/pause (big) or unlock prompt
-                                               Center(
-                                                 child: (_currentEntry.teaserOnly || !_currentEntry.hasAccess)
-                                                     ? ElevatedButton.icon(
-                                                         onPressed: _unlockingNext
-                                                             ? null
-                                                             : _unlockCurrentAndReload,
-                                                         icon: const Icon(Icons.lock_open_rounded),
-                                                         label: Text(
-                                                           _unlockingNext
-                                                               ? 'Unlocking...'
-                                                               : 'Unlock full video',
-                                                         ),
-                                                         style: ElevatedButton.styleFrom(
-                                                           backgroundColor: AppTheme.gold,
-                                                           foregroundColor: AppTheme.background,
-                                                         ),
-                                                       )
-                                                     : IconButton(
-                                                         onPressed: _togglePlayPause,
-                                                         iconSize: 72,
-                                                         icon: Icon(
-                                                           isPlaying
-                                                               ? Icons.pause_circle_filled_rounded
-                                                               : Icons.play_circle_filled_rounded,
-                                                           color: Colors.white,
-                                                         ),
-                                                       ),
-                                               ),
-                                               // Bottom mini controls
-                                               Positioned(
-                                                 left: 12,
-                                                 right: 12,
-                                                 bottom: 8,
-                                                 child: Column(
-                                                   mainAxisSize: MainAxisSize.min,
-                                                   children: [
-                                                     SliderTheme(
-                                                       data: SliderTheme.of(context).copyWith(
-                                                         trackHeight: 3,
-                                                         thumbShape: const RoundSliderThumbShape(
-                                                             enabledThumbRadius: 7),
-                                                         overlayShape:
-                                                             const RoundSliderOverlayShape(overlayRadius: 14),
-                                                         activeTrackColor: AppTheme.gold,
-                                                         inactiveTrackColor: Colors.white30,
-                                                         thumbColor: AppTheme.gold,
-                                                       ),
-                                                       child: Slider(
-                                                         value: sliderValue,
-                                                         max: sliderMax,
-                                                         onChanged: (v) => _seekToSeconds(v.toInt()),
-                                                       ),
-                                                     ),
-                                                     Row(
-                                                       children: [
-                                                         Text(
-                                                           _formatDuration(_position),
-                                                           style: const TextStyle(
-                                                               color: Colors.white70, fontSize: 11),
-                                                         ),
-                                                         const Spacer(),
-                                                         Text(
-                                                           _formatDuration(_duration),
-                                                           style: const TextStyle(
-                                                               color: Colors.white70, fontSize: 11),
-                                                         ),
-                                                       ],
-                                                     ),
-                                                   ],
-                                                 ),
-                                               ),
-                                             ],
-                                           ),
-                                         )
-                                       : const SizedBox.shrink(),
-                                 ),
-                               ),
-                             ),
-                           ],
-                         )
-                       : _PlayerErrorState(
-                           message:
-                               _error ?? 'Playback is not available right now.',
-                         ),
-             ),
-            ),
-            const SizedBox(height: 12),
-           if (!_fullscreen) ...[
-             Text(
-               accessMessage,
-               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                     color: AppTheme.textMuted,
-                     height: 1.5,
-                   ),
-             ),
+          const SizedBox(height: 12),
+          playerSurface(),
+          const SizedBox(height: 12),
+          Text(
+            accessMessage,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textMuted,
+                  height: 1.5,
+                ),
+          ),
           if (_notice != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -1132,13 +1170,12 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                             ? 'Unlocked'
                             : 'Locked',
                     active: entry.key == _currentIndex,
-                 ),
-               ),
-           ],
-           ],
-         ],
-       ),
-     );
+                  ),
+                ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -102,7 +102,11 @@ class PlaybackRepository {
       );
     }
 
-    return PlaybackStreamUrls(hlsUrl: hls, dashUrl: dash, progressiveUrl: progressive);
+    return PlaybackStreamUrls(
+      hlsUrl: hls,
+      dashUrl: dash,
+      progressiveUrl: progressive,
+    );
   }
 }
 

@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     }, { status: 409 });
   }
 
-  const selectedProgressive = !playableHlsUrl && playableProgressiveKey
+  const selectedProgressive = playableProgressiveKey
     ? {
         key: playableProgressiveKey,
         quality: video.technicalMetadata?.masterKey ? 'master' : 'progressive'
@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const hlsAvailable = Boolean(playableHlsUrl) && hasPlayableHls(video) && !selectedProgressive.key;
+  const hlsAvailable = Boolean(playableHlsUrl) && hasPlayableHls(video);
   const dashAvailable = false;
 
   const token = auth
