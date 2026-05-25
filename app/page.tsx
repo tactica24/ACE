@@ -101,6 +101,13 @@ function matchesNormalizedTitle(video: HomeVideo, allowedTitles: string[]) {
   return allowedTitles.some((allowed) => title.includes(allowed) || allowed.includes(title));
 }
 
+const GUEST_LANDING_TITLES = [
+  'arctic void',
+  'manhattan romance',
+  'the caretaker',
+  'the naked umbrella'
+];
+
 function buildRows(videos: HomeVideo[], continueWatching: HomeVideo[] = [], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
   const freshReleases = [...videos]
@@ -243,13 +250,8 @@ function buildEditorialCollections(videos: HomeVideo[]): EditorialCollection[] {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const guestHeroPosterTitles = [
-    'arctic void',
-    'manhattan romance',
-    'the caretaker',
-    'the naked umbrella'
-  ];
-  const heroPosters = guestHeroPosterTitles
+  const curatedGuestVideos = dedupeVideos(videos.filter((video) => matchesNormalizedTitle(video, GUEST_LANDING_TITLES)));
+  const heroPosters = GUEST_LANDING_TITLES
     .map((allowedTitle) => videos.find((video) => matchesNormalizedTitle(video, [allowedTitle])))
     .filter((video): video is HomeVideo => Boolean(video));
   const featuredRows = [
@@ -257,7 +259,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
       id: 'trending',
       title: 'Trending Now',
       description: 'Stories viewers are returning to on ACE Studio.',
-      items: videos.slice(0, 12)
+      items: curatedGuestVideos
     }
   ];
 
@@ -378,22 +380,6 @@ export default async function HomePage() {
   } catch {
     videos = [];
   }
-
-  const approvedLandingTitles = [
-    'paranormal far 1', 'paranormal far 2', 'paranormal far 3',
-    'diminuendo',
-    'aiden',
-    'a world of worlds: rise of the king',
-    'hunters lodge',
-    'only andy',
-    'the mystery of mr e',
-    'only fantasy island',
-    'the caretaker',
-    'arctic void',
-    'manhattan romance',
-    'the naked umbrella'
-  ];
-  videos = videos.filter((video) => matchesNormalizedTitle(video, approvedLandingTitles));
 
   let pricingConfig: any;
   try {

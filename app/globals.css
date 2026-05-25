@@ -9434,6 +9434,11 @@ body::before {
     linear-gradient(180deg, #05070d 0%, #08070d 56%, #05070d 100%);
 }
 
+.nmhp-landing .guest-home {
+  min-height: 0;
+  overflow: visible;
+}
+
 .guest-coded-hero {
   position: relative;
   min-height: clamp(720px, 90vh, 1040px);
@@ -11811,6 +11816,14 @@ body::before {
 
 .nmhp-features {
   display: none;
+}
+
+.nmhp-landing .home-shelves {
+  padding-bottom: 24px;
+}
+
+.nmhp-landing .home-shelf:last-child {
+  margin-bottom: 0;
 }
 
 /* Responsive adjustments */
