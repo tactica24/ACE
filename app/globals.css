@@ -11819,6 +11819,8 @@ body::before {
 }
 
 .nmhp-landing .home-shelves {
+  margin-top: 0;
+  padding-top: 0;
   padding-bottom: 24px;
 }
 

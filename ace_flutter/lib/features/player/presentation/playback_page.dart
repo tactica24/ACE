@@ -37,7 +37,6 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   String? _error;
   String? _notice;
   bool _loading = true;
-  bool _muted = true;
   bool _fullscreen = false;
   bool _showControls = true;
   Timer? _controlsTimer;
@@ -175,7 +174,6 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         _currentIndex = index;
         _controller = controller;
         _loading = false;
-        _muted = controller.value.volume == 0;
         _volume = controller.value.volume;
         _duration = controller.value.duration;
         _position = controller.value.position;
@@ -392,7 +390,6 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     setState(() {
       _position = value.position;
       _duration = value.duration;
-      _muted = value.volume == 0;
       _volume = value.volume;
     });
 

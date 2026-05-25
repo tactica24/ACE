@@ -298,12 +298,12 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
 
         <div className="nmhp-hero-content">
           <h1 className="nmhp-hero-title">
-            Watch premium African &amp; global films.
+            Watch Premium Movies.
             <br />
             Pay only for what you watch.
           </h1>
           <p className="nmhp-hero-subtitle">
-            As little as <strong>₦50 per movie</strong>. No subscriptions. No commitments.
+            From just <strong>₦50 per movie</strong>. No subscriptions, no commitments, and no ads.
           </p>
           <div className="nmhp-hero-cta">
             <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">
