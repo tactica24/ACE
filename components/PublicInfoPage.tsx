@@ -96,20 +96,6 @@ export default function PublicInfoPage({
               ))}
             </div>
           ) : null}
-
-          <aside className="info-page-rail">
-            <div className="info-page-rail-card">
-              <span className="info-page-kicker">Quick access</span>
-              <div className="info-page-quick-links">
-                {quickLinks.map((link) => (
-                  <Link key={link.label} href={link.href} className="info-page-quick-link">
-                    <span>{link.label}</span>
-                    <span aria-hidden="true">Open</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </aside>
         </section>
       </div>
     </div>

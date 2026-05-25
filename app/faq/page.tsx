@@ -105,26 +105,6 @@ export default function FaqPage() {
               </article>
             ))}
           </div>
-
-          <aside className="info-page-rail">
-            <div className="info-page-rail-card">
-              <span className="info-page-kicker">Quick links</span>
-              <div className="info-page-quick-links">
-                <Link href="/help" className="info-page-quick-link">
-                  <span>Help Centre</span>
-                  <span aria-hidden="true">Open</span>
-                </Link>
-                <Link href="/contact" className="info-page-quick-link">
-                  <span>Contact</span>
-                  <span aria-hidden="true">Open</span>
-                </Link>
-                <Link href="/tv/pair" className="info-page-quick-link">
-                  <span>TV pairing</span>
-                  <span aria-hidden="true">Open</span>
-                </Link>
-              </div>
-            </div>
-          </aside>
         </section>
       </div>
     </div>

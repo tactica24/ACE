@@ -235,6 +235,7 @@ export default function AcePlayer({
 
   const activeVideoSrc = isPlayingTrailer && trailerKey ? getMediaRouteForKey(trailerKey) : streamUrl;
   const isMovieMode = !isPlayingTrailer;
+  const hasLockedMoviePreview = teaserSec > 0;
 
   const seekToTime = useCallback((targetSec: number, shouldPlay = true) => {
     const videoElement = videoRef.current;
@@ -479,6 +480,45 @@ export default function AcePlayer({
     setPlaybackSessionId(data.sessionId);
     setStreamUrl(data.playbackUrl);
   }, [isAuthenticated, initialStreamUrl, loadPreviewStream, videoId]);
+
+  const handleMovieModeRequest = useCallback(() => {
+    if (!unlocked && !hasLockedMoviePreview) {
+      setShowPaywall(true);
+      setFeedback(isAuthenticated ? `Unlock the movie for ${priceLabel}.` : copy.signInToUnlockSummary);
+      return;
+    }
+
+    setIsPlayingTrailer(false);
+    setShowPaywall(false);
+    setFeedback(null);
+
+    void loadStream({
+      resumeAt: Math.max(initialProgress, readSavedProgress(videoId)),
+      autoplay: false
+    }).catch((error) => {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : 'Unable to load the movie stream right now.';
+
+      setFeedback(message);
+      if (!unlocked) {
+        setShowPaywall(true);
+      }
+      if (trailerKey) {
+        setIsPlayingTrailer(true);
+      }
+    });
+  }, [
+    copy.signInToUnlockSummary,
+    hasLockedMoviePreview,
+    initialProgress,
+    isAuthenticated,
+    loadStream,
+    priceLabel,
+    trailerKey,
+    unlocked,
+    videoId
+  ]);
 
   const syncHistory = useCallback(async ({
     progressSec,
@@ -979,12 +1019,7 @@ export default function AcePlayer({
           <button
             type="button"
             className={`mode-btn${!isPlayingTrailer ? ' active' : ''}`}
-            onClick={() => {
-              setIsPlayingTrailer(false);
-              setShowPaywall(false);
-              setFeedback(null);
-              void loadStream({ resumeAt: Math.max(initialProgress, readSavedProgress(videoId)), autoplay: false });
-            }}
+            onClick={handleMovieModeRequest}
           >
             Movie
           </button>
@@ -1023,21 +1058,21 @@ export default function AcePlayer({
       {activeVideoSrc ? (
         <div className="player-control-dock">
           <div className="player-control-row">
-            <div className="player-control-cluster">
-              <button className="player-action-button" type="button" onClick={restartPlayback}>
-                {copy.startOver}
+            <div className="player-control-cluster player-control-cluster-primary">
+              <button className="player-action-button player-action-button-subtle" type="button" onClick={restartPlayback}>
+                Restart
               </button>
-              <button className="player-action-button" type="button" onClick={() => jumpPlayback(-10)}>
-                -10s
+              <button className="player-action-button player-action-button-subtle" type="button" onClick={() => jumpPlayback(-10)}>
+                Back 10s
               </button>
               <button className="player-action-button player-action-button-primary" type="button" onClick={togglePlayback}>
                 {isPlaying ? 'Pause' : copy.watchNow}
               </button>
-              <button className="player-action-button" type="button" onClick={() => jumpPlayback(10)}>
-                +10s
+              <button className="player-action-button player-action-button-subtle" type="button" onClick={() => jumpPlayback(10)}>
+                Forward 10s
               </button>
-              <button className="player-action-button" type="button" onClick={toggleFullscreen}>
-                {isFullscreen ? '⤡' : '⛶'}
+              <button className="player-action-button player-action-button-subtle" type="button" onClick={toggleFullscreen}>
+                {isFullscreen ? 'Exit full screen' : 'Full screen'}
               </button>
             </div>
             <div className="player-readout">
@@ -1053,19 +1088,19 @@ export default function AcePlayer({
           </div>
           <div className="player-control-row player-control-row-secondary">
             <div className="player-control-cluster">
-              <button className="player-action-button" type="button" onClick={toggleMute}>
-                {isMuted || volume === 0 ? 'Unmute' : 'Mute'}
-              </button>
-              <input
-                className="player-volume-slider"
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={isMuted ? 0 : volume}
-                aria-label="Volume"
-                onChange={(event) => updateVolume(Number(event.target.value))}
-              />
+              <div className="player-volume-block">
+                <span className="player-volume-label">Volume</span>
+                <input
+                  className="player-volume-slider"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={isMuted ? 0 : volume}
+                  aria-label="Volume"
+                  onChange={(event) => updateVolume(Number(event.target.value))}
+                />
+              </div>
               {subtitleTracks.length ? (
                 <>
                   <button
