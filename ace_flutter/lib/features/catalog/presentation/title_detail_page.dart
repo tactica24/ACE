@@ -830,7 +830,6 @@ class _MovieOverviewCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                    ],
                   ),
             ],
           );
