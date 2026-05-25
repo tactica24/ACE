@@ -15,11 +15,6 @@ export default function HelpPage() {
         { label: 'Contact support', href: '/contact' },
         { label: 'TV pairing', href: '/tv/pair' }
       ]}
-      facts={[
-        { label: 'Account', value: 'Sign-in and access support' },
-        { label: 'Playback', value: 'Movie and trailer issues' },
-        { label: 'Devices', value: 'Mobile and TV guidance' }
-      ]}
       sections={[
         {
           title: 'Playback and access',

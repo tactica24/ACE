@@ -44,7 +44,7 @@ export default function PublicInfoPage({
   quickLinks?: PublicInfoQuickLink[];
 }) {
   return (
-    <div className="section">
+    <div className="section info-page-section">
       <div className="container info-page-shell">
         <section className="info-page-hero-panel">
           <div className="info-page-hero-copy">
@@ -60,23 +60,6 @@ export default function PublicInfoPage({
               </Link>
             </div>
           </div>
-
-          <aside className="info-page-hero-side">
-            <div className="info-page-feature-card">
-              <span className="info-page-kicker">Connected viewing</span>
-              <strong>Web, mobile, and TV-linked playback on one account.</strong>
-              <p className="muted">
-                ACE Studio is structured for clear discovery, account-based access, and a consistent viewing journey across screens.
-              </p>
-            </div>
-            <div className="info-page-feature-card info-page-feature-card-soft">
-              <span className="info-page-kicker">Need help?</span>
-              <strong>Support and business enquiries</strong>
-              <p className="muted">
-                For platform support, producer questions, partnerships, or investor conversations, contact info@acestudio.ng.
-              </p>
-            </div>
-          </aside>
         </section>
 
         {facts.length ? (
@@ -90,7 +73,7 @@ export default function PublicInfoPage({
           </section>
         ) : null}
 
-        <section className="info-page-body">
+        <section className={`info-page-body${sections.length ? '' : ' info-page-body-links-only'}`}>
           {sections.length ? (
             <div className="info-page-main">
               {sections.map((section, index) => (
@@ -125,17 +108,6 @@ export default function PublicInfoPage({
                   </Link>
                 ))}
               </div>
-            </div>
-
-            <div className="info-page-rail-card info-page-rail-highlight">
-              <span className="info-page-kicker">TV pairing</span>
-              <strong>Move from phone to screen without starting over.</strong>
-              <p className="muted">
-                Use the ACE Studio TV code flow to authorize a living-room screen with the same account that manages your viewing access.
-              </p>
-              <Link className="btn btn-ghost btn-compact" href="/tv/pair">
-                Link a screen
-              </Link>
             </div>
           </aside>
         </section>

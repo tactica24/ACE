@@ -61,7 +61,7 @@ const faqGroups = [
 
 export default function FaqPage() {
   return (
-    <div className="section">
+    <div className="section info-page-section">
       <div className="container info-page-shell">
         <section className="info-page-hero-panel">
           <div className="info-page-hero-copy">
@@ -80,22 +80,6 @@ export default function FaqPage() {
             </div>
           </div>
 
-          <aside className="info-page-hero-side">
-            <div className="info-page-feature-card">
-              <span className="info-page-kicker">Account access</span>
-              <strong>One account, connected access across supported screens.</strong>
-              <p className="muted">
-                Website actions, entitled access, and TV-linked viewing all resolve against the same ACE Studio account.
-              </p>
-            </div>
-            <div className="info-page-feature-card info-page-feature-card-soft">
-              <span className="info-page-kicker">Need more help?</span>
-              <strong>info@acestudio.ng</strong>
-              <p className="muted">
-                Send account, access, playback, download, or TV pairing questions to this address with the details needed to investigate.
-              </p>
-            </div>
-          </aside>
         </section>
 
         <section className="info-page-body">

@@ -289,21 +289,6 @@ export default function HomeMovieHero(
         aria-hidden="true"
       />
 
-      <div className="home-movie-poster-showcase" aria-hidden="true">
-        {allVideos.slice(0, 4).map((video, index) => {
-          const posterUrl = getPosterUrl(video.posterKey);
-          return (
-            <div
-              key={`${video.id}-poster-${index}`}
-              className={`home-movie-showcase-card home-movie-showcase-card-${index + 1}`}
-              style={posterUrl ? { backgroundImage: `url("${posterUrl}")` } : undefined}
-            >
-              {!posterUrl ? <span>ACE Studio</span> : null}
-            </div>
-          );
-        })}
-      </div>
-
 
       {/* â”€â”€ hero copy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="home-movie-hero-inner">
@@ -354,7 +339,7 @@ export default function HomeMovieHero(
 
           <Link
             className="btn btn-ghost"
-            href="#discover"
+            href="#categories"
             onMouseEnter={() => setIsHoveringButtons(true)}
             onMouseLeave={() => setIsHoveringButtons(false)}
           >
