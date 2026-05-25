@@ -49,7 +49,7 @@ export default function PublicInfoPage({
         <section className="info-page-hero-panel">
           <div className="info-page-hero-copy">
             <span className="pill">{eyebrow}</span>
-            <h1 className="hero-title info-page-title">{title}</h1>
+            <h1 className="info-page-title">{title}</h1>
             <p className="muted info-page-summary">{summary}</p>
             <div className="home-actions">
               <Link className="btn btn-primary" href={ctaHref}>

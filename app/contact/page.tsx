@@ -4,8 +4,8 @@ export default function ContactPage() {
   return (
     <PublicInfoPage
       eyebrow="Contact"
-      title="Contact ACE Studio for support, account help, partnerships, and business enquiries."
-      summary="General enquiries, support requests, and partnership conversations can be directed to info@acestudio.ng. Where account-specific support is available inside the platform, signed-in users can also use those internal routes."
+      title="Contact ACE Studio."
+      summary="For support, account help, partnerships, producer questions, or business enquiries, email info@acestudio.ng. Signed-in users can also use the account support routes inside the platform."
       ctaLabel="Email info@acestudio.ng"
       ctaHref="mailto:info@acestudio.ng"
       secondaryLabel="Open FAQ"
@@ -24,15 +24,15 @@ export default function ContactPage() {
         {
           title: 'Viewer support',
           body: [
-            'For questions about sign-in, title access, playback availability, or TV pairing, contact info@acestudio.ng or use the in-platform support path attached to your account.',
-            'Including your account email, device, and the title involved will help the team review the issue more efficiently.'
+            'For sign-in, title access, playback, wallet, or TV pairing questions, contact info@acestudio.ng or use the support path attached to your account.',
+            'Include your account email, device, browser, and title name so the issue can be reviewed quickly.'
           ]
         },
         {
           title: 'Producers and partners',
           body: [
-            'For onboarding, producer records, title management, reporting questions, or distribution discussions, include the producer or company name involved when writing to info@acestudio.ng.',
-            'Partnership and investor enquiries are also routed through the same address for internal handling and follow-up.'
+            'For onboarding, producer records, title management, reporting, or distribution discussions, include the producer or company name involved.',
+            'Partnership and investor enquiries are routed through the same address for internal review and follow-up.'
           ]
         },
         {

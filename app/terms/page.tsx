@@ -4,8 +4,8 @@ export default function TermsPage() {
   return (
     <PublicInfoPage
       eyebrow="Terms of Use"
-      title="These terms describe the main rules that govern the use of ACE Studio."
-      summary="By accessing or using ACE Studio, users agree to use the service lawfully, protect their account credentials, and respect the conditions attached to titles, access, and platform functionality."
+      title="Terms for using ACE Studio."
+      summary="These terms explain the basic rules for account use, authorized viewing, payments where applicable, and responsible use of the platform."
       ctaLabel="Contact ACE Studio"
       ctaHref="mailto:info@acestudio.ng"
       secondaryLabel="Help centre"
@@ -24,14 +24,14 @@ export default function TermsPage() {
         {
           title: 'Accounts and access',
           body: [
-            'Users are responsible for the security of their account credentials and for activity that occurs through their account unless otherwise agreed with ACE Studio.',
-            'Content availability depends on account access, platform rules, commercial terms, and the continued availability of the relevant title or package.'
+            'Users are responsible for keeping account credentials secure and for activity that occurs through their account unless ACE Studio agrees otherwise.',
+            'Content availability depends on account access, platform rules, commercial terms, rights restrictions, and the continued availability of the relevant title or package.'
           ]
         },
         {
           title: 'Content use',
           body: [
-            'Platform content is provided for authorized viewing only. Users may not reproduce, redistribute, scrape, reverse engineer, or otherwise misuse content, access controls, or platform materials.',
+            'Platform content is provided for authorized viewing only. Users may not reproduce, redistribute, scrape, reverse engineer, or misuse content, access controls, or platform materials.',
             'ACE Studio may suspend or remove access where account misuse, payment issues, rights restrictions, or platform safety concerns arise.'
           ]
         },

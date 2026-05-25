@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
 import LaunchPage from '@/components/LaunchPage';
+import MovieAccessDetails from '@/components/MovieAccessDetails';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
@@ -10,6 +11,7 @@ import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
+import { getLanguageLabel } from '@/lib/media-types';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -48,7 +50,20 @@ function formatEpisodeLabel(seasonNumber?: number | null, episodeNumber?: number
 }
 
 function formatUnlockPriceLabel(amountMinor: number, currency: string, unit: 'movie' | 'episode') {
-  return `Unlock: ${formatCurrencyMinor(amountMinor, currency)} per ${unit}`;
+  const price = currency === 'NGN'
+    ? `₦${Math.round(amountMinor / 100).toLocaleString('en-NG')}`
+    : formatCurrencyMinor(amountMinor, currency);
+
+  return `${price} to unlock this ${unit}`;
+}
+
+function getLanguageSummary(languages: string[]) {
+  const labels = languages
+    .map((language) => getLanguageLabel(language))
+    .filter(Boolean)
+    .slice(0, 3);
+
+  return labels.length ? `Language: ${labels.join(', ')}` : null;
 }
 
 
@@ -176,9 +191,10 @@ export default async function VideoPage({
     }
 
     const primaryMeta = [
-      requestedVideo.releaseYear ? `Year: ${requestedVideo.releaseYear}` : null,
+      requestedVideo.releaseYear ? String(requestedVideo.releaseYear) : null,
       `Age: ${ageLabel[requestedVideo.ageRating] ?? labelize(requestedVideo.ageRating)}`,
-      priceLabel,
+      requestedVideo.genres[0] ? labelize(requestedVideo.genres[0]) : null,
+      getLanguageSummary(requestedVideo.audioLanguages),
       trailerKey ? 'Trailer available' : null
     ].filter(Boolean);
     const relatedTitles = relatedTitleCandidates.length
@@ -238,11 +254,15 @@ export default async function VideoPage({
 
           <div className="movie-details-section">
             <div className="detail-copy">
-              <h1 className="hero-title video-page-title">{requestedVideo.title}</h1>
+              <MovieAccessDetails
+                videoId={requestedVideo.id}
+                title={requestedVideo.title}
+                details={primaryMeta as string[]}
+                priceLabel={priceLabel}
+                initiallyUnlocked={unlocked}
+                unitLabel="movie"
+              />
               <p className="movie-synopsis">{requestedVideo.description || 'No synopsis available.'}</p>
-              <div className="video-page-meta-stack">
-                <p className="muted video-page-meta-line">{primaryMeta.join(' / ')}</p>
-              </div>
               <div className="video-page-actions" style={{ marginTop: '1.5rem' }}>
                 <Link className="btn btn-ghost" href="/browse">Browse more titles</Link>
                 {!user ? (
@@ -250,10 +270,6 @@ export default async function VideoPage({
                 ) : (
                   <Link className="btn btn-ghost" href="/account">My account</Link>
                 )}
-              </div>
-              <div className="detail-badges detail-badges-compact" style={{ marginTop: '1rem' }}>
-                <span className="badge">{priceLabel}</span>
-                <span className="badge">Age: {ageLabel[requestedVideo.ageRating] ?? labelize(requestedVideo.ageRating)}</span>
               </div>
             </div>
           </div>
@@ -399,16 +415,18 @@ export default async function VideoPage({
   }
 
   const seriesMeta = [
-    series.releaseYear ? `Year: ${series.releaseYear}` : null,
+    series.releaseYear ? String(series.releaseYear) : null,
     `Age: ${ageLabel[series.ageRating] ?? labelize(series.ageRating)}`,
-    priceLabel
+    totalSeasons ? `${totalSeasons} season${totalSeasons === 1 ? '' : 's'}` : null,
+    getLanguageSummary(series.audioLanguages)
   ].filter(Boolean);
 
   const currentEpisodeMeta = selectedEpisode
     ? [
         formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber),
         formatRuntime(selectedEpisode.durationSec),
-        `Age: ${ageLabel[selectedEpisode.ageRating] ?? labelize(selectedEpisode.ageRating)}`
+        `Age: ${ageLabel[selectedEpisode.ageRating] ?? labelize(selectedEpisode.ageRating)}`,
+        getLanguageSummary(selectedEpisode.audioLanguages)
       ].filter(Boolean)
     : [];
 
@@ -472,10 +490,16 @@ export default async function VideoPage({
 
         <div className="movie-details-section">
           <div className="detail-copy">
-            <h1 className="hero-title video-page-title">{series.title}</h1>
+            <MovieAccessDetails
+              videoId={selectedEpisode?.id ?? series.id}
+              title={series.title}
+              details={seriesMeta as string[]}
+              priceLabel={priceLabel}
+              initiallyUnlocked={unlocked}
+              unitLabel="episode"
+            />
             <p className="movie-synopsis">{series.description || 'No synopsis available.'}</p>
             <div className="video-page-meta-stack">
-              <p className="muted video-page-meta-line">{seriesMeta.join(' / ')}</p>
               {selectedEpisode ? (
                 <p className="muted video-page-meta-line">
                   Now selected: {formatEpisodeLabel(selectedEpisode.seasonNumber, selectedEpisode.episodeNumber)} / {selectedEpisode.title}
@@ -501,10 +525,6 @@ export default async function VideoPage({
               ) : (
                 <Link className="btn btn-ghost" href="/account">My account</Link>
               )}
-            </div>
-            <div className="detail-badges detail-badges-compact" style={{ marginTop: '1rem' }}>
-              <span className="badge">{priceLabel}</span>
-              <span className="badge">Age: {ageLabel[series.ageRating] ?? labelize(series.ageRating)}</span>
             </div>
           </div>
         </div>

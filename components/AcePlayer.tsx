@@ -589,11 +589,15 @@ export default function AcePlayer({
       }
 
       setUnlocked(true);
+      setIsPlayingTrailer(false);
       setUnlockState('idle');
       setFeedback(null);
       setShowPaywall(false);
       unlockAttemptedRef.current = true;
       await loadStream({ resumeAt, autoplay: true });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ace:video-unlocked', { detail: { videoId } }));
+      }
       return true;
     } catch {
       setUnlockState('error');
@@ -689,7 +693,13 @@ export default function AcePlayer({
       setIsMuted(video.muted);
 
       if (pendingAutoplayRef.current || isPlayingTrailer) {
-        video.play().catch(() => null);
+        video.play().catch(() => {
+          video.muted = true;
+          setIsMuted(true);
+          video.play().catch(() => {
+            setFeedback(unlocked ? 'Unlocked. Press Watch Now to start playback.' : null);
+          });
+        });
       }
 
       pendingResumeRef.current = null;
@@ -851,6 +861,18 @@ export default function AcePlayer({
       document.body.classList.remove('watch-mode-active');
     };
   }, [watchMode]);
+
+  useEffect(() => {
+    return () => {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+      document.body.classList.remove('watch-mode-active');
+    };
+  }, []);
     
     // Reset watch mode when the video ID changes (e.g., navigating to a new title)
     useEffect(() => {
@@ -975,6 +997,7 @@ export default function AcePlayer({
 
       {activeVideoSrc ? (
         <video
+          key={activeVideoSrc}
           ref={videoRef}
           src={isHlsUrl(activeVideoSrc) && !browserCanPlay('application/vnd.apple.mpegurl') ? undefined : activeVideoSrc}
           controls

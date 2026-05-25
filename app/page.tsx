@@ -221,7 +221,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             Pay only for what you watch.
           </h1>
           <p className="nmhp-hero-subtitle">
-            As little as <strong>â‚¦50 per movie</strong>. No subscriptions. No commitments.
+            As little as <strong>₦50 per movie</strong>. No subscriptions. No commitments.
           </p>
           <div className="nmhp-hero-cta">
             <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">

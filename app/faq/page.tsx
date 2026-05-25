@@ -66,9 +66,9 @@ export default function FaqPage() {
         <section className="info-page-hero-panel">
           <div className="info-page-hero-copy">
             <span className="pill">FAQ</span>
-            <h1 className="hero-title info-page-title">Frequently asked questions about ACE Studio</h1>
+            <h1 className="info-page-title">ACE Studio FAQ.</h1>
             <p className="muted info-page-summary">
-              This page answers common user questions about accounts, title access, playback, downloads, and TV pairing. For anything not covered here, contact info@acestudio.ng.
+              Clear answers for account access, title unlocks, playback, downloads, and TV pairing. For anything not covered here, contact info@acestudio.ng.
             </p>
             <div className="home-actions">
               <Link className="btn btn-primary" href="mailto:info@acestudio.ng">
