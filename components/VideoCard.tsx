@@ -59,6 +59,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
 
   const priceLabel = formatCurrencyMinor(priceMinor, currencyCode);
   const genreLabel = video.genres?.filter(Boolean).slice(0, 2).join(' / ') || labelize(video.videoType);
+  const releaseLabel = video.releaseYear ? String(video.releaseYear) : null;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -184,7 +185,13 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     >
       <div
         className="video-thumb"
-        style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={posterUrl ? {
+          backgroundImage: `url(${posterUrl})`,
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: '#05070d'
+        } : undefined}
       >
         {previewSource ? (
           <video
@@ -212,17 +219,19 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
       <div className="video-meta">
         <div className="video-meta-top">
           <strong className="video-card-title">{video.title}</strong>
-          <div className="badge video-card-price">{priceLabel}</div>
+        </div>
+        <div className="video-card-line">
+          <span>{releaseLabel ?? labelize(video.videoType)}</span>
+          <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
+          <strong className="video-card-price">Unlock {priceLabel}</strong>
         </div>
         <div className="video-card-reveal">
           <span className="video-card-meta">{genreLabel}</span>
           <p className="video-card-summary">{video.description}</p>
           <div className="video-card-details">
-            {video.releaseYear ? <span>{video.releaseYear}</span> : null}
             {video.videoType === 'SERIES' && !video.seriesId && video.episodeCount ? (
               <span>{video.episodeCount} episodes</span>
             ) : null}
-            <span>Age: {ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
             <span>{runtimeLabel}</span>
           </div>
         </div>

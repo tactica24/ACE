@@ -44,37 +44,6 @@ type HomeRow = {
   items: HomeVideo[];
 };
 
-type EditorialCollection = {
-  title: string;
-  description: string;
-  href: string;
-  spotlight: HomeVideo;
-  supporting: HomeVideo[];
-};
-
-function normalizeVideoText(video: HomeVideo) {
-  const genres = Array.isArray(video.genres) ? video.genres : [];
-
-  return [
-    video.title ?? '',
-    video.description ?? '',
-    video.category ?? '',
-    video.videoType ?? '',
-    ...genres
-  ]
-    .join(' ')
-    .toLowerCase();
-}
-
-function getVideoCreatedTime(video: Pick<HomeVideo, 'createdAt'>) {
-  if (video.createdAt instanceof Date) {
-    return video.createdAt.getTime();
-  }
-
-  const timestamp = Date.parse(video.createdAt);
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
 function dedupeVideos(items: HomeVideo[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -87,14 +56,6 @@ function dedupeVideos(items: HomeVideo[]) {
   });
 }
 
-function pickVideos(videos: HomeVideo[], predicate: (video: HomeVideo) => boolean, take = 12) {
-  return dedupeVideos(videos.filter(predicate)).slice(0, take);
-}
-
-function formatRuntime(_durationSec?: number | null) {
-  return '90m';
-}
-
 function buildRows(videos: HomeVideo[]) {
   return [{
     id: 'trending',
@@ -102,50 +63,6 @@ function buildRows(videos: HomeVideo[]) {
     description: 'Stories viewers are returning to on ACE Studio.',
     items: videos.slice(0, 16)
   }];
-}
-
-function buildEditorialCollections(videos: HomeVideo[]): EditorialCollection[] {
-  const definitions = [
-    {
-      title: 'Award-Winning Films',
-      description: 'Prestige-led films and festival-minded discoveries.',
-      href: '/browse?q=Award',
-      items: pickVideos(videos, (video) => /award|festival|premiere|drama/.test(normalizeVideoText(video)), 4)
-    },
-    {
-      title: 'Editor\'s Choice',
-      description: 'A handpicked blend of standout films and series.',
-      href: '/browse',
-      items: videos.slice(2, 6)
-    },
-    {
-      title: 'Stories from Africa',
-      description: 'Voices, settings, and perspectives grounded in African storytelling power.',
-      href: '/browse?q=African',
-      items: pickVideos(videos, (video) => /africa|african|nollywood|ghana|kenya/.test(normalizeVideoText(video)), 4)
-    },
-    {
-      title: 'Festival Favorites',
-      description: 'Stylish discoveries for viewers who want something a bit more curated.',
-      href: '/browse?q=Festival',
-      items: pickVideos(videos, (video) => /festival|arthouse|drama|indie/.test(normalizeVideoText(video)), 4)
-    }
-  ];
-
-  return definitions
-    .map((collection) => ({
-      ...collection,
-      items: collection.items.length >= 4 ? collection.items : videos.slice(0, 4)
-    }))
-    .filter((collection) => collection.items.length >= 4)
-    .map((collection) => ({
-      title: collection.title,
-      description: collection.description,
-      href: collection.href,
-      spotlight: collection.items[0],
-      supporting: collection.items.slice(1, 4)
-    }))
-    .slice(0, 4);
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
@@ -160,7 +77,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     releaseYear: video.releaseYear,
   }));
 
-  const trendingItems = videos.slice(0, 5);
+  const trendingItems = videos.slice(0, 14);
   const featuredRows = trendingItems.length
     ? [
         {
@@ -185,9 +102,9 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse all</Link>
                 </div>
-                <div className="home-carousel home-carousel-marquee">
-                  {[...row.items, ...row.items].map((video, index) => (
-                    <div key={`${video.id}-${index}`} className="home-carousel-item">
+                <div className="home-carousel">
+                  {row.items.map((video) => (
+                    <div key={video.id} className="home-carousel-item">
                       <VideoCard
                         video={{
                           ...video,
@@ -214,30 +131,10 @@ export default async function HomePage() {
 
   let videos: HomeVideo[] = [];
   try {
-    videos = (await getApprovedCatalogVideos()).slice(0, 40);
+    videos = dedupeVideos((await getApprovedCatalogVideos()).filter((video) => Boolean(video.posterKey))).slice(0, 40);
   } catch {
     videos = [];
   }
-
-  // Curate landing to ONLY the approved titles provided (careful exact-ish match on normalized title)
-  const APPROVED_LANDING_TITLES = [
-    'paranormal far 1', 'paranormal far 2', 'paranormal far 3',
-    'diminuendo',
-    'aiden',
-    'a world of worlds: rise of the king',
-    'hunters lodge',
-    'only andy',
-    'the mystery of mr e',
-    'only fantasy island',
-    'the caretaker',
-    'arctic void',
-    'manhattan romance',
-    'the naked umbrella'
-  ];
-  videos = videos.filter((video) => {
-    const title = (video.title || '').toLowerCase().trim();
-    return APPROVED_LANDING_TITLES.some((allowed) => title.includes(allowed) || allowed.includes(title));
-  });
 
   let pricingConfig: any;
   try {
@@ -336,9 +233,9 @@ export default async function HomePage() {
                   </div>
                   <Link className="btn btn-ghost btn-compact" href="/browse">Browse more</Link>
                 </div>
-                <div className="home-carousel home-carousel-marquee">
-                  {[...row.items, ...row.items].map((video, index) => (
-                    <div key={`${row.id}-${video.id}-${index}`} className="home-carousel-item">
+                <div className="home-carousel">
+                  {row.items.map((video) => (
+                    <div key={`${row.id}-${video.id}`} className="home-carousel-item">
                       <VideoCard
                         video={{
                           ...video,
