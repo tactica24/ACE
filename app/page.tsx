@@ -56,13 +56,14 @@ function formatRuntime(_durationSec?: number | null) {
 
 function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
+  const posterBackedUnlockedVideos = dedupeVideos(unlockedVideos.filter((video) => Boolean(video.posterKey)));
 
-  if (unlockedVideos.length) {
+  if (posterBackedUnlockedVideos.length) {
     rows.push({
       id: 'my-library',
       title: 'Top Picks for You',
       description: 'Titles already available on your account.',
-      items: unlockedVideos
+      items: posterBackedUnlockedVideos
     });
   }
 

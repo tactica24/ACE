@@ -274,6 +274,7 @@ export async function POST(req: NextRequest) {
 
     revalidatePath('/');
     revalidatePath('/account');
+    revalidatePath('/my-movies');
     revalidatePath('/studio/wallet');
     revalidatePath('/admin/payments');
 

@@ -505,9 +505,6 @@ export default function AcePlayer({
       if (!unlocked) {
         setShowPaywall(true);
       }
-      if (trailerKey) {
-        setIsPlayingTrailer(true);
-      }
     });
   }, [
     copy.signInToUnlockSummary,

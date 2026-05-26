@@ -103,7 +103,7 @@ export default function TopNav() {
     { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
     { label: 'Series', href: '/browse?type=SERIES' },
-    ...(user ? [{ label: 'My Movies', href: '/account#my-movies' }] : []),
+    ...(user ? [{ label: 'My Movies', href: '/my-movies' }] : []),
     ...(user ? [{ label: 'Android App', href: '/download' }] : [])
   ];
 

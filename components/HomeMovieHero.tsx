@@ -27,22 +27,6 @@ function getPosterUrl(posterKey?: string | null): string | null {
   return key ? getMediaAssetUrl(key) : null;
 }
 
-function getFeaturedFallback(): HeroCarouselVideo[] {
-  return [
-    {
-      id: 'featured-0',
-      title: 'Premium Original',
-      description:
-        'A landmark production crafted for viewers who expect the highest standard of African and global storytelling.',
-      posterKey: null,
-      category: 'Drama',
-      durationSec: 7200,
-      videoType: 'Feature',
-      releaseYear: null,
-    },
-  ];
-}
-
 function cardStyleFor(
   index: number,
   baseBackgroundImage: string,
@@ -142,9 +126,9 @@ export default function HomeMovieHero(
 
   const inspect: HeroCarouselVideo[] = (() => {
     try {
-      return videos && videos.length > 0 ? videos : getFeaturedFallback();
+      return videos && videos.length > 0 ? videos : [];
     } catch {
-      return getFeaturedFallback();
+      return [];
     }
   })();
 
