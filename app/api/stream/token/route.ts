@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
-import { getPlayableHlsUrl, hasPlayableHls } from '@/lib/playback-delivery';
+import { getPlayableHlsUrl, hasPlayableHls, getPlaybackModePreference } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { getBucketForStorageKey, getObjectMetadata } from '@/lib/r2';
 
@@ -104,6 +104,7 @@ export async function GET(req: NextRequest) {
   }
 
   const requestedQuality = normalizePlaybackQualityPreference(req.nextUrl.searchParams.get('quality'));
+  const playbackMode = getPlaybackModePreference(video);
   const finalHlsUrl = getPlayableHlsUrl(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
@@ -192,6 +193,13 @@ export async function GET(req: NextRequest) {
     ? getSignedHlsDeliveryUrl(videoId, token)
     : null;
   const dashUrl = null;
+  const preferred = playbackMode === 'hls' && hlsUrl
+    ? 'hls'
+    : progressiveUrl
+      ? 'progressive'
+      : hlsUrl
+        ? 'hls'
+        : 'unavailable';
 
   return NextResponse.json({
     token,
@@ -205,11 +213,7 @@ export async function GET(req: NextRequest) {
       hlsAvailable,
       dashAvailable,
       requestedQuality,
-      preferred: hlsAvailable
-        ? 'hls'
-        : progressiveUrl
-        ? 'progressive'
-        : 'unavailable'
+      preferred
     }
   });
 }

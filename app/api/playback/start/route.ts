@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
-import { getPlayableHlsUrl, getPlayableProgressiveKey } from '@/lib/playback-delivery';
+import { getPlayableHlsUrl, getPlayableProgressiveKey, getPlaybackModePreference } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { ensureStreamSession } from '@/lib/stream-sessions';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
 
   const candidateHlsUrl = getPlayableHlsUrl(video);
   const progressiveKey = getPlayableProgressiveKey(video);
+  const playbackMode = getPlaybackModePreference(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
@@ -75,14 +76,19 @@ export async function POST(req: NextRequest) {
   }
 
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
-  const hlsUrl = candidateHlsUrl && assetSnapshot.hlsReady ? candidateHlsUrl : null;
-  const streamKey = assetSnapshot.progressiveReady
+  const availableHlsUrl = candidateHlsUrl && assetSnapshot.hlsReady ? candidateHlsUrl : null;
+  const availableProgressiveKey = assetSnapshot.progressiveReady
     ? assetSnapshot.progressiveKey
     : assetSnapshot.fallbackProgressiveReady
       ? assetSnapshot.fallbackProgressiveKey
       : assetSnapshot.masterProgressiveReady
         ? assetSnapshot.masterProgressiveKey
         : null;
+  const useHls = playbackMode === 'hls'
+    ? Boolean(availableHlsUrl)
+    : !availableProgressiveKey && Boolean(availableHlsUrl);
+  const hlsUrl = useHls ? availableHlsUrl : null;
+  const streamKey = useHls ? null : availableProgressiveKey;
 
   if (!hlsUrl && !streamKey) {
     return NextResponse.json({
@@ -137,12 +143,13 @@ export async function POST(req: NextRequest) {
   const playbackUrl = hlsUrl
     ? getSignedHlsDeliveryUrl(movieId, token)
     : `/api/stream/${movieId}?token=${encodeURIComponent(token)}`;
+  const playbackType = hlsUrl ? 'hls' : 'progressive';
 
   return NextResponse.json({
     allowed: true,
     movieId,
     playbackUrl,
-    playbackType: hlsUrl ? 'hls' : 'progressive',
+    playbackType,
     sessionId: session.id
   });
 }

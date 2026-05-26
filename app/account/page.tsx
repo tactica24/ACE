@@ -133,8 +133,8 @@ export default async function AccountPage() {
             </div>
           </div>
 
-          <div className="card">
-            <h3>Recent unlocks</h3>
+          <div className="card" id="my-movies">
+            <h3>My Movies</h3>
             {recentUnlocks.length === 0 ? (
               <p className="muted">No unlocks recorded on this account yet.</p>
             ) : (

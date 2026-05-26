@@ -22,6 +22,7 @@ export type CatalogVideo = {
     englishSubtitlesProvided: boolean;
     castCredits: unknown;
     crewCredits: unknown;
+    landscapeArtworkKey?: string | null;
     promotionalStillKeys: string[];
   } | null;
 };
@@ -43,11 +44,21 @@ const getApprovedCatalogVideosCached = unstable_cache(
             englishSubtitlesProvided: true,
             castCredits: true,
             crewCredits: true,
+            landscapeArtworkKey: true,
             promotionalStillKeys: true
           }
         }
       }
-    }),
+    }).then((videos) =>
+      videos.map(({ technicalMetadata, ...video }) => ({
+        ...video,
+        posterKey:
+          video.posterKey ||
+          technicalMetadata?.landscapeArtworkKey ||
+          technicalMetadata?.promotionalStillKeys?.[0] ||
+          null
+      }))
+    ),
   ['approved-catalog-videos'],
   { revalidate: 60, tags: ['approved-catalog-videos'] }
 );
@@ -67,6 +78,12 @@ const getApprovedHighlightVideosCached = unstable_cache(
       orderBy: { createdAt: 'desc' },
       take: 12,
       select: {
+        technicalMetadata: {
+          select: {
+            landscapeArtworkKey: true,
+            promotionalStillKeys: true
+          }
+        },
         id: true,
         title: true,
         description: true,
@@ -81,7 +98,16 @@ const getApprovedHighlightVideosCached = unstable_cache(
         createdAt: true,
         highlightSeconds: true
       }
-    }),
+    }).then((videos) =>
+      videos.map((video) => ({
+        ...video,
+        posterKey:
+          video.posterKey ||
+          video.technicalMetadata?.landscapeArtworkKey ||
+          video.technicalMetadata?.promotionalStillKeys?.[0] ||
+          null
+      }))
+    ),
   ['approved-highlight-videos'],
   { revalidate: 60, tags: ['approved-highlight-videos', 'approved-catalog-videos'] }
 );

@@ -73,7 +73,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const video = await prisma.video.findUnique({
     where: { id: params.id },
-    select: { id: true, status: true }
+    select: {
+      id: true,
+      status: true,
+      technicalMetadata: {
+        select: {
+          playbackUrl: true
+        }
+      }
+    }
   });
 
   if (!video) {
@@ -205,14 +213,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       hlsUploadedAt: new Date(),
       hlsVerifiedAt: new Date(),
       hlsPlaybackUrl: playbackUrl,
-      playbackUrl
+      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || playbackUrl
     },
     update: {
       processingStatus: 'HLS_UPLOADED',
       hlsUploadedAt: new Date(),
       hlsVerifiedAt: new Date(),
       hlsPlaybackUrl: playbackUrl,
-      playbackUrl
+      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || playbackUrl
     }
   });
 

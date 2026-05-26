@@ -26,13 +26,14 @@ export async function POST(req: NextRequest) {
       status: true,
       technicalMetadata: {
         select: {
-          playbackUrl: true
+          playbackUrl: true,
+          hlsPlaybackUrl: true
         }
       }
     }
   });
 
-  const hlsUrl = video?.technicalMetadata?.playbackUrl?.trim() || video?.hlsUrl?.trim() || '';
+  const hlsUrl = video?.technicalMetadata?.hlsPlaybackUrl?.trim() || video?.hlsUrl?.trim() || '';
   if (!video || !hlsUrl) {
     return NextResponse.json({ error: 'Movie not found or no HLS URL' }, { status: 404 });
   }

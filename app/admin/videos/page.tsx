@@ -52,6 +52,8 @@ export default async function AdminVideosPage() {
                   masterFileSize: true,
                   masterUploadedAt: true,
                   processingStatus: true,
+                  playbackUrl: true,
+                  hlsPlaybackUrl: true,
                   trailerKey: true,
                   landscapeArtworkKey: true,
                   promotionalStillKeys: true
@@ -94,6 +96,9 @@ export default async function AdminVideosPage() {
             masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
             masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
             processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+            playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
+            hlsPlaybackUrl: video.technicalMetadata?.hlsPlaybackUrl ?? null,
+            playbackSource: video.technicalMetadata?.playbackUrl?.toLowerCase()?.includes('.m3u8') ? 'hls' as const : 'mp4' as const,
             hlsUrl: video.hlsUrl,
             hlsVersion: video.hlsVersion,
             qualities: video.qualities,

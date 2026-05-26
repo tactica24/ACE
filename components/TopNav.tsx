@@ -4,7 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import UserMenu from '@/components/UserMenu';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { UI_LANGUAGE_COOKIE, getUiCopy, normalizeUiLanguage, type UILanguage } from '@/lib/ui-language';
@@ -103,6 +102,7 @@ export default function TopNav() {
   const navLinks = [
     { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
+    ...(user ? [{ label: 'My Movies', href: '/account#my-movies' }] : []),
     { label: 'Series', href: '/browse?type=SERIES' },
     ...(user ? [{ label: 'Android App', href: '/download' }] : []),
     ...(user ? [{ label: copy.account, href: '/account' }] : [])
@@ -154,7 +154,6 @@ export default function TopNav() {
                 <Link className="nav-icon-link" href="/tv" aria-label="Open TV viewing and pairing">
                   TV Pair
                 </Link>
-                <LanguageSwitcher language={language} onChange={setLanguage} />
                 {primaryHref !== '/browse' ? (
                   <Link className="btn btn-ghost btn-compact nav-action-button" href={primaryHref}>
                     {primaryLabel}

@@ -10,12 +10,18 @@ type PlaybackDeliveryVideo = {
   } | null;
 };
 
+export type PlaybackModePreference = 'hls' | 'progressive';
+
 function clean(value?: string | null) {
   return value?.trim() || null;
 }
 
 function isHlsUrl(value?: string | null) {
   return Boolean(clean(value)?.toLowerCase().includes('.m3u8'));
+}
+
+export function getPlaybackModePreference(video: PlaybackDeliveryVideo): PlaybackModePreference {
+  return isHlsUrl(video.technicalMetadata?.playbackUrl) ? 'hls' : 'progressive';
 }
 
 export function getPlayableHlsUrl(video: PlaybackDeliveryVideo) {

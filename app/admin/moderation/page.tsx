@@ -37,6 +37,7 @@ export default async function ModerationPage() {
               producerRevenueShare: true,
               platformRevenueShare: true,
               taxRevenueShare: true,
+              releaseYear: true,
               originalLanguage: true,
               genres: true,
               contentWarnings: true,
@@ -106,6 +107,7 @@ export default async function ModerationPage() {
           producerRevenueShare: true,
           platformRevenueShare: true,
           taxRevenueShare: true,
+          releaseYear: true,
           originalLanguage: true,
           genres: true,
           contentWarnings: true,
@@ -175,10 +177,15 @@ export default async function ModerationPage() {
         producerRevenueShare: video.producerRevenueShare,
         platformRevenueShare: video.platformRevenueShare,
         taxRevenueShare: video.taxRevenueShare,
+        releaseYear: video.releaseYear,
         originalLanguage: video.originalLanguage,
         genres: video.genres,
         contentWarnings: video.contentWarnings,
-        posterKey: video.posterKey,
+        posterKey:
+          video.posterKey ||
+          video.technicalMetadata?.landscapeArtworkKey ||
+          video.technicalMetadata?.promotionalStillKeys?.[0] ||
+          null,
         trailerDownloadHref: video.technicalMetadata?.trailerKey
           ? `/api/admin/videos/${video.id}/trailer`
           : null,

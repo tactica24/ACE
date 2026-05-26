@@ -63,6 +63,22 @@ type VideoDraft = {
   availabilityRegion: string;
 };
 
+const categoryOptions = [
+  'General',
+  'Love',
+  'Action',
+  'Thriller',
+  'Comedy',
+  'Drama',
+  'Romance',
+  'Sci-Fi',
+  'Horror',
+  'Documentary',
+  'Family',
+  'Faith',
+  'Animation',
+];
+
 const ageLabel: Record<string, string> = {
   ALL: 'All',
   PG13: '13+',
@@ -370,9 +386,23 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
 
             <div className="moderation-content">
               <div className="moderation-header">
-                <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 76,
+                      borderRadius: 12,
+                      flexShrink: 0,
+                      background: posterUrl
+                        ? `center / cover no-repeat url(${posterUrl})`
+                        : 'linear-gradient(135deg, rgba(244,211,94,0.18), rgba(255,255,255,0.04))',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  />
+                  <div>
                   <h3>{item.video.title}</h3>
                   <p className="muted">{item.video.description}</p>
+                  </div>
                 </div>
                 <div className="moderation-statuses">
                   <span className="badge">{item.status}</span>
@@ -473,7 +503,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                   <label className="field">
                     <span className="field-label">Category</span>
-                    <input className="input" value={getDraft(item).category} onChange={(event) => updateDraft(item.video.id, 'category', event.target.value)} />
+                    <select className="input" value={getDraft(item).category} onChange={(event) => updateDraft(item.video.id, 'category', event.target.value)}>
+                      {categoryOptions.map((category) => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="field">
                     <span className="field-label">Type</span>

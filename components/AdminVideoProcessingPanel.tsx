@@ -19,6 +19,9 @@ type ProcessingVideo = {
   masterFileSize: number | null;
   masterUploadedAt: string | null;
   processingStatus: string;
+  playbackUrl: string | null;
+  hlsPlaybackUrl: string | null;
+  playbackSource: 'mp4' | 'hls';
   hlsUrl: string | null;
   hlsVersion: string | null;
   qualities: string[];
@@ -449,7 +452,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     }
 
 
-   async function completeProcessing(videoId: string) {
+  async function completeProcessing(videoId: string) {
      setPendingId(videoId);
      setMessage('Validating HLS folder...');
      try {
@@ -468,6 +471,26 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
        setPendingId(null);
      }
    }
+
+  async function switchPlaybackSource(videoId: string, mode: 'mp4' | 'hls') {
+    setPendingId(videoId);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/admin/videos/${videoId}/playback-source`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to switch playback source.');
+      await refreshVideo(videoId, payload.video);
+      setMessage(payload.message ?? 'Playback source updated.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to switch playback source.');
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   async function publish(videoId: string) {
     await updateStatus(videoId, 'PUBLISH');
@@ -660,9 +683,30 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
+              <div className="detail-card"><span className="detail-label">Active playback</span><strong>{video.playbackSource.toUpperCase()}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Not set'}</strong></div>
               <div className="detail-card"><span className="detail-label">HLS URL</span><strong>{video.hlsUrl ?? 'Not uploaded'}</strong></div>
               <div className="detail-card"><span className="detail-label">HLS version</span><strong>{video.hlsVersion ?? 'N/A'}</strong></div>
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'N/A'}</strong></div>
+            </div>
+
+            <div className="action-list" style={{ marginTop: 14 }}>
+              <button
+                className={video.playbackSource === 'mp4' ? 'btn btn-primary' : 'btn btn-ghost'}
+                type="button"
+                disabled={busy || !video.masterKey}
+                onClick={() => void switchPlaybackSource(video.id, 'mp4')}
+              >
+                Use MP4 playback
+              </button>
+              <button
+                className={video.playbackSource === 'hls' ? 'btn btn-primary' : 'btn btn-ghost'}
+                type="button"
+                disabled={busy || !video.hlsPlaybackUrl}
+                onClick={() => void switchPlaybackSource(video.id, 'hls')}
+              >
+                Use HLS playback
+              </button>
             </div>
 
             {video.hlsUrl ? (

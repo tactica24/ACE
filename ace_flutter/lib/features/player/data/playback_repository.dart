@@ -79,8 +79,14 @@ class PlaybackRepository {
     String? hls;
     String? dash;
     String? progressive;
+    var preferredMode = PlaybackMode.progressive;
 
     if (playback != null) {
+      final preferred = playback['preferred'];
+      preferredMode =
+          preferred is String && preferred.toLowerCase() == 'hls'
+              ? PlaybackMode.hls
+              : PlaybackMode.progressive;
       final h = playback['hlsUrl'];
       if (h is String && h.isNotEmpty) {
         hls = apiClient.resolve(h).toString();
@@ -106,20 +112,30 @@ class PlaybackRepository {
       hlsUrl: hls,
       dashUrl: dash,
       progressiveUrl: progressive,
+      preferredMode: preferredMode,
     );
   }
 }
+
+enum PlaybackMode { progressive, hls }
 
 class PlaybackStreamUrls {
   const PlaybackStreamUrls({
     this.hlsUrl,
     this.dashUrl,
     this.progressiveUrl,
+    this.preferredMode = PlaybackMode.progressive,
   });
 
   final String? hlsUrl;
   final String? dashUrl;
   final String? progressiveUrl;
+  final PlaybackMode preferredMode;
 
-  String? get preferredUrl => hlsUrl ?? dashUrl ?? progressiveUrl;
+  String? get preferredUrl {
+    if (preferredMode == PlaybackMode.hls) {
+      return hlsUrl ?? progressiveUrl ?? dashUrl;
+    }
+    return progressiveUrl ?? hlsUrl ?? dashUrl;
+  }
 }

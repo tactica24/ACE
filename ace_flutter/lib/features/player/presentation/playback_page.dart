@@ -55,6 +55,14 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
 
   PlaybackQueueEntry get _currentEntry => _queue[_currentIndex];
 
+  List<VideoAudioTrack> get _visibleAudioTracks => _audioTracks.where((track) {
+        final label = track.label?.trim().toLowerCase() ?? '';
+        final language = track.language?.trim().toLowerCase() ?? '';
+        final hasUsefulLabel = label.isNotEmpty && label != 'audio' && label != 'und';
+        final hasUsefulLanguage = language.isNotEmpty && language != 'und';
+        return hasUsefulLabel || hasUsefulLanguage;
+      }).toList();
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +77,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     if (_fullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     _controller?.removeListener(_handleControllerUpdate);
     _controller?.dispose();
     _controlsTimer?.cancel();
@@ -207,9 +216,16 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
               qualityPreference: preferences.playbackQuality,
             );
     final playbackCandidates = <String>[
-      if (urls.progressiveUrl != null && urls.progressiveUrl!.isNotEmpty)
+      if (urls.preferredUrl != null && urls.preferredUrl!.isNotEmpty)
+        urls.preferredUrl!,
+      if (urls.progressiveUrl != null &&
+          urls.progressiveUrl!.isNotEmpty &&
+          urls.progressiveUrl != urls.preferredUrl)
         urls.progressiveUrl!,
-      if (urls.hlsUrl != null && urls.hlsUrl!.isNotEmpty) urls.hlsUrl!,
+      if (urls.hlsUrl != null &&
+          urls.hlsUrl!.isNotEmpty &&
+          urls.hlsUrl != urls.preferredUrl)
+        urls.hlsUrl!,
       if (urls.dashUrl != null && urls.dashUrl!.isNotEmpty) urls.dashUrl!,
     ];
     if (playbackCandidates.isEmpty) {
@@ -606,6 +622,16 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
 
   Future<void> _toggleFullscreen() async {
     final nextFullscreen = !_fullscreen;
+    await SystemChrome.setPreferredOrientations(
+      nextFullscreen
+          ? const [
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.portraitDown,
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]
+          : const [DeviceOrientation.portraitUp],
+    );
     await SystemChrome.setEnabledSystemUIMode(
       nextFullscreen ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
     );
@@ -716,6 +742,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0;
     final sliderValue =
         _position.inSeconds.clamp(0, sliderMax.toInt()).toDouble();
+    final visibleAudioTracks = _visibleAudioTracks;
     final videoAspectRatio = controller != null &&
             controller.value.isInitialized &&
             controller.value.aspectRatio > 0
@@ -886,6 +913,42 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                                 ),
                                                 Row(
                                                   children: [
+                                                    IconButton(
+                                                      onPressed: _togglePlayPause,
+                                                      icon: Icon(
+                                                        isPlaying
+                                                            ? Icons.pause_circle_filled_rounded
+                                                            : Icons.play_circle_filled_rounded,
+                                                        color: Colors.white,
+                                                        size: 34,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: SliderTheme(
+                                                        data: SliderTheme.of(context)
+                                                            .copyWith(
+                                                          trackHeight: 3,
+                                                          thumbShape:
+                                                              const RoundSliderThumbShape(
+                                                            enabledThumbRadius: 6,
+                                                          ),
+                                                          activeTrackColor:
+                                                              Colors.white,
+                                                          inactiveTrackColor:
+                                                              Colors.white24,
+                                                          thumbColor: Colors.white,
+                                                        ),
+                                                        child: Slider(
+                                                          value: _volume.clamp(0, 1),
+                                                          max: 1,
+                                                          onChanged: (value) async {
+                                                            await controller?.setVolume(
+                                                              value,
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
                                                     Text(
                                                       _formatDuration(_position),
                                                       style: const TextStyle(
@@ -1017,7 +1080,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
               ],
             ),
           ],
-          if (_audioTracks.isNotEmpty) ...[
+          if (visibleAudioTracks.length > 1) ...[
             const SizedBox(height: 20),
             Text(
               'Audio',
@@ -1029,12 +1092,14 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: _audioTracks
+              children: visibleAudioTracks
                   .map(
                     (track) => _ChoiceChipButton(
                       label: track.label?.trim().isNotEmpty == true
                           ? track.label!.trim()
-                          : track.language?.toUpperCase() ?? 'Audio',
+                          : (track.language?.trim().isNotEmpty == true
+                              ? track.language!.toUpperCase()
+                              : 'Audio'),
                       selected: track.isSelected,
                       onTap: () => _selectAudioTrack(track.id),
                     ),

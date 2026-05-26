@@ -421,11 +421,13 @@ export default function AcePlayer({
     }
 
     const previewUrl =
-      typeof data.playback?.progressiveUrl === 'string'
-        ? data.playback.progressiveUrl
-        : typeof data.playback?.hlsUrl === 'string'
-          ? data.playback.hlsUrl
-          : '';
+      data.playback?.preferred === 'hls' && typeof data.playback?.hlsUrl === 'string'
+        ? data.playback.hlsUrl
+        : typeof data.playback?.progressiveUrl === 'string'
+          ? data.playback.progressiveUrl
+          : typeof data.playback?.hlsUrl === 'string'
+            ? data.playback.hlsUrl
+            : '';
 
     if (!previewUrl) {
       setFeedback('Preview is not available for this title yet.');

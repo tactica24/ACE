@@ -111,6 +111,7 @@ export default function HomeSpotlightPreview({
           const tokenPayload = (await tokenResponse.json()) as {
             token?: string;
             playback?: {
+              preferred?: string;
               progressiveUrl?: string;
               hlsUrl?: string | null;
               dashUrl?: string | null;
@@ -134,12 +135,14 @@ export default function HomeSpotlightPreview({
             tokenPayload.playback?.dashAvailable && typeof tokenPayload.playback?.dashUrl === 'string'
               ? tokenPayload.playback.dashUrl
               : null;
-
-          const source = hlsUrl && browserCanPlay('application/vnd.apple.mpegurl')
+          const source = tokenPayload.playback?.preferred === 'hls' && hlsUrl && browserCanPlay('application/vnd.apple.mpegurl')
             ? hlsUrl
             : dashUrl && browserCanPlay('application/dash+xml')
               ? dashUrl
-              : progressiveUrl;
+              : progressiveUrl || hlsUrl;
+          if (!source) {
+            return null;
+          }
           cachePreviewSource(videoId, source);
           return source;
         } catch {

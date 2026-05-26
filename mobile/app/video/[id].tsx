@@ -65,8 +65,20 @@ export default function VideoDetailScreen() {
 
     setPlayerError(null);
     try {
-      const payload = await apiGet<{ token: string; guest?: boolean }>(`/api/stream/token?${query.toString()}`);
-      setStreamUrl(`${BASE_URL}/api/stream/${id}?token=${payload.token}`);
+      const payload = await apiGet<{
+        token: string;
+        guest?: boolean;
+        playback?: {
+          preferred?: 'hls' | 'progressive' | 'unavailable';
+          progressiveUrl?: string | null;
+          hlsUrl?: string | null;
+        };
+      }>(`/api/stream/token?${query.toString()}`);
+      const preferredUrl = payload.playback?.preferred === 'hls'
+        ? payload.playback?.hlsUrl
+        : payload.playback?.progressiveUrl;
+      const fallbackUrl = payload.playback?.progressiveUrl ?? payload.playback?.hlsUrl ?? `${BASE_URL}/api/stream/${id}?token=${payload.token}`;
+      setStreamUrl(preferredUrl ?? fallbackUrl);
       setAuthRequired(false);
       setShowAccessNotice(false);
     } catch (error) {

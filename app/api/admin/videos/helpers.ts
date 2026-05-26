@@ -34,6 +34,8 @@ export async function getProcessingVideo(videoId: string) {
           masterFileSize: true,
           masterUploadedAt: true,
           processingStatus: true,
+          playbackUrl: true,
+          hlsPlaybackUrl: true,
           trailerKey: true,
           landscapeArtworkKey: true,
           promotionalStillKeys: true
@@ -58,6 +60,9 @@ export async function getProcessingVideo(videoId: string) {
     masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
     masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
     processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+    playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
+    hlsPlaybackUrl: video.technicalMetadata?.hlsPlaybackUrl ?? null,
+    playbackSource: video.technicalMetadata?.playbackUrl?.toLowerCase()?.includes('.m3u8') ? 'hls' : 'mp4',
     hlsUrl: video.hlsUrl,
     hlsVersion: video.hlsVersion,
     qualities: video.qualities,
