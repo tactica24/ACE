@@ -29,13 +29,6 @@ type HomeVideo = {
   category: string;
   createdAt: Date | string;
   progressPercent?: number;
-  technicalMetadata?: {
-    deliveryFormat: string | null;
-    englishSubtitlesProvided: boolean;
-    castCredits: unknown;
-    crewCredits: unknown;
-    promotionalStillKeys: string[];
-  } | null;
 };
 
 type HomeRow = {
@@ -44,29 +37,6 @@ type HomeRow = {
   description: string;
   items: HomeVideo[];
 };
-
-function normalizeVideoText(video: HomeVideo) {
-  const genres = Array.isArray(video.genres) ? video.genres : [];
-
-  return [
-    video.title ?? '',
-    video.description ?? '',
-    video.category ?? '',
-    video.videoType ?? '',
-    ...genres
-  ]
-    .join(' ')
-    .toLowerCase();
-}
-
-function getVideoCreatedTime(video: Pick<HomeVideo, 'createdAt'>) {
-  if (video.createdAt instanceof Date) {
-    return video.createdAt.getTime();
-  }
-
-  const timestamp = Date.parse(video.createdAt);
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
 
 function dedupeVideos(items: HomeVideo[]) {
   const seen = new Set<string>();
@@ -80,25 +50,9 @@ function dedupeVideos(items: HomeVideo[]) {
   });
 }
 
-function pickVideos(videos: HomeVideo[], predicate: (video: HomeVideo) => boolean, take = 12) {
-  return dedupeVideos(videos.filter(predicate)).slice(0, take);
-}
-
 function formatRuntime(_durationSec?: number | null) {
   return '90m';
 }
-
-function matchesNormalizedTitle(video: HomeVideo, allowedTitles: string[]) {
-  const title = (video.title || '').toLowerCase().trim();
-  return allowedTitles.some((allowed) => title.includes(allowed) || allowed.includes(title));
-}
-
-const GUEST_LANDING_TITLES = [
-  'arctic void',
-  'manhattan romance',
-  'the caretaker',
-  'the naked umbrella'
-];
 
 function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
@@ -123,16 +77,13 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const curatedGuestVideos = dedupeVideos(videos.filter((video) => matchesNormalizedTitle(video, GUEST_LANDING_TITLES)));
-  const heroPosters = GUEST_LANDING_TITLES
-    .map((allowedTitle) => videos.find((video) => matchesNormalizedTitle(video, [allowedTitle])))
-    .filter((video): video is HomeVideo => Boolean(video));
+  const guestHeroVideos = dedupeVideos(videos).slice(0, 5);
   const featuredRows = [
     {
       id: 'trending',
       title: 'Trending Now',
       description: 'Stories viewers are returning to on ACE Studio.',
-      items: curatedGuestVideos
+      items: guestHeroVideos
     }
   ];
 
@@ -140,7 +91,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     <div className="nmhp-landing">
       <section className="nmhp-hero">
         <div className="nmhp-hero-bg" aria-hidden="true">
-          {heroPosters.map((video, index) => {
+          {guestHeroVideos.map((video, index) => {
             const posterUrl = getMediaAssetUrl(video.posterKey);
             if (!posterUrl) return null;
 
@@ -148,7 +99,8 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
               { left: '9%', top: '15%', scale: 1.02, rot: -5 },
               { left: '31%', top: '10%', scale: 0.96, rot: 4 },
               { left: '56%', top: '16%', scale: 1.04, rot: -3 },
-              { left: '77%', top: '11%', scale: 0.92, rot: 6 }
+              { left: '72%', top: '11%', scale: 0.92, rot: 6 },
+              { left: '84%', top: '18%', scale: 0.86, rot: -4 }
             ];
             const pos = positions[index % positions.length];
 

@@ -102,10 +102,9 @@ export default function TopNav() {
   const navLinks = [
     { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
-    ...(user ? [{ label: 'My Movies', href: '/account#my-movies' }] : []),
     { label: 'Series', href: '/browse?type=SERIES' },
-    ...(user ? [{ label: 'Android App', href: '/download' }] : []),
-    ...(user ? [{ label: copy.account, href: '/account' }] : [])
+    ...(user ? [{ label: 'My Movies', href: '/account#my-movies' }] : []),
+    ...(user ? [{ label: 'Android App', href: '/download' }] : [])
   ];
 
   return (

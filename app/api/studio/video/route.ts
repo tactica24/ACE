@@ -449,10 +449,6 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  if (safeDeliveryMetadata?.promotionalStillKeys.some((key) => !validateOwnedKey(key, auth.sub, 'poster'))) {
-    return NextResponse.json({ error: 'One or more promotional still uploads are invalid for this studio account.' }, { status: 400 });
-  }
-
   if (safeDeliveryMetadata?.trailerKey && !validateOwnedKey(safeDeliveryMetadata.trailerKey, auth.sub, 'trailer')) {
     return NextResponse.json({ error: 'The trailer upload is invalid for this studio account.' }, { status: 400 });
   }
@@ -485,7 +481,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (safePosterKey && !validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
+    if (!safePosterKey) {
+      return NextResponse.json({ error: 'Upload one poster artwork file for this title.' }, { status: 400 });
+    }
+
+    if (!validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
       return NextResponse.json({ error: 'Poster upload is invalid for this studio account.' }, { status: 400 });
     }
 
@@ -746,7 +746,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Series title and synopsis are required.' }, { status: 400 });
   }
 
-  if (safePosterKey && !validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
+  if (!safePosterKey) {
+    return NextResponse.json({ error: 'Upload one poster artwork file for this series.' }, { status: 400 });
+  }
+
+  if (!validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
     return NextResponse.json({ error: 'Series poster upload is invalid for this studio account.' }, { status: 400 });
   }
 

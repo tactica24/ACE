@@ -382,10 +382,8 @@ export default function UploadForm({
   const [seriesMode, setSeriesMode] = useState<'new' | 'existing'>(initialSeriesId ? 'existing' : 'new');
   const [selectedSeriesId, setSelectedSeriesId] = useState(initialSeriesId ?? seriesOptions[0]?.id ?? '');
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [landscapeArtworkFile, setLandscapeArtworkFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [masterFile, setMasterFile] = useState<File | null>(null);
-  const [promotionalStillFiles, setPromotionalStillFiles] = useState<File[]>([]);
   const [deliveryMetadata, setDeliveryMetadata] = useState<DeliveryMetadataState>(initialDeliveryMetadataState);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleDraft[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeDraft[]>([createEpisodeDraft()]);
@@ -761,12 +759,8 @@ export default function UploadForm({
           return;
         }
       }
-      if (landscapeArtworkFile && !isSupportedImageFile(landscapeArtworkFile)) {
-        setMessage('16:9 key art upload must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
-        return;
-      }
-      if (promotionalStillFiles.some((file) => !isSupportedImageFile(file))) {
-        setMessage('Promotional stills must be JPG, PNG, or WEBP. HEIC photos from phones must be exported as JPG, PNG, or WEBP first.');
+      if (!posterFile && (!isSeriesUpload || !isAddingToExistingSeries)) {
+        setMessage('Upload one poster artwork file. This poster is the only artwork used across the app.');
         return;
       }
       if (!isSupportedTrailerFile(trailerFile)) {
@@ -807,7 +801,6 @@ export default function UploadForm({
           label: string;
           file: File;
           purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master';
-          posterRole?: 'primary' | 'landscape' | 'promotional';
           subtitleMeta?: {
             label: string;
             languageCode: string;
@@ -830,17 +823,7 @@ export default function UploadForm({
                 id: 'poster',
                 label: `Uploading poster: ${posterFile.name}`,
                 file: posterFile,
-                purpose: 'poster' as const,
-                posterRole: 'primary' as const
-              }]
-            : []),
-          ...(landscapeArtworkFile
-            ? [{
-                id: 'landscape-artwork',
-                label: `Uploading 16:9 key art: ${landscapeArtworkFile.name}`,
-                file: landscapeArtworkFile,
-                purpose: 'poster' as const,
-                posterRole: 'landscape' as const
+                purpose: 'poster' as const
               }]
             : []),
           ...(trailerFile
@@ -851,13 +834,6 @@ export default function UploadForm({
                 purpose: 'trailer' as const
               }]
             : []),
-          ...promotionalStillFiles.map((file, index) => ({
-            id: `promo-${index}`,
-            label: `Uploading promotional still ${index + 1}: ${file.name}`,
-            file,
-            purpose: 'poster' as const,
-            posterRole: 'promotional' as const
-          })),
           ...subtitleTracks.map((track, index) => ({
             id: track.id,
             label: `Uploading subtitle ${index + 1}: ${track.file?.name ?? track.label}`,
@@ -886,9 +862,7 @@ export default function UploadForm({
         let storedPrimaryVideoKey = '';
         let storedFallbackVideoKey = '';
         let storedPosterKey: string | null = null;
-        let storedLandscapeArtworkKey: string | null = null;
         let storedTrailerKey: string | null = null;
-        const promotionalStillKeys: string[] = [];
         const subtitlePayload: Array<{
           label: string;
           languageCode: string;
@@ -913,13 +887,7 @@ export default function UploadForm({
           } else if (item.purpose === 'trailer') {
             storedTrailerKey = fileKey;
           } else if (item.purpose === 'poster') {
-            if (item.posterRole === 'promotional') {
-              promotionalStillKeys.push(fileKey);
-            } else if (item.posterRole === 'landscape') {
-              storedLandscapeArtworkKey = fileKey;
-            } else {
-              storedPosterKey = fileKey;
-            }
+            storedPosterKey = fileKey;
           } else if ('subtitleMeta' in item && item.subtitleMeta) {
             subtitlePayload.push({
               ...item.subtitleMeta,
@@ -970,11 +938,11 @@ export default function UploadForm({
               licensedTerritories: normalizeCodeEntries(deliveryMetadata.licensedTerritories),
               localizations: normalizeLineEntries(deliveryMetadata.localizations),
               productAvailability: normalizeLineEntries(deliveryMetadata.productAvailability),
-              landscapeArtworkKey: storedLandscapeArtworkKey,
+              landscapeArtworkKey: null,
               deliveryFormat: deliveryMetadata.deliveryFormat,
               deliveryNotes: deliveryMetadata.deliveryNotes,
               trailerKey: storedTrailerKey,
-              promotionalStillKeys,
+              promotionalStillKeys: [],
               castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
               crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
               englishSubtitlesProvided: deliveryMetadata.englishSubtitlesProvided
@@ -998,10 +966,7 @@ export default function UploadForm({
 
       const metadataAssetBytes = isAddingToExistingSeries
         ? 0
-        : (posterFile?.size ?? 0)
-          + (landscapeArtworkFile?.size ?? 0)
-          + promotionalStillFiles.reduce((sum, file) => sum + file.size, 0)
-          + (trailerFile?.size ?? 0);
+        : (posterFile?.size ?? 0) + (trailerFile?.size ?? 0);
       const totalBytes =
         episodes.reduce(
           (sum, episode) =>
@@ -1024,28 +989,6 @@ export default function UploadForm({
           status: 'pending'
         });
       }
-      if (!isAddingToExistingSeries && landscapeArtworkFile) {
-        seriesUploadSteps.push({
-          id: 'series-landscape',
-          label: `Uploading series 16:9 key art: ${landscapeArtworkFile.name}`,
-          fileName: landscapeArtworkFile.name,
-          loaded: 0,
-          total: landscapeArtworkFile.size,
-          status: 'pending'
-        });
-      }
-      promotionalStillFiles.forEach((file, index) => {
-        if (!isAddingToExistingSeries) {
-          seriesUploadSteps.push({
-            id: `series-promo-${index}`,
-            label: `Uploading promotional still ${index + 1}: ${file.name}`,
-            fileName: file.name,
-            loaded: 0,
-            total: file.size,
-            status: 'pending'
-          });
-        }
-      });
       if (!isAddingToExistingSeries && trailerFile) {
         seriesUploadSteps.push({
           id: 'series-trailer',
@@ -1104,9 +1047,7 @@ export default function UploadForm({
       setUploadSteps(seriesUploadSteps);
       let completedBytes = 0;
       let storedSeriesPosterKey: string | null = null;
-      let storedSeriesLandscapeArtworkKey: string | null = null;
       let storedSeriesTrailerKey: string | null = null;
-      const storedSeriesPromotionalStillKeys: string[] = [];
 
       if (!isAddingToExistingSeries && posterFile) {
         storedSeriesPosterKey = await uploadTrackedAsset({
@@ -1118,28 +1059,7 @@ export default function UploadForm({
         completedBytes += posterFile.size;
       }
 
-      if (!isAddingToExistingSeries && landscapeArtworkFile) {
-        storedSeriesLandscapeArtworkKey = await uploadTrackedAsset({
-          id: 'series-landscape',
-          label: `Uploading series 16:9 key art: ${landscapeArtworkFile.name}`,
-          file: landscapeArtworkFile,
-          purpose: 'poster'
-        }, completedBytes, totalBytes);
-        completedBytes += landscapeArtworkFile.size;
-      }
-
       if (!isAddingToExistingSeries) {
-        for (const [index, stillFile] of promotionalStillFiles.entries()) {
-          const stillKey = await uploadTrackedAsset({
-            id: `series-promo-${index}`,
-            label: `Uploading promotional still ${index + 1}: ${stillFile.name}`,
-            file: stillFile,
-            purpose: 'poster'
-          }, completedBytes, totalBytes);
-          storedSeriesPromotionalStillKeys.push(stillKey);
-          completedBytes += stillFile.size;
-        }
-
         if (trailerFile) {
           storedSeriesTrailerKey = await uploadTrackedAsset({
             id: 'series-trailer',
@@ -1272,11 +1192,11 @@ export default function UploadForm({
                   licensedTerritories: normalizeCodeEntries(deliveryMetadata.licensedTerritories),
                   localizations: normalizeLineEntries(deliveryMetadata.localizations),
                   productAvailability: normalizeLineEntries(deliveryMetadata.productAvailability),
-                  landscapeArtworkKey: storedSeriesLandscapeArtworkKey,
+                  landscapeArtworkKey: null,
                   deliveryFormat: deliveryMetadata.deliveryFormat,
                   deliveryNotes: deliveryMetadata.deliveryNotes,
                   trailerKey: storedSeriesTrailerKey,
-                  promotionalStillKeys: storedSeriesPromotionalStillKeys,
+                  promotionalStillKeys: [],
                   castCredits: normalizeCreditEntries(deliveryMetadata.castCredits),
                   crewCredits: normalizeCreditEntries(deliveryMetadata.crewCredits),
                   englishSubtitlesProvided: deliveryMetadata.englishSubtitlesProvided
@@ -1784,11 +1704,7 @@ export default function UploadForm({
               </label>
               <label className="field">
                 <span className="field-label">Poster artwork</span>
-                <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} />
-              </label>
-              <label className="field">
-                <span className="field-label">16:9 key art</span>
-                <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setLandscapeArtworkFile(event.target.files?.[0] ?? null)} />
+                <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} required />
               </label>
             </div>
             <div className="field-grid field-grid-2">
@@ -1802,19 +1718,6 @@ export default function UploadForm({
                 />
               </label>
             </div>
-            <div className="field-grid field-grid-2">
-              <label className="field">
-                <span className="field-label">Promotional stills</span>
-                <input
-                  className="input"
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  multiple
-                  onChange={(event) => setPromotionalStillFiles(Array.from(event.target.files ?? []))}
-                />
-              </label>
-            </div>
-
             <div className="stack-list">
               <div className="stack-row">
                 <div>
@@ -1867,23 +1770,9 @@ export default function UploadForm({
           <div className="stack-list">
             <label className="field">
               <span className="field-label">Series poster artwork</span>
-              <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} />
+              <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setPosterFile(event.target.files?.[0] ?? null)} required />
             </label>
             <div className="field-grid field-grid-2">
-              <label className="field">
-                <span className="field-label">Series 16:9 key art</span>
-                <input className="input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setLandscapeArtworkFile(event.target.files?.[0] ?? null)} />
-              </label>
-              <label className="field">
-                <span className="field-label">Promotional stills</span>
-                <input
-                  className="input"
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  multiple
-                  onChange={(event) => setPromotionalStillFiles(Array.from(event.target.files ?? []))}
-                />
-              </label>
               <label className="field">
                 <span className="field-label">Marketing trailer (MP4)</span>
                 <input
