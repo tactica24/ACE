@@ -942,7 +942,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                                           value: _volume.clamp(0, 1),
                                                           max: 1,
                                                           onChanged: (value) async {
-                                                            await controller?.setVolume(
+                                                            await controller.setVolume(
                                                               value,
                                                             );
                                                           },
