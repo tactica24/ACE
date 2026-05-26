@@ -147,8 +147,7 @@ export default async function VideoPage({
   if (requestedVideo.videoType !== 'SERIES' && !requestedVideo.seriesId) {
     const regionalPrice = getRegionalPriceForVideo(requestHeaders, requestedVideo, pricingConfig);
     const posterUrl = getMediaAssetUrl(requestedVideo.posterKey);
-    const landscapeArtworkUrl = getMediaAssetUrl(requestedVideo.technicalMetadata?.landscapeArtworkKey ?? null);
-    const backdropUrl = landscapeArtworkUrl ?? posterUrl;
+    const backdropUrl = posterUrl;
     const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'movie');
     const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
     const relatedTitleCandidates = await prisma.video.findMany({
@@ -370,8 +369,7 @@ export default async function VideoPage({
   const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'episode');
   const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
   const seriesPosterUrl = getMediaAssetUrl(series.posterKey);
-  const seriesLandscapeArtworkUrl = getMediaAssetUrl(series.technicalMetadata?.landscapeArtworkKey ?? null);
-  const seriesBackdropUrl = seriesLandscapeArtworkUrl ?? seriesPosterUrl;
+  const seriesBackdropUrl = seriesPosterUrl;
   const selectedPosterUrl = getMediaAssetUrl(selectedEpisode?.posterKey ?? series.posterKey);
   const totalSeasons = new Set(viewerReadyEpisodes.map((episode) => episode.seasonNumber).filter(Boolean)).size;
   const relatedSeries = await prisma.video.findMany({

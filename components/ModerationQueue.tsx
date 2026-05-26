@@ -95,42 +95,19 @@ const labelize = (value?: string) =>
         .join(' ')
     : 'Not set';
 
-// Minimal upload helpers for trailer/poster assets during moderation edit (reuses studio presigned upload)
-const uploadFileToSignedUrl = async (url: string, file: File, contentType: string, onProgress?: (loaded: number, total: number) => void) => {
-  return new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url, true);
-    xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) onProgress(event.loaded, event.total);
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error('Storage upload failed with status ' + xhr.status + (xhr.responseText ? ': ' + xhr.responseText : '')));
-    };
-    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-    xhr.ontimeout = () => reject(new Error('Storage upload timed out before storage accepted the file.'));
-    xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
-    xhr.send(file);
-  });
-};
-
 const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster') => {
-  const response = await fetch('/api/studio/upload-url', {
+  const formData = new FormData();
+  formData.set('file', file);
+  formData.set('purpose', purpose);
+
+  const response = await fetch('/api/admin/assets/upload', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filename: file.name,
-      contentType: file.type || 'application/octet-stream',
-      purpose,
-      fileSize: file.size
-    })
+    body: formData
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.url || !payload.key) {
+  if (!response.ok || !payload.key) {
     throw new Error(payload.error || 'Could not prepare upload.');
   }
-  await uploadFileToSignedUrl(payload.url, file, file.type || 'application/octet-stream');
   return payload.key as string;
 };
 

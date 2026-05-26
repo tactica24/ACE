@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 
 const PRICE_TIERS = ['SNACK', 'STANDARD', 'PREMIERE'] as const;
@@ -137,6 +138,8 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
       }
     }
   });
+
+  revalidateApprovedCatalog();
 
   return NextResponse.json({
     ok: true,

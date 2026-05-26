@@ -48,9 +48,11 @@ export async function GET(request: NextRequest) {
     const searchWhere = buildMobileCatalogSearchWhere(searchQuery);
     const where = searchWhere
       ? {
-          AND: [getViewerReadyCatalogWhere(), searchWhere],
+          AND: [getViewerReadyCatalogWhere(), { posterKey: { not: null } }, searchWhere],
         }
-      : getViewerReadyCatalogWhere();
+      : {
+          AND: [getViewerReadyCatalogWhere(), { posterKey: { not: null } }]
+        };
 
     const videos = await prisma.video.findMany({
       where,
@@ -74,8 +76,7 @@ export async function GET(request: NextRequest) {
             vendorId: true,
             studioReleaseTitle: true,
             countriesOfOrigin: true,
-            licensedTerritories: true,
-            landscapeArtworkKey: true
+            licensedTerritories: true
           }
         }
       },
@@ -106,8 +107,7 @@ export async function GET(request: NextRequest) {
           vendorId: video.technicalMetadata?.vendorId ?? null,
           studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,
           countriesOfOrigin: video.technicalMetadata?.countriesOfOrigin ?? [],
-          licensedTerritories: video.technicalMetadata?.licensedTerritories ?? [],
-          landscapeArtworkKey: video.technicalMetadata?.landscapeArtworkKey ?? null
+          licensedTerritories: video.technicalMetadata?.licensedTerritories ?? []
         },
         priceTier: video.priceTier,
         rightsTier: video.rightsTier,

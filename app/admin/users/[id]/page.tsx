@@ -133,8 +133,6 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           technicalMetadata: {
             select: {
               trailerKey: true,
-              landscapeArtworkKey: true,
-              promotionalStillKeys: true,
               deliveryFormat: true,
               englishSubtitlesProvided: true
             }
@@ -339,12 +337,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     trailerDownloadHref: video.technicalMetadata?.trailerKey
                       ? `/api/admin/videos/${video.id}/trailer`
                       : null,
-                    posterDownloadHref:
-                      video.posterKey ||
-                      video.technicalMetadata?.landscapeArtworkKey ||
-                      video.technicalMetadata?.promotionalStillKeys?.[0]
-                        ? `/api/admin/videos/${video.id}/poster`
-                        : null
+                    posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null
                   }))}
                 />
               </div>

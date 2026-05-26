@@ -12,21 +12,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const video = await prisma.video.findUnique({
     where: { id: params.id },
     select: {
-      posterKey: true,
-      technicalMetadata: {
-        select: {
-          landscapeArtworkKey: true,
-          promotionalStillKeys: true
-        }
-      }
+      posterKey: true
     }
   });
 
-  const posterKey =
-    video?.posterKey?.trim() ||
-    video?.technicalMetadata?.landscapeArtworkKey?.trim() ||
-    video?.technicalMetadata?.promotionalStillKeys.find((key) => key.trim())?.trim() ||
-    '';
+  const posterKey = video?.posterKey?.trim() || '';
 
   if (!posterKey) {
     return NextResponse.json({ error: 'Poster artwork is not available for this title.' }, { status: 404 });

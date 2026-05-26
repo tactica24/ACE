@@ -58,8 +58,6 @@ export default async function ModerationPage() {
               technicalMetadata: {
                 select: {
                   trailerKey: true,
-                  landscapeArtworkKey: true,
-                  promotionalStillKeys: true,
                   deliveryFormat: true,
                   englishSubtitlesProvided: true,
                   licensedTerritories: true,
@@ -128,8 +126,6 @@ export default async function ModerationPage() {
           technicalMetadata: {
             select: {
               trailerKey: true,
-              landscapeArtworkKey: true,
-              promotionalStillKeys: true,
               deliveryFormat: true,
               englishSubtitlesProvided: true,
               licensedTerritories: true,
@@ -181,20 +177,11 @@ export default async function ModerationPage() {
         originalLanguage: video.originalLanguage,
         genres: video.genres,
         contentWarnings: video.contentWarnings,
-        posterKey:
-          video.posterKey ||
-          video.technicalMetadata?.landscapeArtworkKey ||
-          video.technicalMetadata?.promotionalStillKeys?.[0] ||
-          null,
+        posterKey: video.posterKey ?? null,
         trailerDownloadHref: video.technicalMetadata?.trailerKey
           ? `/api/admin/videos/${video.id}/trailer`
           : null,
-        posterDownloadHref:
-          video.posterKey ||
-          video.technicalMetadata?.landscapeArtworkKey ||
-          video.technicalMetadata?.promotionalStillKeys?.[0]
-            ? `/api/admin/videos/${video.id}/poster`
-            : null,
+        posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null,
         createdAt: video.createdAt.toISOString(),
         creatorName: video.creator.creator?.displayName ?? video.creator.email,
         packageLabel: getViewerPackageLabel(video),

@@ -18,10 +18,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           countriesOfOrigin: true,
           licensedTerritories: true,
           copyrightLine: true,
-          landscapeArtworkKey: true,
           castCredits: true,
-          crewCredits: true,
-          promotionalStillKeys: true
+          crewCredits: true
         }
       },
       subtitleTracks: {
@@ -155,10 +153,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           countriesOfOrigin: title.technicalMetadata?.countriesOfOrigin ?? [],
           licensedTerritories: title.technicalMetadata?.licensedTerritories ?? [],
           copyrightLine: title.technicalMetadata?.copyrightLine ?? null,
-          landscapeArtworkKey: title.technicalMetadata?.landscapeArtworkKey ?? null,
           castCredits: title.technicalMetadata?.castCredits ?? null,
-          crewCredits: title.technicalMetadata?.crewCredits ?? null,
-          promotionalStillKeys: title.technicalMetadata?.promotionalStillKeys ?? []
+          crewCredits: title.technicalMetadata?.crewCredits ?? null
         },
         progressSec: historyByVideoId.get(title.id) ?? 0,
         trailerUrl: title.technicalMetadata?.trailerKey?.trim()

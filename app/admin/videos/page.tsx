@@ -54,9 +54,7 @@ export default async function AdminVideosPage() {
                   processingStatus: true,
                   playbackUrl: true,
                   hlsPlaybackUrl: true,
-                  trailerKey: true,
-                  landscapeArtworkKey: true,
-                  promotionalStillKeys: true
+                  trailerKey: true
                 }
               },
               hlsUrl: true,
@@ -103,9 +101,7 @@ export default async function AdminVideosPage() {
             hlsVersion: video.hlsVersion,
             qualities: video.qualities,
             trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
-            posterDownloadHref: video.posterKey || video.technicalMetadata?.landscapeArtworkKey || video.technicalMetadata?.promotionalStillKeys[0]
-              ? `/api/admin/videos/${video.id}/poster`
-              : null
+            posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null
           }))
         }))}
       />

@@ -54,7 +54,7 @@ export default async function BrowsePage({
 
   let videos: BrowseVideo[] = [];
   try {
-    videos = await getApprovedCatalogVideos();
+    videos = (await getApprovedCatalogVideos()).filter((video) => Boolean(video.posterKey));
   } catch {
     videos = [];
   }
