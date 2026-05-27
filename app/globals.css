@@ -1984,6 +1984,10 @@ body.watch-mode-active .video-page-player {
   scroll-snap-align: start;
 }
 
+.home-carousel-item:empty {
+  display: none;
+}
+
 .home-carousel-item .video-card {
   height: 100%;
   background: transparent;

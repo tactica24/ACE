@@ -176,6 +176,10 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     setIsInteractive(false);
   };
 
+  if (!hasPoster) {
+    return null;
+  }
+
   return (
     <Link
       href={`/v/${video.id}`}
@@ -209,7 +213,6 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
             aria-hidden="true"
           />
         ) : null}
-        {!hasPoster ? <span>Ace Studio</span> : null}
         <div className="video-thumb-overlay">
           <span className="video-thumb-kicker">{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
           <span className="video-thumb-runtime">{runtimeLabel ?? labelize(video.videoType)}</span>
