@@ -5,6 +5,11 @@ import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEma
 import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '@/lib/credits';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
+import {
+  getPlayableHlsUrl,
+  getPlayableProgressiveKey,
+  getPlayableProgressiveUrl
+} from '@/lib/playback-delivery';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { isSeriesContainer } from '@/lib/video-access';
@@ -44,7 +49,9 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           availabilityRegion: true,
-          masterKey: true
+          masterKey: true,
+          playbackUrl: true,
+          hlsPlaybackUrl: true
         }
       }
     }
@@ -82,11 +89,28 @@ export async function POST(req: NextRequest) {
   }
 
   if (!assetSnapshot.ready) {
-    return NextResponse.json({
-      error: assetSnapshot.storageConfigured
-        ? 'This title is not ready for playback yet.'
-        : 'Playback storage is not configured yet for this title.'
-    }, { status: 409 });
+    const playableHlsUrl = getPlayableHlsUrl(video);
+    const playableProgressiveKey = getPlayableProgressiveKey(video);
+    const playableProgressiveUrl = getPlayableProgressiveUrl(video);
+    const canAttemptPlayback =
+      Boolean(playableProgressiveUrl) ||
+      Boolean(playableHlsUrl && (/^https?:\/\//i.test(playableHlsUrl) || assetSnapshot.hlsReady));
+
+    if (canAttemptPlayback) {
+      console.warn('[unlock] allowing unlock despite inconclusive asset HEAD check', {
+        videoId,
+        playableProgressiveKey: Boolean(playableProgressiveKey),
+        playableProgressiveUrl: Boolean(playableProgressiveUrl),
+        playableHlsUrl: Boolean(playableHlsUrl),
+        storageConfigured: assetSnapshot.storageConfigured
+      });
+    } else {
+      return NextResponse.json({
+        error: assetSnapshot.storageConfigured
+          ? 'This title is not ready for playback yet.'
+          : 'Playback storage is not configured yet for this title.'
+      }, { status: 409 });
+    }
   }
 
   const financeConfig = await getFinanceConfig();
