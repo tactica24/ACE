@@ -176,10 +176,6 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     setIsInteractive(false);
   };
 
-  if (!hasPoster) {
-    return null;
-  }
-
   return (
     <Link
       href={`/v/${video.id}`}
