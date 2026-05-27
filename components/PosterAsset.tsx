@@ -18,7 +18,7 @@ export default function PosterAsset({
   alt = '',
   loading = 'lazy',
   decoding = 'async',
-  fallbackLabel = 'Ace Studio',
+  fallbackLabel = '',
   ariaHidden = true,
   imgClassName,
   fallbackClassName
@@ -27,7 +27,7 @@ export default function PosterAsset({
   const showImage = Boolean(src && !failed);
 
   if (!showImage) {
-    return <span className={fallbackClassName}>{fallbackLabel}</span>;
+    return fallbackLabel ? <span className={fallbackClassName}>{fallbackLabel}</span> : null;
   }
 
   return (
