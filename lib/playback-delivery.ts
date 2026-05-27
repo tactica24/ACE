@@ -20,6 +20,10 @@ function isHlsUrl(value?: string | null) {
   return Boolean(clean(value)?.toLowerCase().includes('.m3u8'));
 }
 
+function isHttpUrl(value?: string | null) {
+  return /^https?:\/\//i.test(clean(value) ?? '');
+}
+
 export function getPlaybackModePreference(video: PlaybackDeliveryVideo): PlaybackModePreference {
   return isHlsUrl(video.technicalMetadata?.playbackUrl) ? 'hls' : 'progressive';
 }
@@ -42,6 +46,13 @@ export function getPlayableProgressiveKey(video: PlaybackDeliveryVideo) {
     clean(video.technicalMetadata?.masterKey) ??
     null
   );
+}
+
+export function getPlayableProgressiveUrl(video: PlaybackDeliveryVideo) {
+  const playbackUrl = clean(video.technicalMetadata?.playbackUrl);
+  return playbackUrl && isHttpUrl(playbackUrl) && !isHlsUrl(playbackUrl)
+    ? playbackUrl
+    : null;
 }
 
 export function hasPlayableHls(video: PlaybackDeliveryVideo) {

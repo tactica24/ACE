@@ -5,29 +5,63 @@ import { prisma } from '@/lib/db';
 import { createPresignedGetUrl } from '@/lib/r2';
 import { streamR2Object } from '@/lib/stream';
 import { getBucketForStorageKey } from '@/lib/r2';
+import { normalizeMediaKey } from '@/lib/media';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function uniqueValues(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
+}
+
+function buildKeyCandidates(key: string) {
+  const normalized = normalizeMediaKey(key);
+  if (!normalized) return [];
+
+  return uniqueValues([
+    key,
+    normalized,
+    `/${normalized}`,
+    normalized.replace(/\//g, '\\')
+  ]);
+}
+
+function normalizedEquals(left?: string | null, right?: string | null) {
+  return normalizeMediaKey(left) === normalizeMediaKey(right);
+}
+
 export async function GET(req: NextRequest, { params }: { params: { key?: string[] } }) {
   const key = params.key?.join('/');
+  const normalizedKey = normalizeMediaKey(key);
   if (!key) {
     return NextResponse.json({ error: 'Missing asset key' }, { status: 400 });
   }
 
   try {
     const auth = await getAuthFromRequest(req);
-    const video = await prisma.video.findFirst({
+    const keyCandidates = buildKeyCandidates(key);
+    const fileName = normalizedKey?.split('/').pop() ?? '';
+    const candidateVideos = await prisma.video.findMany({
       where: {
         OR: [
-          { posterKey: key },
-          { subtitleTracks: { some: { fileKey: key } } },
-          { technicalMetadata: { is: { landscapeArtworkKey: key } } },
-          { technicalMetadata: { is: { trailerKey: key } } },
-          { technicalMetadata: { is: { promotionalStillKeys: { has: key } } } }
+          { posterKey: { in: keyCandidates } },
+          { subtitleTracks: { some: { fileKey: { in: keyCandidates } } } },
+          { technicalMetadata: { is: { landscapeArtworkKey: { in: keyCandidates } } } },
+          { technicalMetadata: { is: { trailerKey: { in: keyCandidates } } } },
+          { technicalMetadata: { is: { promotionalStillKeys: { hasSome: keyCandidates } } } },
+          ...(fileName
+            ? [
+                { posterKey: { contains: fileName } },
+                { subtitleTracks: { some: { fileKey: { contains: fileName } } } },
+                { technicalMetadata: { is: { landscapeArtworkKey: { contains: fileName } } } },
+                { technicalMetadata: { is: { trailerKey: { contains: fileName } } } },
+                { technicalMetadata: { is: { promotionalStillKeys: { has: key } } } }
+              ]
+            : [])
         ]
       },
+      take: 20,
       select: {
         creatorId: true,
         status: true,
@@ -42,27 +76,47 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
         },
         technicalMetadata: {
           select: {
-            trailerKey: true
+            landscapeArtworkKey: true,
+            trailerKey: true,
+            promotionalStillKeys: true
           }
         }
       }
     });
 
-    if (!video) {
+    const match = candidateVideos
+      .map((video) => {
+        const subtitle = video.subtitleTracks.find((track) => normalizedEquals(track.fileKey, normalizedKey))?.fileKey ?? null;
+        const promotionalStill = video.technicalMetadata?.promotionalStillKeys.find((item) => normalizedEquals(item, normalizedKey)) ?? null;
+        const storedKey =
+          normalizedEquals(video.posterKey, normalizedKey)
+            ? video.posterKey
+            : normalizedEquals(video.technicalMetadata?.landscapeArtworkKey, normalizedKey)
+              ? video.technicalMetadata?.landscapeArtworkKey
+              : normalizedEquals(video.technicalMetadata?.trailerKey, normalizedKey)
+                ? video.technicalMetadata?.trailerKey
+                : subtitle ?? promotionalStill;
+
+        return storedKey ? { video, storedKey } : null;
+      })
+      .find(Boolean);
+
+    if (!match) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 404 });
     }
 
+    const { video, storedKey } = match;
     if (!['APPROVED', 'PUBLISHED'].includes(video.status) && !canPreviewVideo(video, auth)) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 403 });
     }
 
-    const isTrailerAsset = video.technicalMetadata?.trailerKey?.trim() === key;
-    const isSubtitleAsset = video.subtitleTracks.some((track) => track.fileKey === key);
+    const isTrailerAsset = normalizedEquals(video.technicalMetadata?.trailerKey, storedKey);
+    const isSubtitleAsset = video.subtitleTracks.some((track) => normalizedEquals(track.fileKey, storedKey));
 
     if (isTrailerAsset || isSubtitleAsset) {
       const rangeHeader = req.headers.get('range');
-      const bucket = getBucketForStorageKey(key);
-      const result = await streamR2Object(key, rangeHeader, undefined, bucket);
+      const bucket = getBucketForStorageKey(storedKey);
+      const result = await streamR2Object(storedKey, rangeHeader, undefined, bucket);
 
       return new Response(Readable.toWeb(result.stream) as never, {
         status: result.status,
@@ -70,7 +124,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       });
     }
 
-    const url = await createPresignedGetUrl(key);
+    const url = await createPresignedGetUrl(storedKey);
     return NextResponse.redirect(url);
   } catch {
     return NextResponse.json({ error: 'Asset not available' }, { status: 404 });

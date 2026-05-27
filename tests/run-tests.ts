@@ -25,9 +25,9 @@ import { canAccessVideoFromCountry } from '../lib/video-availability';
 import { getMultipartUploadRateLimit } from '../lib/upload-rate-limit';
 import { MAX_MASTER_BYTES } from '../lib/upload-limits';
 import { validateUploadRequest } from '../lib/upload-security';
-import { getPlayableHlsUrl, getPlayableProgressiveKey } from '../lib/playback-delivery';
-import { getSignedStoredHlsUrl } from '../lib/hls-delivery';
-import { getMediaAssetUrl } from '../lib/media';
+import { getPlayableHlsUrl, getPlayableProgressiveKey, getPlayableProgressiveUrl } from '../lib/playback-delivery';
+import { getSignedStoredHlsUrl, getSignedStoredMediaUrl } from '../lib/hls-delivery';
+import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
 import { type PricingConfigValues } from '../lib/pricing';
 import {
   canAccessVideo,
@@ -301,6 +301,14 @@ const videoCases: Case[] = [
         'uploads/admin/master/movie.mp4',
       );
       assert.equal(
+        getPlayableProgressiveUrl({
+          technicalMetadata: {
+            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+          },
+        }),
+        'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+      );
+      assert.equal(
         getSignedStoredHlsUrl(
           'movie-1',
           'signed-token',
@@ -309,9 +317,14 @@ const videoCases: Case[] = [
         'https://stream.acestudio.ng/movies/movie-1/master.m3u8?token=signed-token',
       );
       assert.equal(
+        getSignedStoredMediaUrl('signed-token', 'https://stream.acestudio.ng/movies/movie-1/master.mp4'),
+        'https://stream.acestudio.ng/movies/movie-1/master.mp4?token=signed-token',
+      );
+      assert.equal(
         getMediaAssetUrl(' posters\\movie one.jpg '),
         '/api/media/posters/movie%20one.jpg',
       );
+      assert.equal(normalizeMediaKey(' /posters\\\\movie one.jpg '), 'posters/movie one.jpg');
     },
   },
   {

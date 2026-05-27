@@ -11159,12 +11159,12 @@ body::before {
   }
 }
 
-/* Netflix-style NMHP Landing Page Styles */
+/* ACE visitor landing page styles */
 .nmhp-landing {
   min-height: 100vh;
   background: #000;
   color: #fff;
-  font-family: "Netflix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .nmhp-header {
@@ -11212,7 +11212,10 @@ body::before {
   align-items: center;
   justify-content: center;
   position: relative;
-  background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7)), url('https://assets.nflxext.com/ffe/siteui/vlv3/435e8bb8-7f1b-49cb-8da8-bff997124294/web/NG-en-20260511-TRIFECTA-perspective_1fe8a025-7c55-4a17-9574-0bf28be6b40b_large.jpg');
+  background:
+    radial-gradient(circle at 16% 22%, rgba(229, 9, 20, 0.22), transparent 30%),
+    radial-gradient(circle at 80% 18%, rgba(244, 196, 106, 0.16), transparent 26%),
+    linear-gradient(180deg, #05070d 0%, #070910 58%, #000 100%);
   background-size: cover;
   background-position: center;
   padding: 8rem 2rem 4rem;
@@ -11332,7 +11335,7 @@ body::before {
   }
 }
 
-/* === Premium Cinematic Hero Backdrop (Netflix-level, but better) === */
+/* === Premium Cinematic Hero Backdrop === */
 .nmhp-hero {
   position: relative;
   overflow: hidden;
@@ -11355,9 +11358,8 @@ body::before {
   width: 22%;
   max-width: 260px;
   aspect-ratio: 2 / 3;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  object-fit: cover;
+  object-position: center;
   border-radius: 8px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65),
               0 0 0 1px rgba(255, 255, 255, 0.04);

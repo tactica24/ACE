@@ -50,13 +50,17 @@ function dedupeVideos(items: HomeVideo[]) {
   });
 }
 
+function hasApprovedPoster(video: HomeVideo) {
+  return Boolean(getMediaAssetUrl(video.posterKey));
+}
+
 function formatRuntime(_durationSec?: number | null) {
   return '90m';
 }
 
 function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
-  const posterBackedUnlockedVideos = dedupeVideos(unlockedVideos.filter((video) => Boolean(video.posterKey)));
+  const posterBackedUnlockedVideos = dedupeVideos(unlockedVideos.filter(hasApprovedPoster));
 
   if (posterBackedUnlockedVideos.length) {
     rows.push({
@@ -78,15 +82,17 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const guestHeroVideos = dedupeVideos(videos).slice(0, 5);
-  const featuredRows = [
-    {
-      id: 'trending',
-      title: 'Trending Now',
-      description: 'Stories viewers are returning to on ACE Studio.',
-      items: guestHeroVideos
-    }
-  ];
+  const guestHeroVideos = dedupeVideos(videos.filter(hasApprovedPoster)).slice(0, 5);
+  const featuredRows = guestHeroVideos.length
+    ? [
+        {
+          id: 'trending',
+          title: 'Trending Now',
+          description: 'Approved movies now available on ACE Studio.',
+          items: guestHeroVideos
+        }
+      ]
+    : [];
 
   return (
     <div className="nmhp-landing">
@@ -106,11 +112,14 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             const pos = positions[index % positions.length];
 
             return (
-              <div
+              <img
                 key={video.id}
                 className="nmhp-hero-poster"
+                src={posterUrl}
+                alt=""
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
                 style={{
-                  backgroundImage: `url(${posterUrl})`,
                   left: pos.left,
                   top: pos.top,
                   transform: `scale(${pos.scale}) rotate(${pos.rot}deg)`
@@ -163,7 +172,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
       <div className="viewer-home guest-home">
         <section className="home-shelves" id="discover">
           <div className="container">
-            {featuredRows.length > 0 && featuredRows.map((row) => (
+            {featuredRows.length > 0 ? featuredRows.map((row) => (
               <section key={row.id} className="home-shelf">
                 <div className="home-shelf-header">
                   <div>
@@ -189,7 +198,16 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                   ))}
                 </div>
               </section>
-            ))}
+            )) : (
+              <div className="home-empty">
+                <h2>Fresh releases are loading in</h2>
+                <p className="muted">Approved movies with posters will appear here as soon as they are ready.</p>
+                <div className="home-actions">
+                  <Link className="btn btn-primary" href="/auth/register">Create account</Link>
+                  <Link className="btn btn-ghost" href="/browse">Browse catalog</Link>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -202,7 +220,7 @@ export default async function HomePage() {
 
   let videos: HomeVideo[] = [];
   try {
-    videos = dedupeVideos((await getApprovedCatalogVideos()).filter((video) => Boolean(video.posterKey))).slice(0, 40);
+    videos = dedupeVideos((await getApprovedCatalogVideos()).filter(hasApprovedPoster)).slice(0, 40);
   } catch {
     videos = [];
   }

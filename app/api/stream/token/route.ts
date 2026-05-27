@@ -1,10 +1,10 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getSignedStoredHlsUrl } from '@/lib/hls-delivery';
+import { getSignedStoredHlsUrl, getSignedStoredMediaUrl } from '@/lib/hls-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
-import { getPlayableHlsUrl, hasPlayableHls, getPlaybackModePreference } from '@/lib/playback-delivery';
+import { getPlayableHlsUrl, getPlayableProgressiveUrl, hasPlayableHls, getPlaybackModePreference } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { getBucketForStorageKey, getObjectMetadata } from '@/lib/r2';
 
@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
   const requestedQuality = normalizePlaybackQualityPreference(req.nextUrl.searchParams.get('quality'));
   const playbackMode = getPlaybackModePreference(video);
   const finalHlsUrl = getPlayableHlsUrl(video);
+  const finalProgressiveUrl = getPlayableProgressiveUrl(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
@@ -120,6 +121,7 @@ export async function GET(req: NextRequest) {
       : assetSnapshot.masterProgressiveReady
         ? assetSnapshot.masterProgressiveKey
         : null;
+  const playableProgressiveUrl = fullAccess ? finalProgressiveUrl : null;
 
   if (teaser && !fullAccess && !playableHlsUrl && !playableProgressiveKey) {
     return NextResponse.json(
@@ -131,7 +133,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!playableHlsUrl && !playableProgressiveKey) {
+  if (!playableHlsUrl && !playableProgressiveKey && !playableProgressiveUrl) {
     return NextResponse.json({
       error: 'Playback assets are not ready for this title yet.'
     }, { status: 409 });
@@ -172,7 +174,7 @@ export async function GET(req: NextRequest) {
         role: auth.role,
         fullAccess,
         previewAsset: false,
-        streamKey: selectedProgressive.key ?? undefined,
+        streamKey: playableProgressiveUrl ? undefined : selectedProgressive.key ?? undefined,
         teaserSec: video.teaserSec,
         durationSec: video.durationSec,
         streamBytes,
@@ -188,9 +190,11 @@ export async function GET(req: NextRequest) {
         streamContentType
       });
 
-  const progressiveUrl = selectedProgressive.key
-    ? `/api/stream/${videoId}?token=${encodeURIComponent(token)}`
-    : null;
+  const progressiveUrl = playableProgressiveUrl
+    ? getSignedStoredMediaUrl(token, playableProgressiveUrl)
+    : selectedProgressive.key
+      ? `/api/stream/${videoId}?token=${encodeURIComponent(token)}`
+      : null;
   const hlsUrl = hlsAvailable
     ? getSignedStoredHlsUrl(videoId, token, playableHlsUrl)
     : null;

@@ -38,3 +38,9 @@ export function getSignedStoredHlsUrl(videoId: string, token: string, storedHlsU
   parsed.searchParams.set('token', token);
   return parsed.toString();
 }
+
+export function getSignedStoredMediaUrl(token: string, storedUrl: string) {
+  const parsed = new URL(storedUrl);
+  parsed.searchParams.set('token', token);
+  return parsed.toString();
+}
