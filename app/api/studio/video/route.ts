@@ -82,7 +82,7 @@ const RIGHTS_TIERS: RightsTierValue[] = ['SHARED', 'EXCLUSIVE'];
 const VIDEO_TYPES: VideoTypeValue[] = ['FEATURE', 'SERIES', 'SHORT', 'SKIT', 'DOCUMENTARY', 'ADVERT'];
 const AGE_RATINGS: AgeRatingValue[] = ['ALL', 'PG13', 'PG16', 'PG18'];
 const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4'];
-const SUPPORTED_MASTER_EXTENSIONS = ['.mp4', '.mov'];
+const SUPPORTED_MASTER_EXTENSIONS = ['.mp4'];
 
 function isPriceTier(value: string | undefined): value is PriceTierValue {
   return Boolean(value && PRICE_TIERS.includes(value as PriceTierValue));
@@ -458,14 +458,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (safeVideoType !== 'SERIES') {
-    const isAdminUpload = auth.role === 'ADMIN';
-    if (!safeTitle || !safeDescription || (!safeMasterUploadKey && !isAdminUpload)) {
-      return NextResponse.json({ error: 'Please upload a final 1080p Full HD delivery master (MP4 or MOV) for your movie.' }, { status: 400 });
+    if (!safeTitle || !safeDescription || !safeMasterUploadKey) {
+      return NextResponse.json({ error: 'Please upload a final playable MP4 master for your movie.' }, { status: 400 });
     }
 
     if (safeMasterUploadKey) {
       if (!hasSupportedMasterExtension(safeMasterUploadKey) || !validateOwnedKey(safeMasterUploadKey, auth.sub, 'master')) {
-        return NextResponse.json({ error: 'Please upload a valid final 1080p Full HD delivery master (MP4 or MOV) that belongs to your studio account.' }, { status: 400 });
+        return NextResponse.json({ error: 'Please upload a valid final playable MP4 master that belongs to your studio account.' }, { status: 400 });
       }
     }
 
@@ -554,7 +553,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, videoId: video.id, requiresContract: true });
   }
 
-  const   safeEpisodes = (episodes ?? []).map((episode) => {
+  const safeEpisodes = (episodes ?? []).map((episode) => {
     const normalizedSubtitleTracks = normalizeSubtitlePayload(episode.subtitleTracks);
     return {
       seasonNumber: normalizeEpisodeNumber(episode.seasonNumber),
@@ -590,9 +589,9 @@ export async function POST(req: NextRequest) {
       !episode.title ||
       !episode.description ||
       !episode.durationSec ||
-      (!episode.r2Key && !episode.fallbackR2Key)
+      (!episode.r2Key && !episode.fallbackR2Key && !episode.masterKey)
     ) {
-      return NextResponse.json({ error: 'Each episode needs a title, synopsis, season, episode number, runtime, and at least one video file (1080p or 720p).' }, { status: 400 });
+      return NextResponse.json({ error: 'Each episode needs a title, synopsis, season, episode number, runtime, and a playable MP4 master.' }, { status: 400 });
     }
 
     if (episode.r2Key && (!hasSupportedVideoExtension(episode.r2Key) || !validateOwnedKey(episode.r2Key, auth.sub, 'video'))) {
@@ -607,8 +606,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid poster upload.` }, { status: 400 });
     }
 
-    if (episode.masterKey && !validateOwnedKey(episode.masterKey, auth.sub, 'master')) {
-      return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid master upload.` }, { status: 400 });
+    if (episode.masterKey && (!hasSupportedMasterExtension(episode.masterKey) || !validateOwnedKey(episode.masterKey, auth.sub, 'master'))) {
+      return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid playable MP4 master upload.` }, { status: 400 });
     }
 
     if (episode.subtitleTracks.some((track) => !validateOwnedKey(track.fileKey, auth.sub, 'subtitle'))) {

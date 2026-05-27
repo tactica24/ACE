@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
-import { getMp4PlaybackUrl } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,8 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const body = await req.json().catch(() => ({}));
   const mode = typeof body.mode === 'string' ? body.mode.trim().toLowerCase() : '';
 
-  if (!['mp4', 'hls'].includes(mode)) {
-    return NextResponse.json({ error: 'Choose a valid playback source.' }, { status: 400 });
+  if (mode !== 'mp4') {
+    return NextResponse.json({ error: 'MP4 is the only active playback source.' }, { status: 400 });
   }
 
   const video = await prisma.video.findUnique({
@@ -26,8 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       fallbackR2Key: true,
       technicalMetadata: {
         select: {
-          masterKey: true,
-          hlsPlaybackUrl: true
+          masterKey: true
         }
       }
     }
@@ -42,28 +40,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     video.r2Key?.trim() ||
     video.fallbackR2Key?.trim()
   );
-  const hlsAvailable = Boolean(video.technicalMetadata?.hlsPlaybackUrl?.trim());
 
-  if (mode === 'mp4' && !mp4Available) {
-    return NextResponse.json({ error: 'Upload a playable MP4 master before switching this title to MP4 playback.' }, { status: 400 });
+  if (!mp4Available) {
+    return NextResponse.json({ error: 'Upload a playable MP4 file before activating playback.' }, { status: 400 });
   }
-
-  if (mode === 'hls' && !hlsAvailable) {
-    return NextResponse.json({ error: 'Upload and validate HLS before switching this title to HLS playback.' }, { status: 400 });
-  }
-
-  const playbackUrl = mode === 'hls'
-    ? video.technicalMetadata?.hlsPlaybackUrl?.trim() || null
-    : getMp4PlaybackUrl(params.id);
 
   await prisma.videoTechnicalMetadata.upsert({
     where: { videoId: params.id },
     create: {
       videoId: params.id,
-      playbackUrl
+      processingStatus: 'READY_TO_STREAM',
+      readyToStreamAt: new Date()
     },
     update: {
-      playbackUrl
+      processingStatus: 'READY_TO_STREAM',
+      readyToStreamAt: new Date()
     }
   });
 
@@ -71,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({
     ok: true,
-    message: mode === 'hls' ? 'Playback source switched to HLS.' : 'Playback source switched to MP4.',
+    message: 'MP4 playback is active.',
     video: await getProcessingVideo(params.id)
   });
 }

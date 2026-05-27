@@ -6,7 +6,7 @@ import { isOwnedUploadKey } from '@/lib/upload-security';
 import { getProcessingVideo } from '../helpers';
 
 function hasSupportedMasterExtension(key: string) {
-  return /\.(mp4|mov)$/i.test(key);
+  return /\.mp4$/i.test(key);
 }
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!hasSupportedMasterExtension(key) || !isOwnedUploadKey(key, auth.sub, 'master')) {
-    return NextResponse.json({ error: 'Upload a valid MP4 or MOV master that belongs to this admin account.' }, { status: 400 });
+    return NextResponse.json({ error: 'Upload a valid MP4 master that belongs to this admin account.' }, { status: 400 });
   }
 
   const video = await prisma.video.findUnique({ where: { id: videoId }, select: { id: true } });

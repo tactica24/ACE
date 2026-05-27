@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { buildFfmpegCommand } from '@/lib/video-processing';
-import { getHlsContentType } from '@/lib/hls';
 import { MAX_MASTER_BYTES, MULTIPART_CHUNK_BYTES, SINGLE_PUT_SAFE_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
 type ProcessingVideo = {
@@ -20,10 +19,6 @@ type ProcessingVideo = {
   masterUploadedAt: string | null;
   processingStatus: string;
   playbackUrl: string | null;
-  hlsPlaybackUrl: string | null;
-  playbackSource: 'mp4' | 'hls';
-  hlsUrl: string | null;
-  hlsVersion: string | null;
   qualities: string[];
   trailerDownloadHref: string | null;
   posterDownloadHref: string | null;
@@ -38,18 +33,17 @@ type ProcessingProducer = {
   videos: ProcessingVideo[];
 };
 
-type ProducerBucket = 'needs-master' | 'uploaded' | 'hls-uploaded' | 'processed';
+type ProducerBucket = 'needs-master' | 'uploaded' | 'processed';
 type UploadStatus = {
-  phase: 'uploading' | 'processing' | 'done' | 'error';
+  phase: 'uploading' | 'done' | 'error';
   progress: number;
   message: string;
 };
 
 const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
-  { id: 'uploaded', label: 'Uploaded masters', description: 'Download, encode, and upload HLS.' },
-  { id: 'hls-uploaded', label: 'HLS uploaded', description: 'Validate and complete processing.' },
-  { id: 'processed', label: 'Processed', description: 'Ready or already published.' },
-  { id: 'needs-master', label: 'Needs master', description: 'Movie record exists, master is missing.' }
+  { id: 'uploaded', label: 'Uploaded MP4s', description: 'Validate the MP4 and mark it ready for playback.' },
+  { id: 'processed', label: 'Ready / published', description: 'Titles with validated MP4 playback.' },
+  { id: 'needs-master', label: 'Needs MP4', description: 'Movie record exists, but the playable MP4 is missing.' }
 ];
 
 function formatBytes(value: number | null) {
@@ -64,18 +58,18 @@ function formatDate(value: string | null) {
 }
 
 function isSupportedMasterFile(file: File) {
-  return /\.(mp4|mov)$/i.test(file.name) && (!file.type || ['video/mp4', 'video/quicktime', 'application/octet-stream'].includes(file.type));
+  return /\.mp4$/i.test(file.name) && (!file.type || ['video/mp4', 'application/octet-stream'].includes(file.type));
 }
 
 async function uploadBlobToSignedUrl(url: string, blob: Blob): Promise<string> {
   const response = await fetch(url, { method: 'PUT', body: blob });
   if (!response.ok) {
-    throw new Error(`Master upload failed with status ${response.status}.`);
+    throw new Error(`MP4 upload failed with status ${response.status}.`);
   }
 
   const etag = response.headers.get('ETag');
   if (!etag) {
-    throw new Error('Master upload completed but R2 did not return a part ETag.');
+    throw new Error('MP4 upload completed but R2 did not return a part ETag.');
   }
 
   return etag;
@@ -83,11 +77,11 @@ async function uploadBlobToSignedUrl(url: string, blob: Blob): Promise<string> {
 
 async function uploadMasterToStorage(file: File) {
   if (!isSupportedMasterFile(file)) {
-    throw new Error('Upload a valid MP4 or MOV master file.');
+    throw new Error('Upload a playable MP4 master file.');
   }
 
   if (file.size > MAX_MASTER_BYTES) {
-    throw new Error(`Master file is too large. Keep it under ${formatUploadLimit(MAX_MASTER_BYTES)}.`);
+    throw new Error(`MP4 file is too large. Keep it under ${formatUploadLimit(MAX_MASTER_BYTES)}.`);
   }
 
   if (file.size <= SINGLE_PUT_SAFE_BYTES) {
@@ -103,7 +97,7 @@ async function uploadMasterToStorage(file: File) {
     });
     const presignPayload = await presign.json().catch(() => ({}));
     if (!presign.ok || !presignPayload.url || !presignPayload.key) {
-      throw new Error(presignPayload.error ?? 'Unable to prepare master upload.');
+      throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
     }
 
     const upload = await fetch(presignPayload.url as string, {
@@ -111,7 +105,7 @@ async function uploadMasterToStorage(file: File) {
       headers: { 'Content-Type': file.type || 'application/octet-stream' },
       body: file
     });
-    if (!upload.ok) throw new Error(`Master upload failed with status ${upload.status}.`);
+    if (!upload.ok) throw new Error(`MP4 upload failed with status ${upload.status}.`);
 
     return presignPayload.key as string;
   }
@@ -130,7 +124,7 @@ async function uploadMasterToStorage(file: File) {
   });
   const session = await initiate.json().catch(() => ({}));
   if (!initiate.ok || !session.key || !session.uploadId) {
-    throw new Error(session.error ?? 'Unable to start large master upload.');
+    throw new Error(session.error ?? 'Unable to start large MP4 upload.');
   }
 
   const key = session.key as string;
@@ -164,7 +158,7 @@ async function uploadMasterToStorage(file: File) {
     });
     const completePayload = await complete.json().catch(() => ({}));
     if (!complete.ok) {
-      throw new Error(completePayload.error ?? 'Unable to finalize large master upload.');
+      throw new Error(completePayload.error ?? 'Unable to finalize large MP4 upload.');
     }
 
     return key;
@@ -178,13 +172,9 @@ async function uploadMasterToStorage(file: File) {
   }
 }
 
-
 function getBucket(video: ProcessingVideo): ProducerBucket {
   if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)) {
     return 'processed';
-  }
-  if (video.hlsUrl || video.processingStatus === 'HLS_UPLOADED' || video.status === 'HLS_UPLOADED') {
-    return 'hls-uploaded';
   }
   if (video.masterKey) {
     return 'uploaded';
@@ -194,49 +184,13 @@ function getBucket(video: ProcessingVideo): ProducerBucket {
 
 function getBucketTone(bucket: ProducerBucket) {
   if (bucket === 'processed') return 'status-live';
-  if (bucket === 'hls-uploaded') return 'status-review';
   if (bucket === 'uploaded') return 'status-warn';
   return 'status-review';
-}
-
-function HlsFolderUploadButton({
-  videoId,
-  busy,
-  hasHls,
-  onUpload
-}: {
-  videoId: string;
-  busy: boolean;
-  hasHls: boolean;
-  onUpload: (videoId: string, files: File[]) => void;
-}) {
-  return (
-    <label className="btn btn-primary">
-      {busy ? 'Uploading HLS...' : hasHls ? 'Replace HLS Folder' : 'Upload HLS Folder'}
-      <input
-        type="file"
-        // @ts-expect-error - webkitdirectory is non-standard but widely supported
-        webkitdirectory="true"
-        multiple
-        hidden
-        disabled={busy}
-        onChange={(event) => {
-          const fileList = event.target.files;
-          if (fileList && fileList.length > 0) {
-            const files = Array.from(fileList);
-            onUpload(videoId, files);
-          }
-          event.currentTarget.value = '';
-        }}
-      />
-    </label>
-  );
 }
 
 export default function AdminVideoProcessingPanel({ initialProducers }: { initialProducers: ProcessingProducer[] }) {
   const [producers, setProducers] = useState(initialProducers);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [previewConfirmed, setPreviewConfirmed] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({});
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
@@ -283,6 +237,10 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
   async function uploadMaster(videoId: string, file: File) {
     setPendingId(videoId);
     setMessage(null);
+    setUploadStatuses((current) => ({
+      ...current,
+      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 to R2...' }
+    }));
     try {
       const key = await uploadMasterToStorage(file);
 
@@ -292,11 +250,20 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
         body: JSON.stringify({ videoId, key, fileName: file.name, fileSize: file.size })
       });
       const savePayload = await save.json().catch(() => ({}));
-      if (!save.ok) throw new Error(savePayload.error ?? 'Unable to save master details.');
+      if (!save.ok) throw new Error(savePayload.error ?? 'Unable to save MP4 details.');
       await refreshVideo(videoId, savePayload.video);
-      setMessage('Master uploaded and attached.');
+      setUploadStatuses((current) => ({
+        ...current,
+        [videoId]: { phase: 'done', progress: 100, message: 'MP4 uploaded and attached.' }
+      }));
+      setMessage('MP4 uploaded and attached.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to upload master.');
+      const errorMessage = error instanceof Error ? error.message : 'Unable to upload MP4.';
+      setUploadStatuses((current) => ({
+        ...current,
+        [videoId]: { phase: 'error', progress: current[videoId]?.progress ?? 0, message: errorMessage }
+      }));
+      setMessage(errorMessage);
     } finally {
       setPendingId(null);
     }
@@ -308,185 +275,31 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     try {
       const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to delete master.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to delete MP4.');
       await refreshVideo(videoId, payload.video);
-      setMessage('Private master deleted.');
+      setMessage('MP4 master deleted.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete master.');
+      setMessage(error instanceof Error ? error.message : 'Unable to delete MP4.');
     } finally {
       setPendingId(null);
     }
   }
 
-    async function uploadHlsFileThroughServer(videoId: string, relativePath: string, file: File) {
-      const formData = new FormData();
-      formData.set('relativePath', relativePath);
-      formData.set('file', file);
-
-      const response = await fetch(`/api/admin/videos/${videoId}/hls/file`, {
-        method: 'POST',
-        body: formData
-      });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? `Failed to upload ${relativePath}.`);
-      }
-    }
-
-    async function uploadHlsFile(videoId: string, relativePath: string, file: File, headers: Record<string, string>) {
-      const presignRes = await fetch(`/api/admin/videos/${videoId}/hls/presign`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ relativePath })
-      });
-      const presign = await presignRes.json().catch(() => ({}));
-
-      if (!presignRes.ok || !presign.url) {
-        throw new Error(presign.error ?? `Failed to prepare upload for ${relativePath}`);
-      }
-
-      try {
-        const uploadRes = await fetch(presign.url, {
-          method: 'PUT',
-          headers: { 'Content-Type': getHlsContentType(relativePath) },
-          body: file
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error(`Storage rejected ${relativePath}: ${uploadRes.status}`);
-        }
-      } catch {
-        await uploadHlsFileThroughServer(videoId, relativePath, file);
-      }
-    }
-
-
-    // Upload HLS directly as individual files with the real folder structure.
-    async function uploadHlsFolder(videoId: string, files: File[]) {
-      setPendingId(videoId);
-      setMessage(null);
-
-      const total = files.length;
-      let uploaded = 0;
-
-      setUploadStatuses((current) => ({
-        ...current,
-        [videoId]: {
-          phase: 'uploading',
-          progress: 0,
-          message: `Uploading ${total} HLS files...`
-        }
-      }));
-
-      try {
-        const headers = { 'Content-Type': 'application/json' };
-        const relativePaths: string[] = [];
-
-        for (const file of files) {
-          const relativePath = (file as any).webkitRelativePath || file.name;
-          relativePaths.push(relativePath);
-          await uploadHlsFile(videoId, relativePath, file, headers);
-
-          uploaded += 1;
-          const progress = Math.round((uploaded / total) * 100);
-
-          setUploadStatuses((current) => ({
-            ...current,
-            [videoId]: {
-              phase: progress >= 100 ? 'processing' : 'uploading',
-              progress,
-              message: `Uploaded ${uploaded}/${total} files...`
-            }
-          }));
-        }
-
-        // All files uploaded directly — now finalize with full validation
-        setUploadStatuses((current) => ({
-          ...current,
-          [videoId]: {
-            phase: 'processing',
-            progress: 100,
-            message: 'Finalizing and validating HLS folder...'
-          }
-        }));
-
-        const finalizeRes = await fetch(`/api/admin/videos/${videoId}/hls/folder`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ relativePaths })
-        });
-
-        const finalizePayload = await finalizeRes.json().catch(() => ({}));
-
-        if (!finalizeRes.ok) {
-          throw new Error(finalizePayload.error ?? 'Failed to finalize HLS folder.');
-        }
-
-        await refreshVideo(videoId, finalizePayload.video ?? {});
-
-        setUploadStatuses((current) => ({
-          ...current,
-          [videoId]: {
-            phase: 'done',
-            progress: 100,
-            message: 'HLS folder uploaded and verified.'
-          }
-        }));
-
-        setMessage('HLS folder uploaded and verified.');
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unable to upload HLS folder.';
-        setUploadStatuses((current) => ({
-          ...current,
-          [videoId]: {
-            phase: 'error',
-            progress: current[videoId]?.progress ?? 0,
-            message: errorMessage
-          }
-        }));
-        setMessage(errorMessage);
-      } finally {
-        setPendingId(null);
-      }
-    }
-
-
   async function completeProcessing(videoId: string) {
-     setPendingId(videoId);
-     setMessage('Validating HLS folder...');
-     try {
-       const response = await fetch('/api/admin/videos/validate', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ movieId: videoId })
-       });
-       const payload = await response.json().catch(() => ({}));
-       if (!response.ok) throw new Error(payload.error ?? 'Unable to validate HLS.');
-       await refreshVideo(videoId, payload.video);
-       setMessage(payload.passed ? 'Processing complete. Movie moved to Processed.' : `Validation failed: ${payload.errors.join(', ')}`);
-     } catch (error) {
-       setMessage(error instanceof Error ? error.message : 'Unable to complete processing.');
-     } finally {
-       setPendingId(null);
-     }
-   }
-
-  async function switchPlaybackSource(videoId: string, mode: 'mp4' | 'hls') {
     setPendingId(videoId);
-    setMessage(`Switching playback source to ${mode.toUpperCase()}...`);
+    setMessage('Validating MP4 playback...');
     try {
-      const response = await fetch(`/api/admin/videos/${videoId}/playback-source`, {
+      const response = await fetch('/api/admin/videos/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode })
+        body: JSON.stringify({ movieId: videoId })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to switch playback source.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to validate MP4.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? `Playback source switched to ${mode.toUpperCase()}.`);
+      setMessage(payload.passed ? 'MP4 validated. Movie moved to ready.' : `Validation failed: ${payload.errors.join(', ')}`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to switch playback source.');
+      setMessage(error instanceof Error ? error.message : 'Unable to validate MP4.');
     } finally {
       setPendingId(null);
     }
@@ -512,26 +325,23 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               {} as Record<ProducerBucket, number>
             );
             const nextAction = counts.uploaded > 0
-              ? 'Encoding'
-              : counts['hls-uploaded'] > 0
-                ? 'Validate'
-                : counts.processed > 0
-                  ? 'Processed'
-                  : producer.videos.length > 0
-                    ? 'Needs master'
-                    : 'Awaiting uploads';
+              ? 'Validate MP4'
+              : counts.processed > 0
+                ? 'Processed'
+                : producer.videos.length > 0
+                  ? 'Needs MP4'
+                  : 'Awaiting uploads';
 
             return (
               <button key={producer.id} className="admin-producer-row" type="button" onClick={() => setSelectedProducerId(producer.id)}>
                 <span className="admin-producer-identity">
                   <strong>{producer.name}</strong>
-                  <span>{producer.creatorNumber} · {producer.email}</span>
+                  <span>{producer.creatorNumber} - {producer.email}</span>
                 </span>
                 <span className="admin-producer-metrics">
                   <span><strong>{producer.videos.length}</strong> titles</span>
-                  <span><strong>{counts.uploaded}</strong> masters</span>
-                  <span><strong>{counts['hls-uploaded']}</strong> HLS</span>
-                  <span><strong>{counts.processed}</strong> processed</span>
+                  <span><strong>{counts.uploaded}</strong> MP4s</span>
+                  <span><strong>{counts.processed}</strong> ready</span>
                 </span>
                 <div className="admin-producer-action">
                   <span className={`status-chip ${producer.videos.length ? 'status-review' : 'status-warn'}`}>{nextAction}</span>
@@ -595,7 +405,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
         const busy = pendingId === video.id;
         const uploadStatus = uploadStatuses[video.id];
         const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
-        const canPublish = video.status === 'READY' && Boolean(video.hlsUrl) && previewConfirmed[video.id];
+        const canPublish = video.status === 'READY';
 
         return (
           <div key={video.id} className="card">
@@ -603,16 +413,16 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               <div>
                 <span className={`status-chip ${getBucketTone(getBucket(video))}`}>{getBucket(video).replace('-', ' ')}</span>
                 <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
-                <p className="muted">Status: {video.status} | Processing: {video.processingStatus} | HLS: {video.hlsUrl ? 'Uploaded' : 'Not uploaded'}</p>
+                <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
               </div>
               <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
                 {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
                 {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download poster</a> : null}
                 <label className="btn btn-ghost">
-                  Upload/replace master
+                  Upload/replace MP4
                   <input
                     type="file"
-                    accept=".mp4,.mov,video/mp4,video/quicktime"
+                    accept=".mp4,video/mp4"
                     hidden
                     disabled={busy}
                     onChange={(event) => {
@@ -626,26 +436,24 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ margin: '16px 0' }}>
-              <div className="detail-card"><span className="detail-label">Master upload</span><strong>{video.masterKey ? 'Uploaded' : 'Missing'}</strong></div>
-              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master'}</strong></div>
+              <div className="detail-card"><span className="detail-label">MP4 upload</span><strong>{video.masterKey ? 'Uploaded' : 'Missing'}</strong></div>
+              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No MP4'}</strong></div>
               <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
               <div className="detail-card"><span className="detail-label">Uploaded date</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
             </div>
 
             <div className="action-list">
-              {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download master</a> : null}
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy FFmpeg command</button>
-               <HlsFolderUploadButton
-                 videoId={video.id}
-                 busy={busy}
-                 hasHls={Boolean(video.hlsUrl)}
-                 onUpload={(targetVideoId, files) => void uploadHlsFolder(targetVideoId, files)}
-               />
-
-              <button className="btn btn-primary" type="button" disabled={!video.hlsUrl || busy} onClick={() => void completeProcessing(video.id)}>
-                Complete processing
+              {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy MP4 normalize command</button>
+              <button className="btn btn-primary" type="button" disabled={!video.masterKey || busy} onClick={() => void completeProcessing(video.id)}>
+                Validate MP4
               </button>
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void deleteMaster(video.id)}>Delete MP4</button>
+              {canPublish ? (
+                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
+                  Publish
+                </button>
+              ) : null}
             </div>
 
             {uploadStatus ? (
@@ -653,12 +461,10 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 <div className="stack-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="detail-label">
                     {uploadStatus.phase === 'error'
-                      ? 'HLS upload error'
+                      ? 'MP4 upload error'
                       : uploadStatus.phase === 'done'
-                        ? 'HLS upload complete'
-                        : uploadStatus.phase === 'processing'
-                          ? 'HLS folder processing'
-                          : 'HLS upload progress'}
+                        ? 'MP4 upload complete'
+                        : 'MP4 upload progress'}
                   </span>
                   <strong>{uploadStatus.progress}%</strong>
                 </div>
@@ -678,64 +484,15 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             ) : null}
 
             <div className="detail-card" style={{ marginTop: 14 }}>
-              <span className="detail-label">Local FFmpeg command</span>
+              <span className="detail-label">MP4 normalize command</span>
               <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Active playback</span><strong>{video.playbackSource.toUpperCase()}</strong></div>
-              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Not set'}</strong></div>
-              <div className="detail-card"><span className="detail-label">HLS URL</span><strong>{video.hlsUrl ?? 'Not uploaded'}</strong></div>
-              <div className="detail-card"><span className="detail-label">HLS version</span><strong>{video.hlsVersion ?? 'N/A'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'N/A'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback</span><strong>MP4 via gateway</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Gateway stream token'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
             </div>
-
-            <div className="playback-source-selector" style={{ marginTop: 14 }}>
-              <button
-                className={`playback-source-option ${video.playbackSource === 'mp4' ? 'active' : ''}`}
-                type="button"
-                disabled={busy || !video.masterKey}
-                onClick={() => void switchPlaybackSource(video.id, 'mp4')}
-                aria-pressed={video.playbackSource === 'mp4'}
-              >
-                <span className="playback-source-dot" aria-hidden="true" />
-                <span>
-                  <strong>MP4</strong>
-                  <small>{busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'mp4' ? 'Active source' : 'Use master MP4'}</small>
-                </span>
-              </button>
-              <button
-                className={`playback-source-option ${video.playbackSource === 'hls' ? 'active' : ''}`}
-                type="button"
-                disabled={busy || !video.hlsPlaybackUrl}
-                onClick={() => void switchPlaybackSource(video.id, 'hls')}
-                aria-pressed={video.playbackSource === 'hls'}
-              >
-                <span className="playback-source-dot" aria-hidden="true" />
-                <span>
-                  <strong>HLS</strong>
-                  <small>{busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'hls' ? 'Active source' : 'Use adaptive HLS'}</small>
-                </span>
-              </button>
-            </div>
-
-            {video.hlsUrl ? (
-              <div style={{ marginTop: 14 }}>
-                <video className="admin-video-preview" src={video.hlsUrl} controls playsInline style={{ width: '100%', maxHeight: 420, background: '#050505' }} />
-                <div className="action-list" style={{ marginTop: 10 }}>
-                  {video.status === 'READY' && (
-                    <>
-                      <button className={previewConfirmed[video.id] ? 'btn btn-primary' : 'btn btn-ghost'} type="button" onClick={() => setPreviewConfirmed((current) => ({ ...current, [video.id]: true }))}>
-                        Preview looks good
-                      </button>
-                      <button className="btn btn-primary" type="button" disabled={!canPublish || busy} onClick={() => void publish(video.id)}>
-                        Publish
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : null}
           </div>
         );
       })}

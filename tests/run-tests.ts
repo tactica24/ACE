@@ -25,8 +25,8 @@ import { canAccessVideoFromCountry } from '../lib/video-availability';
 import { getMultipartUploadRateLimit } from '../lib/upload-rate-limit';
 import { MAX_MASTER_BYTES } from '../lib/upload-limits';
 import { validateUploadRequest } from '../lib/upload-security';
-import { getPlayableHlsUrl, getPlayableProgressiveKey, getPlayableProgressiveUrl } from '../lib/playback-delivery';
-import { getSignedStoredHlsUrl, getSignedStoredMediaUrl } from '../lib/hls-delivery';
+import { getPlayableProgressiveKey, getPlayableProgressiveUrl } from '../lib/playback-delivery';
+import { getSignedStoredMediaUrl } from '../lib/media-delivery';
 import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
 import { type PricingConfigValues } from '../lib/pricing';
 import {
@@ -266,28 +266,17 @@ const videoCases: Case[] = [
       assert.deepEqual(getPlayableAssetWhere().OR, [
         { r2Key: { not: null } },
         { fallbackR2Key: { not: null } },
-        { technicalMetadata: { playbackUrl: { not: null } } },
         { technicalMetadata: { masterKey: { not: null } } },
-        { technicalMetadata: { processingStatus: 'MASTER_UPLOADED' } },
       ]);
     },
   },
   {
-    name: 'playback delivery prefers HLS when available and falls back to MP4 master keys',
+    name: 'playback delivery uses only progressive MP4 keys and URLs',
     run: () => {
       assert.equal(
-        getPlayableHlsUrl({
-          hlsUrl: 'https://stream.acestudio.ng/movies/movie-1/master.m3u8',
+        getPlayableProgressiveKey({
           technicalMetadata: {
-            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
-          },
-        }),
-        'https://stream.acestudio.ng/movies/movie-1/master.m3u8',
-      );
-      assert.equal(
-        getPlayableHlsUrl({
-          technicalMetadata: {
-            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/playlist.txt',
           },
         }),
         null,
@@ -307,14 +296,6 @@ const videoCases: Case[] = [
           },
         }),
         'https://stream.acestudio.ng/movies/movie-1/master.mp4',
-      );
-      assert.equal(
-        getSignedStoredHlsUrl(
-          'movie-1',
-          'signed-token',
-          'https://stream.acestudio.ng/movies/movie-1/master.m3u8',
-        ),
-        'https://stream.acestudio.ng/movies/movie-1/master.m3u8?token=signed-token',
       );
       assert.equal(
         getSignedStoredMediaUrl('signed-token', 'https://stream.acestudio.ng/movies/movie-1/master.mp4'),
@@ -425,14 +406,14 @@ const videoCases: Case[] = [
     },
   },
   {
-    name: 'master upload policy accepts 50 GB delivery files',
+    name: 'master upload policy accepts 50 GB MP4 delivery files',
     run: () => {
       assert.equal(MAX_MASTER_BYTES >= 50 * 1024 * 1024 * 1024, true);
       assert.deepEqual(
         validateUploadRequest({
           purpose: 'master',
-          filename: 'feature-master.mov',
-          contentType: 'video/quicktime',
+          filename: 'feature-master.mp4',
+          contentType: 'video/mp4',
           fileSize: 50 * 1024 * 1024 * 1024,
         }),
         { ok: true },

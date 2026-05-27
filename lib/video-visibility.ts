@@ -5,9 +5,7 @@ export function getPlayableAssetWhere(): Prisma.VideoWhereInput {
     OR: [
       { r2Key: { not: null } },
       { fallbackR2Key: { not: null } },
-      { technicalMetadata: { playbackUrl: { not: null } } },
-      { technicalMetadata: { masterKey: { not: null } } },
-      { technicalMetadata: { processingStatus: 'MASTER_UPLOADED' } }
+      { technicalMetadata: { masterKey: { not: null } } }
     ]
   };
 }

@@ -22,8 +22,8 @@ const UPLOAD_POLICIES: Record<UploadPurpose, UploadPolicy> = {
     maxBytes: MAX_VIDEO_BYTES
   },
   master: {
-    contentTypes: ['video/mp4', 'video/quicktime', 'application/octet-stream'],
-    extensions: ['.mp4', '.mov'],
+    contentTypes: ['video/mp4', 'application/octet-stream'],
+    extensions: ['.mp4'],
     maxBytes: MAX_MASTER_BYTES
   },
   trailer: {
@@ -95,7 +95,7 @@ export function validateUploadRequest({
         purpose === 'video'
           ? 'Upload MP4 video files.'
           : purpose === 'master'
-            ? 'Upload a final 1080p Full HD delivery master as MP4 or MOV.'
+            ? 'Upload a final playable MP4 master.'
             : purpose === 'trailer'
               ? 'Upload MP4 trailer files.'
               : purpose === 'poster'

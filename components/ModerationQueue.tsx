@@ -562,7 +562,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                      <span className="field-label">Marketing trailer (MP4) — optional, replaces existing</span>
                      <input
                        type="file"
-                       accept="video/mp4,video/quicktime"
+                       accept="video/mp4"
                        onChange={(event) => setEditAsset(item.video.id, 'trailer', event.target.files?.[0] ?? null)}
                      />
                      {getEditAssets(item.video.id).trailer ? (

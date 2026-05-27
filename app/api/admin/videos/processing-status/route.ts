@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       status: true,
-      hlsUrl: true,
       technicalMetadata: {
         select: {
           playbackUrl: true,
-          processingStatus: true
+          processingStatus: true,
+          masterKey: true
         }
       }
     }
@@ -47,11 +47,11 @@ export async function POST(req: NextRequest) {
       where: { id: videoId },
       select: {
         status: true,
-        hlsUrl: true,
         technicalMetadata: {
           select: {
             playbackUrl: true,
-            processingStatus: true
+            processingStatus: true,
+            masterKey: true
           }
         }
       }
@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
     if (
       videoForPublish?.status !== 'READY' ||
       videoForPublish.technicalMetadata?.processingStatus !== 'READY_TO_STREAM' ||
-      !(videoForPublish.technicalMetadata?.playbackUrl || videoForPublish.hlsUrl)
+      !(videoForPublish.technicalMetadata?.playbackUrl || videoForPublish.technicalMetadata?.masterKey)
     ) {
-      return NextResponse.json({ error: 'Validate HLS and mark ready before publishing.' }, { status: 400 });
+      return NextResponse.json({ error: 'Validate MP4 playback before publishing.' }, { status: 400 });
     }
 
     await prisma.video.update({

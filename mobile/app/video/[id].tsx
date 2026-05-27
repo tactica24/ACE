@@ -69,15 +69,12 @@ export default function VideoDetailScreen() {
         token: string;
         guest?: boolean;
         playback?: {
-          preferred?: 'hls' | 'progressive' | 'unavailable';
+          preferred?: 'progressive' | 'unavailable';
           progressiveUrl?: string | null;
-          hlsUrl?: string | null;
         };
       }>(`/api/stream/token?${query.toString()}`);
-      const preferredUrl = payload.playback?.preferred === 'hls'
-        ? payload.playback?.hlsUrl
-        : payload.playback?.progressiveUrl;
-      const fallbackUrl = payload.playback?.progressiveUrl ?? payload.playback?.hlsUrl ?? `${BASE_URL}/api/stream/${id}?token=${payload.token}`;
+      const preferredUrl = payload.playback?.progressiveUrl;
+      const fallbackUrl = payload.playback?.progressiveUrl ?? `${BASE_URL}/api/stream/${id}?token=${payload.token}`;
       setStreamUrl(preferredUrl ?? fallbackUrl);
       setAuthRequired(false);
       setShowAccessNotice(false);

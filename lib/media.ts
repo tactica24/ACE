@@ -71,6 +71,10 @@ export function getMediaAssetUrl(key?: string | null) {
   if (!normalizedKey) return null;
   const rawKey = key?.trim() ?? '';
 
+  if (/^https?:\/\//i.test(rawKey) && !isKnownStorageKey(normalizedKey)) {
+    return rawKey;
+  }
+
   if (normalizedKey.startsWith('http://') || normalizedKey.startsWith('https://')) {
     return normalizedKey;
   }

@@ -77,7 +77,6 @@ enum VideoStatus {
   REJECTED
   MASTER_UPLOADED
   PROCESSING
-  HLS_UPLOADED
   READY
   PUBLISHED
   ARCHIVED
@@ -255,8 +254,6 @@ model Video {
   r2Key       String?
   fallbackR2Key String?
   posterKey   String?
-  hlsUrl      String?
-  hlsVersion  String?
   qualities   String[]     @default([])
   unlockPrice Int?
   producerRevenueShare Float @default(70)
@@ -311,9 +308,6 @@ model VideoTechnicalMetadata {
   processingStatus         String   @default("NO_MASTER")
   encodingStartedAt        DateTime?
   encodingCompletedAt      DateTime?
-  hlsUploadedAt            DateTime?
-  hlsPlaybackUrl           String?
-  hlsVerifiedAt            DateTime?
   readyToStreamAt          DateTime?
   playbackUrl              String?
   availabilityRegion       String   @default("GLOBAL")

@@ -41,7 +41,7 @@ export default function PublicUploadForm() {
     }
 
     if (!masterFile) {
-      setMessage('Please select a final 1080p Full HD delivery master.');
+      setMessage('Please select a final playable MP4 master.');
       return;
     }
 
@@ -157,11 +157,11 @@ export default function PublicUploadForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Final 1080p Full HD Master (MP4/MOV) *
+          Final playable MP4 master *
         </label>
         <input
           type="file"
-          accept=".mp4,.mov,video/mp4,video/quicktime"
+          accept=".mp4,video/mp4"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           onChange={(e) => setMasterFile(e.target.files?.[0] ?? null)}
           required

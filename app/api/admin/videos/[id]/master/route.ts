@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       masterFileName: null,
       masterFileSize: null,
       masterUploadedAt: null,
-      processingStatus: video.technicalMetadata.playbackUrl ? video.technicalMetadata.processingStatus : 'NO_MASTER'
+      processingStatus: 'NO_MASTER'
     }
   });
 

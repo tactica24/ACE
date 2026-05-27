@@ -90,7 +90,7 @@ export default async function LibraryPage() {
                   <>
                     {video.technicalMetadata?.masterKey ? (
                       <div className="badge badge-info" style={{ marginBottom: 8 }}>
-                        Master uploaded for HLS processing
+                        MP4 master uploaded for playback validation
                       </div>
                     ) : null}
                     <VideoCard video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }} />

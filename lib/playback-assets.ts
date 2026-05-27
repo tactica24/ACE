@@ -1,5 +1,3 @@
-import { getDashManifestKey } from './dash';
-import { getHlsMasterKey } from './hls';
 import { getAvailableProgressiveQualities, type ProgressivePlaybackQuality } from './playback-quality';
 import { env } from './env';
 import { getBucketForStorageKey, getObjectMetadata } from './r2';
@@ -10,13 +8,9 @@ export type PlaybackAssetSnapshot = {
   progressiveKey: string | null;
   fallbackProgressiveKey: string | null;
   masterProgressiveKey: string | null;
-  hlsKey: string;
-  dashKey: string;
   progressiveReady: boolean;
   fallbackProgressiveReady: boolean;
   masterProgressiveReady: boolean;
-  hlsReady: boolean;
-  dashReady: boolean;
   availableProgressiveQualities: ProgressivePlaybackQuality[];
   ready: boolean;
 };
@@ -47,7 +41,7 @@ async function objectExists(key: string | null, bucketName?: string) {
 }
 
 export async function getPlaybackAssetSnapshot(
-  videoId: string,
+  _videoId: string,
   progressiveKey?: string | null,
   fallbackProgressiveKey?: string | null,
   masterProgressiveKey?: string | null
@@ -55,17 +49,12 @@ export async function getPlaybackAssetSnapshot(
   const normalizedProgressiveKey = normalizeMediaKey(progressiveKey);
   const normalizedFallbackProgressiveKey = normalizeMediaKey(fallbackProgressiveKey);
   const normalizedMasterProgressiveKey = normalizeMediaKey(masterProgressiveKey);
-  const hlsKey = getHlsMasterKey(videoId);
-  const dashKey = getDashManifestKey(videoId);
   const storageConfigured = hasConfiguredStorage();
-  const hlsBucket = (env.HLS_R2_BUCKET || env.R2_BUCKET || '').trim() || null;
 
-  const [progressiveReady, fallbackProgressiveReady, masterProgressiveReady, hlsReady, dashReady] = await Promise.all([
+  const [progressiveReady, fallbackProgressiveReady, masterProgressiveReady] = await Promise.all([
     objectExists(normalizedProgressiveKey, getBucketForStorageKey(normalizedProgressiveKey)),
     objectExists(normalizedFallbackProgressiveKey, getBucketForStorageKey(normalizedFallbackProgressiveKey)),
-    objectExists(normalizedMasterProgressiveKey, getBucketForStorageKey(normalizedMasterProgressiveKey)),
-    hlsBucket ? objectExists(hlsKey, hlsBucket) : Promise.resolve(false),
-    objectExists(dashKey)
+    objectExists(normalizedMasterProgressiveKey, getBucketForStorageKey(normalizedMasterProgressiveKey))
   ]);
 
   return {
@@ -73,17 +62,13 @@ export async function getPlaybackAssetSnapshot(
     progressiveKey: normalizedProgressiveKey,
     fallbackProgressiveKey: normalizedFallbackProgressiveKey,
     masterProgressiveKey: normalizedMasterProgressiveKey,
-    hlsKey,
-    dashKey,
     progressiveReady,
     fallbackProgressiveReady,
     masterProgressiveReady,
-    hlsReady,
-    dashReady,
     availableProgressiveQualities: getAvailableProgressiveQualities({
       primaryReady: progressiveReady,
       fallbackReady: fallbackProgressiveReady
     }),
-    ready: progressiveReady || fallbackProgressiveReady || masterProgressiveReady || hlsReady || dashReady
+    ready: progressiveReady || fallbackProgressiveReady || masterProgressiveReady
   };
 }

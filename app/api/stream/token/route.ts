@@ -1,10 +1,10 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getSignedStoredHlsUrl, getSignedStoredMediaUrl } from '@/lib/hls-delivery';
+import { getSignedStoredMediaUrl } from '@/lib/media-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
-import { getPlayableHlsUrl, getPlayableProgressiveUrl, hasPlayableHls, getPlaybackModePreference } from '@/lib/playback-delivery';
+import { getPlayableProgressiveUrl } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { getBucketForStorageKey, getObjectMetadata } from '@/lib/r2';
 
@@ -39,14 +39,12 @@ export async function GET(req: NextRequest) {
       seriesId: true,
       r2Key: true,
       fallbackR2Key: true,
-      hlsUrl: true,
       teaserSec: true,
       durationSec: true,
       technicalMetadata: {
         select: {
           trailerKey: true,
           playbackUrl: true,
-          hlsPlaybackUrl: true,
           masterKey: true,
           processingStatus: true,
           availabilityRegion: true
@@ -104,16 +102,11 @@ export async function GET(req: NextRequest) {
   }
 
   const requestedQuality = normalizePlaybackQualityPreference(req.nextUrl.searchParams.get('quality'));
-  const playbackMode = getPlaybackModePreference(video);
-  const finalHlsUrl = getPlayableHlsUrl(video);
   const finalProgressiveUrl = getPlayableProgressiveUrl(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
-  const playableHlsUrl = finalHlsUrl && (/^https?:\/\//i.test(finalHlsUrl) || assetSnapshot.hlsReady)
-    ? finalHlsUrl
-    : null;
   const playableProgressiveKey = assetSnapshot.progressiveReady
     ? assetSnapshot.progressiveKey
     : assetSnapshot.fallbackProgressiveReady
@@ -123,7 +116,7 @@ export async function GET(req: NextRequest) {
         : null;
   const playableProgressiveUrl = fullAccess ? finalProgressiveUrl : null;
 
-  if (teaser && !fullAccess && !playableHlsUrl && !playableProgressiveKey) {
+  if (teaser && !fullAccess && !playableProgressiveKey) {
     return NextResponse.json(
       {
         error: 'Movie preview is not available for this title yet.',
@@ -133,9 +126,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!playableHlsUrl && !playableProgressiveKey && !playableProgressiveUrl) {
+  if (!playableProgressiveKey && !playableProgressiveUrl) {
     return NextResponse.json({
-      error: 'Playback assets are not ready for this title yet.'
+      error: 'MP4 playback assets are not ready for this title yet.'
     }, { status: 409 });
   }
 
@@ -162,9 +155,6 @@ export async function GET(req: NextRequest) {
       streamContentType = undefined;
     }
   }
-
-  const hlsAvailable = Boolean(playableHlsUrl) && hasPlayableHls(video);
-  const dashAvailable = false;
 
   const token = auth
     ? createStreamToken({
@@ -195,17 +185,7 @@ export async function GET(req: NextRequest) {
       : playableProgressiveUrl
         ? getSignedStoredMediaUrl(token, playableProgressiveUrl)
         : null;
-  const hlsUrl = hlsAvailable
-    ? getSignedStoredHlsUrl(videoId, token, playableHlsUrl)
-    : null;
-  const dashUrl = null;
-  const preferred = playbackMode === 'hls' && hlsUrl
-    ? 'hls'
-    : progressiveUrl
-      ? 'progressive'
-      : hlsUrl
-        ? 'hls'
-        : 'unavailable';
+  const preferred = progressiveUrl ? 'progressive' : 'unavailable';
 
   return NextResponse.json({
     token,
@@ -214,10 +194,6 @@ export async function GET(req: NextRequest) {
       progressiveUrl,
       progressiveQuality: selectedProgressive.quality,
       availableProgressiveQualities: selectedProgressive.key ? [selectedProgressive.quality ?? 'progressive'] : [],
-      hlsUrl,
-      dashUrl,
-      hlsAvailable,
-      dashAvailable,
       requestedQuality,
       preferred
     }

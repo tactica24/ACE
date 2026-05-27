@@ -21,7 +21,7 @@ type ShortUploadRow = {
 };
 
 const MAX_ROWS = 5;
-const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.mov'];
+const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4'];
 const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 const SUPPORTED_SUBTITLE_EXTENSIONS = ['.vtt', '.srt'];
 
@@ -368,10 +368,10 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
             </div>
 
             <div>
-              <label className="label">Final delivery master (1080p Full HD MP4 or MOV)</label>
+              <label className="label">Final playable MP4 master</label>
               <input
                 type="file"
-                accept=".mp4,.mov,video/mp4,video/quicktime"
+                accept=".mp4,video/mp4"
                 className="input"
                 onChange={(event) => updateRow(row.id, { masterFile: event.target.files?.[0] ?? null })}
               />

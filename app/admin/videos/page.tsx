@@ -53,12 +53,9 @@ export default async function AdminVideosPage() {
                   masterUploadedAt: true,
                   processingStatus: true,
                   playbackUrl: true,
-                  hlsPlaybackUrl: true,
                   trailerKey: true
                 }
               },
-              hlsUrl: true,
-              hlsVersion: true,
               qualities: true
             }
           }
@@ -70,7 +67,7 @@ export default async function AdminVideosPage() {
   return (
     <DashboardShell
       title="Admin videos"
-      description="Operate private masters, local encoding, HLS folder verification, preview, cleanup, and publish gating from one desk."
+      description="Operate MP4 masters, playback validation, cleanup, and publish gating from one desk."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel
@@ -95,10 +92,6 @@ export default async function AdminVideosPage() {
             masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
             processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
             playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
-            hlsPlaybackUrl: video.technicalMetadata?.hlsPlaybackUrl ?? null,
-            playbackSource: video.technicalMetadata?.playbackUrl?.toLowerCase()?.includes('.m3u8') ? 'hls' as const : 'mp4' as const,
-            hlsUrl: video.hlsUrl,
-            hlsVersion: video.hlsVersion,
             qualities: video.qualities,
             trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
             posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null

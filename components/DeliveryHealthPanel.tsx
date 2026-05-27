@@ -6,9 +6,8 @@ type DeliveryHealthVideo = {
   id: string;
   title: string;
   status: string;
-  hlsUrl: string | null;
-  hlsVersion: string | null;
-  qualities: string[];
+  masterKey: string | null;
+  playbackUrl: string | null;
   updatedAt: string;
 };
 
@@ -26,15 +25,15 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
         body: JSON.stringify({ movieId: videoId })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to validate HLS.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to validate MP4.');
 
       setMessage(
         payload.passed
-          ? 'Validation passed.'
+          ? 'MP4 validation passed.'
           : `Validation failed: ${(payload.errors ?? ['Unknown error']).join(', ')}`
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to validate HLS.');
+      setMessage(error instanceof Error ? error.message : 'Unable to validate MP4.');
     } finally {
       setPendingId(null);
     }
@@ -49,7 +48,7 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
             <div className="stack-row" style={{ alignItems: 'flex-start' }}>
               <div>
                 <h3>{video.title}</h3>
-                <p className="muted">Status: {video.status} | Version: {video.hlsVersion ?? 'N/A'}</p>
+                <p className="muted">Status: {video.status}</p>
               </div>
               <div className="action-list">
                 <button
@@ -58,19 +57,19 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
                   disabled={pendingId === video.id}
                   onClick={() => void validate(video.id)}
                 >
-                  {pendingId === video.id ? 'Validating...' : 'Re-validate'}
+                  {pendingId === video.id ? 'Validating...' : 'Re-validate MP4'}
                 </button>
               </div>
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
               <div className="detail-card">
-                <span className="detail-label">HLS URL</span>
-                <strong>{video.hlsUrl || 'Not set'}</strong>
+                <span className="detail-label">MP4 key</span>
+                <strong>{video.masterKey || 'Not set'}</strong>
               </div>
               <div className="detail-card">
-                <span className="detail-label">Qualities</span>
-                <strong>{video.qualities.join(', ') || 'None'}</strong>
+                <span className="detail-label">Playback</span>
+                <strong>{video.playbackUrl || 'Gateway stream token'}</strong>
               </div>
               <div className="detail-card">
                 <span className="detail-label">Last Updated</span>
@@ -81,8 +80,8 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
         ))
       ) : (
         <div className="card">
-          <h3>No HLS videos yet</h3>
-          <p className="muted">Uploaded HLS folders will appear here after admin processing.</p>
+          <h3>No MP4 videos yet</h3>
+          <p className="muted">Validated MP4 titles will appear here after admin processing.</p>
         </div>
       )}
     </div>

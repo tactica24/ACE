@@ -38,6 +38,14 @@ function isViewerVisibleStatus(status: string) {
   return status === 'APPROVED' || status === 'PUBLISHED';
 }
 
+function hasMp4Asset(video: {
+  r2Key?: string | null;
+  fallbackR2Key?: string | null;
+  technicalMetadata?: { masterKey?: string | null } | null;
+}) {
+  return Boolean(video.r2Key || video.fallbackR2Key || video.technicalMetadata?.masterKey);
+}
+
 function formatRuntime(_durationSec: number) {
   return '90m';
 }
@@ -115,21 +123,12 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     requestedVideo.seriesId &&
-    !requestedVideo.r2Key &&
-    !requestedVideo.fallbackR2Key &&
-    !requestedVideo.technicalMetadata?.playbackUrl
+    !hasMp4Asset(requestedVideo)
   ) {
     return notFound();
   }
 
-  const hasPlayableAsset =
-    requestedVideo.r2Key ||
-    requestedVideo.fallbackR2Key ||
-    requestedVideo.technicalMetadata?.playbackUrl ||
-    requestedVideo.technicalMetadata?.masterKey ||
-    requestedVideo.technicalMetadata?.processingStatus === 'MASTER_UPLOADED';
-
-  if (!canPreviewRequested && isViewerVisibleStatus(requestedVideo.status) && !hasPlayableAsset) {
+  if (!canPreviewRequested && isViewerVisibleStatus(requestedVideo.status) && !hasMp4Asset(requestedVideo)) {
     return notFound();
   }
 
@@ -350,7 +349,7 @@ export default async function VideoPage({
   const visibleEpisodes = series.episodes.filter((episode) => isViewerVisibleStatus(episode.status) || canPreviewSeries);
   const viewerReadyEpisodes = canPreviewSeries
     ? visibleEpisodes
-    : visibleEpisodes.filter((episode) => Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.playbackUrl));
+    : visibleEpisodes.filter(hasMp4Asset);
   const requestedEpisodeId = typeof searchParams?.episode === 'string'
     ? searchParams.episode.trim()
     : isEpisodeVideo(requestedVideo)

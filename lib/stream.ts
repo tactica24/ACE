@@ -74,7 +74,6 @@ function parseRange(rangeHeader: string | null, fileSize: number) {
 function getVideoContentType(filePath: string) {
   const normalizedPath = filePath.toLowerCase();
   if (normalizedPath.endsWith('.webm')) return 'video/webm';
-  if (normalizedPath.endsWith('.mov')) return 'video/quicktime';
   if (normalizedPath.endsWith('.mkv')) return 'video/x-matroska';
   if (normalizedPath.endsWith('.avi')) return 'video/x-msvideo';
   return 'video/mp4';

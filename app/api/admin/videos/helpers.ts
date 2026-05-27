@@ -16,8 +16,6 @@ export async function getProcessingVideo(videoId: string) {
       updatedAt: true,
       posterKey: true,
       creatorId: true,
-      hlsUrl: true,
-      hlsVersion: true,
       qualities: true,
       creator: {
         select: {
@@ -35,7 +33,6 @@ export async function getProcessingVideo(videoId: string) {
           masterUploadedAt: true,
           processingStatus: true,
           playbackUrl: true,
-          hlsPlaybackUrl: true,
           trailerKey: true
         }
       }
@@ -59,10 +56,6 @@ export async function getProcessingVideo(videoId: string) {
     masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
     processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
     playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
-    hlsPlaybackUrl: video.technicalMetadata?.hlsPlaybackUrl ?? null,
-    playbackSource: video.technicalMetadata?.playbackUrl?.toLowerCase()?.includes('.m3u8') ? 'hls' : 'mp4',
-    hlsUrl: video.hlsUrl,
-    hlsVersion: video.hlsVersion,
     qualities: video.qualities,
     trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
     posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null

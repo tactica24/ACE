@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getSignedStoredHlsUrl, getSignedStoredMediaUrl } from '@/lib/hls-delivery';
+import { getSignedStoredMediaUrl } from '@/lib/media-delivery';
 import {
-  getPlayableHlsUrl,
   getPlayableProgressiveKey,
-  getPlayableProgressiveUrl,
-  getPlaybackModePreference
+  getPlayableProgressiveUrl
 } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { ensureStreamSession } from '@/lib/stream-sessions';
@@ -42,13 +40,11 @@ export async function POST(req: NextRequest) {
       status: true,
       r2Key: true,
       fallbackR2Key: true,
-      hlsUrl: true,
       teaserSec: true,
       durationSec: true,
       technicalMetadata: {
         select: {
           playbackUrl: true,
-          hlsPlaybackUrl: true,
           masterKey: true,
           processingStatus: true,
           availabilityRegion: true
@@ -61,15 +57,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not found' }, { status: 404 });
   }
 
-  const candidateHlsUrl = getPlayableHlsUrl(video);
   const progressiveKey = getPlayableProgressiveKey(video);
   const progressiveUrl = getPlayableProgressiveUrl(video);
-  const playbackMode = getPlaybackModePreference(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
 
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!candidateHlsUrl && !progressiveKey && !progressiveUrl)) {
+  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!progressiveKey && !progressiveUrl)) {
     return NextResponse.json({ error: 'Movie not available' }, { status: 403 });
   }
   const availability = getVideoAvailabilityDecision(video.technicalMetadata?.availabilityRegion, req);
@@ -93,9 +87,6 @@ export async function POST(req: NextRequest) {
   }
 
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
-  const availableHlsUrl = candidateHlsUrl && (/^https?:\/\//i.test(candidateHlsUrl) || assetSnapshot.hlsReady)
-    ? candidateHlsUrl
-    : null;
   const availableProgressiveKey = assetSnapshot.progressiveReady
     ? assetSnapshot.progressiveKey
     : assetSnapshot.fallbackProgressiveReady
@@ -104,16 +95,12 @@ export async function POST(req: NextRequest) {
         ? assetSnapshot.masterProgressiveKey
         : null;
   const availableProgressiveUrl = progressiveUrl;
-  const useHls = playbackMode === 'hls'
-    ? Boolean(availableHlsUrl)
-    : !availableProgressiveKey && !availableProgressiveUrl && Boolean(availableHlsUrl);
-  const hlsUrl = useHls ? availableHlsUrl : null;
-  const streamKey = useHls ? null : availableProgressiveKey;
-  const directProgressiveUrl = useHls ? null : availableProgressiveUrl;
+  const streamKey = availableProgressiveKey;
+  const directProgressiveUrl = streamKey ? null : availableProgressiveUrl;
 
-  if (!hlsUrl && !streamKey && !directProgressiveUrl) {
+  if (!streamKey && !directProgressiveUrl) {
     return NextResponse.json({
-      error: 'Playback assets are not ready for this title yet.'
+      error: 'MP4 playback assets are not ready for this title yet.'
     }, { status: 409 });
   }
 
@@ -148,23 +135,20 @@ export async function POST(req: NextRequest) {
     deviceSessionId,
     role: auth.role,
     fullAccess: true,
-    streamKey: !hlsUrl && streamKey ? streamKey : undefined,
+    streamKey: streamKey ?? undefined,
     teaserSec: video.teaserSec,
     durationSec: video.durationSec
   });
 
-  const playbackUrl = hlsUrl
-    ? getSignedStoredHlsUrl(movieId, token, hlsUrl)
-    : streamKey
+  const playbackUrl = streamKey
       ? `/api/stream/${movieId}?token=${encodeURIComponent(token)}`
       : directProgressiveUrl
         ? getSignedStoredMediaUrl(token, directProgressiveUrl)
         : null;
-  const playbackType = hlsUrl ? 'hls' : 'progressive';
 
   if (!playbackUrl) {
     return NextResponse.json({
-      error: 'Playback assets are not ready for this title yet.'
+      error: 'MP4 playback assets are not ready for this title yet.'
     }, { status: 409 });
   }
 
@@ -172,7 +156,7 @@ export async function POST(req: NextRequest) {
     allowed: true,
     movieId,
     playbackUrl,
-    playbackType,
+    playbackType: 'progressive',
     sessionId: session.id
   });
 }

@@ -93,8 +93,8 @@ export default function AdminUploadWorkspace({
           </div>
           <div className="detail-card">
             <span className="detail-label">Upload package</span>
-            <strong>1080p MP4 + 720p MP4</strong>
-            <span className="muted">Approved titles go live as soon as both viewer files are ready.</span>
+            <strong>Playable MP4 master</strong>
+            <span className="muted">Approved titles go live after the MP4 is uploaded and validated.</span>
           </div>
         </div>
       </div>
@@ -118,7 +118,6 @@ export default function AdminUploadWorkspace({
           extraPayload={{ targetCreatorUserId: selectedProducerId }}
           successRedirectPath={`/admin/users/${selectedProducerId}`}
           contractRedirectBasePath={null}
-          allowNoMaster
         />
       </div>
     </div>

@@ -34,8 +34,6 @@ export async function POST(req: NextRequest) {
       fallbackR2Key: true,
       technicalMetadata: {
         select: {
-          playbackUrl: true,
-          processingStatus: true,
           masterKey: true
         }
       },
@@ -49,8 +47,6 @@ export async function POST(req: NextRequest) {
           fallbackR2Key: true,
           technicalMetadata: {
             select: {
-              playbackUrl: true,
-              processingStatus: true,
               masterKey: true
             }
           }
@@ -68,26 +64,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'That movie does not belong to the selected producer.' }, { status: 400 });
   }
 
-   if (status === 'APPROVED') {
-     const readinessTargets = isSeriesContainer(existingVideo) ? existingVideo.episodes : [existingVideo];
+  if (status === 'APPROVED') {
+    const readinessTargets = isSeriesContainer(existingVideo) ? existingVideo.episodes : [existingVideo];
 
-     if (!readinessTargets.length) {
-       return NextResponse.json({ error: 'This series cannot go live yet because no viewer-ready episodes are attached.' }, { status: 400 });
-     }
+    if (!readinessTargets.length) {
+      return NextResponse.json({ error: 'This series cannot go live yet because no viewer-ready episodes are attached.' }, { status: 400 });
+    }
 
-        const notReady = readinessTargets.filter((video) => {
-          // Video is ready if it has playbackUrl, r2 assets, or a master uploaded
-          const hasPlaybackUrl = !!video.technicalMetadata?.playbackUrl;
-          const hasR2Asset = !!(video.r2Key || video.fallbackR2Key);
-          const hasMaster = !!video.technicalMetadata?.masterKey || video.technicalMetadata?.processingStatus === 'MASTER_UPLOADED';
-          return !(hasPlaybackUrl || hasR2Asset || hasMaster);
-        });
-     if (notReady.length) {
-       return NextResponse.json({
-         error: `Verified playback is still incomplete for: ${notReady.map((video) => video.title).join(', ')}.`
-       }, { status: 400 });
-     }
-   }
+    const notReady = readinessTargets.filter((video) => {
+      // Video is ready if it has a playable MP4 asset or uploaded MP4 master.
+      const hasR2Asset = !!(video.r2Key || video.fallbackR2Key);
+      const hasMaster = !!video.technicalMetadata?.masterKey;
+      return !(hasR2Asset || hasMaster);
+    });
+    if (notReady.length) {
+      return NextResponse.json({
+        error: `Verified playback is still incomplete for: ${notReady.map((video) => video.title).join(', ')}.`
+      }, { status: 400 });
+    }
+  }
 
   await prisma.video.update({
     where: { id: videoId },

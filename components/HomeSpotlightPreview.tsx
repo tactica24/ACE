@@ -6,15 +6,6 @@ import { getMediaAssetUrl } from '@/lib/media';
 
 const PREVIEW_DELAY_MS = 320;
 
-function browserCanPlay(manifestType: string) {
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  const media = document.createElement('video');
-  return Boolean(media.canPlayType(manifestType));
-}
-
 export type HomeSpotlightVideo = {
   id: string;
   title: string;
@@ -113,10 +104,6 @@ export default function HomeSpotlightPreview({
             playback?: {
               preferred?: string;
               progressiveUrl?: string;
-              hlsUrl?: string | null;
-              dashUrl?: string | null;
-              hlsAvailable?: boolean;
-              dashAvailable?: boolean;
             };
           };
           if (!tokenPayload.token) {
@@ -127,19 +114,7 @@ export default function HomeSpotlightPreview({
             typeof tokenPayload.playback?.progressiveUrl === 'string'
               ? tokenPayload.playback.progressiveUrl
               : `/api/stream/${encodeURIComponent(videoId)}?token=${encodeURIComponent(tokenPayload.token)}`;
-          const hlsUrl =
-            tokenPayload.playback?.hlsAvailable && typeof tokenPayload.playback?.hlsUrl === 'string'
-              ? tokenPayload.playback.hlsUrl
-              : null;
-          const dashUrl =
-            tokenPayload.playback?.dashAvailable && typeof tokenPayload.playback?.dashUrl === 'string'
-              ? tokenPayload.playback.dashUrl
-              : null;
-          const source = tokenPayload.playback?.preferred === 'hls' && hlsUrl && browserCanPlay('application/vnd.apple.mpegurl')
-            ? hlsUrl
-            : dashUrl && browserCanPlay('application/dash+xml')
-              ? dashUrl
-              : progressiveUrl || hlsUrl;
+          const source = progressiveUrl;
           if (!source) {
             return null;
           }

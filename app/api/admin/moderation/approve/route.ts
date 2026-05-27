@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
-import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { isSeriesContainer } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
           r2Key: true,
           fallbackR2Key: true,
           technicalMetadata: {
-            select: { playbackUrl: true, masterKey: true, processingStatus: true }
+            select: { masterKey: true }
           },
           episodes: {
             select: {
@@ -37,7 +36,7 @@ export async function POST(req: NextRequest) {
               r2Key: true,
               fallbackR2Key: true,
               technicalMetadata: {
-                select: { playbackUrl: true, masterKey: true, processingStatus: true }
+                select: { masterKey: true }
               }
             },
             orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }]
@@ -62,12 +61,11 @@ export async function POST(req: NextRequest) {
   }
 
   const readiness = readinessTargets.map((video) => {
-    const hasPlaybackUrl = !!video.technicalMetadata?.playbackUrl;
     const hasR2Asset = !!(video.r2Key || video.fallbackR2Key);
-    const hasMaster = !!video.technicalMetadata?.masterKey || video.technicalMetadata?.processingStatus === 'MASTER_UPLOADED';
+    const hasMaster = !!video.technicalMetadata?.masterKey;
     return {
       video,
-      ready: hasPlaybackUrl || hasR2Asset || hasMaster
+      ready: hasR2Asset || hasMaster
     };
   });
 

@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
-const STATUS_ACTIONS: Record<string, { status: string; dateField?: 'encodingStartedAt' | 'encodingCompletedAt' | 'hlsUploadedAt' | 'readyToStreamAt' }> = {
+const STATUS_ACTIONS: Record<string, { status: string; dateField?: 'encodingStartedAt' | 'encodingCompletedAt' | 'readyToStreamAt' }> = {
   encodingStarted: { status: 'ENCODING_STARTED', dateField: 'encodingStartedAt' },
   encodingCompleted: { status: 'ENCODING_COMPLETED', dateField: 'encodingCompletedAt' },
-  hlsUploaded: { status: 'HLS_UPLOADED', dateField: 'hlsUploadedAt' },
   readyToStream: { status: 'READY_TO_STREAM', dateField: 'readyToStreamAt' }
 };
 

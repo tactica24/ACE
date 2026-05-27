@@ -41,7 +41,6 @@ type UploadFormProps = {
   requestHeaders?: Record<string, string>;
   successRedirectPath?: string;
   contractRedirectBasePath?: string | null;
-  allowNoMaster?: boolean;
 };
 
 type UploadState = {
@@ -135,8 +134,8 @@ const SUPPORTED_VIDEO_EXTENSIONS = ['.mp4'];
 const SUPPORTED_VIDEO_MIME_TYPES = ['video/mp4', 'application/octet-stream'];
 const SUPPORTED_TRAILER_EXTENSIONS = ['.mp4'];
 const SUPPORTED_TRAILER_MIME_TYPES = ['video/mp4'];
-const SUPPORTED_MASTER_EXTENSIONS = ['.mp4', '.mov'];
-const SUPPORTED_MASTER_MIME_TYPES = ['video/mp4', 'video/quicktime', 'application/octet-stream'];
+const SUPPORTED_MASTER_EXTENSIONS = ['.mp4'];
+const SUPPORTED_MASTER_MIME_TYPES = ['video/mp4', 'application/octet-stream'];
 const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 const SUPPORTED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -167,7 +166,7 @@ const initialDeliveryMetadataState: DeliveryMetadataState = {
   licensedTerritories: '',
   localizations: '',
   productAvailability: '',
-  deliveryFormat: '1080p Full HD master (MP4/MOV, H.264/H.265 preferred)',
+  deliveryFormat: '1080p Full HD playable MP4 (H.264/AAC preferred)',
   deliveryNotes: '',
   castCredits: '',
   crewCredits: '',
@@ -372,8 +371,7 @@ export default function UploadForm({
   extraPayload,
   requestHeaders,
   successRedirectPath = '/studio/library',
-  contractRedirectBasePath = '/studio/upload?contractVideoId=',
-  allowNoMaster = false
+  contractRedirectBasePath = '/studio/upload?contractVideoId='
 }: UploadFormProps) {
   const [form, setForm] = useState<UploadState>({
     ...initialState,
@@ -730,16 +728,14 @@ export default function UploadForm({
         return;
       }
     } else {
-      if (!allowNoMaster) {
-        if (!masterFile || !isSupportedMasterFile(masterFile)) {
-          setMessage('Upload a final 1080p Full HD delivery master (MP4 or MOV) before submitting.');
-          return;
-        }
-        const masterSizeError = validateFileSize(masterFile, MAX_MASTER_BYTES, 'Master');
-        if (masterSizeError) {
-          setMessage(masterSizeError);
-          return;
-        }
+      if (!masterFile || !isSupportedMasterFile(masterFile)) {
+        setMessage('Upload a final playable MP4 master before submitting.');
+        return;
+      }
+      const masterSizeError = validateFileSize(masterFile, MAX_MASTER_BYTES, 'Master');
+      if (masterSizeError) {
+        setMessage(masterSizeError);
+        return;
       }
       if (trailerFile) {
         const trailerSizeError = validateFileSize(trailerFile, MAX_TRAILER_BYTES, 'Trailer');
@@ -813,7 +809,7 @@ export default function UploadForm({
           ...(masterFile
             ? [{
                 id: 'master',
-                label: `Uploading final 1080p delivery master: ${masterFile.name}`,
+                label: `Uploading final playable MP4 master: ${masterFile.name}`,
                 file: masterFile,
                 purpose: 'master' as const
               }]
@@ -1679,8 +1675,7 @@ export default function UploadForm({
         <div>
           <h3 className="form-section-title">Upload assets</h3>
            <p className="muted form-section-copy">
-             Deliver the final approved 1080p Full HD master. MP4 or MOV only; H.264/H.265 preferred. No watermark, no burned-in timecode, no rough cuts.
-             {allowNoMaster ? ' (Master optional if you will upload pre-built HLS directly.)' : ''}
+             Deliver the final approved playable MP4 master. H.264 video and AAC audio are preferred. No watermark, no burned-in timecode, no rough cuts.
            </p>
         </div>
 
@@ -1688,19 +1683,14 @@ export default function UploadForm({
           <>
             <div className="field-grid field-grid-2">
               <label className="field">
-                <span className="field-label">Final delivery master (1080p Full HD MP4 or MOV)</span>
+                <span className="field-label">Final playable MP4 master</span>
                 <input
                   className="input"
                   type="file"
-                  accept=".mp4,.mov,video/mp4,video/quicktime"
+                  accept=".mp4,video/mp4"
                   onChange={(event) => setMasterFile(event.target.files?.[0] ?? null)}
-                  required={!allowNoMaster}
+                  required
                 />
-                {allowNoMaster && (
-                  <span className="muted" style={{ display: 'block', marginTop: 4 }}>
-                    Optional when you already have the HLS folder; upload HLS later from Admin Videos desk.
-                  </span>
-                )}
               </label>
               <label className="field">
                 <span className="field-label">Poster artwork</span>

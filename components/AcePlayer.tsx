@@ -8,38 +8,11 @@ import { getMediaAssetUrl } from '@/lib/media';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const HISTORY_SYNC_SECONDS = 5;
-const HLS_JS_CDN_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js';
 
 type NetworkInformationLike = {
   effectiveType?: string;
   saveData?: boolean;
 };
-
-type HlsInstance = {
-  loadSource: (source: string) => void;
-  attachMedia: (media: HTMLMediaElement) => void;
-  destroy: () => void;
-};
-
-type HlsConstructor = {
-  new (): HlsInstance;
-  isSupported: () => boolean;
-};
-
-declare global {
-  interface Window {
-    Hls?: HlsConstructor;
-  }
-}
-
-function browserCanPlay(manifestType: string) {
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  const media = document.createElement('video');
-  return Boolean(media.canPlayType(manifestType));
-}
 
 function getProgressStorageKey(videoId: string) {
   return `ace-progress:${videoId}`;
@@ -92,36 +65,6 @@ function getDeviceSessionId() {
 
   window.localStorage.setItem(storageKey, created);
   return created;
-}
-
-function isHlsUrl(url: string) {
-  return /\.m3u8(?:\?|$)/i.test(url);
-}
-
-function loadHlsJs() {
-  if (typeof window === 'undefined') {
-    return Promise.resolve(null);
-  }
-
-  if (window.Hls) {
-    return Promise.resolve(window.Hls);
-  }
-
-  return new Promise<HlsConstructor | null>((resolve) => {
-    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${HLS_JS_CDN_URL}"]`);
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(window.Hls ?? null), { once: true });
-      existingScript.addEventListener('error', () => resolve(null), { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = HLS_JS_CDN_URL;
-    script.async = true;
-    script.onload = () => resolve(window.Hls ?? null);
-    script.onerror = () => resolve(null);
-    document.head.appendChild(script);
-  });
 }
 
 function getPreferredPlaybackQuality() {
@@ -419,13 +362,9 @@ export default function AcePlayer({
     }
 
     const previewUrl =
-      data.playback?.preferred === 'hls' && typeof data.playback?.hlsUrl === 'string'
-        ? data.playback.hlsUrl
-        : typeof data.playback?.progressiveUrl === 'string'
-          ? data.playback.progressiveUrl
-          : typeof data.playback?.hlsUrl === 'string'
-            ? data.playback.hlsUrl
-            : '';
+      typeof data.playback?.progressiveUrl === 'string'
+        ? data.playback.progressiveUrl
+        : '';
 
     if (!previewUrl) {
       setFeedback('Preview is not available for this title yet.');
@@ -673,35 +612,6 @@ export default function AcePlayer({
       autoplay: false
     }).catch(() => setFeedback('Unable to load the movie stream right now.'));
   }, [initialProgress, loadStream, trailerKey, videoId]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !activeVideoSrc || !isHlsUrl(activeVideoSrc) || browserCanPlay('application/vnd.apple.mpegurl')) {
-      return;
-    }
-
-    let cancelled = false;
-    let hls: HlsInstance | null = null;
-
-    void loadHlsJs().then((Hls) => {
-      if (cancelled || !video || !Hls?.isSupported()) {
-        if (!cancelled) {
-          setFeedback('This browser could not load HLS playback support. Try another browser or check the network connection.');
-        }
-        return;
-      }
-
-      video.removeAttribute('src');
-      hls = new Hls();
-      hls.loadSource(activeVideoSrc);
-      hls.attachMedia(video);
-    });
-
-    return () => {
-      cancelled = true;
-      hls?.destroy();
-    };
-  }, [activeVideoSrc]);
 
   useEffect(() => {
     setSelectedSubtitleId(defaultSubtitleId);
@@ -1016,7 +926,7 @@ export default function AcePlayer({
         <video
           key={activeVideoSrc}
           ref={videoRef}
-          src={isHlsUrl(activeVideoSrc) && !browserCanPlay('application/vnd.apple.mpegurl') ? undefined : activeVideoSrc}
+          src={activeVideoSrc}
           controls
           playsInline
           preload="metadata"

@@ -57,7 +57,6 @@ const buckets = unique([
   process.env.R2_BUCKET?.trim(),
   process.env.R2_BUCKET_NAME?.trim(),
   process.env.MASTER_R2_BUCKET?.trim(),
-  process.env.HLS_R2_BUCKET?.trim(),
   ...splitList(process.env.R2_CORS_BUCKETS)
 ]);
 

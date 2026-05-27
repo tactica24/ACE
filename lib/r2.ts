@@ -55,14 +55,6 @@ export function getMasterBucket() {
   return bucket;
 }
 
-export function getHlsBucket() {
-  const bucket = env.HLS_R2_BUCKET?.trim();
-  if (!bucket) {
-    throw new Error('HLS_R2_BUCKET environment variable is required but not set. Please configure your HLS bucket in the environment variables.');
-  }
-  return bucket;
-}
-
 export function isMasterStorageKey(key?: string | null): boolean {
   if (!key) return false;
   const normalized = key.trim().toLowerCase();

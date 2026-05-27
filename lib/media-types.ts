@@ -18,7 +18,6 @@ export type VideoStatusValue =
   | 'REJECTED'
   | 'MASTER_UPLOADED'
   | 'PROCESSING'
-  | 'HLS_UPLOADED'
   | 'READY'
   | 'PUBLISHED'
   | 'ARCHIVED';

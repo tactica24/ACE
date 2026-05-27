@@ -103,7 +103,7 @@ function checkBinary(name) {
     checks.push({
       name: `${name} installed`,
       status: 'WARNING',
-      note: `${name} not found in PATH (required only when this host performs local HLS transcoding).`
+      note: `${name} not found in PATH (optional; useful only when this host normalizes MP4 masters).`
     });
   }
 }

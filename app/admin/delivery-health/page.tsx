@@ -11,16 +11,19 @@ export default async function DeliveryHealthPage() {
 
   const videos = await prisma.video.findMany({
     where: {
-      status: { in: ['HLS_UPLOADED', 'READY', 'PUBLISHED'] }
+      status: { in: ['READY', 'PUBLISHED', 'APPROVED'] }
     },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
       title: true,
       status: true,
-      hlsUrl: true,
-      hlsVersion: true,
-      qualities: true,
+      technicalMetadata: {
+        select: {
+          masterKey: true,
+          playbackUrl: true
+        }
+      },
       createdAt: true,
       updatedAt: true
     }
@@ -29,7 +32,7 @@ export default async function DeliveryHealthPage() {
   return (
     <DashboardShell
       title="Delivery Health"
-      description="Monitor HLS delivery status and validate playback readiness."
+      description="Monitor MP4 delivery status and validate playback readiness."
       sideNav={<SideNav active="/admin/delivery-health" items={getAdminNavItems()} />}
     >
       <DeliveryHealthPanel
@@ -37,9 +40,8 @@ export default async function DeliveryHealthPage() {
           id: video.id,
           title: video.title,
           status: video.status,
-          hlsUrl: video.hlsUrl,
-          hlsVersion: video.hlsVersion,
-          qualities: video.qualities,
+          masterKey: video.technicalMetadata?.masterKey ?? null,
+          playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
           updatedAt: video.updatedAt.toISOString().slice(0, 10)
         }))}
       />
