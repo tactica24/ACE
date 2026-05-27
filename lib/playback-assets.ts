@@ -3,6 +3,7 @@ import { getHlsMasterKey } from './hls';
 import { getAvailableProgressiveQualities, type ProgressivePlaybackQuality } from './playback-quality';
 import { env } from './env';
 import { getBucketForStorageKey, getObjectMetadata } from './r2';
+import { normalizeMediaKey } from './media';
 
 export type PlaybackAssetSnapshot = {
   storageConfigured: boolean;
@@ -51,9 +52,9 @@ export async function getPlaybackAssetSnapshot(
   fallbackProgressiveKey?: string | null,
   masterProgressiveKey?: string | null
 ): Promise<PlaybackAssetSnapshot> {
-  const normalizedProgressiveKey = progressiveKey?.trim() || null;
-  const normalizedFallbackProgressiveKey = fallbackProgressiveKey?.trim() || null;
-  const normalizedMasterProgressiveKey = masterProgressiveKey?.trim() || null;
+  const normalizedProgressiveKey = normalizeMediaKey(progressiveKey);
+  const normalizedFallbackProgressiveKey = normalizeMediaKey(fallbackProgressiveKey);
+  const normalizedMasterProgressiveKey = normalizeMediaKey(masterProgressiveKey);
   const hlsKey = getHlsMasterKey(videoId);
   const dashKey = getDashManifestKey(videoId);
   const storageConfigured = hasConfiguredStorage();

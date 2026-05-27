@@ -148,17 +148,25 @@ export async function POST(req: NextRequest) {
     deviceSessionId,
     role: auth.role,
     fullAccess: true,
-    streamKey: hlsUrl || directProgressiveUrl ? undefined : streamKey ?? undefined,
+    streamKey: !hlsUrl && streamKey ? streamKey : undefined,
     teaserSec: video.teaserSec,
     durationSec: video.durationSec
   });
 
   const playbackUrl = hlsUrl
     ? getSignedStoredHlsUrl(movieId, token, hlsUrl)
-    : directProgressiveUrl
-      ? getSignedStoredMediaUrl(token, directProgressiveUrl)
-      : `/api/stream/${movieId}?token=${encodeURIComponent(token)}`;
+    : streamKey
+      ? `/api/stream/${movieId}?token=${encodeURIComponent(token)}`
+      : directProgressiveUrl
+        ? getSignedStoredMediaUrl(token, directProgressiveUrl)
+        : null;
   const playbackType = hlsUrl ? 'hls' : 'progressive';
+
+  if (!playbackUrl) {
+    return NextResponse.json({
+      error: 'Playback assets are not ready for this title yet.'
+    }, { status: 409 });
+  }
 
   return NextResponse.json({
     allowed: true,

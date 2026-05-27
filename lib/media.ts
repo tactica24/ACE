@@ -40,6 +40,10 @@ function extractStoredObjectKey(path: string) {
   return typeof markerIndex === 'number' ? withoutRoute.slice(markerIndex) : withoutRoute;
 }
 
+function isKnownStorageKey(key: string) {
+  return STORAGE_KEY_MARKERS.some((marker) => key.startsWith(marker));
+}
+
 export function normalizeMediaKey(key?: string | null) {
   const trimmed = key?.trim();
   if (!trimmed) return null;
@@ -65,13 +69,18 @@ export function normalizeMediaKey(key?: string | null) {
 export function getMediaAssetUrl(key?: string | null) {
   const normalizedKey = normalizeMediaKey(key);
   if (!normalizedKey) return null;
+  const rawKey = key?.trim() ?? '';
 
   if (normalizedKey.startsWith('http://') || normalizedKey.startsWith('https://')) {
     return normalizedKey;
   }
 
-  if (key?.trim().startsWith('/')) {
-    return key.trim();
+  if (rawKey.startsWith('/api/media/')) {
+    return rawKey;
+  }
+
+  if (rawKey.startsWith('/') && !isKnownStorageKey(normalizedKey)) {
+    return rawKey;
   }
 
   return `/api/media/${normalizedKey.split('/').map(encodePathSegment).join('/')}`;

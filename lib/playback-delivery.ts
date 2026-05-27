@@ -1,3 +1,5 @@
+import { normalizeMediaKey } from './media';
+
 type PlaybackDeliveryVideo = {
   hlsUrl?: string | null;
   r2Key?: string | null;
@@ -40,12 +42,8 @@ export function getPlayableHlsUrl(video: PlaybackDeliveryVideo) {
 }
 
 export function getPlayableProgressiveKey(video: PlaybackDeliveryVideo) {
-  return (
-    clean(video.r2Key) ??
-    clean(video.fallbackR2Key) ??
-    clean(video.technicalMetadata?.masterKey) ??
-    null
-  );
+  const rawKey = clean(video.r2Key) ?? clean(video.fallbackR2Key) ?? clean(video.technicalMetadata?.masterKey);
+  return normalizeMediaKey(rawKey);
 }
 
 export function getPlayableProgressiveUrl(video: PlaybackDeliveryVideo) {

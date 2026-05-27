@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
         role: auth.role,
         fullAccess,
         previewAsset: false,
-        streamKey: playableProgressiveUrl ? undefined : selectedProgressive.key ?? undefined,
+        streamKey: selectedProgressive.key ?? undefined,
         teaserSec: video.teaserSec,
         durationSec: video.durationSec,
         streamBytes,
@@ -190,11 +190,11 @@ export async function GET(req: NextRequest) {
         streamContentType
       });
 
-  const progressiveUrl = playableProgressiveUrl
-    ? getSignedStoredMediaUrl(token, playableProgressiveUrl)
-    : selectedProgressive.key
+  const progressiveUrl = selectedProgressive.key
       ? `/api/stream/${videoId}?token=${encodeURIComponent(token)}`
-      : null;
+      : playableProgressiveUrl
+        ? getSignedStoredMediaUrl(token, playableProgressiveUrl)
+        : null;
   const hlsUrl = hlsAvailable
     ? getSignedStoredHlsUrl(videoId, token, playableHlsUrl)
     : null;

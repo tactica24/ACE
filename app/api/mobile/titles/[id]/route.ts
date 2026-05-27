@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getMediaAssetUrl } from '@/lib/media';
 import { getMobileViewerAccessState } from '@/lib/mobile-viewer-access';
 import { getViewerReadyEpisodeWhere, getViewerReadyVideoWhere } from '@/lib/video-visibility';
 
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     languageCode: track.languageCode,
     kind: track.kind,
     fileKey: track.fileKey,
-    fileUrl: `/api/media/${track.fileKey}`,
+    fileUrl: getMediaAssetUrl(track.fileKey),
     isDefault: track.isDefault
   });
 
@@ -157,9 +158,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           crewCredits: title.technicalMetadata?.crewCredits ?? null
         },
         progressSec: historyByVideoId.get(title.id) ?? 0,
-        trailerUrl: title.technicalMetadata?.trailerKey?.trim()
-          ? `/api/media/${title.technicalMetadata.trailerKey.trim()}`
-          : null,
+        trailerUrl: getMediaAssetUrl(title.technicalMetadata?.trailerKey),
         audioLanguages: title.audioLanguages,
         subtitleTracks: title.subtitleTracks.map(mapSubtitleTrack),
         episodes: title.episodes.map((episode) => ({
@@ -175,9 +174,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             Boolean(episode.technicalMetadata?.trailerKey?.trim()) ||
             episode.teaserSec > 0,
           progressSec: historyByVideoId.get(episode.id) ?? 0,
-          trailerUrl: episode.technicalMetadata?.trailerKey?.trim()
-            ? `/api/media/${episode.technicalMetadata.trailerKey.trim()}`
-            : null,
+          trailerUrl: getMediaAssetUrl(episode.technicalMetadata?.trailerKey),
           audioLanguages: episode.audioLanguages,
           subtitleTracks: episode.subtitleTracks.map(mapSubtitleTrack),
           access: mapEpisodeAccess(episode.id)

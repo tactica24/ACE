@@ -333,6 +333,16 @@ const videoCases: Case[] = [
         getMediaAssetUrl('https://ace.example.com/api/media/uploads/admin/poster/movie%20one.webp'),
         '/api/media/uploads/admin/poster/movie%20one.webp',
       );
+      assert.equal(
+        getMediaAssetUrl('/uploads/admin/poster/movie%20one.webp'),
+        '/api/media/uploads/admin/poster/movie%20one.webp',
+      );
+      assert.equal(
+        getPlayableProgressiveKey({
+          r2Key: 'https://9509c1f9654bf983a2d806d29210f6ad.r2.cloudflarestorage.com/acestudio/uploads/admin/video/movie.mp4',
+        }),
+        'uploads/admin/video/movie.mp4',
+      );
     },
   },
   {

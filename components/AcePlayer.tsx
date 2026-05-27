@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLanguageLabel } from '@/lib/media-types';
+import { getMediaAssetUrl } from '@/lib/media';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const HISTORY_SYNC_SECONDS = 5;
@@ -95,10 +96,6 @@ function getDeviceSessionId() {
 
 function isHlsUrl(url: string) {
   return /\.m3u8(?:\?|$)/i.test(url);
-}
-
-function getMediaRouteForKey(key: string) {
-  return `/api/media/${key.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`;
 }
 
 function loadHlsJs() {
@@ -232,7 +229,8 @@ export default function AcePlayer({
     [subtitleTracks]
   );
 
-  const activeVideoSrc = isPlayingTrailer && trailerKey ? getMediaRouteForKey(trailerKey) : streamUrl;
+  const trailerSrc = trailerKey ? getMediaAssetUrl(trailerKey) : null;
+  const activeVideoSrc = isPlayingTrailer && trailerSrc ? trailerSrc : streamUrl;
   const isMovieMode = !isPlayingTrailer;
   const hasLockedMoviePreview = teaserSec > 0;
 
