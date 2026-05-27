@@ -11,7 +11,7 @@ import { type PriceTierValue } from '@/lib/media-types';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 type HomeVideo = {
   id: string;

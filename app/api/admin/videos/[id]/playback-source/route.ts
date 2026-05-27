@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
-import { getMp4PlaybackUrl } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const playbackUrl = mode === 'hls'
     ? video.technicalMetadata?.hlsPlaybackUrl?.trim() || null
-    : getMp4PlaybackUrl(params.id);
+    : null;
 
   await prisma.videoTechnicalMetadata.upsert({
     where: { videoId: params.id },
@@ -65,6 +65,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       playbackUrl
     }
   });
+
+  revalidateApprovedCatalog();
 
   return NextResponse.json({
     ok: true,

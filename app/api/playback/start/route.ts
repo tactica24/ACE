@@ -5,7 +5,6 @@ import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
 import {
   getPlayableHlsUrl,
   getPlayableProgressiveKey,
-  getPlayableProgressiveUrl,
   getPlaybackModePreference
 } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
@@ -62,13 +61,12 @@ export async function POST(req: NextRequest) {
 
   const candidateHlsUrl = getPlayableHlsUrl(video);
   const progressiveKey = getPlayableProgressiveKey(video);
-  const directProgressiveUrl = getPlayableProgressiveUrl(video);
   const playbackMode = getPlaybackModePreference(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
 
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!candidateHlsUrl && !progressiveKey && !directProgressiveUrl)) {
+  if (!['APPROVED', 'PUBLISHED'].includes(video.status) || (!candidateHlsUrl && !progressiveKey)) {
     return NextResponse.json({ error: 'Movie not available' }, { status: 403 });
   }
   const availability = getVideoAvailabilityDecision(video.technicalMetadata?.availabilityRegion, req);
@@ -92,11 +90,11 @@ export async function POST(req: NextRequest) {
         : null;
   const useHls = playbackMode === 'hls'
     ? Boolean(availableHlsUrl)
-    : !availableProgressiveKey && !directProgressiveUrl && Boolean(availableHlsUrl);
+    : !availableProgressiveKey && Boolean(availableHlsUrl);
   const hlsUrl = useHls ? availableHlsUrl : null;
   const streamKey = useHls ? null : availableProgressiveKey;
 
-  if (!hlsUrl && !streamKey && !directProgressiveUrl) {
+  if (!hlsUrl && !streamKey) {
     return NextResponse.json({
       error: 'Playback assets are not ready for this title yet.'
     }, { status: 409 });
@@ -148,9 +146,7 @@ export async function POST(req: NextRequest) {
 
   const playbackUrl = hlsUrl
     ? getSignedHlsDeliveryUrl(movieId, token)
-    : streamKey
-      ? `/api/stream/${movieId}?token=${encodeURIComponent(token)}`
-      : directProgressiveUrl;
+    : `/api/stream/${movieId}?token=${encodeURIComponent(token)}`;
   const playbackType = hlsUrl ? 'hls' : 'progressive';
 
   return NextResponse.json({

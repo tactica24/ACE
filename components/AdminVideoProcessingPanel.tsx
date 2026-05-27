@@ -607,7 +607,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               </div>
               <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
                 {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
-                {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download trailer</a> : null}
+                {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download poster</a> : null}
                 <label className="btn btn-ghost">
                   Upload/replace master
                   <input
@@ -696,16 +696,18 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 type="button"
                 disabled={busy || !video.masterKey}
                 onClick={() => void switchPlaybackSource(video.id, 'mp4')}
+                aria-pressed={video.playbackSource === 'mp4'}
               >
-                Use MP4 playback
+                {busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'mp4' ? 'Using MP4 playback' : 'Use MP4 playback'}
               </button>
               <button
                 className={video.playbackSource === 'hls' ? 'btn btn-primary' : 'btn btn-ghost'}
                 type="button"
                 disabled={busy || !video.hlsPlaybackUrl}
                 onClick={() => void switchPlaybackSource(video.id, 'hls')}
+                aria-pressed={video.playbackSource === 'hls'}
               >
-                Use HLS playback
+                {busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'hls' ? 'Using HLS playback' : 'Use HLS playback'}
               </button>
             </div>
 

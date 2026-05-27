@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { isOwnedUploadKey } from '@/lib/upload-security';
 import { getProcessingVideo } from '../helpers';
-import { getMp4PlaybackUrl } from '@/lib/video-processing';
 
 function hasSupportedMasterExtension(key: string) {
   return /\.(mp4|mov)$/i.test(key);
@@ -35,8 +35,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
   }
 
-  const mp4Url = getMp4PlaybackUrl(videoId);
-
   await prisma.$transaction([
     prisma.videoTechnicalMetadata.upsert({
       where: { videoId },
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
         masterFileName: fileName,
         masterFileSize,
         masterUploadedAt: new Date(),
-        playbackUrl: mp4Url,
+        playbackUrl: null,
         processingStatus: 'MASTER_UPLOADED'
       },
       update: {
@@ -54,7 +52,7 @@ export async function POST(req: NextRequest) {
         masterFileName: fileName,
         masterFileSize,
         masterUploadedAt: new Date(),
-        playbackUrl: mp4Url,
+        playbackUrl: null,
         processingStatus: 'MASTER_UPLOADED'
       }
     }),
@@ -63,6 +61,8 @@ export async function POST(req: NextRequest) {
       data: { status: 'MASTER_UPLOADED' }
     })
   ]);
+
+  revalidateApprovedCatalog();
 
   return NextResponse.json({
     ok: true,

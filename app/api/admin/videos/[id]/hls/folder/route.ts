@@ -213,14 +213,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       hlsUploadedAt: new Date(),
       hlsVerifiedAt: new Date(),
       hlsPlaybackUrl: playbackUrl,
-      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || playbackUrl
+      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || null
     },
     update: {
       processingStatus: 'HLS_UPLOADED',
       hlsUploadedAt: new Date(),
       hlsVerifiedAt: new Date(),
       hlsPlaybackUrl: playbackUrl,
-      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || playbackUrl
+      playbackUrl: video.technicalMetadata?.playbackUrl?.trim() || null
     }
   });
 
