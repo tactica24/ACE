@@ -474,7 +474,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
   async function switchPlaybackSource(videoId: string, mode: 'mp4' | 'hls') {
     setPendingId(videoId);
-    setMessage(null);
+    setMessage(`Switching playback source to ${mode.toUpperCase()}...`);
     try {
       const response = await fetch(`/api/admin/videos/${videoId}/playback-source`, {
         method: 'POST',
@@ -484,7 +484,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to switch playback source.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? 'Playback source updated.');
+      setMessage(payload.message ?? `Playback source switched to ${mode.toUpperCase()}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to switch playback source.');
     } finally {
@@ -690,24 +690,32 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'N/A'}</strong></div>
             </div>
 
-            <div className="action-list" style={{ marginTop: 14 }}>
+            <div className="playback-source-selector" style={{ marginTop: 14 }}>
               <button
-                className={video.playbackSource === 'mp4' ? 'btn btn-primary' : 'btn btn-ghost'}
+                className={`playback-source-option ${video.playbackSource === 'mp4' ? 'active' : ''}`}
                 type="button"
                 disabled={busy || !video.masterKey}
                 onClick={() => void switchPlaybackSource(video.id, 'mp4')}
                 aria-pressed={video.playbackSource === 'mp4'}
               >
-                {busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'mp4' ? 'Using MP4 playback' : 'Use MP4 playback'}
+                <span className="playback-source-dot" aria-hidden="true" />
+                <span>
+                  <strong>MP4</strong>
+                  <small>{busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'mp4' ? 'Active source' : 'Use master MP4'}</small>
+                </span>
               </button>
               <button
-                className={video.playbackSource === 'hls' ? 'btn btn-primary' : 'btn btn-ghost'}
+                className={`playback-source-option ${video.playbackSource === 'hls' ? 'active' : ''}`}
                 type="button"
                 disabled={busy || !video.hlsPlaybackUrl}
                 onClick={() => void switchPlaybackSource(video.id, 'hls')}
                 aria-pressed={video.playbackSource === 'hls'}
               >
-                {busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'hls' ? 'Using HLS playback' : 'Use HLS playback'}
+                <span className="playback-source-dot" aria-hidden="true" />
+                <span>
+                  <strong>HLS</strong>
+                  <small>{busy && pendingId === video.id ? 'Switching...' : video.playbackSource === 'hls' ? 'Active source' : 'Use adaptive HLS'}</small>
+                </span>
               </button>
             </div>
 

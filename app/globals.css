@@ -544,6 +544,20 @@ button {
   pointer-events: none;
 }
 
+.video-thumb-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.video-thumb-has-poster {
+  background: #05070d;
+}
+
 .video-card-preview-active .video-thumb-preview {
   opacity: 1;
 }
@@ -1149,6 +1163,71 @@ button {
 .admin-producer-action {
   display: flex;
   justify-content: flex-end;
+}
+
+.playback-source-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 180px));
+  gap: 10px;
+}
+
+.playback-source-option {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(141, 160, 200, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.playback-source-option:hover:not(:disabled),
+.playback-source-option:focus-visible {
+  border-color: rgba(242, 191, 110, 0.46);
+  background: rgba(242, 191, 110, 0.1);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.playback-source-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.playback-source-option.active {
+  border-color: rgba(126, 243, 196, 0.42);
+  background: rgba(126, 243, 196, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(126, 243, 196, 0.16);
+}
+
+.playback-source-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(141, 160, 200, 0.45);
+  box-shadow: 0 0 0 4px rgba(141, 160, 200, 0.08);
+  flex: 0 0 auto;
+}
+
+.playback-source-option.active .playback-source-dot {
+  background: #7ef3c4;
+  box-shadow: 0 0 0 4px rgba(126, 243, 196, 0.14), 0 0 18px rgba(126, 243, 196, 0.4);
+}
+
+.playback-source-option strong,
+.playback-source-option small {
+  display: block;
+}
+
+.playback-source-option small {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  margin-top: 2px;
 }
 
 .insight-bar-list {
@@ -11731,7 +11810,6 @@ body::before {
 }
 
 .home-movie-hero-sweep,
-.home-movie-floating-layer,
 .home-movie-poster-badge {
   display: none !important;
 }

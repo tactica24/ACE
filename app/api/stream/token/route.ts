@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
+import { getSignedStoredHlsUrl } from '@/lib/hls-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
 import { getPlayableHlsUrl, hasPlayableHls, getPlaybackModePreference } from '@/lib/playback-delivery';
@@ -110,7 +110,9 @@ export async function GET(req: NextRequest) {
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
-  const playableHlsUrl = finalHlsUrl && assetSnapshot.hlsReady ? finalHlsUrl : null;
+  const playableHlsUrl = finalHlsUrl && (/^https?:\/\//i.test(finalHlsUrl) || assetSnapshot.hlsReady)
+    ? finalHlsUrl
+    : null;
   const playableProgressiveKey = assetSnapshot.progressiveReady
     ? assetSnapshot.progressiveKey
     : assetSnapshot.fallbackProgressiveReady
@@ -190,7 +192,7 @@ export async function GET(req: NextRequest) {
     ? `/api/stream/${videoId}?token=${encodeURIComponent(token)}`
     : null;
   const hlsUrl = hlsAvailable
-    ? getSignedHlsDeliveryUrl(videoId, token)
+    ? getSignedStoredHlsUrl(videoId, token, playableHlsUrl)
     : null;
   const dashUrl = null;
   const preferred = playbackMode === 'hls' && hlsUrl

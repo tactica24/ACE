@@ -55,8 +55,10 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   const [isInteractive, setIsInteractive] = useState(false);
   const [previewSource, setPreviewSource] = useState<string | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
 
+  const hasPoster = Boolean(posterUrl && !posterFailed);
   const priceLabel = formatCurrencyMinor(priceMinor, currencyCode);
   const genreLabel = video.genres?.filter(Boolean).slice(0, 2).join(' / ') || labelize(video.videoType);
   const releaseLabel = video.releaseYear ? String(video.releaseYear) : null;
@@ -183,16 +185,18 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
       onFocus={() => setIsInteractive(true)}
       onBlur={handleFocusOut}
     >
-      <div
-        className="video-thumb"
-        style={posterUrl ? {
-          backgroundImage: `url(${posterUrl})`,
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: '#05070d'
-        } : undefined}
-      >
+      <div className={`video-thumb${hasPoster ? ' video-thumb-has-poster' : ''}`}>
+        {posterUrl && !posterFailed ? (
+          <img
+            className="video-thumb-poster"
+            src={posterUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            aria-hidden="true"
+            onError={() => setPosterFailed(true)}
+          />
+        ) : null}
         {previewSource ? (
           <video
             ref={previewRef}
@@ -205,7 +209,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
             aria-hidden="true"
           />
         ) : null}
-        {!posterUrl ? <span>Ace Studio</span> : null}
+        {!hasPoster ? <span>Ace Studio</span> : null}
         <div className="video-thumb-overlay">
           <span className="video-thumb-kicker">{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
           <span className="video-thumb-runtime">{runtimeLabel ?? labelize(video.videoType)}</span>

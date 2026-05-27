@@ -3,10 +3,16 @@ function encodePathSegment(segment: string) {
 }
 
 export function getMediaAssetUrl(key?: string | null) {
-  if (!key) return null;
-  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('/')) {
-    return key;
+  const normalizedKey = key?.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/') || null;
+  if (!normalizedKey) return null;
+
+  if (normalizedKey.startsWith('http://') || normalizedKey.startsWith('https://')) {
+    return normalizedKey;
   }
 
-  return `/api/media/${key.split('/').map(encodePathSegment).join('/')}`;
+  if (key?.trim().startsWith('/')) {
+    return key.trim();
+  }
+
+  return `/api/media/${normalizedKey.split('/').map(encodePathSegment).join('/')}`;
 }

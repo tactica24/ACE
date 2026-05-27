@@ -273,6 +273,41 @@ export default function HomeMovieHero(
         aria-hidden="true"
       />
 
+      {featured ? (
+        <div className="home-movie-floating-layer">
+          {backCards.map((card) => {
+            const cardVideo = allVideos[card.videoIdx];
+            const poster = posterFor(card.videoIdx, allVideos);
+            if (!cardVideo || !poster) return null;
+
+            return (
+              <a
+                key={`${card.variant}-${card.idx}`}
+                className={`home-movie-poster-card home-movie-poster--${card.variant} is-lower`}
+                href={`/v/${cardVideo.id}`}
+                tabIndex={-1}
+                aria-label={`Open ${cardVideo.title}`}
+                style={cardStyleFor(card.idx, buildCardBackground(poster), card.variant, entering, card.offset)}
+              />
+            );
+          })}
+          {(() => {
+            const poster = posterFor(safeActiveIndex, allVideos);
+            if (!poster) return null;
+
+            return (
+              <a
+                key={`front-${featured.id}`}
+                className="home-movie-poster-card home-movie-poster--front home-movie-poster-front-enter"
+                href={`/v/${featured.id}`}
+                tabIndex={-1}
+                aria-label={`Open ${featured.title}`}
+                style={cardStyleFor(safeActiveIndex, buildCardBackground(poster), 'front', entering, 0)}
+              />
+            );
+          })()}
+        </div>
+      ) : null}
 
       {/* â”€â”€ hero copy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="home-movie-hero-inner">

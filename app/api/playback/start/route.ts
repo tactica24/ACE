@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getSignedHlsDeliveryUrl } from '@/lib/hls-delivery';
+import { getSignedStoredHlsUrl } from '@/lib/hls-delivery';
 import {
   getPlayableHlsUrl,
   getPlayableProgressiveKey,
@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
   }
 
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
-  const availableHlsUrl = candidateHlsUrl && assetSnapshot.hlsReady ? candidateHlsUrl : null;
+  const availableHlsUrl = candidateHlsUrl && (/^https?:\/\//i.test(candidateHlsUrl) || assetSnapshot.hlsReady)
+    ? candidateHlsUrl
+    : null;
   const availableProgressiveKey = assetSnapshot.progressiveReady
     ? assetSnapshot.progressiveKey
     : assetSnapshot.fallbackProgressiveReady
@@ -145,7 +147,7 @@ export async function POST(req: NextRequest) {
   });
 
   const playbackUrl = hlsUrl
-    ? getSignedHlsDeliveryUrl(movieId, token)
+    ? getSignedStoredHlsUrl(movieId, token, hlsUrl)
     : `/api/stream/${movieId}?token=${encodeURIComponent(token)}`;
   const playbackType = hlsUrl ? 'hls' : 'progressive';
 
