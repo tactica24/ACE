@@ -32,13 +32,17 @@ function isProgressiveKey(value?: string | null) {
   return Boolean(cleaned && hasMp4Extension(cleaned));
 }
 
-export function getPlayableProgressiveKey(video: PlaybackDeliveryVideo) {
+export function getPlayableProgressiveKeyCandidates(video: PlaybackDeliveryVideo) {
   const metadata = video.technicalMetadata ?? null;
-  const rawKey =
-    [video.r2Key, video.fallbackR2Key, metadata?.masterKey, metadata?.playbackUrl]
-      .map((value) => clean(value))
-      .find((value) => isProgressiveKey(value));
-  return normalizeMediaKey(rawKey);
+  const candidates = [video.r2Key, video.fallbackR2Key, metadata?.masterKey]
+    .map((value) => normalizeMediaKey(clean(value)))
+    .filter((value): value is string => Boolean(value && isProgressiveKey(value)));
+
+  return Array.from(new Set(candidates));
+}
+
+export function getPlayableProgressiveKey(video: PlaybackDeliveryVideo) {
+  return getPlayableProgressiveKeyCandidates(video)[0] ?? null;
 }
 
 export function getPlayableProgressiveUrl(video: PlaybackDeliveryVideo) {

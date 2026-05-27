@@ -32,6 +32,12 @@ type TitleDetailPayload = {
   access: TitleAccess;
 };
 
+function toAbsoluteApiUrl(url?: string | null) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export default function VideoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -75,7 +81,7 @@ export default function VideoDetailScreen() {
       }>(`/api/stream/token?${query.toString()}`);
       const preferredUrl = payload.playback?.progressiveUrl;
       const fallbackUrl = payload.playback?.progressiveUrl ?? `${BASE_URL}/api/stream/${id}?token=${payload.token}`;
-      setStreamUrl(preferredUrl ?? fallbackUrl);
+      setStreamUrl(toAbsoluteApiUrl(preferredUrl ?? fallbackUrl));
       setAuthRequired(false);
       setShowAccessNotice(false);
     } catch (error) {

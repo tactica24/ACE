@@ -5,6 +5,7 @@ import HomeMovieHero from '@/components/HomeMovieHero';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
+import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { getMediaAssetUrl } from '@/lib/media';
@@ -51,17 +52,13 @@ function dedupeVideos(items: HomeVideo[]) {
   });
 }
 
-function hasApprovedPoster(video: HomeVideo) {
-  return Boolean(getMediaAssetUrl(video.posterKey));
-}
-
 function formatRuntime(_durationSec?: number | null) {
   return '90m';
 }
 
 function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
-  const posterBackedUnlockedVideos = dedupeVideos(unlockedVideos.filter(hasApprovedPoster));
+  const posterBackedUnlockedVideos = dedupeVideos(onlyCatalogVideosWithPosters(unlockedVideos));
 
   if (posterBackedUnlockedVideos.length) {
     rows.push({
@@ -83,7 +80,7 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const guestHeroVideos = dedupeVideos(videos.filter(hasApprovedPoster)).slice(0, 5);
+  const guestHeroVideos = dedupeVideos(onlyCatalogVideosWithPosters(videos)).slice(0, 5);
   const featuredRows = guestHeroVideos.length
     ? [
         {
@@ -224,7 +221,7 @@ export default async function HomePage() {
 
   let videos: HomeVideo[] = [];
   try {
-    videos = dedupeVideos((await getApprovedCatalogVideos()).filter(hasApprovedPoster)).slice(0, 40);
+    videos = dedupeVideos(onlyCatalogVideosWithPosters(await getApprovedCatalogVideos())).slice(0, 40);
   } catch {
     videos = [];
   }

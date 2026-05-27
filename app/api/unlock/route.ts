@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
   if (!assetSnapshot.ready) {
     const playableProgressiveKey = getPlayableProgressiveKey(video);
     const playableProgressiveUrl = getPlayableProgressiveUrl(video);
-    const canAttemptPlayback = Boolean(playableProgressiveUrl);
+    const canAttemptPlayback = Boolean(playableProgressiveKey || playableProgressiveUrl);
 
     if (canAttemptPlayback) {
       console.warn('[unlock] allowing unlock despite inconclusive asset HEAD check', {

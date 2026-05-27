@@ -58,6 +58,7 @@ export default async function ModerationPage() {
               technicalMetadata: {
                 select: {
                   trailerKey: true,
+                  masterKey: true,
                   deliveryFormat: true,
                   englishSubtitlesProvided: true,
                   licensedTerritories: true,
@@ -76,7 +77,12 @@ export default async function ModerationPage() {
                   title: true,
                   status: true,
                   r2Key: true,
-                  fallbackR2Key: true
+                  fallbackR2Key: true,
+                  technicalMetadata: {
+                    select: {
+                      masterKey: true
+                    }
+                  }
                 }
               }
             }
@@ -126,6 +132,7 @@ export default async function ModerationPage() {
           technicalMetadata: {
             select: {
               trailerKey: true,
+              masterKey: true,
               deliveryFormat: true,
               englishSubtitlesProvided: true,
               licensedTerritories: true,
@@ -144,7 +151,12 @@ export default async function ModerationPage() {
               title: true,
               status: true,
               r2Key: true,
-              fallbackR2Key: true
+              fallbackR2Key: true,
+              technicalMetadata: {
+                select: {
+                  masterKey: true
+                }
+              }
             }
           }
         },
@@ -155,7 +167,7 @@ export default async function ModerationPage() {
 
     const mapQueueVideo = (video: (typeof items)[number]['video'] | (typeof orphanApprovedVideos)[number]) => {
       const readyEpisodeCount = video.episodes.filter(
-        (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key)
+        (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.masterKey)
       ).length;
 
       return {
@@ -190,6 +202,7 @@ export default async function ModerationPage() {
           seriesId: video.seriesId,
           primaryReady: Boolean(video.r2Key),
           fallbackReady: Boolean(video.fallbackR2Key),
+          masterReady: Boolean(video.technicalMetadata?.masterKey),
           episodeCount: video._count.episodes,
           readyEpisodeCount
         }),

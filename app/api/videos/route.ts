@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { getFinanceConfig } from '@/lib/finance';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
@@ -33,12 +34,13 @@ export async function GET(req: NextRequest) {
       posterKey: true
     },
     orderBy: { createdAt: 'desc' },
-    take
+    take: take + 20
   });
+  const posterBackedVideos = onlyCatalogVideosWithPosters(videos).slice(0, take);
 
   return NextResponse.json(
     {
-      videos: videos.map((video) => ({ ...video, price: getRegionalPriceForVideo(req, video, pricingConfig) }))
+      videos: posterBackedVideos.map((video) => ({ ...video, price: getRegionalPriceForVideo(req, video, pricingConfig) }))
     },
     {
       headers: {

@@ -177,11 +177,20 @@ const videoCases: Case[] = [
         r2Key: null,
         fallbackR2Key: 'video/movie-720.mp4',
       };
+      const masterOnlyAsset = {
+        ...creatorVideo,
+        r2Key: null,
+        fallbackR2Key: null,
+        technicalMetadata: {
+          masterKey: 'uploads/creator-1/master/movie.mp4',
+        },
+      };
 
       assert.equal(isEpisodeVideo(episode), true);
       assert.equal(isPlayableVideo(episode), true);
       assert.equal(isPlayableVideo(emptyAsset), false);
       assert.equal(isPlayableVideo(fallbackOnlyAsset), true);
+      assert.equal(isPlayableVideo(masterOnlyAsset), true);
     },
   },
   {
@@ -222,8 +231,8 @@ const videoCases: Case[] = [
   {
     name: 'delivery package summaries describe standalone and series readiness cleanly',
     run: () => {
-      assert.equal(getViewerPackageLabel({ videoType: 'FEATURE', seriesId: null }), '1080p MP4 + 720p MP4');
-      assert.equal(getViewerPackageLabel({ videoType: 'SERIES', seriesId: null }), 'Per-episode 1080p MP4 + 720p MP4');
+      assert.equal(getViewerPackageLabel({ videoType: 'FEATURE', seriesId: null }), 'Playable MP4');
+      assert.equal(getViewerPackageLabel({ videoType: 'SERIES', seriesId: null }), 'Per-episode playable MP4');
       assert.equal(
         getViewerPackageStatus({
           videoType: 'FEATURE',
@@ -296,6 +305,14 @@ const videoCases: Case[] = [
           },
         }),
         'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+      );
+      assert.equal(
+        getPlayableProgressiveKey({
+          technicalMetadata: {
+            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+          },
+        }),
+        null,
       );
       assert.equal(
         getSignedStoredMediaUrl('signed-token', 'https://stream.acestudio.ng/movies/movie-1/master.mp4'),

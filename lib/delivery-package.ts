@@ -3,6 +3,7 @@ type DeliveryPackageInput = {
   seriesId?: string | null;
   primaryReady?: boolean;
   fallbackReady?: boolean;
+  masterReady?: boolean;
   episodeCount?: number;
   readyEpisodeCount?: number;
   subtitleTrackCount?: number;
@@ -20,8 +21,8 @@ export function isSeriesContainerDelivery(input: Pick<DeliveryPackageInput, 'vid
 
 export function getViewerPackageLabel(input: Pick<DeliveryPackageInput, 'videoType' | 'seriesId'>) {
   return isSeriesContainerDelivery(input)
-    ? 'Per-episode 1080p MP4 + 720p MP4'
-    : '1080p MP4 + 720p MP4';
+    ? 'Per-episode playable MP4'
+    : 'Playable MP4';
 }
 
 export function getViewerPackageStatus(input: DeliveryPackageInput) {
@@ -38,6 +39,10 @@ export function getViewerPackageStatus(input: DeliveryPackageInput) {
 
   if (input.primaryReady && input.fallbackReady) {
     return '1080p and 720p ready';
+  }
+
+  if (input.masterReady) {
+    return 'Playable MP4 master ready';
   }
 
   if (input.primaryReady) {

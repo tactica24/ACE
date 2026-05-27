@@ -84,7 +84,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       }
     });
 
-    const match = candidateVideos
+    const matches = candidateVideos
       .map((video) => {
         const subtitle = video.subtitleTracks.find((track) => normalizedEquals(track.fileKey, normalizedKey))?.fileKey ?? null;
         const promotionalStill = video.technicalMetadata?.promotionalStillKeys.find((item) => normalizedEquals(item, normalizedKey)) ?? null;
@@ -99,17 +99,18 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
 
         return storedKey ? { video, storedKey } : null;
       })
-      .find(Boolean);
+      .filter((match): match is NonNullable<typeof match> => Boolean(match));
 
-    if (!match) {
+    if (!matches.length) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 404 });
     }
 
-    const { video, storedKey } = match;
-    if (!['APPROVED', 'PUBLISHED'].includes(video.status) && !canPreviewVideo(video, auth)) {
+    const match = matches.find(({ video }) => ['APPROVED', 'PUBLISHED'].includes(video.status) || canPreviewVideo(video, auth));
+    if (!match) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 403 });
     }
 
+    const { video, storedKey } = match;
     const objectKey = normalizeMediaKey(storedKey) ?? storedKey;
     const isTrailerAsset = normalizedEquals(video.technicalMetadata?.trailerKey, storedKey);
     const isSubtitleAsset = video.subtitleTracks.some((track) => normalizedEquals(track.fileKey, storedKey));

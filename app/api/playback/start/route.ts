@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { getSignedStoredMediaUrl } from '@/lib/media-delivery';
 import {
   getPlayableProgressiveKey,
+  getPlayableProgressiveKeyCandidates,
   getPlayableProgressiveUrl
 } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   const progressiveKey = getPlayableProgressiveKey(video);
+  const progressiveKeyCandidates = getPlayableProgressiveKeyCandidates(video);
   const progressiveUrl = getPlayableProgressiveUrl(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
       ? assetSnapshot.fallbackProgressiveKey
       : assetSnapshot.masterProgressiveReady
         ? assetSnapshot.masterProgressiveKey
-        : null;
+        : progressiveKeyCandidates[0] ?? null;
   const availableProgressiveUrl = progressiveUrl;
   const streamKey = availableProgressiveKey;
   const directProgressiveUrl = streamKey ? null : availableProgressiveUrl;
@@ -102,6 +104,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: 'MP4 playback assets are not ready for this title yet.'
     }, { status: 409 });
+  }
+
+  if (streamKey && !assetSnapshot.ready) {
+    console.warn('[playback/start] issuing MP4 stream from stored key after inconclusive asset HEAD check', {
+      movieId,
+      storageConfigured: assetSnapshot.storageConfigured
+    });
   }
 
   const streamSession = await ensureStreamSession({

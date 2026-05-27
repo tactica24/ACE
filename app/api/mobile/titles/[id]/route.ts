@@ -141,6 +141,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         releaseYear: title.releaseYear,
         highlightSeconds: title.highlightSeconds,
         posterKey: title.posterKey,
+        posterUrl: getMediaAssetUrl(title.posterKey),
         creatorId: title.creatorId,
         seriesId: title.seriesId,
         seasonNumber: title.seasonNumber,
@@ -168,6 +169,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           teaserSec: episode.teaserSec,
           durationSec: episode.durationSec,
           posterKey: episode.posterKey,
+          posterUrl: getMediaAssetUrl(episode.posterKey),
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,
           previewAvailable:

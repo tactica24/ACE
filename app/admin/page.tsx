@@ -80,8 +80,24 @@ export default async function AdminPage() {
           seriesId: true,
           r2Key: true,
           fallbackR2Key: true,
+          technicalMetadata: {
+            select: {
+              masterKey: true
+            }
+          },
           _count: { select: { episodes: true } },
-          episodes: { select: { status: true, r2Key: true, fallbackR2Key: true } }
+          episodes: {
+            select: {
+              status: true,
+              r2Key: true,
+              fallbackR2Key: true,
+              technicalMetadata: {
+                select: {
+                  masterKey: true
+                }
+              }
+            }
+          }
         }
       }),
       getNodeHealth(),
@@ -108,9 +124,10 @@ export default async function AdminPage() {
         seriesId: video.seriesId,
         primaryReady: Boolean(video.r2Key),
         fallbackReady: Boolean(video.fallbackR2Key),
+        masterReady: Boolean(video.technicalMetadata?.masterKey),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
-          (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key)
+          (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.masterKey)
         ).length
       })
     }));

@@ -1,9 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatRecordedCharge } from '@/lib/format';
+import { getMediaAssetUrl } from '@/lib/media';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
@@ -83,8 +85,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
     });
-    const hasMore = videos.length > limit;
-    const filteredVideos = videos.slice(0, limit);
+    const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
+    const hasMore = posterBackedVideos.length > limit;
+    const filteredVideos = posterBackedVideos.slice(0, limit);
 
     const pricingConfig = await getFinanceConfig();
 
@@ -103,6 +106,7 @@ export async function GET(request: NextRequest) {
         durationSec: video.durationSec,
         releaseYear: video.releaseYear,
         posterKey: video.posterKey,
+        posterUrl: getMediaAssetUrl(video.posterKey),
         metadata: {
           vendorId: video.technicalMetadata?.vendorId ?? null,
           studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,

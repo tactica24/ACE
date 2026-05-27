@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     video.technicalMetadata?.masterKey
   );
 
-  const passed = snapshot.ready || Boolean(progressiveUrl);
+  const passed = snapshot.ready || Boolean(progressiveKey || progressiveUrl);
   const errors = passed
     ? []
     : [

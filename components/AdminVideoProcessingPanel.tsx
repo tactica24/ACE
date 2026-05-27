@@ -61,8 +61,24 @@ function isSupportedMasterFile(file: File) {
   return /\.mp4$/i.test(file.name) && (!file.type || ['video/mp4', 'application/octet-stream'].includes(file.type));
 }
 
+function toStorageUploadError(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Unable to upload MP4.';
+  if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
+    return (
+      'Storage upload failed before R2 accepted the file. This usually means the R2 bucket CORS does not allow this website origin. ' +
+      'Allow both https://www.acestudio.ng and https://acestudio.ng on the upload bucket, then try again.'
+    );
+  }
+  return message;
+}
+
 async function uploadBlobToSignedUrl(url: string, blob: Blob): Promise<string> {
-  const response = await fetch(url, { method: 'PUT', body: blob });
+  let response: Response;
+  try {
+    response = await fetch(url, { method: 'PUT', body: blob });
+  } catch (error) {
+    throw new Error(toStorageUploadError(error));
+  }
   if (!response.ok) {
     throw new Error(`MP4 upload failed with status ${response.status}.`);
   }
@@ -100,11 +116,16 @@ async function uploadMasterToStorage(file: File) {
       throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
     }
 
-    const upload = await fetch(presignPayload.url as string, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
-    });
+    let upload: Response;
+    try {
+      upload = await fetch(presignPayload.url as string, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file
+      });
+    } catch (error) {
+      throw new Error(toStorageUploadError(error));
+    }
     if (!upload.ok) throw new Error(`MP4 upload failed with status ${upload.status}.`);
 
     return presignPayload.key as string;

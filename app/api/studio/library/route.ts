@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
       technicalMetadata: {
         select: {
           deliveryFormat: true,
-          englishSubtitlesProvided: true
+          englishSubtitlesProvided: true,
+          masterKey: true
         }
       },
       _count: {
@@ -36,7 +37,12 @@ export async function GET(req: NextRequest) {
         select: {
           status: true,
           r2Key: true,
-          fallbackR2Key: true
+          fallbackR2Key: true,
+          technicalMetadata: {
+            select: {
+              masterKey: true
+            }
+          }
         }
       }
     }
@@ -51,9 +57,10 @@ export async function GET(req: NextRequest) {
         seriesId: video.seriesId,
         primaryReady: Boolean(video.r2Key),
         fallbackReady: Boolean(video.fallbackR2Key),
+        masterReady: Boolean(video.technicalMetadata?.masterKey),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
-          (episode) => ['APPROVED', 'PUBLISHED'].includes(episode.status) && Boolean(episode.r2Key || episode.fallbackR2Key)
+          (episode) => ['APPROVED', 'PUBLISHED'].includes(episode.status) && Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.masterKey)
         ).length
       }),
       subtitleStatus: getSubtitlePackageStatus({

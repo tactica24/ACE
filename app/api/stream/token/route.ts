@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { getSignedStoredMediaUrl } from '@/lib/media-delivery';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { normalizePlaybackQualityPreference } from '@/lib/playback-quality';
-import { getPlayableProgressiveUrl } from '@/lib/playback-delivery';
+import { getPlayableProgressiveKeyCandidates, getPlayableProgressiveUrl } from '@/lib/playback-delivery';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import { getBucketForStorageKey, getObjectMetadata } from '@/lib/r2';
 
@@ -103,6 +103,7 @@ export async function GET(req: NextRequest) {
 
   const requestedQuality = normalizePlaybackQualityPreference(req.nextUrl.searchParams.get('quality'));
   const finalProgressiveUrl = getPlayableProgressiveUrl(video);
+  const progressiveKeyCandidates = getPlayableProgressiveKeyCandidates(video);
   const primaryProgressiveKey = video.r2Key?.trim() || null;
   const fallbackProgressiveKey = video.fallbackR2Key?.trim() || null;
   const masterProgressiveKey = video.technicalMetadata?.masterKey?.trim() || null;
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
       ? assetSnapshot.fallbackProgressiveKey
       : assetSnapshot.masterProgressiveReady
         ? assetSnapshot.masterProgressiveKey
-        : null;
+        : progressiveKeyCandidates[0] ?? null;
   const playableProgressiveUrl = fullAccess ? finalProgressiveUrl : null;
 
   if (teaser && !fullAccess && !playableProgressiveKey) {
@@ -130,6 +131,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       error: 'MP4 playback assets are not ready for this title yet.'
     }, { status: 409 });
+  }
+
+  if (playableProgressiveKey && !assetSnapshot.ready) {
+    console.warn('[stream/token] issuing MP4 token from stored key after inconclusive asset HEAD check', {
+      videoId,
+      storageConfigured: assetSnapshot.storageConfigured
+    });
   }
 
   const selectedProgressive = playableProgressiveKey
