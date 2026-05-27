@@ -2,6 +2,7 @@
 
 import { type FocusEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getDefaultTierPriceNaira } from '@/lib/commerce';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
@@ -191,12 +192,15 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     >
       <div className={`video-thumb${hasPoster ? ' video-thumb-has-poster' : ''}`}>
         {posterUrl && !posterFailed ? (
-          <img
+          <Image
             className="video-thumb-poster"
             src={posterUrl}
             alt=""
+            width={640}
+            height={960}
+            sizes="(max-width: 768px) 50vw, 220px"
+            unoptimized
             loading="lazy"
-            decoding="async"
             aria-hidden="true"
             onError={() => setPosterFailed(true)}
           />

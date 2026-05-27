@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getMediaAssetUrl } from '@/lib/media';
 
 type HeroCarouselVideo = {
@@ -308,7 +309,17 @@ export default function HomeMovieHero(
                 aria-label={`Open ${cardVideo.title}`}
                 style={cardStyleFor(card.idx, buildCardBackground(poster), card.variant, entering, card.offset)}
               >
-                <img src={poster} alt="" loading="lazy" decoding="async" aria-hidden="true" onError={() => markPosterFailed(poster)} />
+                <Image
+                  src={poster}
+                  alt=""
+                  width={320}
+                  height={480}
+                  sizes="(max-width: 768px) 34vw, 260px"
+                  unoptimized
+                  loading="lazy"
+                  aria-hidden="true"
+                  onError={() => markPosterFailed(poster)}
+                />
               </a>
             );
           })}
@@ -325,7 +336,17 @@ export default function HomeMovieHero(
                 aria-label={`Open ${featured.title}`}
                 style={cardStyleFor(safeActiveIndex, buildCardBackground(poster), 'front', entering, 0)}
               >
-                <img src={poster} alt="" loading="eager" decoding="async" aria-hidden="true" onError={() => markPosterFailed(poster)} />
+                <Image
+                  src={poster}
+                  alt=""
+                  width={360}
+                  height={540}
+                  sizes="(max-width: 768px) 42vw, 320px"
+                  unoptimized
+                  loading="eager"
+                  aria-hidden="true"
+                  onError={() => markPosterFailed(poster)}
+                />
               </a>
             );
           })()}

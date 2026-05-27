@@ -1,4 +1,5 @@
 ﻿import Link from 'next/link';
+import Image from 'next/image';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import HomeMovieHero from '@/components/HomeMovieHero';
 import VideoCard from '@/components/VideoCard';
@@ -112,13 +113,16 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             const pos = positions[index % positions.length];
 
             return (
-              <img
+              <Image
                 key={video.id}
                 className="nmhp-hero-poster"
                 src={posterUrl}
                 alt=""
+                width={320}
+                height={480}
+                sizes="(max-width: 768px) 34vw, 260px"
+                unoptimized
                 loading={index === 0 ? 'eager' : 'lazy'}
-                decoding="async"
                 style={{
                   left: pos.left,
                   top: pos.top,

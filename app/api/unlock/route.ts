@@ -6,10 +6,6 @@ import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
 import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
 import {
-<<<<<<< HEAD
-=======
-  getPlayableHlsUrl,
->>>>>>> 47fcdca55c9f838025afb4e3065ebc76be675665
   getPlayableProgressiveKey,
   getPlayableProgressiveUrl
 } from '@/lib/playback-delivery';
@@ -53,12 +49,7 @@ export async function POST(req: NextRequest) {
         select: {
           availabilityRegion: true,
           masterKey: true,
-<<<<<<< HEAD
           playbackUrl: true
-=======
-          playbackUrl: true,
-          hlsPlaybackUrl: true
->>>>>>> 47fcdca55c9f838025afb4e3065ebc76be675665
         }
       }
     }
@@ -96,40 +87,22 @@ export async function POST(req: NextRequest) {
   }
 
   if (!assetSnapshot.ready) {
-<<<<<<< HEAD
     const playableProgressiveKey = getPlayableProgressiveKey(video);
     const playableProgressiveUrl = getPlayableProgressiveUrl(video);
     const canAttemptPlayback = Boolean(playableProgressiveUrl);
-=======
-    const playableHlsUrl = getPlayableHlsUrl(video);
-    const playableProgressiveKey = getPlayableProgressiveKey(video);
-    const playableProgressiveUrl = getPlayableProgressiveUrl(video);
-    const canAttemptPlayback =
-      Boolean(playableProgressiveUrl) ||
-      Boolean(playableHlsUrl && (/^https?:\/\//i.test(playableHlsUrl) || assetSnapshot.hlsReady));
->>>>>>> 47fcdca55c9f838025afb4e3065ebc76be675665
 
     if (canAttemptPlayback) {
       console.warn('[unlock] allowing unlock despite inconclusive asset HEAD check', {
         videoId,
         playableProgressiveKey: Boolean(playableProgressiveKey),
         playableProgressiveUrl: Boolean(playableProgressiveUrl),
-<<<<<<< HEAD
-=======
-        playableHlsUrl: Boolean(playableHlsUrl),
->>>>>>> 47fcdca55c9f838025afb4e3065ebc76be675665
         storageConfigured: assetSnapshot.storageConfigured
       });
     } else {
       return NextResponse.json({
         error: assetSnapshot.storageConfigured
-<<<<<<< HEAD
           ? 'This title is not ready for MP4 playback yet.'
           : 'MP4 playback storage is not configured yet for this title.'
-=======
-          ? 'This title is not ready for playback yet.'
-          : 'Playback storage is not configured yet for this title.'
->>>>>>> 47fcdca55c9f838025afb4e3065ebc76be675665
       }, { status: 409 });
     }
   }

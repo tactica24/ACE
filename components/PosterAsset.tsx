@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 type PosterAssetProps = {
   src?: string | null;
@@ -31,12 +32,15 @@ export default function PosterAsset({
   }
 
   return (
-    <img
+    <Image
       className={imgClassName}
       src={src ?? undefined}
       alt={alt}
+      width={800}
+      height={1200}
+      sizes="(max-width: 768px) 100vw, 33vw"
+      unoptimized
       loading={loading}
-      decoding={decoding}
       aria-hidden={ariaHidden}
       onError={() => setFailed(true)}
     />

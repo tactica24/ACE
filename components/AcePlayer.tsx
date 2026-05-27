@@ -450,7 +450,6 @@ export default function AcePlayer({
     isAuthenticated,
     loadStream,
     priceLabel,
-    trailerKey,
     unlocked,
     videoId
   ]);
@@ -811,8 +810,9 @@ export default function AcePlayer({
   }, [watchMode]);
 
   useEffect(() => {
+    const video = videoRef.current;
+
     return () => {
-      const video = videoRef.current;
       if (video) {
         video.pause();
         video.removeAttribute('src');
