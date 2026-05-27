@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createPresignedGetUrl } from '@/lib/r2';
+import { normalizeMediaKey } from '@/lib/media';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await getAuthFromRequest(req);
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
   });
 
-  const posterKey = video?.posterKey?.trim() || '';
+  const posterKey = normalizeMediaKey(video?.posterKey) ?? '';
 
   if (!posterKey) {
     return NextResponse.json({ error: 'Poster artwork is not available for this title.' }, { status: 404 });

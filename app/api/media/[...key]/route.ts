@@ -110,13 +110,14 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       return NextResponse.json({ error: 'Asset not available' }, { status: 403 });
     }
 
+    const objectKey = normalizeMediaKey(storedKey) ?? storedKey;
     const isTrailerAsset = normalizedEquals(video.technicalMetadata?.trailerKey, storedKey);
     const isSubtitleAsset = video.subtitleTracks.some((track) => normalizedEquals(track.fileKey, storedKey));
 
     if (isTrailerAsset || isSubtitleAsset) {
       const rangeHeader = req.headers.get('range');
-      const bucket = getBucketForStorageKey(storedKey);
-      const result = await streamR2Object(storedKey, rangeHeader, undefined, bucket);
+      const bucket = getBucketForStorageKey(objectKey);
+      const result = await streamR2Object(objectKey, rangeHeader, undefined, bucket);
 
       return new Response(Readable.toWeb(result.stream) as never, {
         status: result.status,
@@ -124,7 +125,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       });
     }
 
-    const url = await createPresignedGetUrl(storedKey);
+    const url = await createPresignedGetUrl(objectKey);
     return NextResponse.redirect(url);
   } catch {
     return NextResponse.json({ error: 'Asset not available' }, { status: 404 });

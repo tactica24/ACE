@@ -325,6 +325,14 @@ const videoCases: Case[] = [
         '/api/media/posters/movie%20one.jpg',
       );
       assert.equal(normalizeMediaKey(' /posters\\\\movie one.jpg '), 'posters/movie one.jpg');
+      assert.equal(
+        normalizeMediaKey('https://9509c1f9654bf983a2d806d29210f6ad.r2.cloudflarestorage.com/acestudio/uploads/admin/poster/movie%20one.webp?X-Amz-Signature=expired'),
+        'uploads/admin/poster/movie one.webp',
+      );
+      assert.equal(
+        getMediaAssetUrl('https://ace.example.com/api/media/uploads/admin/poster/movie%20one.webp'),
+        '/api/media/uploads/admin/poster/movie%20one.webp',
+      );
     },
   },
   {

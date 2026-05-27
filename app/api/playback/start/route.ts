@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     where: { id: movieId },
     select: {
       id: true,
+      creatorId: true,
       title: true,
       status: true,
       r2Key: true,
@@ -72,13 +73,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not available' }, { status: 403 });
   }
   const availability = getVideoAvailabilityDecision(video.technicalMetadata?.availabilityRegion, req);
-  if (!availability.allowed) {
+  const canBypassAvailability = auth.role === 'ADMIN' || auth.sub === video.creatorId;
+  if (!availability.allowed && !canBypassAvailability) {
     return NextResponse.json({
       error: 'This title is licensed for Africa only and cannot be watched from your current location.',
       reason: 'GEO_BLOCKED',
       availabilityRegion: availability.region,
       country: availability.country
     }, { status: 403 });
+  }
+
+  const unlock = await prisma.unlock.findFirst({
+    where: { userId: auth.sub, videoId: movieId }
+  });
+  const hasFullAccess = Boolean(unlock) || auth.sub === video.creatorId || auth.role === 'ADMIN';
+
+  if (!hasFullAccess) {
+    return NextResponse.json({ allowed: false, reason: 'NOT_UNLOCKED' }, { status: 403 });
   }
 
   const assetSnapshot = await getPlaybackAssetSnapshot(video.id, primaryProgressiveKey, fallbackProgressiveKey, masterProgressiveKey);
@@ -104,14 +115,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: 'Playback assets are not ready for this title yet.'
     }, { status: 409 });
-  }
-
-  const unlock = await prisma.unlock.findFirst({
-    where: { userId: auth.sub, videoId: movieId }
-  });
-
-  if (!unlock) {
-    return NextResponse.json({ allowed: false, reason: 'NOT_UNLOCKED' }, { status: 403 });
   }
 
   const streamSession = await ensureStreamSession({

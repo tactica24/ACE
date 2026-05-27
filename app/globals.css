@@ -1527,6 +1527,8 @@ button {
 }
 
 .moderation-poster {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 16 / 9;
   min-height: 180px;
   border-radius: 18px;
@@ -1534,6 +1536,27 @@ button {
   place-items: center;
   background: radial-gradient(circle at 40% 35%, rgba(67, 244, 255, 0.28), transparent 30%), linear-gradient(135deg, #17264a, #211047 62%, #0f1935);
   font-weight: 700;
+}
+
+.moderation-poster-img,
+.moderation-mini-poster-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.moderation-mini-poster {
+  position: relative;
+  overflow: hidden;
+  width: 56px;
+  height: 76px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(244, 211, 94, 0.18), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .moderation-content {
@@ -2368,6 +2391,8 @@ body.watch-mode-active .video-page-player {
 }
 
 .series-episode-thumb {
+  position: relative;
+  overflow: hidden;
   min-height: 140px;
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(245, 178, 92, 0.3), rgba(27, 38, 66, 0.92));
@@ -10878,6 +10903,16 @@ body::before {
     filter 340ms ease;
 }
 
+.home-movie-poster-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
 .home-movie-poster-card::before {
   content: '';
   position: absolute;
@@ -11556,12 +11591,24 @@ body::before {
 }
 
 .movie-split-top .detail-poster-image {
+  position: relative;
+  overflow: hidden;
   height: 100%;
   min-height: 320px;
   aspect-ratio: 2 / 3; /* Movie posters are vertical */
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
+}
+
+.movie-split-top .detail-poster-image img,
+.series-episode-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 /* Premium Segmented Mode Selector inside AcePlayer */

@@ -57,14 +57,16 @@ function hasDatabaseUrl() {
 }
 
 export async function getFinanceConfig() {
+  const fallback = {
+    ...DEFAULT_FINANCE_CONFIG,
+    updatedAt: new Date(0)
+  };
+
   if (!hasDatabaseUrl()) {
-    return {
-      ...DEFAULT_FINANCE_CONFIG,
-      updatedAt: new Date(0)
-    };
+    return fallback;
   }
 
-  const config = await getCachedFinanceConfig();
+  const config = await getCachedFinanceConfig().catch(() => null);
   if (config) {
     return config;
   }
@@ -73,7 +75,7 @@ export async function getFinanceConfig() {
     where: { id: FINANCE_CONFIG_ID },
     update: {},
     create: DEFAULT_FINANCE_CONFIG
-  });
+  }).catch(() => fallback);
 }
 
 export async function getPlatformWallet() {

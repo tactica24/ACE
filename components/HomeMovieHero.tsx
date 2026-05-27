@@ -119,6 +119,7 @@ export default function HomeMovieHero(
   const [isDragging, setIsDragging] = useState(false);
   const [entering, setEntering] = useState<number | null>(null);
   const [isHoveringButtons, setIsHoveringButtons] = useState(false);
+  const [failedPosterUrls, setFailedPosterUrls] = useState<Set<string>>(() => new Set());
 
   const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dragStartXRef = useRef<number | null>(null);
@@ -136,6 +137,23 @@ export default function HomeMovieHero(
   const count = allVideos.length;
   const safeActiveIndex = count > 0 ? activeIndex % count : 0;
   const featured: HeroCarouselVideo | null = allVideos[safeActiveIndex] ?? allVideos[0] ?? null;
+
+  const markPosterFailed = useCallback((posterUrl: string) => {
+    setFailedPosterUrls((current) => {
+      if (current.has(posterUrl)) return current;
+      const next = new Set(current);
+      next.add(posterUrl);
+      return next;
+    });
+  }, []);
+
+  const getPosterForIndex = useCallback(
+    (index: number) => {
+      const poster = posterFor(index, allVideos);
+      return poster && !failedPosterUrls.has(poster) ? poster : null;
+    },
+    [allVideos, failedPosterUrls],
+  );
 
   const scheduleAutoplay = useCallback(() => {
     if (timeoutRef.current !== null) {
@@ -238,10 +256,11 @@ export default function HomeMovieHero(
     [isDragging, goPrev, goNext],
   );
 
+  const featuredPoster = featured ? getPosterForIndex(safeActiveIndex) : null;
   const backdropImage =
-    featured
+    featured && featuredPoster
       ? `linear-gradient(99deg,rgba(4,6,12,.96) 0%,rgba(4,6,12,.54) 48%,rgba(4,6,12,.74) 100%),url("${
-          getPosterUrl(featured.posterKey) ?? ''
+          featuredPoster
         }")`
       : undefined;
 
@@ -277,7 +296,7 @@ export default function HomeMovieHero(
         <div className="home-movie-floating-layer">
           {backCards.map((card) => {
             const cardVideo = allVideos[card.videoIdx];
-            const poster = posterFor(card.videoIdx, allVideos);
+            const poster = getPosterForIndex(card.videoIdx);
             if (!cardVideo || !poster) return null;
 
             return (
@@ -288,11 +307,13 @@ export default function HomeMovieHero(
                 tabIndex={-1}
                 aria-label={`Open ${cardVideo.title}`}
                 style={cardStyleFor(card.idx, buildCardBackground(poster), card.variant, entering, card.offset)}
-              />
+              >
+                <img src={poster} alt="" loading="lazy" decoding="async" aria-hidden="true" onError={() => markPosterFailed(poster)} />
+              </a>
             );
           })}
           {(() => {
-            const poster = posterFor(safeActiveIndex, allVideos);
+            const poster = getPosterForIndex(safeActiveIndex);
             if (!poster) return null;
 
             return (
@@ -303,7 +324,9 @@ export default function HomeMovieHero(
                 tabIndex={-1}
                 aria-label={`Open ${featured.title}`}
                 style={cardStyleFor(safeActiveIndex, buildCardBackground(poster), 'front', entering, 0)}
-              />
+              >
+                <img src={poster} alt="" loading="eager" decoding="async" aria-hidden="true" onError={() => markPosterFailed(poster)} />
+              </a>
             );
           })()}
         </div>

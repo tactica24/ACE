@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getMediaAssetUrl } from '@/lib/media';
+import PosterAsset from '@/components/PosterAsset';
 
 type Item = {
   id: string;
@@ -354,28 +355,16 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
 
         return (
           <div key={item.id} className="card moderation-card">
-            <div
-              className="moderation-poster"
-              style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-            >
-              {!posterUrl ? <span>Ace Studio</span> : null}
+            <div className="moderation-poster">
+              <PosterAsset src={posterUrl} imgClassName="moderation-poster-img" />
             </div>
 
             <div className="moderation-content">
               <div className="moderation-header">
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div
-                    style={{
-                      width: 56,
-                      height: 76,
-                      borderRadius: 12,
-                      flexShrink: 0,
-                      background: posterUrl
-                        ? `center / cover no-repeat url(${posterUrl})`
-                        : 'linear-gradient(135deg, rgba(244,211,94,0.18), rgba(255,255,255,0.04))',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  />
+                  <div className="moderation-mini-poster">
+                    <PosterAsset src={posterUrl} imgClassName="moderation-mini-poster-img" fallbackLabel="" />
+                  </div>
                   <div>
                   <h3>{item.video.title}</h3>
                   <p className="muted">{item.video.description}</p>

@@ -4,6 +4,7 @@ import BrowseCatalog from '@/components/BrowseCatalog';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { getFinanceConfig } from '@/lib/finance';
+import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getSiteSettings } from '@/lib/site-settings';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
@@ -27,6 +28,10 @@ type BrowseVideo = {
 
 function firstValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function hasPosterAsset(video: BrowseVideo) {
+  return Boolean(getMediaAssetUrl(video.posterKey));
 }
 
 export default async function BrowsePage({
@@ -54,7 +59,7 @@ export default async function BrowsePage({
 
   let videos: BrowseVideo[] = [];
   try {
-    videos = (await getApprovedCatalogVideos()).filter((video) => Boolean(video.posterKey));
+    videos = (await getApprovedCatalogVideos()).filter(hasPosterAsset);
   } catch {
     videos = [];
   }

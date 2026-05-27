@@ -660,15 +660,21 @@ export default function AcePlayer({
   }, [isAuthenticated, loadStream, loginHref, router, videoId]);
 
   useEffect(() => {
+    if (trailerKey) {
+      setIsPlayingTrailer(true);
+      setFeedback(null);
+      setShowPaywall(false);
+      pendingResumeRef.current = null;
+      pendingAutoplayRef.current = false;
+      return;
+    }
+
+    setIsPlayingTrailer(false);
     loadStream({
       resumeAt: Math.max(initialProgress, readSavedProgress(videoId)),
       autoplay: false
     }).catch(() => setFeedback('Unable to load the movie stream right now.'));
-  }, [initialProgress, loadStream, videoId]);
-
-  useEffect(() => {
-    setIsPlayingTrailer(Boolean(trailerKey));
-  }, [trailerKey, videoId]);
+  }, [initialProgress, loadStream, trailerKey, videoId]);
 
   useEffect(() => {
     const video = videoRef.current;

@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import AcePlayer from '@/components/AcePlayer';
 import LaunchPage from '@/components/LaunchPage';
 import MovieAccessDetails from '@/components/MovieAccessDetails';
+import PosterAsset from '@/components/PosterAsset';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
@@ -224,7 +225,7 @@ export default async function VideoPage({
                   className="detail-poster-image"
                   style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                 >
-                  {!posterUrl ? <span>Ace Studio</span> : null}
+                  <PosterAsset src={posterUrl} loading="eager" />
                 </div>
               </div>
 
@@ -451,7 +452,7 @@ export default async function VideoPage({
                 className="detail-poster-image"
                 style={seriesPosterUrl ? { backgroundImage: `url(${seriesPosterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
               >
-                {!seriesPosterUrl ? <span>Ace Studio</span> : null}
+                <PosterAsset src={seriesPosterUrl} loading="eager" />
               </div>
             </div>
 
@@ -567,7 +568,7 @@ export default async function VideoPage({
                               className="series-episode-thumb"
                               style={episodePoster ? { backgroundImage: `url(${episodePoster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                             >
-                              {!episodePoster ? <span>Ace Studio</span> : null}
+                              <PosterAsset src={episodePoster} />
                             </div>
                             <div className="series-episode-copy">
                               <div className="series-episode-topline">

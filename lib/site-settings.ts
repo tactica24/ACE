@@ -30,14 +30,16 @@ function hasDatabaseUrl() {
 }
 
 export async function getSiteSettings() {
+  const fallback = {
+    ...DEFAULT_SITE_SETTINGS,
+    updatedAt: new Date(0)
+  };
+
   if (!hasDatabaseUrl()) {
-    return {
-      ...DEFAULT_SITE_SETTINGS,
-      updatedAt: new Date(0)
-    };
+    return fallback;
   }
 
-  const settings = await getCachedSiteSettings();
+  const settings = await getCachedSiteSettings().catch(() => null);
   if (settings) {
     return settings;
   }
@@ -46,7 +48,7 @@ export async function getSiteSettings() {
     where: { id: SITE_SETTINGS_ID },
     update: {},
     create: DEFAULT_SITE_SETTINGS
-  });
+  }).catch(() => fallback);
 }
 
 export function revalidateSiteSettings() {
