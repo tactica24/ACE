@@ -218,74 +218,77 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
 export default async function HomePage() {
   const user = await getCurrentUser();
 
-  let videos: HomeVideo[] = [];
-  try {
-    const catalogVideos = await getApprovedCatalogVideos();
-    videos = dedupeVideos(catalogVideos).slice(0, 40);
-  } catch {
-    videos = [];
-  }
+   let videos: HomeVideo[] = [];
+   try {
+     const catalogVideos = await getApprovedCatalogVideos();
+     videos = dedupeVideos(catalogVideos).slice(0, 40);
+   } catch {
+     videos = [];
+   }
 
-  let pricingConfig: any;
-  try {
-    pricingConfig = await getFinanceConfig();
-  } catch {
-    pricingConfig = {
-      standardNaira: 50,
-      premiereNaira: 50,
-      snackNaira: 50
-    };
-  }
+   // Filter to only videos with posters for consistent display (like visitor homepage)
+   const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
 
-  if (!user) {
-    const posterBackedVideos = dedupeVideos(onlyCatalogVideosWithPosters(videos));
-    return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} />;
-  }
+   let pricingConfig: any;
+   try {
+     pricingConfig = await getFinanceConfig();
+   } catch {
+     pricingConfig = {
+       standardNaira: 50,
+       premiereNaira: 50,
+       snackNaira: 50
+     };
+   }
 
-  let unlockedVideos: HomeVideo[] = [];
+   if (!user) {
+     return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} />;
+   }
 
-  if (user && process.env.DATABASE_URL?.trim()) {
-    try {
-      const unlocks = await prisma.unlock.findMany({
-          where: {
-            userId: user.sub,
-            video: getViewerReadyCatalogWhere()
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          include: {
-            video: {
-              include: {
-                series: {
-                  select: {
-                    posterKey: true
-                  }
-                }
-              }
-            }
-          }
-        });
+   let unlockedVideos: HomeVideo[] = [];
 
-      unlockedVideos = unlocks.map((entry) => ({
-        ...entry.video,
-        posterKey: entry.video.posterKey ?? entry.video.series?.posterKey ?? null
-      }));
-    } catch {
-      unlockedVideos = [];
-    }
-  }
+   if (user && process.env.DATABASE_URL?.trim()) {
+     try {
+       const unlocks = await prisma.unlock.findMany({
+           where: {
+             userId: user.sub,
+             video: getViewerReadyCatalogWhere()
+           },
+           orderBy: { createdAt: 'desc' },
+           take: 10,
+           include: {
+             video: {
+               include: {
+                 series: {
+                   select: {
+                     posterKey: true
+                   }
+                 }
+               }
+             }
+           }
+         });
 
-  const rows = buildRows(videos, unlockedVideos);
-  const spotlightVideos = videos.slice(0, 5).map((video) => ({
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    category: video.category,
-    durationSec: video.durationSec,
-    videoType: video.videoType,
-    posterKey: video.posterKey,
-    releaseYear: video.releaseYear,
-  }));
+       unlockedVideos = unlocks.map((entry) => ({
+         ...entry.video,
+         posterKey: entry.video.posterKey ?? entry.video.series?.posterKey ?? null
+       }));
+     } catch {
+       unlockedVideos = [];
+     }
+   }
+
+   // Use only videos with posters for consistent display
+   const rows = buildRows(posterBackedVideos, unlockedVideos);
+   const spotlightVideos = posterBackedVideos.slice(0, 5).map((video) => ({
+     id: video.id,
+     title: video.title,
+     description: video.description,
+     category: video.category,
+     durationSec: video.durationSec,
+     videoType: video.videoType,
+     posterKey: video.posterKey,
+     releaseYear: video.releaseYear,
+   }));
 
   return (
     <div className="viewer-home">
