@@ -15,6 +15,9 @@ type Item = {
     status?: string;
     videoType?: string;
     seriesId?: string | null;
+    series?: {
+      posterKey: string | null;
+    } | null;
     ageRating?: string;
     rightsTier?: string;
     priceTier?: string;
