@@ -27,7 +27,7 @@ export default async function TvPage() {
     redirect('/');
   }
 
-  let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
+let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
   try {
     const catalogVideos = await prisma.video.findMany({
       where: getViewerReadyCatalogWhere(),
@@ -41,7 +41,7 @@ export default async function TvPage() {
       orderBy: { createdAt: 'desc' },
       take: 20
     });
-    videos = onlyCatalogVideosWithPosters(catalogVideos).map((video) => ({
+    videos = catalogVideos.map((video) => ({
       ...video,
       posterKey: video.posterKey ?? video.series?.posterKey ?? null
     }));

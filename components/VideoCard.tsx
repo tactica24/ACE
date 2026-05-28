@@ -177,10 +177,6 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     setIsInteractive(false);
   };
 
-  if (!hasPoster) {
-    return null;
-  }
-
   return (
     <Link
       href={`/v/${video.id}`}
@@ -204,7 +200,11 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
             aria-hidden="true"
             onError={() => setPosterFailed(true)}
           />
-        ) : null}
+        ) : (
+          <span className="video-thumb-placeholder" aria-hidden="true">
+            {video.title.charAt(0).toUpperCase()}
+          </span>
+        )}
         {previewSource ? (
           <video
             ref={previewRef}

@@ -294,61 +294,71 @@ export default function HomeMovieHero(
 
       {featured ? (
         <div className="home-movie-floating-layer">
-          {backCards.map((card) => {
-            const cardVideo = allVideos[card.videoIdx];
-            const poster = getPosterForIndex(card.videoIdx);
-            if (!cardVideo || !poster) return null;
+{backCards.map((card) => {
+             const cardVideo = allVideos[card.videoIdx];
+             const poster = getPosterForIndex(card.videoIdx);
 
-            return (
-              <a
-                key={`${card.variant}-${card.idx}`}
-                className={`home-movie-poster-card home-movie-poster--${card.variant} is-lower`}
-                href={`/v/${cardVideo.id}`}
-                tabIndex={-1}
-                aria-label={`Open ${cardVideo.title}`}
-                style={cardStyleFor(card.idx, buildCardBackground(poster), card.variant, entering, card.offset)}
-              >
-                <Image
-                  src={poster}
-                  alt=""
-                  width={320}
-                  height={480}
-                  sizes="(max-width: 768px) 34vw, 260px"
-                  unoptimized
-                  loading="lazy"
-                  aria-hidden="true"
-                  onError={() => markPosterFailed(poster)}
-                />
-              </a>
-            );
-          })}
-          {(() => {
-            const poster = getPosterForIndex(safeActiveIndex);
-            if (!poster) return null;
+             return (
+               <a
+                 key={`${card.variant}-${card.idx}`}
+                 className={`home-movie-poster-card home-movie-poster--${card.variant} is-lower`}
+                 href={`/v/${cardVideo.id}`}
+                 tabIndex={-1}
+                 aria-label={`Open ${cardVideo.title}`}
+                 style={cardStyleFor(card.idx, buildCardBackground(poster), card.variant, entering, card.offset)}
+               >
+                 {poster ? (
+                   <Image
+                     src={poster}
+                     alt=""
+                     width={320}
+                     height={480}
+                     sizes="(max-width: 768px) 34vw, 260px"
+                     unoptimized
+                     loading="lazy"
+                     aria-hidden="true"
+                     onError={() => markPosterFailed(poster)}
+                   />
+                 ) : (
+                   <span className="home-movie-placeholder" aria-hidden="true">
+                     {cardVideo.title.charAt(0).toUpperCase()}
+                   </span>
+                 )}
+               </a>
+             );
+           })}
+           {(() => {
+             const poster = getPosterForIndex(safeActiveIndex);
 
-            return (
-              <a
-                key={`front-${featured.id}`}
-                className="home-movie-poster-card home-movie-poster--front home-movie-poster-front-enter"
-                href={`/v/${featured.id}`}
-                tabIndex={-1}
-                aria-label={`Open ${featured.title}`}
-                style={cardStyleFor(safeActiveIndex, buildCardBackground(poster), 'front', entering, 0)}
-              >
-                <Image
-                  src={poster}
-                  alt=""
-                  width={360}
-                  height={540}
-                  sizes="(max-width: 768px) 42vw, 320px"
-                  unoptimized
-                  loading="eager"
-                  aria-hidden="true"
-                  onError={() => markPosterFailed(poster)}
-                />
-              </a>
-            );
-          })()}
+             return (
+               <a
+                 key={`front-${featured.id}`}
+                 className="home-movie-poster-card home-movie-poster--front home-movie-poster-front-enter"
+                 href={`/v/${featured.id}`}
+                 tabIndex={-1}
+                 aria-label={`Open ${featured.title}`}
+                 style={cardStyleFor(safeActiveIndex, buildCardBackground(poster), 'front', entering, 0)}
+               >
+                 {poster ? (
+                   <Image
+                     src={poster}
+                     alt=""
+                     width={360}
+                     height={540}
+                     sizes="(max-width: 768px) 42vw, 320px"
+                     unoptimized
+                     loading="eager"
+                     aria-hidden="true"
+                     onError={() => markPosterFailed(poster)}
+                   />
+                 ) : (
+                   <span className="home-movie-placeholder" aria-hidden="true">
+                     {featured.title.charAt(0).toUpperCase()}
+                   </span>
+                 )}
+               </a>
+             );
+           })()}
         </div>
       ) : null}
 

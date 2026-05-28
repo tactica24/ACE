@@ -554,6 +554,18 @@ button {
   z-index: 0;
 }
 
+.video-thumb-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: linear-gradient(135deg, #162030, #0c111b 62%, #070a11);
+  z-index: 0;
+}
+
 .video-thumb-has-poster {
   background: #05070d;
 }
@@ -10914,6 +10926,18 @@ body::before {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  z-index: 0;
+}
+
+.home-movie-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: linear-gradient(135deg, rgba(22, 32, 48, 1), rgba(12, 17, 27, 0.96));
   z-index: 0;
 }
 

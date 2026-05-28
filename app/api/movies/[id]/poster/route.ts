@@ -28,8 +28,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const auth = await getAuthFromRequest(req);
   const visible = ['APPROVED', 'PUBLISHED'].includes(video.status) || canPreviewVideo(video, auth);
+
   if (!visible) {
-    return NextResponse.json({ error: 'Poster not available.' }, { status: 403 });
+    const hasUnlock = auth && await prisma.unlock.findFirst({
+      where: { userId: auth.sub, videoId: params.id },
+      select: { id: true }
+    });
+    if (!hasUnlock) {
+      return NextResponse.json({ error: 'Poster not available.' }, { status: 403 });
+    }
   }
 
   const posterKey = resolveMoviePosterKeyFromCandidates(video, video.series);

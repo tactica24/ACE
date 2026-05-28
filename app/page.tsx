@@ -58,14 +58,13 @@ function formatRuntime(_durationSec?: number | null) {
 
 function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   const rows: HomeRow[] = [];
-  const posterBackedUnlockedVideos = dedupeVideos(onlyCatalogVideosWithPosters(unlockedVideos));
 
-  if (posterBackedUnlockedVideos.length) {
+  if (unlockedVideos.length) {
     rows.push({
       id: 'my-library',
       title: 'Top Picks for You',
       description: 'Titles already available on your account.',
-      items: posterBackedUnlockedVideos
+      items: unlockedVideos.slice(0, 10)
     });
   }
 
@@ -80,7 +79,7 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
 }
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const guestHeroVideos = dedupeVideos(onlyCatalogVideosWithPosters(videos)).slice(0, 5);
+  const guestHeroVideos = videos.slice(0, 5);
   const featuredRows = guestHeroVideos.length
     ? [
         {
@@ -221,7 +220,8 @@ export default async function HomePage() {
 
   let videos: HomeVideo[] = [];
   try {
-    videos = dedupeVideos(onlyCatalogVideosWithPosters(await getApprovedCatalogVideos())).slice(0, 40);
+    const catalogVideos = await getApprovedCatalogVideos();
+    videos = dedupeVideos(catalogVideos).slice(0, 40);
   } catch {
     videos = [];
   }
@@ -238,7 +238,8 @@ export default async function HomePage() {
   }
 
   if (!user) {
-    return <GuestProfessionalHome videos={videos} pricingConfig={pricingConfig} />;
+    const posterBackedVideos = dedupeVideos(onlyCatalogVideosWithPosters(videos));
+    return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} />;
   }
 
   let unlockedVideos: HomeVideo[] = [];
