@@ -9,6 +9,7 @@ import {
   getViewerPackageLabel,
   getViewerPackageStatus
 } from '@/lib/delivery-package';
+import { hasMoviePosterFromCandidates } from '@/lib/movie-assets';
 
 export const dynamic = 'force-dynamic';
 
@@ -228,25 +229,31 @@ export default async function ModerationPage() {
       };
     };
 
-    queueItems = [
-      ...items.map((item) => ({
-        id: item.id,
-        hasModerationRecord: true,
-        status: item.status,
-        notes: item.notes,
-        video: mapQueueVideo(item.video)
-      })),
-      ...orphanApprovedVideos.map((video) => ({
-        id: `video-${video.id}`,
-        hasModerationRecord: false,
-        status: 'APPROVED',
-        notes: 'Approved title without a moderation record. Remove it from the catalog here if it should not remain live.',
-        video: mapQueueVideo(video)
-      }))
-    ];
-  } catch {
-    queueItems = [];
-  }
+     queueItems = [
+       ...items.map((item) => ({
+         id: item.id,
+         hasModerationRecord: true,
+         status: item.status,
+         notes: item.notes,
+         video: mapQueueVideo(item.video)
+       })),
+       ...orphanApprovedVideos.map((video) => ({
+         id: `video-${video.id}`,
+         hasModerationRecord: false,
+         status: 'APPROVED',
+         notes: 'Approved title without a moderation record. Remove it from the catalog here if it should not remain live.',
+         video: mapQueueVideo(video)
+       }))
+     ];
+
+     // Filter to only items with posters (same logic as visitor homepage)
+     queueItems = queueItems.filter(item => {
+       const video = item.video;
+       return hasMoviePosterFromCandidates(video, video.series);
+     });
+   } catch {
+     queueItems = [];
+   }
 
   return (
     <DashboardShell

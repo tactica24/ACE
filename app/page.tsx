@@ -218,77 +218,80 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
 export default async function HomePage() {
   const user = await getCurrentUser();
 
-   let videos: HomeVideo[] = [];
-   try {
-     const catalogVideos = await getApprovedCatalogVideos();
-     videos = dedupeVideos(catalogVideos).slice(0, 40);
-   } catch {
-     videos = [];
-   }
+    let videos: HomeVideo[] = [];
+    try {
+      const catalogVideos = await getApprovedCatalogVideos();
+      videos = dedupeVideos(catalogVideos).slice(0, 40);
+    } catch {
+      videos = [];
+    }
 
-   // Filter to only videos with posters for consistent display (like visitor homepage)
-   const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
+    // Filter to only videos with posters for consistent display (like visitor homepage)
+    const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
 
-   let pricingConfig: any;
-   try {
-     pricingConfig = await getFinanceConfig();
-   } catch {
-     pricingConfig = {
-       standardNaira: 50,
-       premiereNaira: 50,
-       snackNaira: 50
-     };
-   }
+    let pricingConfig: any;
+    try {
+      pricingConfig = await getFinanceConfig();
+    } catch {
+      pricingConfig = {
+        standardNaira: 50,
+        premiereNaira: 50,
+        snackNaira: 50
+      };
+    }
 
-   if (!user) {
-     return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} />;
-   }
+    if (!user) {
+      const posterBackedVideosForGuest = dedupeVideos(onlyCatalogVideosWithPosters(videos));
+      return <GuestProfessionalHome videos={posterBackedVideosForGuest} pricingConfig={pricingConfig} />;
+    }
 
-   let unlockedVideos: HomeVideo[] = [];
+    let unlockedVideos: HomeVideo[] = [];
 
-   if (user && process.env.DATABASE_URL?.trim()) {
-     try {
-       const unlocks = await prisma.unlock.findMany({
-           where: {
-             userId: user.sub,
-             video: getViewerReadyCatalogWhere()
-           },
-           orderBy: { createdAt: 'desc' },
-           take: 10,
-           include: {
-             video: {
-               include: {
-                 series: {
-                   select: {
-                     posterKey: true
-                   }
-                 }
-               }
-             }
-           }
-         });
+    if (user && process.env.DATABASE_URL?.trim()) {
+      try {
+        const unlocks = await prisma.unlock.findMany({
+            where: {
+              userId: user.sub,
+              video: getViewerReadyCatalogWhere()
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            include: {
+              video: {
+                include: {
+                  series: {
+                    select: {
+                      posterKey: true
+                    }
+                  }
+                }
+              }
+            }
+          });
 
-       unlockedVideos = unlocks.map((entry) => ({
-         ...entry.video,
-         posterKey: entry.video.posterKey ?? entry.video.series?.posterKey ?? null
-       }));
-     } catch {
-       unlockedVideos = [];
-     }
-   }
+        unlockedVideos = unlocks.map((entry) => ({
+          ...entry.video,
+          posterKey: entry.video.posterKey ?? entry.video.series?.posterKey ?? null
+        }));
+      } catch {
+        unlockedVideos = [];
+      }
+    }
 
-   // Use only videos with posters for consistent display
-   const rows = buildRows(posterBackedVideos, unlockedVideos);
-   const spotlightVideos = posterBackedVideos.slice(0, 5).map((video) => ({
-     id: video.id,
-     title: video.title,
-     description: video.description,
-     category: video.category,
-     durationSec: video.durationSec,
-     videoType: video.videoType,
-     posterKey: video.posterKey,
-     releaseYear: video.releaseYear,
-   }));
+    // Also filter unlocked videos to only those with posters
+    const unlockedVideosWithPosters = onlyCatalogVideosWithPosters(unlockedVideos);
+
+    const rows = buildRows(posterBackedVideos, unlockedVideosWithPosters);
+    const spotlightVideos = posterBackedVideos.slice(0, 5).map((video) => ({
+      id: video.id,
+      title: video.title,
+      description: video.description,
+      category: video.category,
+      durationSec: video.durationSec,
+      videoType: video.videoType,
+      posterKey: video.posterKey,
+      releaseYear: video.releaseYear,
+    }));
 
   return (
     <div className="viewer-home">
