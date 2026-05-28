@@ -222,7 +222,10 @@ class _CarouselSection extends StatelessWidget {
                 width: compactCards ? 178 : 220,
                 child: TitleCard(
                   title: titleItem,
-                  posterUrl: resolveMediaUrl(titleItem.posterKey),
+                  posterUrl: resolvePosterUrl(
+                    titleItem.posterUrl,
+                    titleItem.posterKey,
+                  ),
                   compact: compactCards,
                   onTap: () => context.push('/title/${titleItem.id}'),
                 ),

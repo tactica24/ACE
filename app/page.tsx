@@ -253,12 +253,21 @@ export default async function HomePage() {
           orderBy: { createdAt: 'desc' },
           take: 10,
           include: {
-            video: true
+            video: {
+              include: {
+                series: {
+                  select: {
+                    posterKey: true
+                  }
+                }
+              }
+            }
           }
         });
 
       unlockedVideos = unlocks.map((entry) => ({
-        ...entry.video
+        ...entry.video,
+        posterKey: entry.video.posterKey ?? entry.video.series?.posterKey ?? null
       }));
     } catch {
       unlockedVideos = [];

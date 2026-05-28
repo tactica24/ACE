@@ -1,5 +1,5 @@
 // k6 Load Test - ACE Critical Endpoints (2026-05-22)
-// Target: stream token (video playback), unlock, auth, and payment flows
+// Target: playback, unlock, auth, and payment flows
 // Usage:
 //   k6 run --vus 50 --duration 2m perf/k6-critical-endpoints.js
 //   k6 run --vus 200 --duration 5m --out json=results.json perf/k6-critical-endpoints.js
@@ -36,15 +36,15 @@ export default function () {
     ...(TEST_USER_TOKEN && { Authorization: `Bearer ${TEST_USER_TOKEN}` }),
   };
 
-  // 1. Stream token (most critical for video playback)
-  const streamRes = http.get(`${BASE_URL}/api/stream/token?videoId=${TEST_VIDEO_ID}&quality=adaptive`, {
+  // 1. Playback URL creation (most critical for video playback)
+  const streamRes = http.get(`${BASE_URL}/api/movies/${TEST_VIDEO_ID}/playback?teaser=1`, {
     headers,
-    tags: { name: 'stream_token' },
+    tags: { name: 'movie_playback_preview' },
   });
 
   check(streamRes, {
-    'stream/token 200 or 401 (auth)': (r) => r.status === 200 || r.status === 401,
-    'stream/token has playback or error': (r) => {
+    'playback preview 200 or controlled error': (r) => [200, 401, 403, 404, 409].includes(r.status),
+    'playback preview has playback or error': (r) => {
       try {
         const body = JSON.parse(r.body);
         return body.playback || body.error;
@@ -56,8 +56,8 @@ export default function () {
 
   // 2. Unlock attempt (rate limited endpoint)
   const unlockRes = http.post(
-    `${BASE_URL}/api/unlock`,
-    JSON.stringify({ videoId: TEST_VIDEO_ID }),
+    `${BASE_URL}/api/movies/${TEST_VIDEO_ID}/unlock`,
+    JSON.stringify({}),
     { headers, tags: { name: 'unlock' } }
   );
 

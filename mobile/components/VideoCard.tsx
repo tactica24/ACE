@@ -1,4 +1,5 @@
-﻿import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BASE_URL } from '@/lib/client';
 import { theme } from '@/lib/theme';
 
 export type MobileVideo = {
@@ -8,6 +9,7 @@ export type MobileVideo = {
   category?: string;
   videoType?: string;
   ageRating?: string;
+  posterUrl?: string | null;
 };
 
 const ageLabel: Record<string, string> = {
@@ -17,11 +19,23 @@ const ageLabel: Record<string, string> = {
   PG18: '18+'
 };
 
+function toAbsolutePosterUrl(url?: string | null) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export default function VideoCard({ video, onPress }: { video: MobileVideo; onPress?: () => void }) {
+  const posterUrl = toAbsolutePosterUrl(video.posterUrl);
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.thumb}>
-        <Text style={styles.thumbText}>AS</Text>
+        {posterUrl ? (
+          <Image source={{ uri: posterUrl }} style={styles.poster} resizeMode="cover" />
+        ) : (
+          <Text style={styles.thumbText}>AS</Text>
+        )}
       </View>
       <View style={styles.metaBlock}>
         <Text style={styles.title}>{video.title}</Text>
@@ -52,6 +66,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1e7d8',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  poster: {
+    width: '100%',
+    height: '100%'
   },
   thumbText: {
     fontWeight: '700',

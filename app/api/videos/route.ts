@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { getFinanceConfig } from '@/lib/finance';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 
@@ -32,7 +32,12 @@ export async function GET(req: NextRequest) {
       durationSec: true,
       releaseYear: true,
       highlightSeconds: true,
-      posterKey: true
+      posterKey: true,
+      series: {
+        select: {
+          posterKey: true
+        }
+      }
     },
     orderBy: { createdAt: 'desc' },
     take: take + 20
@@ -43,7 +48,8 @@ export async function GET(req: NextRequest) {
     {
       videos: posterBackedVideos.map((video) => ({
         ...video,
-        posterUrl: getMoviePosterUrl(video),
+        posterKey: video.posterKey ?? video.series?.posterKey ?? null,
+        posterUrl: getMoviePosterUrlFromCandidates(video, video, video.series),
         price: getRegionalPriceForVideo(req, video, pricingConfig)
       }))
     },

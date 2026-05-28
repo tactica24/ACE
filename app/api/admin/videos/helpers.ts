@@ -15,6 +15,11 @@ export async function getProcessingVideo(videoId: string) {
       createdAt: true,
       updatedAt: true,
       posterKey: true,
+      series: {
+        select: {
+          posterKey: true
+        }
+      },
       creatorId: true,
       qualities: true,
       creator: {
@@ -58,6 +63,6 @@ export async function getProcessingVideo(videoId: string) {
     playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
     qualities: video.qualities,
     trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
-    posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null
+    posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null
   };
 }

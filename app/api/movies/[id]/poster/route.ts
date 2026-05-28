@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { resolveMoviePosterKey } from '@/lib/movie-assets';
+import { resolveMoviePosterKeyFromCandidates } from '@/lib/movie-assets';
 import { createPresignedGetUrl } from '@/lib/r2';
 import { canPreviewVideo } from '@/lib/video-access';
 
@@ -13,7 +13,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     select: {
       creatorId: true,
       status: true,
-      posterKey: true
+      posterKey: true,
+      series: {
+        select: {
+          posterKey: true
+        }
+      }
     }
   });
 
@@ -27,7 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Poster not available.' }, { status: 403 });
   }
 
-  const posterKey = resolveMoviePosterKey(video);
+  const posterKey = resolveMoviePosterKeyFromCandidates(video, video.series);
   if (!posterKey) {
     return NextResponse.json({ error: 'Poster not available.' }, { status: 404 });
   }

@@ -5,7 +5,7 @@ import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatRecordedCharge } from '@/lib/format';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
     const searchWhere = buildMobileCatalogSearchWhere(searchQuery);
     const where = searchWhere
       ? {
-          AND: [getViewerReadyCatalogWhere(), { posterKey: { not: null } }, searchWhere],
+          AND: [getViewerReadyCatalogWhere(), searchWhere],
         }
       : {
-          AND: [getViewerReadyCatalogWhere(), { posterKey: { not: null } }]
+          AND: [getViewerReadyCatalogWhere()]
         };
 
     const videos = await prisma.video.findMany({
@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
         posterKey: true,
         priceTier: true,
         rightsTier: true,
+        series: {
+          select: {
+            posterKey: true
+          }
+        },
         technicalMetadata: {
           select: {
             vendorId: true,
@@ -105,8 +110,8 @@ export async function GET(request: NextRequest) {
         teaserSec: video.teaserSec,
         durationSec: video.durationSec,
         releaseYear: video.releaseYear,
-        posterKey: video.posterKey,
-        posterUrl: getMoviePosterUrl(video),
+        posterKey: video.posterKey ?? video.series?.posterKey ?? null,
+        posterUrl: getMoviePosterUrlFromCandidates(video, video, video.series),
         metadata: {
           vendorId: video.technicalMetadata?.vendorId ?? null,
           studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,

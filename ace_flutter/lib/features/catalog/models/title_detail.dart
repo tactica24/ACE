@@ -40,6 +40,7 @@ class TitleEpisode {
     required this.teaserSec,
     required this.durationSec,
     required this.posterKey,
+    this.posterUrl,
     required this.previewAvailable,
     required this.audioLanguages,
     required this.subtitleTracks,
@@ -56,6 +57,7 @@ class TitleEpisode {
   final int teaserSec;
   final int durationSec;
   final String? posterKey;
+  final String? posterUrl;
   final bool previewAvailable;
   final List<String> audioLanguages;
   final List<TitleSubtitleTrack> subtitleTracks;
@@ -81,6 +83,7 @@ class TitleEpisode {
         teaserSec: (json['teaserSec'] as num?)?.toInt() ?? 0,
         durationSec: (json['durationSec'] as num?)?.toInt() ?? 0,
         posterKey: json['posterKey'] as String?,
+        posterUrl: json['posterUrl'] as String?,
         previewAvailable: json['previewAvailable'] as bool? ?? false,
         audioLanguages: (json['audioLanguages'] as List<dynamic>? ?? const [])
             .map((item) => item.toString())

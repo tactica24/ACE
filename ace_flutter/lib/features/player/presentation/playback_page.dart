@@ -213,20 +213,10 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
               teaserOnly: entry.teaserOnly,
               isSignedIn: _isSignedIn,
               trailerUrl: entry.trailerUrl,
-              qualityPreference: preferences.playbackQuality,
             );
     final playbackCandidates = <String>[
-      if (urls.preferredUrl != null && urls.preferredUrl!.isNotEmpty)
-        urls.preferredUrl!,
-      if (urls.progressiveUrl != null &&
-          urls.progressiveUrl!.isNotEmpty &&
-          urls.progressiveUrl != urls.preferredUrl)
+      if (urls.progressiveUrl != null && urls.progressiveUrl!.isNotEmpty)
         urls.progressiveUrl!,
-      if (urls.hlsUrl != null &&
-          urls.hlsUrl!.isNotEmpty &&
-          urls.hlsUrl != urls.preferredUrl)
-        urls.hlsUrl!,
-      if (urls.dashUrl != null && urls.dashUrl!.isNotEmpty) urls.dashUrl!,
     ];
     if (playbackCandidates.isEmpty) {
       throw Exception('No playback stream available for this title.');

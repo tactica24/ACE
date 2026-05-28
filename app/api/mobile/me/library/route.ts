@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
 import { getViewerReadyAnyVideoWhere } from '@/lib/video-visibility';
 
 export const dynamic = 'force-dynamic';
@@ -17,19 +17,24 @@ export async function GET(req: NextRequest) {
     where: { userId: auth.sub, video: getViewerReadyAnyVideoWhere() },
     orderBy: { createdAt: 'desc' },
     include: {
-      video: {
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          category: true,
-          videoType: true,
-          ageRating: true,
-          posterKey: true,
-          teaserSec: true,
-          durationSec: true
+        video: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            category: true,
+            videoType: true,
+            ageRating: true,
+            posterKey: true,
+            series: {
+              select: {
+                posterKey: true
+              }
+            },
+            teaserSec: true,
+            durationSec: true
+          }
         }
-      }
     }
   });
 
@@ -41,8 +46,8 @@ export async function GET(req: NextRequest) {
       category: unlock.video.category,
       videoType: unlock.video.videoType,
       ageRating: unlock.video.ageRating,
-      posterKey: unlock.video.posterKey,
-      posterUrl: getMoviePosterUrl(unlock.video),
+      posterKey: unlock.video.posterKey ?? unlock.video.series?.posterKey ?? null,
+      posterUrl: getMoviePosterUrlFromCandidates(unlock.video, unlock.video, unlock.video.series),
       teaserSec: unlock.video.teaserSec,
       durationSec: unlock.video.durationSec,
       accessGrantedAt: unlock.createdAt.toISOString(),

@@ -7,6 +7,7 @@ import { normalizeSubtitleTracks, isSupportedLanguageCode, type SubmittedSubtitl
 import { isOwnedUploadKey, buildOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
 import { getObjectBuffer, putObject } from '@/lib/r2';
 import { convertSubtitleToVtt, ensureVttFilename } from '@/lib/subtitle-convert';
+import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 
 // Minimal short upload: accepts array of up to 5 items with title and file keys
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid poster upload' }, { status: 400 });
     }
 
+    await assertUploadedObjectExists(masterUploadKey, 'Final playable MP4 master');
+    await assertUploadedObjectExists(trailerKey, 'Trailer MP4');
+    await assertUploadedObjectExists(posterKey, 'Poster artwork');
+
     const rawNormalizedSubtitleTracks = rawSubtitleTracks.map((track) => ({
       fileKey: typeof track?.fileKey === 'string' ? track.fileKey.trim() : '',
       label: typeof track?.label === 'string' && track.label.trim() ? track.label.trim() : 'Subtitles',
@@ -69,6 +74,8 @@ export async function POST(req: NextRequest) {
       if (!isOwnedUploadKey(track.fileKey, auth.sub, 'subtitle')) {
         return NextResponse.json({ error: 'Invalid subtitle upload' }, { status: 400 });
       }
+
+      await assertUploadedObjectExists(track.fileKey, 'Subtitle file');
 
       const lowerKey = track.fileKey.toLowerCase();
       if (lowerKey.endsWith('.srt') || lowerKey.endsWith('.vtt')) {

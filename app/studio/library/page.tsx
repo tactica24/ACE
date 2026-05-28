@@ -5,6 +5,7 @@ import VideoCard from '@/components/VideoCard';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
+import { hasMovieMp4 } from '@/lib/movie-assets';
 import { getStudioNavItems } from '@/lib/studio-nav';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import {
@@ -88,7 +89,7 @@ export default async function LibraryPage() {
             <div key={video.id} className="card library-card">
               {(() => {
                 const readyEpisodeCount = video.episodes.filter(
-                  (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.masterKey)
+                  (episode) => episode.status === 'APPROVED' && hasMovieMp4(episode)
                 ).length;
 
                 return (
@@ -114,9 +115,9 @@ export default async function LibraryPage() {
                           {getViewerPackageStatus({
                             videoType: video.videoType,
                             seriesId: video.seriesId,
-                            primaryReady: Boolean(video.r2Key),
-                            fallbackReady: Boolean(video.fallbackR2Key),
-                            masterReady: Boolean(video.technicalMetadata?.masterKey),
+                            primaryReady: Boolean(video.r2Key?.toLowerCase().endsWith('.mp4')),
+                            fallbackReady: Boolean(video.fallbackR2Key?.toLowerCase().endsWith('.mp4')),
+                            masterReady: Boolean(video.technicalMetadata?.masterKey?.toLowerCase().endsWith('.mp4')),
                             episodeCount: video._count.episodes,
                             readyEpisodeCount
                           })}

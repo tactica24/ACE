@@ -93,7 +93,10 @@ class _BrowsePageState extends ConsumerState<BrowsePage> {
                     final title = titles[index];
                     return TitleCard(
                       title: title,
-                      posterUrl: resolveMediaUrl(title.posterKey),
+                      posterUrl: resolvePosterUrl(
+                        title.posterUrl,
+                        title.posterKey,
+                      ),
                       compact: compactCards,
                       onTap: () => context.push('/title/${title.id}'),
                     );

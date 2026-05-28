@@ -10,7 +10,6 @@ import '../../../core/network/api_client.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../catalog/models/title_detail.dart';
 import '../../player/data/playback_repository.dart';
-import '../../profile/data/user_preferences.dart';
 import '../models/downloaded_title.dart';
 
 const _downloadsPrefKeyPrefix = 'ace.offline.downloads.';
@@ -69,12 +68,8 @@ class OfflineDownloadRepository {
       titleId: detail.summary.id,
       teaserOnly: false,
       isSignedIn: true,
-      qualityPreference:
-          (await UserPreferences.load()).downloadQuality == 'Best available'
-              ? 'High quality'
-              : 'Data saver',
     );
-    final streamUrl = urls.progressiveUrl ?? urls.hlsUrl ?? urls.dashUrl;
+    final streamUrl = urls.progressiveUrl;
     if (streamUrl == null) {
       throw Exception('No downloadable stream available for this title.');
     }

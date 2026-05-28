@@ -25,7 +25,12 @@ import { canAccessVideoFromCountry } from '../lib/video-availability';
 import { getMultipartUploadRateLimit } from '../lib/upload-rate-limit';
 import { MAX_MASTER_BYTES } from '../lib/upload-limits';
 import { validateUploadRequest } from '../lib/upload-security';
-import { getMoviePosterUrl, resolveMovieMp4Key } from '../lib/movie-assets';
+import {
+  getMoviePosterUrl,
+  getMoviePosterUrlFromCandidates,
+  resolveMovieMp4Key,
+  resolveMoviePosterKeyFromCandidates
+} from '../lib/movie-assets';
 import { getSignedStoredMediaUrl } from '../lib/media-delivery';
 import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
 import { type PricingConfigValues } from '../lib/pricing';
@@ -309,6 +314,21 @@ const videoCases: Case[] = [
       assert.equal(
         getMoviePosterUrl({ id: 'movie-2', posterKey: 'uploads/admin/poster/ace-studio-placeholder.webp' }),
         null,
+      );
+      assert.equal(
+        resolveMoviePosterKeyFromCandidates(
+          { posterKey: null },
+          { posterKey: 'uploads/admin/poster/series.webp' },
+        ),
+        'uploads/admin/poster/series.webp',
+      );
+      assert.equal(
+        getMoviePosterUrlFromCandidates(
+          { id: 'episode-1' },
+          { posterKey: null },
+          { posterKey: 'uploads/admin/poster/series.webp' },
+        ),
+        '/api/movies/episode-1/poster',
       );
       assert.equal(
         getMediaAssetUrl(' subtitles\\movie one.vtt '),

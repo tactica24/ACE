@@ -24,6 +24,9 @@ export type CatalogVideo = {
     crewCredits: unknown;
     promotionalStillKeys: string[];
   } | null;
+  series?: {
+    posterKey: string | null;
+  } | null;
 };
 
 export type HighlightCatalogVideo = CatalogVideo & {
@@ -45,6 +48,11 @@ const getApprovedCatalogVideosCached = unstable_cache(
             crewCredits: true,
             promotionalStillKeys: true
           }
+        },
+        series: {
+          select: {
+            posterKey: true
+          }
         }
       }
     }),
@@ -57,7 +65,11 @@ export async function getApprovedCatalogVideos() {
     return [];
   }
 
-  return getApprovedCatalogVideosCached() as Promise<CatalogVideo[]>;
+  const videos = (await getApprovedCatalogVideosCached()) as CatalogVideo[];
+  return videos.map((video) => ({
+    ...video,
+    posterKey: video.posterKey ?? video.series?.posterKey ?? null
+  }));
 }
 
 const getApprovedHighlightVideosCached = unstable_cache(
@@ -84,7 +96,12 @@ const getApprovedHighlightVideosCached = unstable_cache(
         ageRating: true,
         category: true,
         createdAt: true,
-        highlightSeconds: true
+        highlightSeconds: true,
+        series: {
+          select: {
+            posterKey: true
+          }
+        }
       }
     }),
   ['approved-highlight-videos'],
@@ -96,7 +113,11 @@ export async function getApprovedHighlightVideos() {
     return [];
   }
 
-  return getApprovedHighlightVideosCached() as Promise<HighlightCatalogVideo[]>;
+  const videos = (await getApprovedHighlightVideosCached()) as HighlightCatalogVideo[];
+  return videos.map((video) => ({
+    ...video,
+    posterKey: video.posterKey ?? video.series?.posterKey ?? null
+  }));
 }
 
 export function revalidateApprovedCatalog() {

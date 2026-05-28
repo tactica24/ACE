@@ -17,7 +17,7 @@ import { getMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
-import { canPreviewVideo, isEpisodeVideo } from '@/lib/video-access';
+import { canPreviewVideo, isEpisodeVideo, isSeriesContainer } from '@/lib/video-access';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 import { getRegionalPriceForVideo, getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
@@ -121,7 +121,12 @@ export default async function VideoPage({
     return notFound();
   }
 
-  if (!canPreviewRequested && isViewerVisibleStatus(requestedVideo.status) && !hasMovieMp4(requestedVideo)) {
+  if (
+    !canPreviewRequested &&
+    isViewerVisibleStatus(requestedVideo.status) &&
+    !isSeriesContainer(requestedVideo) &&
+    !hasMovieMp4(requestedVideo)
+  ) {
     return notFound();
   }
 

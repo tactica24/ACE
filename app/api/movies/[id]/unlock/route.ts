@@ -58,6 +58,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
   const mp4Status = await getMovieMp4StorageStatus(video);
   if (!mp4Status.selectedKey) {
+    console.warn('[movie-unlock] MP4 storage lookup failed', {
+      videoId,
+      storageConfigured: mp4Status.storageConfigured,
+      candidates: mp4Status.candidates
+    });
     return NextResponse.json({
       error: mp4Status.candidates.length
         ? 'The MP4 file for this title is missing from storage. Please try again after it is re-uploaded.'

@@ -35,7 +35,7 @@ Next tests to add after safe test credentials exist:
 # Install k6 once
 # https://k6.io/docs/getting-started/installation/
 
-# Run critical endpoints test (unlock, stream/token, health)
+# Run critical endpoints test (unlock, playback, health)
 k6 run --vus 100 --duration 3m perf/k6-critical-endpoints.js
 
 # With env vars for real testing
@@ -46,8 +46,8 @@ k6 run perf/k6-critical-endpoints.js
 ```
 
 The k6 script (`perf/k6-critical-endpoints.js`) targets the exact hot paths:
-- `/api/stream/token` (video playback)
-- `/api/unlock`
+- `/api/movies/:id/playback` (video playback)
+- `/api/movies/:id/unlock`
 - Health + rate-limit behavior under spike (300 VUs)
 
 Use this for the real penetration + heavy usage validation before production traffic.

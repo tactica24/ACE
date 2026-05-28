@@ -14,7 +14,17 @@ export async function GET(req: NextRequest) {
       status: { in: ['PENDING', 'APPROVED'] },
       video: { status: { in: ['PENDING', 'APPROVED'] } }
     },
-    include: { video: true },
+    include: {
+      video: {
+        include: {
+          series: {
+            select: {
+              posterKey: true
+            }
+          }
+        }
+      }
+    },
     orderBy: { createdAt: 'desc' },
     take: 50
   });
@@ -38,7 +48,7 @@ export async function GET(req: NextRequest) {
       originalLanguage: item.video.originalLanguage,
       genres: item.video.genres,
       contentWarnings: item.video.contentWarnings,
-      posterKey: item.video.posterKey,
+      posterKey: item.video.posterKey ?? item.video.series?.posterKey ?? null,
       createdAt: item.video.createdAt.toISOString()
     }
   }));

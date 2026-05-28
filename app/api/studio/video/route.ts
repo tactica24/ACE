@@ -6,6 +6,7 @@ import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTrac
 import { getObjectBuffer, putObject } from '@/lib/r2';
 import { srtToVtt, ensureVttFilename } from '@/lib/subtitle-convert';
 import { buildOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
+import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { isOwnedUploadKey } from '@/lib/upload-security';
@@ -457,6 +458,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'The 16:9 key art upload is invalid for this studio account.' }, { status: 400 });
   }
 
+  await assertUploadedObjectExists(safeDeliveryMetadata?.trailerKey, 'Trailer MP4');
+  await assertUploadedObjectExists(safeDeliveryMetadata?.landscapeArtworkKey, 'Landscape artwork');
+
   if (safeVideoType !== 'SERIES') {
     if (!safeTitle || !safeDescription || !safeMasterUploadKey) {
       return NextResponse.json({ error: 'Please upload a final playable MP4 master for your movie.' }, { status: 400 });
@@ -490,6 +494,12 @@ export async function POST(req: NextRequest) {
 
     if (safeSubtitleTracks.some((track) => !validateOwnedKey(track.fileKey, auth.sub, 'subtitle'))) {
       return NextResponse.json({ error: 'One or more subtitle uploads are invalid for this studio account.' }, { status: 400 });
+    }
+
+    await assertUploadedObjectExists(safeMasterUploadKey, 'Final playable MP4 master');
+    await assertUploadedObjectExists(safePosterKey, 'Poster artwork');
+    for (const track of safeSubtitleTracks) {
+      await assertUploadedObjectExists(track.fileKey, 'Subtitle file');
     }
 
     // Convert uploaded subtitle files to WebVTT when possible (e.g., SRT -> VTT)
@@ -615,6 +625,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  await assertUploadedObjectExists(safePosterKey, 'Series poster artwork');
+  for (const episode of safeEpisodes) {
+    await assertUploadedObjectExists(
+      episode.masterKey || episode.r2Key || episode.fallbackR2Key,
+      `Episode ${episode.seasonNumber}.${episode.episodeNumber} playable MP4`
+    );
+    await assertUploadedObjectExists(episode.posterKey, `Episode ${episode.seasonNumber}.${episode.episodeNumber} poster artwork`);
+    for (const track of episode.subtitleTracks) {
+      await assertUploadedObjectExists(track.fileKey, `Episode ${episode.seasonNumber}.${episode.episodeNumber} subtitle file`);
+    }
+  }
+
   // Convert episode subtitle files to WebVTT when possible (e.g., SRT -> VTT)
   for (const episode of safeEpisodes) {
     if (episode.subtitleTracks && episode.subtitleTracks.length) {
@@ -672,6 +694,7 @@ export async function POST(req: NextRequest) {
       const items = [];
 
       for (const episode of safeEpisodes) {
+        const playableKey = episode.masterKey || episode.r2Key || episode.fallbackR2Key || null;
         const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
           const created = await tx.video.create({
             data: {
@@ -696,8 +719,8 @@ export async function POST(req: NextRequest) {
               durationSec: episode.durationSec,
               tags: series.tags,
               highlightSeconds: episode.highlightSeconds,
-              r2Key: null,
-              fallbackR2Key: null,
+              r2Key: episode.r2Key || null,
+              fallbackR2Key: episode.fallbackR2Key || null,
               posterKey: episode.posterKey ?? series.posterKey,
               subtitleTracks: episode.subtitleTracks.length
                 ? {
@@ -712,11 +735,11 @@ export async function POST(req: NextRequest) {
                 : undefined,
               technicalMetadata: {
                 create: {
-                  masterKey: episode.masterKey,
-                  masterFileName: episode.masterKey ? `Episode ${episode.seasonNumber}.${episode.episodeNumber} Master` : null,
+                  masterKey: playableKey,
+                  masterFileName: playableKey ? `Episode ${episode.seasonNumber}.${episode.episodeNumber} Master` : null,
                   masterFileSize: null,
-                  masterUploadedAt: episode.masterKey ? new Date() : undefined,
-                  processingStatus: episode.masterKey ? 'MASTER_UPLOADED' : 'NO_MASTER'
+                  masterUploadedAt: playableKey ? new Date() : undefined,
+                  processingStatus: playableKey ? 'MASTER_UPLOADED' : 'NO_MASTER'
                 }
               }
             }
@@ -789,6 +812,7 @@ export async function POST(req: NextRequest) {
 
     const createdEpisodes = [];
     for (const episode of safeEpisodes) {
+      const playableKey = episode.masterKey || episode.r2Key || episode.fallbackR2Key || null;
       const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
       const created = await tx.video.create({
         data: {
@@ -813,8 +837,8 @@ export async function POST(req: NextRequest) {
           durationSec: episode.durationSec,
           tags: safeTags,
           highlightSeconds: episode.highlightSeconds,
-          r2Key: null,
-          fallbackR2Key: null,
+          r2Key: episode.r2Key || null,
+          fallbackR2Key: episode.fallbackR2Key || null,
           posterKey: episode.posterKey ?? safePosterKey,
           subtitleTracks: episode.subtitleTracks.length
             ? {
@@ -829,11 +853,11 @@ export async function POST(req: NextRequest) {
             : undefined,
           technicalMetadata: {
             create: {
-              masterKey: episode.masterKey,
-              masterFileName: episode.masterKey ? `Episode ${episode.seasonNumber}.${episode.episodeNumber} Master` : null,
+              masterKey: playableKey,
+              masterFileName: playableKey ? `Episode ${episode.seasonNumber}.${episode.episodeNumber} Master` : null,
               masterFileSize: null,
-              masterUploadedAt: episode.masterKey ? new Date() : undefined,
-              processingStatus: episode.masterKey ? 'MASTER_UPLOADED' : 'NO_MASTER'
+              masterUploadedAt: playableKey ? new Date() : undefined,
+              processingStatus: playableKey ? 'MASTER_UPLOADED' : 'NO_MASTER'
             }
           }
         }

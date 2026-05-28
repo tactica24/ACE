@@ -106,7 +106,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                     final title = titles[index];
                     return TitleCard(
                       title: title,
-                      posterUrl: resolveMediaUrl(title.posterKey),
+                      posterUrl: resolvePosterUrl(
+                        title.posterUrl,
+                        title.posterKey,
+                      ),
                       onTap: () => context.push('/title/${title.id}'),
                     );
                   },

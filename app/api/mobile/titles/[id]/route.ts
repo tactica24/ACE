@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
 import { getMobileViewerAccessState } from '@/lib/mobile-viewer-access';
 import { getViewerReadyEpisodeWhere, getViewerReadyVideoWhere } from '@/lib/video-visibility';
 
@@ -22,6 +22,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           copyrightLine: true,
           castCredits: true,
           crewCredits: true
+        }
+      },
+      series: {
+        select: {
+          posterKey: true
         }
       },
       subtitleTracks: {
@@ -141,8 +146,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         durationSec: title.durationSec,
         releaseYear: title.releaseYear,
         highlightSeconds: title.highlightSeconds,
-        posterKey: title.posterKey,
-        posterUrl: getMoviePosterUrl(title),
+        posterKey: title.posterKey ?? title.series?.posterKey ?? null,
+        posterUrl: getMoviePosterUrlFromCandidates(title, title, title.series),
         creatorId: title.creatorId,
         seriesId: title.seriesId,
         seasonNumber: title.seasonNumber,
@@ -169,8 +174,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           description: episode.description,
           teaserSec: episode.teaserSec,
           durationSec: episode.durationSec,
-          posterKey: episode.posterKey,
-          posterUrl: getMoviePosterUrl(episode),
+          posterKey: episode.posterKey ?? title.posterKey ?? null,
+          posterUrl: getMoviePosterUrlFromCandidates(episode, episode, title),
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,
           previewAvailable:

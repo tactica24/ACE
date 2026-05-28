@@ -10,4 +10,4 @@
 
 ## Notes
 - You can launch once all **BLOCKED** checks are cleared (current run has zero BLOCKED).
-- Install FFmpeg tooling on transcoder hosts if this deployment performs local HLS transcode/publish.
+- FFmpeg tooling is optional and only needed on hosts that normalize uploaded MP4 masters.

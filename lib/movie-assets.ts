@@ -45,10 +45,37 @@ export function resolveMoviePosterKey(video: Pick<MovieAssetVideo, 'posterKey'>)
   return hasExtension(lower, ['.jpg', '.jpeg', '.png', '.webp']) ? key : null;
 }
 
+export function resolveMoviePosterKeyFromCandidates(
+  ...videos: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>
+) {
+  for (const video of videos) {
+    if (!video) continue;
+    const posterKey = resolveMoviePosterKey(video);
+    if (posterKey) return posterKey;
+  }
+
+  return null;
+}
+
 export function getMoviePosterUrl(video: Pick<MovieAssetVideo, 'id' | 'posterKey'>) {
   return resolveMoviePosterKey(video) ? `/api/movies/${encodeURIComponent(video.id)}/poster` : null;
 }
 
+export function getMoviePosterUrlFromCandidates(
+  video: Pick<MovieAssetVideo, 'id'>,
+  ...posterCandidates: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>
+) {
+  return resolveMoviePosterKeyFromCandidates(...posterCandidates)
+    ? `/api/movies/${encodeURIComponent(video.id)}/poster`
+    : null;
+}
+
 export function hasMoviePoster(video: Pick<MovieAssetVideo, 'posterKey'>) {
   return Boolean(resolveMoviePosterKey(video));
+}
+
+export function hasMoviePosterFromCandidates(
+  ...posterCandidates: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>
+) {
+  return Boolean(resolveMoviePosterKeyFromCandidates(...posterCandidates));
 }

@@ -443,7 +443,7 @@ class _MovieOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = detail.summary;
     final canWatch = detail.access.hasAccess;
-    final posterUrl = resolveMediaUrl(title.posterKey);
+    final posterUrl = resolvePosterUrl(title.posterUrl, title.posterKey);
     final metaChips = <Widget>[
       _DetailChip(label: title.category),
       _DetailChip(label: title.videoType),

@@ -7,6 +7,7 @@ import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
+  getObjectMetadata,
   createPresignedUploadPartUrl
 } from '@/lib/r2';
 import { buildOwnedUploadKey, isOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
       }
 
       await completeMultipartUpload({ key, uploadId, parts });
+      await getObjectMetadata(key);
       return NextResponse.json({ ok: true, key });
     }
 

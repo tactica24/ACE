@@ -2,6 +2,7 @@ import TvPairingPanel from '@/components/TvPairingPanel';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
 import { getPrimaryAppPath } from '@/lib/account-routing';
+import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { headers } from 'next/headers';
@@ -28,11 +29,22 @@ export default async function TvPage() {
 
   let videos: Awaited<ReturnType<typeof prisma.video.findMany>> = [];
   try {
-    videos = await prisma.video.findMany({
+    const catalogVideos = await prisma.video.findMany({
       where: getViewerReadyCatalogWhere(),
+      include: {
+        series: {
+          select: {
+            posterKey: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
       take: 20
     });
+    videos = onlyCatalogVideosWithPosters(catalogVideos).map((video) => ({
+      ...video,
+      posterKey: video.posterKey ?? video.series?.posterKey ?? null
+    }));
   } catch {
     videos = [];
   }

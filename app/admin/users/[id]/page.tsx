@@ -112,7 +112,8 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           fallbackR2Key: true,
           series: {
             select: {
-              title: true
+              title: true,
+              posterKey: true
             }
           },
           seasonNumber: true,
@@ -337,7 +338,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     trailerDownloadHref: video.technicalMetadata?.trailerKey
                       ? `/api/admin/videos/${video.id}/trailer`
                       : null,
-                    posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null
+                    posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null
                   }))}
                 />
               </div>

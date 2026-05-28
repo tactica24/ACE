@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_theme.dart';
+import '../../../core/network/media_url.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../../../widgets/title_card.dart';
 import '../data/catalog_repository.dart';
@@ -312,9 +313,7 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
         final title = titles[index];
         return TitleCard(
           title: title,
-          posterUrl: title.posterKey != null
-              ? 'https://api.acestudio.global/api/media/${title.posterKey}'
-              : null,
+          posterUrl: resolvePosterUrl(title.posterUrl, title.posterKey),
           onTap: () => context.push('/title/${title.id}'),
         );
       },

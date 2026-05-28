@@ -50,6 +50,11 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
 
   const mp4Status = await getMovieMp4StorageStatus(video);
   if (!mp4Status.selectedKey) {
+    console.warn('[movie-playback] MP4 storage lookup failed', {
+      videoId,
+      storageConfigured: mp4Status.storageConfigured,
+      candidates: mp4Status.candidates
+    });
     return NextResponse.json({
       error: mp4Status.candidates.length
         ? 'The MP4 file listed for this title could not be found in storage. Re-upload the MP4 and validate the title.'

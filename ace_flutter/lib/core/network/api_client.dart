@@ -16,11 +16,25 @@ class ApiClient {
 
   Uri resolve(String path, [Map<String, String>? query]) {
     final base = Uri.parse(AppConfig.apiBaseUrl);
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    final parsedPath = Uri.tryParse(path);
+
+    if (parsedPath != null && parsedPath.hasScheme) {
+      return query?.isNotEmpty == true
+          ? parsedPath.replace(queryParameters: query)
+          : parsedPath;
+    }
+
+    final rawPath = parsedPath?.path.isNotEmpty == true ? parsedPath!.path : path;
+    final normalizedPath = rawPath.startsWith('/') ? rawPath : '/$rawPath';
+    final resolvedQuery = query?.isNotEmpty == true
+        ? query
+        : parsedPath?.queryParameters.isNotEmpty == true
+            ? parsedPath!.queryParameters
+            : null;
 
     return base.replace(
       path: '${base.path.endsWith('/') ? base.path.substring(0, base.path.length - 1) : base.path}$normalizedPath',
-      queryParameters: query?.isEmpty ?? true ? null : query,
+      queryParameters: resolvedQuery,
     );
   }
 
@@ -60,10 +74,6 @@ class ApiClient {
   String mediaUrl(String key) {
     final uri = resolve('/api/media/$key');
     return uri.toString();
-  }
-
-  String streamUrl(String titleId, String token) {
-    return resolve('/api/stream/$titleId', {'token': token}).toString();
   }
 
   dynamic _decode(http.Response response) {

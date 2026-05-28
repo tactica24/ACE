@@ -7,7 +7,7 @@ This directory contains the Flutter consumer app for ACE Studio. It is intended 
 - premium streaming UI for home, browse, detail, library, profile, and playback
 - Firebase email/password sign-in with shared ACE backend session login/logout
 - access-aware title pages using the existing `/api/mobile/*` routes
-- playback token flow built around `/api/stream/token` and `/api/stream/:id`
+- MP4 playback flow built around `/api/movies/:id/playback`, `/api/movies/:id/stream`, and `/api/movies/:id/unlock`
 - committed Android project files for APK and app bundle builds
 
 ## Android project status
@@ -56,8 +56,10 @@ This Flutter app is wired around the current ACE mobile-safe routes:
 - `GET /api/mobile/firebase-config`
 - `GET /api/mobile/me`
 - `GET /api/mobile/me/library`
-- `GET /api/stream/token`
-- `GET /api/stream/:id`
+- `GET /api/movies/:id/playback?teaser=1`
+- `POST /api/movies/:id/playback`
+- `GET /api/movies/:id/stream`
+- `POST /api/movies/:id/unlock`
 - `POST /api/auth/login`
 - `POST /api/auth/register`
 - `POST /api/auth/logout`

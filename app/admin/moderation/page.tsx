@@ -42,6 +42,11 @@ export default async function ModerationPage() {
               genres: true,
               contentWarnings: true,
               posterKey: true,
+              series: {
+                select: {
+                  posterKey: true
+                }
+              },
               r2Key: true,
               fallbackR2Key: true,
               createdAt: true,
@@ -116,6 +121,11 @@ export default async function ModerationPage() {
           genres: true,
           contentWarnings: true,
           posterKey: true,
+          series: {
+            select: {
+              posterKey: true
+            }
+          },
           r2Key: true,
           fallbackR2Key: true,
           createdAt: true,
@@ -189,11 +199,11 @@ export default async function ModerationPage() {
         originalLanguage: video.originalLanguage,
         genres: video.genres,
         contentWarnings: video.contentWarnings,
-        posterKey: video.posterKey ?? null,
+        posterKey: video.posterKey ?? video.series?.posterKey ?? null,
         trailerDownloadHref: video.technicalMetadata?.trailerKey
           ? `/api/admin/videos/${video.id}/trailer`
           : null,
-        posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null,
+        posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null,
         createdAt: video.createdAt.toISOString(),
         creatorName: video.creator.creator?.displayName ?? video.creator.email,
         packageLabel: getViewerPackageLabel(video),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
+import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 
 const PRICE_TIERS = ['SNACK', 'STANDARD', 'PREMIERE'] as const;
 const RIGHTS_TIERS = ['SHARED', 'EXCLUSIVE'] as const;
@@ -76,6 +77,9 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
   if (Math.round((producerRevenueShare + platformRevenueShare + taxRevenueShare) * 100) / 100 !== 100) {
     return NextResponse.json({ error: 'Revenue split must add up to 100%.' }, { status: 400 });
   }
+
+  await assertUploadedObjectExists(trailerKey, 'Trailer MP4');
+  await assertUploadedObjectExists(posterKey, 'Poster artwork');
 
   const techData: Record<string, unknown> = { licensedTerritories, availabilityRegion };
   if (trailerKey) techData.trailerKey = trailerKey;

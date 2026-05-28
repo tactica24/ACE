@@ -11,6 +11,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const video = await prisma.video.findFirst({
     where: getViewerReadyVideoWhere(params.id),
     include: {
+      series: {
+        select: {
+          posterKey: true
+        }
+      },
       episodes: {
         where: getViewerReadyEpisodeWhere(),
         orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }]
@@ -46,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         durationSec: video.durationSec,
         releaseYear: video.releaseYear,
         highlightSeconds: video.highlightSeconds,
-        posterKey: video.posterKey,
+        posterKey: video.posterKey ?? video.series?.posterKey ?? null,
         creatorId: video.creatorId,
         seriesId: video.seriesId,
         seasonNumber: video.seasonNumber,
@@ -57,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           description: episode.description,
           teaserSec: episode.teaserSec,
           durationSec: episode.durationSec,
-          posterKey: episode.posterKey,
+          posterKey: episode.posterKey ?? video.posterKey ?? null,
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber
         }))

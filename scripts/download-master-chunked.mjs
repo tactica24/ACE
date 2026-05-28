@@ -1,6 +1,5 @@
 import { createWriteStream, mkdirSync } from 'node:fs';
 import { getObjectStream, headObject } from '@/lib/r2';
-import { parseRange } from '@/lib/stream';
 
 const args = Object.fromEntries(process.argv.slice(2).map((value) => {
   const [key, raw = ''] = value.replace(/^--/, '').split('=');

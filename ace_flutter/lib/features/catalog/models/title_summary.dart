@@ -10,6 +10,7 @@ class TitleSummary {
     required this.teaserSec,
     required this.durationSec,
     required this.posterKey,
+    this.posterUrl,
     this.audioLanguages = const [],
     this.seriesId,
     this.releaseYear,
@@ -26,6 +27,7 @@ class TitleSummary {
   final int teaserSec;
   final int durationSec;
   final String? posterKey;
+  final String? posterUrl;
   final List<String> audioLanguages;
   final String? seriesId;
   final int? releaseYear;
@@ -42,6 +44,7 @@ class TitleSummary {
         teaserSec: (json['teaserSec'] as num?)?.toInt() ?? 0,
         durationSec: (json['durationSec'] as num?)?.toInt() ?? 0,
         posterKey: json['posterKey'] as String?,
+        posterUrl: json['posterUrl'] as String?,
         audioLanguages: (json['audioLanguages'] as List<dynamic>? ?? const [])
             .map((item) => item.toString())
             .toList(),

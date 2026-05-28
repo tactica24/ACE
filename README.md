@@ -114,6 +114,6 @@ npm run launch:check
 
 This checks:
 - required environment keys and placeholder/test value detection
-- `ffmpeg` and `ffprobe` availability for HLS processing (warning-only when this host is not your transcoder)
+- optional `ffmpeg` and `ffprobe` availability for hosts that normalize uploaded MP4 masters
 - lint and production build gates
 - app health smoke check (`/api/health`)

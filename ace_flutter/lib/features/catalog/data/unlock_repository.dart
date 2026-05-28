@@ -14,8 +14,8 @@ class UnlockRepository {
 
   Future<UnlockResult> unlockTitle(String titleId) async {
     final payload = await _apiClient.postJson(
-      '/api/unlock',
-      body: {'videoId': titleId},
+      '/api/movies/$titleId/unlock',
+      body: const {},
     ) as Map<String, dynamic>;
 
     return UnlockResult.fromJson(payload);
