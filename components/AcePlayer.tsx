@@ -350,7 +350,7 @@ export default function AcePlayer({
       params.set('deviceSessionId', getDeviceSessionId());
     }
 
-    const res = await fetch(`/api/stream/token?${params.toString()}`, {
+    const res = await fetch(`/api/movies/${encodeURIComponent(videoId)}/playback?${params.toString()}`, {
       method: 'GET',
       cache: 'no-store'
     });
@@ -390,10 +390,10 @@ export default function AcePlayer({
     }
 
     // For authenticated users, call playback start API
-    const res = await fetch('/api/playback/start', {
+    const res = await fetch(`/api/movies/${encodeURIComponent(videoId)}/playback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ movieId: videoId, deviceSessionId: getDeviceSessionId() })
+      body: JSON.stringify({ deviceSessionId: getDeviceSessionId() })
     });
     const data = await res.json().catch(() => ({}));
 
@@ -540,10 +540,10 @@ export default function AcePlayer({
     setFeedback(immediatePrompt ? 'Unlocking the movie...' : null);
 
     try {
-      const res = await fetch('/api/unlock', {
+      const res = await fetch(`/api/movies/${encodeURIComponent(videoId)}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId })
+        body: JSON.stringify({})
       });
       const data = await res.json().catch(() => ({}));
 
@@ -742,7 +742,7 @@ export default function AcePlayer({
     };
 
     const handleError = () => {
-      setFeedback('This video could not be played right now. Use MP4 or WebM uploads for the most reliable playback.');
+      setFeedback('This video could not be played right now. Use a playable MP4 upload for playback.');
     };
 
     const handleSeeking = () => {

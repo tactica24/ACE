@@ -1,11 +1,11 @@
-import { getMediaAssetUrl } from './media';
+import { hasMoviePoster } from './movie-assets';
 
 export type PosterBackedVideo = {
   posterKey?: string | null;
 };
 
 export function hasCatalogPoster(video: PosterBackedVideo) {
-  return Boolean(getMediaAssetUrl(video.posterKey));
+  return hasMoviePoster(video);
 }
 
 export function onlyCatalogVideosWithPosters<T extends PosterBackedVideo>(videos: T[]) {

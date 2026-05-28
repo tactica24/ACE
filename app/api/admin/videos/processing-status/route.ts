@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
+import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { getProcessingVideo } from '../helpers';
 
 const STATUS_UPDATES: Record<string, { status: string }> = {
@@ -28,9 +29,10 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       status: true,
+      r2Key: true,
+      fallbackR2Key: true,
       technicalMetadata: {
         select: {
-          playbackUrl: true,
           processingStatus: true,
           masterKey: true
         }
@@ -47,9 +49,10 @@ export async function POST(req: NextRequest) {
       where: { id: videoId },
       select: {
         status: true,
+        r2Key: true,
+        fallbackR2Key: true,
         technicalMetadata: {
           select: {
-            playbackUrl: true,
             processingStatus: true,
             masterKey: true
           }
@@ -57,10 +60,12 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    const mp4Status = videoForPublish ? await getMovieMp4StorageStatus(videoForPublish) : null;
+
     if (
       videoForPublish?.status !== 'READY' ||
       videoForPublish.technicalMetadata?.processingStatus !== 'READY_TO_STREAM' ||
-      !(videoForPublish.technicalMetadata?.playbackUrl || videoForPublish.technicalMetadata?.masterKey)
+      !mp4Status?.selectedKey
     ) {
       return NextResponse.json({ error: 'Validate MP4 playback before publishing.' }, { status: 400 });
     }

@@ -1,11 +1,13 @@
 import { Prisma } from '@prisma/client';
 
+const mp4KeyFilter = { endsWith: '.mp4', mode: Prisma.QueryMode.insensitive } satisfies Prisma.StringNullableFilter;
+
 export function getPlayableAssetWhere(): Prisma.VideoWhereInput {
   return {
     OR: [
-      { r2Key: { not: null } },
-      { fallbackR2Key: { not: null } },
-      { technicalMetadata: { masterKey: { not: null } } }
+      { r2Key: mp4KeyFilter },
+      { fallbackR2Key: mp4KeyFilter },
+      { technicalMetadata: { is: { masterKey: mp4KeyFilter } } }
     ]
   };
 }

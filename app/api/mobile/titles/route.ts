@@ -5,7 +5,7 @@ import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatRecordedCharge } from '@/lib/format';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         durationSec: video.durationSec,
         releaseYear: video.releaseYear,
         posterKey: video.posterKey,
-        posterUrl: getMediaAssetUrl(video.posterKey),
+        posterUrl: getMoviePosterUrl(video),
         metadata: {
           vendorId: video.technicalMetadata?.vendorId ?? null,
           studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,

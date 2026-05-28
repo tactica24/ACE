@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getDefaultTierPriceNaira } from '@/lib/commerce';
 import { formatCurrencyMinor } from '@/lib/format';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { type PriceTierValue } from '@/lib/media-types';
 
 const labelize = (value: string) =>
@@ -49,7 +49,7 @@ function formatRuntime(_durationSec?: number) {
 export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getDefaultTierPriceNaira(video.priceTier) * 100;
   const currencyCode = video.price?.currency ?? 'USD';
-  const posterUrl = getMediaAssetUrl(video.posterKey);
+  const posterUrl = getMoviePosterUrl(video);
   const runtimeLabel = formatRuntime(video.durationSec);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const [canHoverPreview, setCanHoverPreview] = useState(false);
@@ -97,7 +97,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
     requestRef.current = controller;
 
     try {
-      const tokenResponse = await fetch(`/api/stream/token?videoId=${encodeURIComponent(video.id)}&teaser=1`, {
+      const tokenResponse = await fetch(`/api/movies/${encodeURIComponent(video.id)}/playback?teaser=1`, {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal

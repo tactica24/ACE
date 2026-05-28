@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { getFinanceConfig } from '@/lib/finance';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 
@@ -40,7 +41,11 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     {
-      videos: posterBackedVideos.map((video) => ({ ...video, price: getRegionalPriceForVideo(req, video, pricingConfig) }))
+      videos: posterBackedVideos.map((video) => ({
+        ...video,
+        posterUrl: getMoviePosterUrl(video),
+        price: getRegionalPriceForVideo(req, video, pricingConfig)
+      }))
     },
     {
       headers: {

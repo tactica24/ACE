@@ -1,4 +1,5 @@
 import { type AuthTokenPayload } from './auth';
+import { hasMovieMp4 } from './movie-assets';
 
 type AccessVideo = {
   creatorId: string;
@@ -29,5 +30,5 @@ export function isEpisodeVideo(video: Pick<AccessVideo, 'seriesId'>) {
 }
 
 export function isPlayableVideo(video: Pick<AccessVideo, 'videoType' | 'seriesId' | 'r2Key' | 'fallbackR2Key' | 'technicalMetadata'>) {
-  return !isSeriesContainer(video) && Boolean(video.r2Key || video.fallbackR2Key || video.technicalMetadata?.masterKey);
+  return !isSeriesContainer(video) && hasMovieMp4(video);
 }

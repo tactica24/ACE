@@ -7,8 +7,7 @@ import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
-  createPresignedUploadPartUrl,
-  getMasterBucket
+  createPresignedUploadPartUrl
 } from '@/lib/r2';
 import { buildOwnedUploadKey, isOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
 import { getMultipartUploadRateLimit, type MultipartUploadAction } from '@/lib/upload-rate-limit';
@@ -30,14 +29,8 @@ async function getUploadAuth(req: NextRequest) {
   return auth && (auth.role === 'CREATOR' || auth.role === 'ADMIN') ? auth : null;
 }
 
-function getBucketForPurpose(purpose: string) {
-  if (purpose === 'master') return getMasterBucket();
-  return undefined;
-}
-
 function normalizeParts(value: unknown) {
   if (!Array.isArray(value)) return [];
-
   return value
     .map((part) => ({
       ETag: typeof part?.ETag === 'string' ? part.ETag : '',
@@ -50,9 +43,7 @@ function normalizeParts(value: unknown) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getUploadAuth(req);
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => null);
     const action = typeof body?.action === 'string' ? body.action.trim() as MultipartAction : null;
@@ -68,9 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid upload purpose.' }, { status: 400 });
     }
 
-    const rateLimit = await consumeRateLimit(
-      getMultipartUploadRateLimit(action, getRateLimitIdentity(req, auth.sub))
-    );
+    const rateLimit = await consumeRateLimit(getMultipartUploadRateLimit(action, getRateLimitIdentity(req, auth.sub)));
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many upload requests right now. Please wait and try again.' }, { status: 429 });
     }
@@ -85,7 +74,7 @@ export async function POST(req: NextRequest) {
       }
 
       const nextKey = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid() });
-      const nextUploadId = await createMultipartUpload(nextKey, contentType, getBucketForPurpose(purpose));
+      const nextUploadId = await createMultipartUpload(nextKey, contentType);
       return NextResponse.json({ key: nextKey, uploadId: nextUploadId, purpose, contentType });
     }
 
@@ -99,12 +88,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid upload part number.' }, { status: 400 });
       }
 
-      const url = await createPresignedUploadPartUrl({
-        key,
-        uploadId,
-        partNumber,
-        bucketName: getBucketForPurpose(purpose)
-      });
+      const url = await createPresignedUploadPartUrl({ key, uploadId, partNumber });
       return NextResponse.json({ url, partNumber });
     }
 
@@ -114,14 +98,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No uploaded parts were provided.' }, { status: 400 });
       }
 
-      await completeMultipartUpload({ key, uploadId, parts, bucketName: getBucketForPurpose(purpose) });
+      await completeMultipartUpload({ key, uploadId, parts });
       return NextResponse.json({ ok: true, key });
     }
 
-    await abortMultipartUpload(key, uploadId, getBucketForPurpose(purpose)).catch(() => null);
+    await abortMultipartUpload(key, uploadId).catch(() => null);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Multipart upload error:', error);
+    console.error('[upload-multipart] failed', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to complete multipart upload.' },
       { status: 500 }

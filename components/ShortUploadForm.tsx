@@ -151,7 +151,7 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
     purpose: 'master' | 'trailer' | 'poster' | 'subtitle',
     onProgress: (loaded: number, total: number) => void
   ) {
-    const response = await fetch('/api/studio/upload-url', {
+    const response = await fetch('/api/uploads/sign', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

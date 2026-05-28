@@ -1,7 +1,6 @@
 import { createWriteStream, mkdirSync } from 'node:fs';
 import { getObjectStream, headObject } from '@/lib/r2';
 import { parseRange } from '@/lib/stream';
-import { getMasterBucket } from '@/lib/r2';
 
 const args = Object.fromEntries(process.argv.slice(2).map((value) => {
   const [key, raw = ''] = value.replace(/^--/, '').split('=');
@@ -27,7 +26,7 @@ if (!require('node:fs').existsSync(outputDir)) {
 async function downloadMasterInChunks() {
   try {
     // Get file metadata
-    const headResponse = await headObject(masterKey, getMasterBucket());
+    const headResponse = await headObject(masterKey);
     const fileSize = headResponse.ContentLength || 0;
     
     if (fileSize === 0) {
@@ -52,7 +51,7 @@ async function downloadMasterInChunks() {
       console.log(`Downloading chunk ${chunkNumber + 1}: ${rangeHeader} (${Math.round(((chunkEnd - chunkStart + 1) / (1024 * 1024)) * 100) / 100} MB)`);
       
       try {
-        const response = await getObjectStream(masterKey, rangeHeader, getMasterBucket());
+        const response = await getObjectStream(masterKey, rangeHeader);
         
         if (!response.Body) {
           throw new Error('Missing response body');

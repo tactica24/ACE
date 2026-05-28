@@ -27,7 +27,6 @@ const envSchema = z.object({
   R2_ACCESS_KEY_ID: z.string().default(''),
   R2_SECRET_ACCESS_KEY: z.string().default(''),
   R2_BUCKET: z.string().default(''),
-  MASTER_R2_BUCKET: z.string().default(''),
   R2_REGION: z.string().min(1).default('auto'),
   ACE_STORAGE_DIR: z.string().min(1).default('./storage'),
   ACE_NODE_NAME: z.string().min(1).default('ace-app-origin-01'),
@@ -68,7 +67,6 @@ const REQUIRED_PRODUCTION_ENV = [
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
   'R2_BUCKET',
-  'MASTER_R2_BUCKET',
   'ACE_APP_BASE_URL'
 ] as const satisfies ReadonlyArray<keyof Env>;
 
@@ -104,7 +102,6 @@ function loadEnv(): Env {
     R2_ACCESS_KEY_ID: normalizeEnvValue(process.env.R2_ACCESS_KEY_ID) ?? normalizeEnvValue(process.env.AWS_ACCESS_KEY_ID),
     R2_SECRET_ACCESS_KEY: normalizeEnvValue(process.env.R2_SECRET_ACCESS_KEY) ?? normalizeEnvValue(process.env.AWS_SECRET_ACCESS_KEY),
     R2_BUCKET: normalizeEnvValue(process.env.R2_BUCKET),
-    MASTER_R2_BUCKET: normalizeEnvValue(process.env.MASTER_R2_BUCKET),
     R2_REGION: normalizeEnvValue(process.env.R2_REGION),
     ACE_STORAGE_DIR: normalizeEnvValue(process.env.ACE_STORAGE_DIR),
     ACE_NODE_NAME: normalizeEnvValue(process.env.ACE_NODE_NAME),
@@ -168,7 +165,6 @@ export function getMissingProductionEnvKeys() {
     R2_ACCESS_KEY_ID: normalizeEnvValue(process.env.R2_ACCESS_KEY_ID) ?? normalizeEnvValue(process.env.AWS_ACCESS_KEY_ID),
     R2_SECRET_ACCESS_KEY: normalizeEnvValue(process.env.R2_SECRET_ACCESS_KEY) ?? normalizeEnvValue(process.env.AWS_SECRET_ACCESS_KEY),
     R2_BUCKET: normalizeEnvValue(process.env.R2_BUCKET),
-    MASTER_R2_BUCKET: normalizeEnvValue(process.env.MASTER_R2_BUCKET),
     ACE_APP_BASE_URL: normalizeEnvValue(process.env.ACE_APP_BASE_URL)
   });
 

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { ensureCached } from '@/lib/stream';
-import { getPlayableProgressiveKey } from '@/lib/playback-delivery';
+import { resolveAvailableMovieMp4Key } from '@/lib/movie-storage';
 import {
   cleanupExpiredOfflinePackages,
   getOfflinePackageRetentionCutoff,
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const progressiveKey = getPlayableProgressiveKey(video);
+    const progressiveKey = await resolveAvailableMovieMp4Key(video);
     if (!progressiveKey) {
       throw new Error('No progressive asset available for offline packaging.');
     }

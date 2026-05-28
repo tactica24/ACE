@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getMobileViewerAccessState } from '@/lib/mobile-viewer-access';
 import { getViewerReadyEpisodeWhere, getViewerReadyVideoWhere } from '@/lib/video-visibility';
 
@@ -141,7 +142,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         releaseYear: title.releaseYear,
         highlightSeconds: title.highlightSeconds,
         posterKey: title.posterKey,
-        posterUrl: getMediaAssetUrl(title.posterKey),
+        posterUrl: getMoviePosterUrl(title),
         creatorId: title.creatorId,
         seriesId: title.seriesId,
         seasonNumber: title.seasonNumber,
@@ -169,7 +170,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           teaserSec: episode.teaserSec,
           durationSec: episode.durationSec,
           posterKey: episode.posterKey,
-          posterUrl: getMediaAssetUrl(episode.posterKey),
+          posterUrl: getMoviePosterUrl(episode),
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,
           previewAvailable:

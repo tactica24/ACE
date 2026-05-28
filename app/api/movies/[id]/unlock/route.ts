@@ -1,27 +1,23 @@
 import { Prisma } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
 import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '@/lib/credits';
+import { prisma } from '@/lib/db';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
-import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
-import {
-  getPlayableProgressiveKey,
-  getPlayableProgressiveUrl
-} from '@/lib/playback-delivery';
-import { readReferralCode, resolveReferral } from '@/lib/referrals';
+import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-import { isSeriesContainer } from '@/lib/video-access';
-import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
+import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { planUnlockDebit } from '@/lib/unlock-debit';
+import { isSeriesContainer } from '@/lib/video-access';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
-import { revalidatePath } from 'next/cache';
+import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 
 function isPrismaKnownError(error: unknown, code: string) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await getAuthFromRequest(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!hasVerifiedEmail(auth)) {
@@ -29,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rateLimit = await consumeRateLimit({
-    key: `unlock:${getRateLimitIdentity(req, auth.sub)}`,
+    key: `movie-unlock:${getRateLimitIdentity(req, auth.sub)}`,
     limit: 40,
     windowMs: 1000 * 60 * 10
   });
@@ -37,8 +33,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many unlock attempts. Please wait a moment and try again.', reason: 'RATE_LIMITED' }, { status: 429 });
   }
 
-  const body = await req.json();
-  const videoId = body.videoId as string | undefined;
+  const body = await req.json().catch(() => ({}));
+  const videoId = params.id.trim();
   if (!videoId) return NextResponse.json({ error: 'Missing videoId' }, { status: 400 });
 
   const video = await prisma.video.findUnique({
@@ -48,8 +44,7 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           availabilityRegion: true,
-          masterKey: true,
-          playbackUrl: true
+          masterKey: true
         }
       }
     }
@@ -61,6 +56,15 @@ export async function POST(req: NextRequest) {
   if (isSeriesContainer(video)) {
     return NextResponse.json({ error: 'Select an episode to unlock and watch.' }, { status: 400 });
   }
+  const mp4Status = await getMovieMp4StorageStatus(video);
+  if (!mp4Status.selectedKey) {
+    return NextResponse.json({
+      error: mp4Status.candidates.length
+        ? 'The MP4 file for this title is missing from storage. Please try again after it is re-uploaded.'
+        : 'No playable MP4 is attached to this title yet.'
+    }, { status: 409 });
+  }
+
   const availability = getVideoAvailabilityDecision(video.technicalMetadata?.availabilityRegion, req);
   if (!availability.allowed) {
     return NextResponse.json({
@@ -69,42 +73,6 @@ export async function POST(req: NextRequest) {
       availabilityRegion: availability.region,
       country: availability.country
     }, { status: 403 });
-  }
-
-  let assetSnapshot;
-  try {
-    assetSnapshot = await getPlaybackAssetSnapshot(
-      video.id,
-      video.r2Key,
-      video.fallbackR2Key,
-      video.technicalMetadata?.masterKey
-    );
-  } catch (snapshotErr) {
-    console.error('[unlock] getPlaybackAssetSnapshot failed', snapshotErr);
-    return NextResponse.json({
-      error: 'Unable to verify playback assets for this title. Please contact support.'
-    }, { status: 500 });
-  }
-
-  if (!assetSnapshot.ready) {
-    const playableProgressiveKey = getPlayableProgressiveKey(video);
-    const playableProgressiveUrl = getPlayableProgressiveUrl(video);
-    const canAttemptPlayback = Boolean(playableProgressiveKey || playableProgressiveUrl);
-
-    if (canAttemptPlayback) {
-      console.warn('[unlock] allowing unlock despite inconclusive asset HEAD check', {
-        videoId,
-        playableProgressiveKey: Boolean(playableProgressiveKey),
-        playableProgressiveUrl: Boolean(playableProgressiveUrl),
-        storageConfigured: assetSnapshot.storageConfigured
-      });
-    } else {
-      return NextResponse.json({
-        error: assetSnapshot.storageConfigured
-          ? 'This title is not ready for MP4 playback yet.'
-          : 'MP4 playback storage is not configured yet for this title.'
-      }, { status: 409 });
-    }
   }
 
   const financeConfig = await getFinanceConfig();
@@ -133,7 +101,6 @@ export async function POST(req: NextRequest) {
           return { unlocked: true, source: existing.source, unlockId: existing.id, created: false };
         }
 
-        let source: 'PASS' | 'WALLET' = 'WALLET';
         const activePasses = await tx.subscriptionPass.findMany({
           where: { userId: auth.sub, expiresAt: { gt: new Date() }, creditsRemaining: { gt: 0 } },
           orderBy: { expiresAt: 'asc' }
@@ -146,40 +113,30 @@ export async function POST(req: NextRequest) {
           walletBalanceNaira: wallet?.balanceNaira ?? 0
         });
 
-        for (let index = 0; index < activePasses.length; index += 1) {
-          const usage = debitPlan.passUsageUnits[index] ?? 0;
-          if (usage <= 0) {
-            continue;
-          }
-
-          await tx.subscriptionPass.update({
-            where: { id: activePasses[index].id },
-            data: { creditsRemaining: { decrement: usage } }
-          });
-        }
-
-        const walletCreditUnitsUsed = debitPlan.walletCreditUnitsUsed;
-        const walletBalanceNeeded = debitPlan.walletBalanceNeeded;
-
         if (!debitPlan.sufficientBalance) {
           throw new Error('INSUFFICIENT_BALANCE');
         }
 
-        if (walletCreditUnitsUsed > 0 || walletBalanceNeeded > 0) {
-          if (!wallet) {
-            throw new Error('INSUFFICIENT_BALANCE');
+        for (let index = 0; index < activePasses.length; index += 1) {
+          const usage = debitPlan.passUsageUnits[index] ?? 0;
+          if (usage > 0) {
+            await tx.subscriptionPass.update({
+              where: { id: activePasses[index].id },
+              data: { creditsRemaining: { decrement: usage } }
+            });
           }
+        }
 
+        if (debitPlan.walletCreditUnitsUsed > 0 || debitPlan.walletBalanceNeeded > 0) {
+          if (!wallet) throw new Error('INSUFFICIENT_BALANCE');
           await tx.wallet.update({
             where: { userId: auth.sub },
             data: {
-              credits: walletCreditUnitsUsed > 0 ? { decrement: walletCreditUnitsUsed } : undefined,
-              balanceNaira: walletBalanceNeeded > 0 ? { decrement: walletBalanceNeeded } : undefined
+              credits: debitPlan.walletCreditUnitsUsed > 0 ? { decrement: debitPlan.walletCreditUnitsUsed } : undefined,
+              balanceNaira: debitPlan.walletBalanceNeeded > 0 ? { decrement: debitPlan.walletBalanceNeeded } : undefined
             }
           });
         }
-
-        source = debitPlan.source;
 
         const unlock = await tx.unlock.create({
           data: {
@@ -188,7 +145,7 @@ export async function POST(req: NextRequest) {
             amountNaira,
             amountMinor: amountNaira * 100,
             currency: 'NGN',
-            source,
+            source: debitPlan.source,
             watermarkText: auth.name?.trim() || auth.email.split('@')[0] || auth.email,
             referralCode: referral?.code
           }
@@ -215,18 +172,16 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        return { unlocked: true, source, unlockId: unlock.id, created: true };
+        return { unlocked: true, source: debitPlan.source, unlockId: unlock.id, created: true };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
   }
 
   async function recordUnlockSideEffects(unlockId: string, created: boolean) {
-    if (!created) {
-      return;
-    }
+    if (!created) return;
 
-    await Promise.allSettled([
+    const results = await Promise.allSettled([
       prisma.video.update({
         where: { id: videoId },
         data: { totalUnlocks: { increment: 1 } }
@@ -268,12 +223,12 @@ export async function POST(req: NextRequest) {
             }
           })
         : Promise.resolve(null)
-    ]).then((results) => {
-      const failed = results.filter((result) => result.status === 'rejected');
-      if (failed.length) {
-        console.error('[unlock] non-blocking side effects failed', failed);
-      }
-    });
+    ]);
+
+    const failed = results.filter((result) => result.status === 'rejected');
+    if (failed.length) {
+      console.error('[movie-unlock] side effects failed', failed);
+    }
   }
 
   try {
@@ -289,7 +244,6 @@ export async function POST(req: NextRequest) {
     }
 
     await recordUnlockSideEffects(result.unlockId, result.created);
-
     revalidatePath('/');
     revalidatePath('/account');
     revalidatePath('/my-movies');
@@ -298,7 +252,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    console.error('[unlock] transaction failed for video', videoId, error);
+    console.error('[movie-unlock] transaction failed', { videoId, error });
 
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       return NextResponse.json({
@@ -324,8 +278,6 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    return NextResponse.json({ 
-      error: 'Unable to unlock this title right now. Please try again in a moment.' 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Unable to unlock this title right now. Please try again in a moment.' }, { status: 500 });
   }
 }

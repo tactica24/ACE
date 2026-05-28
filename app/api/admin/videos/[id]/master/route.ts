@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createPresignedGetUrl, deleteObject, getMasterBucket } from '@/lib/r2';
+import { createPresignedGetUrl, deleteObject } from '@/lib/r2';
 import { getMasterDownloadFileName } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
 
@@ -33,8 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     {
       contentDisposition: `attachment; filename="${getMasterDownloadFileName(video.technicalMetadata.masterFileName, video.title)}"`,
       contentType: 'application/octet-stream'
-    },
-    getMasterBucket()
+    }
   );
 
   return NextResponse.redirect(url);
@@ -63,7 +62,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Private master not found.' }, { status: 404 });
   }
 
-  await deleteObject(video.technicalMetadata.masterKey, getMasterBucket());
+  await deleteObject(video.technicalMetadata.masterKey);
   await prisma.videoTechnicalMetadata.update({
     where: { videoId: params.id },
     data: {

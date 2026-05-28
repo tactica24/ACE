@@ -5,7 +5,7 @@ import { Video, ResizeMode } from 'expo-av';
 import Screen from '@/components/Screen';
 import PrimaryButton from '@/components/PrimaryButton';
 import SecondaryButton from '@/components/SecondaryButton';
-import { apiGet, BASE_URL } from '@/lib/client';
+import { apiGet, apiPost, BASE_URL } from '@/lib/client';
 import { getDeviceSessionId } from '@/lib/device-session';
 import { theme } from '@/lib/theme';
 
@@ -48,6 +48,7 @@ export default function VideoDetailScreen() {
   const [authRequired, setAuthRequired] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [deviceSessionId, setDeviceSessionId] = useState<string>('');
+  const hasAccess = Boolean(data?.access.hasAccess);
 
   useEffect(() => {
     if (!id) return;
@@ -64,13 +65,27 @@ export default function VideoDetailScreen() {
 
   const loadStream = useCallback(async () => {
     if (!id) return;
-    const query = new URLSearchParams({ videoId: id, teaser: '1' });
+    const query = new URLSearchParams({ teaser: '1' });
     if (deviceSessionId) {
       query.set('deviceSessionId', deviceSessionId);
     }
 
     setPlayerError(null);
     try {
+      if (hasAccess && deviceSessionId) {
+        const payload = await apiPost<{
+          allowed: boolean;
+          playbackUrl?: string | null;
+        }>(`/api/movies/${encodeURIComponent(id)}/playback`, { deviceSessionId });
+        if (!payload.allowed || !payload.playbackUrl) {
+          throw new Error('Playback is not available for this title yet.');
+        }
+        setStreamUrl(toAbsoluteApiUrl(payload.playbackUrl));
+        setAuthRequired(false);
+        setShowAccessNotice(false);
+        return;
+      }
+
       const payload = await apiGet<{
         token: string;
         guest?: boolean;
@@ -78,9 +93,9 @@ export default function VideoDetailScreen() {
           preferred?: 'progressive' | 'unavailable';
           progressiveUrl?: string | null;
         };
-      }>(`/api/stream/token?${query.toString()}`);
+      }>(`/api/movies/${encodeURIComponent(id)}/playback?${query.toString()}`);
       const preferredUrl = payload.playback?.progressiveUrl;
-      const fallbackUrl = payload.playback?.progressiveUrl ?? `${BASE_URL}/api/stream/${id}?token=${payload.token}`;
+      const fallbackUrl = payload.playback?.progressiveUrl ?? `${BASE_URL}/api/movies/${id}/stream?token=${payload.token}`;
       setStreamUrl(toAbsoluteApiUrl(preferredUrl ?? fallbackUrl));
       setAuthRequired(false);
       setShowAccessNotice(false);
@@ -88,10 +103,10 @@ export default function VideoDetailScreen() {
       setStreamUrl('');
       setAuthRequired(true);
       if (error instanceof Error) {
-      setPlayerError(error.message);
+        setPlayerError(error.message);
       }
     }
-  }, [deviceSessionId, id]);
+  }, [deviceSessionId, hasAccess, id]);
 
   useEffect(() => {
     if (!id) return;
@@ -109,7 +124,6 @@ export default function VideoDetailScreen() {
 
   const teaserSec = data?.title.teaserSec ?? 0;
   const highlightSeconds: number[] = data?.title.highlightSeconds ?? [];
-  const hasAccess = Boolean(data?.access.hasAccess);
   const maxPreview = hasAccess ? Number.POSITIVE_INFINITY : Math.max(teaserSec - 2, 0);
 
   return (

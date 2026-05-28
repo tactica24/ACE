@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
+import { resolveAvailableMovieMp4Key } from '@/lib/movie-storage';
 import { getProcessingVideo } from '../../helpers';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -35,11 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
   }
 
-  const mp4Available = Boolean(
-    video.technicalMetadata?.masterKey?.trim() ||
-    video.r2Key?.trim() ||
-    video.fallbackR2Key?.trim()
-  );
+  const mp4Available = Boolean(await resolveAvailableMovieMp4Key(video));
 
   if (!mp4Available) {
     return NextResponse.json({ error: 'Upload a playable MP4 file before activating playback.' }, { status: 400 });

@@ -56,12 +56,11 @@ if (!endpoint || !accessKeyId || !secretAccessKey) {
 const buckets = unique([
   process.env.R2_BUCKET?.trim(),
   process.env.R2_BUCKET_NAME?.trim(),
-  process.env.MASTER_R2_BUCKET?.trim(),
   ...splitList(process.env.R2_CORS_BUCKETS)
 ]);
 
 if (!buckets.length) {
-  console.error('Set R2_BUCKET, MASTER_R2_BUCKET, or pass R2_CORS_BUCKETS=bucket-a,bucket-b.');
+  console.error('Set R2_BUCKET or pass R2_CORS_BUCKETS=bucket-a,bucket-b.');
   process.exit(1);
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
+import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { isSeriesContainer } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
@@ -60,14 +61,13 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
   }
 
-  const readiness = readinessTargets.map((video) => {
-    const hasR2Asset = !!(video.r2Key || video.fallbackR2Key);
-    const hasMaster = !!video.technicalMetadata?.masterKey;
+  const readiness = await Promise.all(readinessTargets.map(async (video) => {
+    const mp4Status = await getMovieMp4StorageStatus(video);
     return {
       video,
-      ready: hasR2Asset || hasMaster
+      ready: Boolean(mp4Status.selectedKey)
     };
-  });
+  }));
 
   const notReady = readiness.filter((entry) => !entry.ready);
   if (notReady.length) {

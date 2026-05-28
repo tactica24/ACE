@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 
 type HeroCarouselVideo = {
   id: string;
@@ -23,9 +23,8 @@ function secondsToRuntime(_seconds: number): string {
   return '90 min';
 }
 
-function getPosterUrl(posterKey?: string | null): string | null {
-  const key = posterKey?.trim();
-  return key ? getMediaAssetUrl(key) : null;
+function getPosterUrl(video?: HeroCarouselVideo | null): string | null {
+  return video ? getMoviePosterUrl(video) : null;
 }
 
 function cardStyleFor(
@@ -90,7 +89,7 @@ function cardStyleFor(
 }
 
 function posterFor(idx: number, videos: HeroCarouselVideo[]): string | null {
-  return getPosterUrl(videos[idx]?.posterKey ?? null);
+  return getPosterUrl(videos[idx] ?? null);
 }
 
 function relativeIndex(activeIndex: number, offset: number, count: number) {

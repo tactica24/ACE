@@ -68,7 +68,8 @@ export function buildOwnedUploadKey({
   filename: string;
   assetId: string;
 }) {
-  return `uploads/${userId}/${purpose}/${assetId}-${sanitizeUploadFilename(filename)}`;
+  const storagePurpose = purpose === 'master' ? 'movie' : purpose;
+  return `uploads/${userId}/${storagePurpose}/${assetId}-${sanitizeUploadFilename(filename)}`;
 }
 
 export function validateUploadRequest({
@@ -126,6 +127,10 @@ export function isOwnedUploadKey(key: string, userId: string, purpose?: UploadPu
 
   if (!purpose) {
     return true;
+  }
+
+  if (purpose === 'master') {
+    return key.startsWith(`${basePrefix}movie/`) || key.startsWith(`${basePrefix}master/`);
   }
 
   return key.startsWith(`${basePrefix}${purpose}/`);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
+import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { isSeriesContainer } from '@/lib/video-access';
 
 const ALLOWED_VIDEO_STATUSES = new Set(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED']);
@@ -71,12 +72,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This series cannot go live yet because no viewer-ready episodes are attached.' }, { status: 400 });
     }
 
-    const notReady = readinessTargets.filter((video) => {
-      // Video is ready if it has a playable MP4 asset or uploaded MP4 master.
-      const hasR2Asset = !!(video.r2Key || video.fallbackR2Key);
-      const hasMaster = !!video.technicalMetadata?.masterKey;
-      return !(hasR2Asset || hasMaster);
-    });
+    const readiness = await Promise.all(readinessTargets.map(async (video) => ({
+      video,
+      ready: Boolean((await getMovieMp4StorageStatus(video)).selectedKey)
+    })));
+    const notReady = readiness.filter((entry) => !entry.ready).map((entry) => entry.video);
     if (notReady.length) {
       return NextResponse.json({
         error: `Verified playback is still incomplete for: ${notReady.map((video) => video.title).join(', ')}.`

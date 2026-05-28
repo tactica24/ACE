@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
-import { createPresignedGetUrl, getMasterBucket } from '@/lib/r2';
+import { createPresignedGetUrl } from '@/lib/r2';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     const downloadUrl = await createPresignedGetUrl(masterKey, {
       contentDisposition: `attachment; filename="${masterFileName.replace(/"/g, '\\"')}"`
-    }, getMasterBucket());
+    });
 
     return NextResponse.json({
       success: true,

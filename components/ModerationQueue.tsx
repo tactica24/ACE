@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import PosterAsset from '@/components/PosterAsset';
 
 type Item = {
@@ -351,7 +351,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   return (
     <div className="moderation-grid">
       {items.map((item) => {
-        const posterUrl = getMediaAssetUrl(item.video.posterKey);
+        const posterUrl = getMoviePosterUrl(item.video);
 
         return (
           <div key={item.id} className="card moderation-card">

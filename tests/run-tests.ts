@@ -25,7 +25,7 @@ import { canAccessVideoFromCountry } from '../lib/video-availability';
 import { getMultipartUploadRateLimit } from '../lib/upload-rate-limit';
 import { MAX_MASTER_BYTES } from '../lib/upload-limits';
 import { validateUploadRequest } from '../lib/upload-security';
-import { getPlayableProgressiveKey, getPlayableProgressiveUrl } from '../lib/playback-delivery';
+import { getMoviePosterUrl, resolveMovieMp4Key } from '../lib/movie-assets';
 import { getSignedStoredMediaUrl } from '../lib/media-delivery';
 import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
 import { type PricingConfigValues } from '../lib/pricing';
@@ -182,7 +182,7 @@ const videoCases: Case[] = [
         r2Key: null,
         fallbackR2Key: null,
         technicalMetadata: {
-          masterKey: 'uploads/creator-1/master/movie.mp4',
+          masterKey: 'uploads/creator-1/movie/movie.mp4',
         },
       };
 
@@ -273,43 +273,27 @@ const videoCases: Case[] = [
       assert.equal(Array.isArray(anyVideoWhere.OR), true);
       assert.equal(anyVideoWhere.OR?.length, 3);
       assert.deepEqual(getPlayableAssetWhere().OR, [
-        { r2Key: { not: null } },
-        { fallbackR2Key: { not: null } },
-        { technicalMetadata: { masterKey: { not: null } } },
+        { r2Key: { endsWith: '.mp4', mode: 'insensitive' } },
+        { fallbackR2Key: { endsWith: '.mp4', mode: 'insensitive' } },
+        { technicalMetadata: { is: { masterKey: { endsWith: '.mp4', mode: 'insensitive' } } } },
       ]);
     },
   },
   {
-    name: 'playback delivery uses only progressive MP4 keys and URLs',
+    name: 'movie asset resolver uses only approved MP4 files and poster routes',
     run: () => {
       assert.equal(
-        getPlayableProgressiveKey({
+        resolveMovieMp4Key({
           technicalMetadata: {
-            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/playlist.txt',
+            masterKey: 'uploads/admin/movie/movie.mp4',
           },
         }),
-        null,
+        'uploads/admin/movie/movie.mp4',
       );
       assert.equal(
-        getPlayableProgressiveKey({
+        resolveMovieMp4Key({
           technicalMetadata: {
-            masterKey: 'uploads/admin/master/movie.mp4',
-          },
-        }),
-        'uploads/admin/master/movie.mp4',
-      );
-      assert.equal(
-        getPlayableProgressiveUrl({
-          technicalMetadata: {
-            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
-          },
-        }),
-        'https://stream.acestudio.ng/movies/movie-1/master.mp4',
-      );
-      assert.equal(
-        getPlayableProgressiveKey({
-          technicalMetadata: {
-            playbackUrl: 'https://stream.acestudio.ng/movies/movie-1/master.mp4',
+            masterKey: 'https://stream.acestudio.ng/movies/movie-1/manifest.txt',
           },
         }),
         null,
@@ -319,8 +303,16 @@ const videoCases: Case[] = [
         'https://stream.acestudio.ng/movies/movie-1/master.mp4?token=signed-token',
       );
       assert.equal(
-        getMediaAssetUrl(' posters\\movie one.jpg '),
-        '/api/media/posters/movie%20one.jpg',
+        getMoviePosterUrl({ id: 'movie-1', posterKey: 'uploads/admin/poster/movie one.webp' }),
+        '/api/movies/movie-1/poster',
+      );
+      assert.equal(
+        getMoviePosterUrl({ id: 'movie-2', posterKey: 'uploads/admin/poster/ace-studio-placeholder.webp' }),
+        null,
+      );
+      assert.equal(
+        getMediaAssetUrl(' subtitles\\movie one.vtt '),
+        '/api/media/subtitles/movie%20one.vtt',
       );
       assert.equal(normalizeMediaKey(' /posters\\\\movie one.jpg '), 'posters/movie one.jpg');
       assert.equal(
@@ -336,7 +328,7 @@ const videoCases: Case[] = [
         '/api/media/uploads/admin/poster/movie%20one.webp',
       );
       assert.equal(
-        getPlayableProgressiveKey({
+        resolveMovieMp4Key({
           r2Key: 'https://9509c1f9654bf983a2d806d29210f6ad.r2.cloudflarestorage.com/acestudio/uploads/admin/video/movie.mp4',
         }),
         'uploads/admin/video/movie.mp4',

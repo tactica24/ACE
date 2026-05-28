@@ -47,32 +47,6 @@ function getBucket(bucketName?: string) {
   return bucketName?.trim() || env.R2_BUCKET;
 }
 
-export function getMasterBucket() {
-  const bucket = env.MASTER_R2_BUCKET?.trim();
-  if (!bucket) {
-    throw new Error('MASTER_R2_BUCKET environment variable is required but not set. Please configure your master file bucket in the environment variables.');
-  }
-  return bucket;
-}
-
-export function isMasterStorageKey(key?: string | null): boolean {
-  if (!key) return false;
-  const normalized = key.trim().toLowerCase();
-  return normalized.includes('/master/');
-}
-
-export function getBucketForStorageKey(key?: string | null, explicitBucket?: string): string | undefined {
-  if (explicitBucket) return explicitBucket;
-  if (isMasterStorageKey(key)) {
-    try {
-      return getMasterBucket();
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
 export async function headObject(key: string, bucketName?: string): Promise<HeadObjectCommandOutput> {
   return createClient().send(new HeadObjectCommand({ Bucket: getBucket(bucketName), Key: key }));
 }

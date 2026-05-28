@@ -2,7 +2,7 @@
 
 import { type FocusEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 
 const PREVIEW_DELAY_MS = 320;
 
@@ -90,7 +90,7 @@ export default function HomeSpotlightPreview({
 
       const request = (async () => {
         try {
-          const tokenResponse = await fetch(`/api/stream/token?videoId=${encodeURIComponent(videoId)}&teaser=1`, {
+          const tokenResponse = await fetch(`/api/movies/${encodeURIComponent(videoId)}/playback?teaser=1`, {
             method: 'GET',
             cache: 'no-store'
           });
@@ -113,7 +113,7 @@ export default function HomeSpotlightPreview({
           const progressiveUrl =
             typeof tokenPayload.playback?.progressiveUrl === 'string'
               ? tokenPayload.playback.progressiveUrl
-              : `/api/stream/${encodeURIComponent(videoId)}?token=${encodeURIComponent(tokenPayload.token)}`;
+              : `/api/movies/${encodeURIComponent(videoId)}/stream?token=${encodeURIComponent(tokenPayload.token)}`;
           const source = progressiveUrl;
           if (!source) {
             return null;
@@ -193,7 +193,7 @@ export default function HomeSpotlightPreview({
     setPreviewVideoId(null);
   };
 
-  const activePoster = getMediaAssetUrl(activeVideo?.posterKey);
+  const activePoster = activeVideo ? getMoviePosterUrl(activeVideo) : null;
 
   return (
     <div

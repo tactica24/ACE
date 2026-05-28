@@ -4,7 +4,6 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createPresignedGetUrl } from '@/lib/r2';
 import { streamR2Object } from '@/lib/stream';
-import { getBucketForStorageKey } from '@/lib/r2';
 import { normalizeMediaKey } from '@/lib/media';
 import { canPreviewVideo } from '@/lib/video-access';
 
@@ -45,14 +44,12 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
     const candidateVideos = await prisma.video.findMany({
       where: {
         OR: [
-          { posterKey: { in: keyCandidates } },
           { subtitleTracks: { some: { fileKey: { in: keyCandidates } } } },
           { technicalMetadata: { is: { landscapeArtworkKey: { in: keyCandidates } } } },
           { technicalMetadata: { is: { trailerKey: { in: keyCandidates } } } },
           { technicalMetadata: { is: { promotionalStillKeys: { hasSome: keyCandidates } } } },
           ...(fileName
             ? [
-                { posterKey: { contains: fileName } },
                 { subtitleTracks: { some: { fileKey: { contains: fileName } } } },
                 { technicalMetadata: { is: { landscapeArtworkKey: { contains: fileName } } } },
                 { technicalMetadata: { is: { trailerKey: { contains: fileName } } } },
@@ -68,7 +65,6 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
         videoType: true,
         seriesId: true,
         r2Key: true,
-        posterKey: true,
         subtitleTracks: {
           select: {
             fileKey: true
@@ -89,13 +85,11 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
         const subtitle = video.subtitleTracks.find((track) => normalizedEquals(track.fileKey, normalizedKey))?.fileKey ?? null;
         const promotionalStill = video.technicalMetadata?.promotionalStillKeys.find((item) => normalizedEquals(item, normalizedKey)) ?? null;
         const storedKey =
-          normalizedEquals(video.posterKey, normalizedKey)
-            ? video.posterKey
-            : normalizedEquals(video.technicalMetadata?.landscapeArtworkKey, normalizedKey)
-              ? video.technicalMetadata?.landscapeArtworkKey
-              : normalizedEquals(video.technicalMetadata?.trailerKey, normalizedKey)
-                ? video.technicalMetadata?.trailerKey
-                : subtitle ?? promotionalStill;
+          normalizedEquals(video.technicalMetadata?.landscapeArtworkKey, normalizedKey)
+            ? video.technicalMetadata?.landscapeArtworkKey
+            : normalizedEquals(video.technicalMetadata?.trailerKey, normalizedKey)
+              ? video.technicalMetadata?.trailerKey
+              : subtitle ?? promotionalStill;
 
         return storedKey ? { video, storedKey } : null;
       })
@@ -117,8 +111,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
 
     if (isTrailerAsset || isSubtitleAsset) {
       const rangeHeader = req.headers.get('range');
-      const bucket = getBucketForStorageKey(objectKey);
-      const result = await streamR2Object(objectKey, rangeHeader, undefined, bucket);
+      const result = await streamR2Object(objectKey, rangeHeader);
 
       return new Response(Readable.toWeb(result.stream) as never, {
         status: result.status,

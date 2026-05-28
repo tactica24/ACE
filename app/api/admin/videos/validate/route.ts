@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getPlaybackAssetSnapshot } from '@/lib/playback-assets';
-import { getPlayableProgressiveKey, getPlayableProgressiveUrl } from '@/lib/playback-delivery';
+import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { getProcessingVideo } from '../helpers';
 
 export async function POST(req: NextRequest) {
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest) {
       fallbackR2Key: true,
       technicalMetadata: {
         select: {
-          playbackUrl: true,
           masterKey: true
         }
       }
@@ -38,22 +36,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
   }
 
-  const progressiveKey = getPlayableProgressiveKey(video);
-  const progressiveUrl = getPlayableProgressiveUrl(video);
-  const snapshot = await getPlaybackAssetSnapshot(
-    video.id,
-    video.r2Key,
-    video.fallbackR2Key,
-    video.technicalMetadata?.masterKey
-  );
-
-  const passed = snapshot.ready || Boolean(progressiveKey || progressiveUrl);
+  const mp4Status = await getMovieMp4StorageStatus(video);
+  const passed = Boolean(mp4Status.selectedKey);
   const errors = passed
     ? []
     : [
-        snapshot.storageConfigured
-          ? 'No MP4 object was found in R2 for this title.'
-          : 'R2 storage is not configured for MP4 validation.'
+        mp4Status.candidates.length
+          ? 'The listed MP4 key was not found in the active R2 bucket.'
+          : 'No playable MP4 key is attached to this title.'
       ];
 
   if (passed) {
@@ -82,13 +72,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     movieId,
     title: video.title,
-    mp4Key: progressiveKey,
-    mp4Url: progressiveUrl,
+    mp4Key: mp4Status.selectedKey,
     checks: {
-      storageConfigured: snapshot.storageConfigured,
-      primaryReady: snapshot.progressiveReady,
-      fallbackReady: snapshot.fallbackProgressiveReady,
-      masterReady: snapshot.masterProgressiveReady
+      storageConfigured: mp4Status.storageConfigured,
+      candidates: mp4Status.candidates,
+      selectedKey: mp4Status.selectedKey
     },
     passed,
     errors,

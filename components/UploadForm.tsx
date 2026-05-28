@@ -366,7 +366,7 @@ function normalizeLineEntries(value: string) {
 export default function UploadForm({
   initialSeriesId = null,
   seriesOptions,
-  uploadEndpoint = '/api/studio/upload-url',
+  uploadEndpoint = '/api/uploads/sign',
   submissionEndpoint = '/api/studio/video',
   extraPayload,
   requestHeaders,
@@ -554,7 +554,7 @@ export default function UploadForm({
     onProgress: (loaded: number, total: number) => void
   ) => {
     const headers = { 'Content-Type': 'application/json', ...(requestHeaders ?? {}) };
-    const initiate = await fetch('/api/studio/multipart-upload', {
+    const initiate = await fetch('/api/uploads/multipart', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -582,7 +582,7 @@ export default function UploadForm({
         const start = index * MULTIPART_CHUNK_BYTES;
         const end = Math.min(file.size, start + MULTIPART_CHUNK_BYTES);
         const blob = file.slice(start, end);
-        const partResponse = await fetch('/api/studio/multipart-upload', {
+        const partResponse = await fetch('/api/uploads/multipart', {
           method: 'POST',
           headers,
           body: JSON.stringify({ action: 'part', key, uploadId, purpose, partNumber })
@@ -599,7 +599,7 @@ export default function UploadForm({
         parts.push({ ETag, PartNumber: partNumber });
       }
 
-      const complete = await fetch('/api/studio/multipart-upload', {
+      const complete = await fetch('/api/uploads/multipart', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'complete', key, uploadId, purpose, parts })
@@ -611,7 +611,7 @@ export default function UploadForm({
       onProgress(file.size, file.size);
       return key;
     } catch (error) {
-      await fetch('/api/studio/multipart-upload', {
+      await fetch('/api/uploads/multipart', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'abort', key, uploadId, purpose })

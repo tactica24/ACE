@@ -8,8 +8,8 @@ import { getApprovedCatalogVideos } from '@/lib/catalog';
 import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { getMediaAssetUrl } from '@/lib/media';
 import { type PriceTierValue } from '@/lib/media-types';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 
@@ -97,7 +97,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
       <section className="nmhp-hero">
         <div className="nmhp-hero-bg" aria-hidden="true">
           {guestHeroVideos.map((video, index) => {
-            const posterUrl = getMediaAssetUrl(video.posterKey);
+            const posterUrl = getMoviePosterUrl(video);
             if (!posterUrl) return null;
 
             const positions = [

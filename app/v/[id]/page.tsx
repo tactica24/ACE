@@ -13,6 +13,7 @@ import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getLanguageLabel } from '@/lib/media-types';
+import { getMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -36,14 +37,6 @@ const labelize = (value: string) =>
 
 function isViewerVisibleStatus(status: string) {
   return status === 'APPROVED' || status === 'PUBLISHED';
-}
-
-function hasMp4Asset(video: {
-  r2Key?: string | null;
-  fallbackR2Key?: string | null;
-  technicalMetadata?: { masterKey?: string | null } | null;
-}) {
-  return Boolean(video.r2Key || video.fallbackR2Key || video.technicalMetadata?.masterKey);
 }
 
 function formatRuntime(_durationSec: number) {
@@ -123,12 +116,12 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     requestedVideo.seriesId &&
-    !hasMp4Asset(requestedVideo)
+    !hasMovieMp4(requestedVideo)
   ) {
     return notFound();
   }
 
-  if (!canPreviewRequested && isViewerVisibleStatus(requestedVideo.status) && !hasMp4Asset(requestedVideo)) {
+  if (!canPreviewRequested && isViewerVisibleStatus(requestedVideo.status) && !hasMovieMp4(requestedVideo)) {
     return notFound();
   }
 
@@ -146,7 +139,7 @@ export default async function VideoPage({
 
   if (requestedVideo.videoType !== 'SERIES' && !requestedVideo.seriesId) {
     const regionalPrice = getRegionalPriceForVideo(requestHeaders, requestedVideo, pricingConfig);
-    const posterUrl = getMediaAssetUrl(requestedVideo.posterKey);
+    const posterUrl = getMoviePosterUrl(requestedVideo);
     const backdropUrl = posterUrl;
     const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'movie');
     const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
@@ -349,7 +342,7 @@ export default async function VideoPage({
   const visibleEpisodes = series.episodes.filter((episode) => isViewerVisibleStatus(episode.status) || canPreviewSeries);
   const viewerReadyEpisodes = canPreviewSeries
     ? visibleEpisodes
-    : visibleEpisodes.filter(hasMp4Asset);
+    : visibleEpisodes.filter(hasMovieMp4);
   const requestedEpisodeId = typeof searchParams?.episode === 'string'
     ? searchParams.episode.trim()
     : isEpisodeVideo(requestedVideo)
@@ -368,9 +361,11 @@ export default async function VideoPage({
   const regionalPrice = getRegionalPriceForVideo(requestHeaders, selectedEpisode ?? series, pricingConfig);
   const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'episode');
   const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
-  const seriesPosterUrl = getMediaAssetUrl(series.posterKey);
+  const seriesPosterUrl = getMoviePosterUrl(series);
   const seriesBackdropUrl = seriesPosterUrl;
-  const selectedPosterUrl = getMediaAssetUrl(selectedEpisode?.posterKey ?? series.posterKey);
+  const selectedPosterUrl = selectedEpisode
+    ? getMoviePosterUrl({ ...selectedEpisode, posterKey: selectedEpisode.posterKey ?? series.posterKey })
+    : seriesPosterUrl;
   const totalSeasons = new Set(viewerReadyEpisodes.map((episode) => episode.seasonNumber).filter(Boolean)).size;
   const relatedSeries = await prisma.video.findMany({
     where: {
@@ -556,7 +551,7 @@ export default async function VideoPage({
                       {seasonEpisodes.map((episode) => {
                         const episodeHref = `/v/${series.id}?episode=${episode.id}`;
                         const selected = selectedEpisode?.id === episode.id;
-                        const episodePoster = getMediaAssetUrl(episode.posterKey ?? series.posterKey);
+                        const episodePoster = getMoviePosterUrl({ ...episode, posterKey: episode.posterKey ?? series.posterKey });
                         return (
                           <Link
                             key={episode.id}

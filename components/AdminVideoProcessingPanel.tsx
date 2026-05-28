@@ -101,7 +101,7 @@ async function uploadMasterToStorage(file: File) {
   }
 
   if (file.size <= SINGLE_PUT_SAFE_BYTES) {
-    const presign = await fetch('/api/studio/upload-url', {
+    const presign = await fetch('/api/uploads/sign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -132,7 +132,7 @@ async function uploadMasterToStorage(file: File) {
   }
 
   const headers = { 'Content-Type': 'application/json' };
-  const initiate = await fetch('/api/studio/multipart-upload', {
+  const initiate = await fetch('/api/uploads/multipart', {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -158,7 +158,7 @@ async function uploadMasterToStorage(file: File) {
       const partNumber = index + 1;
       const start = index * MULTIPART_CHUNK_BYTES;
       const blob = file.slice(start, Math.min(file.size, start + MULTIPART_CHUNK_BYTES));
-      const partResponse = await fetch('/api/studio/multipart-upload', {
+      const partResponse = await fetch('/api/uploads/multipart', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'part', key, uploadId, purpose: 'master', partNumber })
@@ -172,7 +172,7 @@ async function uploadMasterToStorage(file: File) {
       parts.push({ ETag, PartNumber: partNumber });
     }
 
-    const complete = await fetch('/api/studio/multipart-upload', {
+    const complete = await fetch('/api/uploads/multipart', {
       method: 'POST',
       headers,
       body: JSON.stringify({ action: 'complete', key, uploadId, purpose: 'master', parts })
@@ -184,7 +184,7 @@ async function uploadMasterToStorage(file: File) {
 
     return key;
   } catch (error) {
-    await fetch('/api/studio/multipart-upload', {
+    await fetch('/api/uploads/multipart', {
       method: 'POST',
       headers,
       body: JSON.stringify({ action: 'abort', key, uploadId, purpose: 'master' })

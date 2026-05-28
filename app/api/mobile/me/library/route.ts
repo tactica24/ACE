@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getViewerReadyAnyVideoWhere } from '@/lib/video-visibility';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
       videoType: unlock.video.videoType,
       ageRating: unlock.video.ageRating,
       posterKey: unlock.video.posterKey,
+      posterUrl: getMoviePosterUrl(unlock.video),
       teaserSec: unlock.video.teaserSec,
       durationSec: unlock.video.durationSec,
       accessGrantedAt: unlock.createdAt.toISOString(),
