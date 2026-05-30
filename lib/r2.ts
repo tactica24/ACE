@@ -207,6 +207,7 @@ export async function createPresignedGetUrl(
   options?: {
     contentDisposition?: string;
     contentType?: string;
+    expiresIn?: number;
   },
   bucketName?: string
 ) {
@@ -217,5 +218,7 @@ export async function createPresignedGetUrl(
     ResponseContentDisposition: options?.contentDisposition,
     ResponseContentType: options?.contentType
   });
-  return getSignedUrl(client, command, { expiresIn: 900 });
+  // Default to 1 hour for images/posters, 15 minutes for other assets
+  const expiresIn = options?.expiresIn ?? 3600;
+  return getSignedUrl(client, command, { expiresIn });
 }

@@ -2,6 +2,39 @@
 
 import { useEffect, useState } from 'react';
 
+// Simple toast notification system
+function showToast(message: string, type: 'error' | 'success' = 'error') {
+  // Remove existing toasts
+  const existing = document.querySelectorAll('.referral-toast');
+  existing.forEach(el => el.remove());
+
+  const toast = document.createElement('div');
+  toast.className = `referral-toast referral-toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: ${type === 'error' ? 'rgba(180, 32, 32, 0.92)' : 'rgba(32, 130, 64, 0.92)'};
+    backdrop-filter: blur(12px);
+    color: white;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+    z-index: 9999;
+    animation: toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    toast.style.transition = 'all 0.2s ease';
+    setTimeout(() => toast.remove(), 200);
+  }, 3000);
+}
+
 type PromoterOption = { id: string; email: string };
 type VideoOption = { id: string; title: string };
 
@@ -59,9 +92,10 @@ export default function ReferralManager({
         })
       });
       if (!res.ok) throw new Error('create failed');
+      showToast('Referral link created successfully', 'success');
       await fetchLinks();
     } catch {
-      alert('Unable to create referral link.');
+      showToast('Unable to create referral link. Please try again.', 'error');
     } finally {
       setLoading(false);
     }

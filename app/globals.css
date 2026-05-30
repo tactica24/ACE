@@ -33,6 +33,9 @@ html, body {
     radial-gradient(circle at 50% 100%, rgba(76, 136, 206, 0.12) 0%, transparent 26%),
     linear-gradient(180deg, #05070d 0%, #090d16 48%, #05070d 100%);
   font-family: var(--font-sora), system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html {

@@ -44,5 +44,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Poster not available.' }, { status: 404 });
   }
 
-  return NextResponse.redirect(await createPresignedGetUrl(posterKey));
+  // Use longer expiry for poster images and set proper content type
+  const url = await createPresignedGetUrl(posterKey, {
+    contentType: 'image/jpeg',
+    expiresIn: 7200 // 2 hours for poster images
+  });
+  return NextResponse.redirect(url);
 }

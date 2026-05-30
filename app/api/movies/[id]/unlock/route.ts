@@ -58,15 +58,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
   const mp4Status = await getMovieMp4StorageStatus(video);
   if (!mp4Status.selectedKey) {
-    console.warn('[movie-unlock] MP4 storage lookup failed', {
+    console.error('[movie-unlock] MP4 storage lookup failed', {
       videoId,
       storageConfigured: mp4Status.storageConfigured,
-      candidates: mp4Status.candidates
+      candidates: mp4Status.candidates,
+      error: mp4Status.error
     });
     return NextResponse.json({
       error: mp4Status.candidates.length
         ? 'The MP4 file for this title is missing from storage. Please try again after it is re-uploaded.'
-        : 'No playable MP4 is attached to this title yet.'
+        : 'No playable MP4 is attached to this title yet.',
+      details: process.env.NODE_ENV === 'development' ? mp4Status.error : undefined
     }, { status: 409 });
   }
 
