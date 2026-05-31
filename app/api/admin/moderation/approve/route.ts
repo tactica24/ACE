@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           title: true,
+          status: true,
           videoType: true,
           seriesId: true,
           primaryStorageKey: true,
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
             select: {
               id: true,
               title: true,
+              status: true,
               videoType: true,
               seriesId: true,
               primaryStorageKey: true,

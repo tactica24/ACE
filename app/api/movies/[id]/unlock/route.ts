@@ -46,7 +46,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       technicalMetadata: {
         select: {
           availabilityRegion: true,
-          masterKey: true
+          masterKey: true,
+          hlsManifestKey: true,
+          hlsOutputPath: true,
+          hlsReadyAt: true
         }
       }
     }
