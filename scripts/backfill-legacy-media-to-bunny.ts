@@ -309,7 +309,9 @@ async function copyAsset(asset: AssetRecord, options: { r2: R2Config | null }) {
 async function main() {
   const args = parseArgs();
   const dryRun = 'dry-run' in args;
+  const verifyOnly = 'verify-only' in args;
   const force = 'force' in args;
+  const reportPath = args['report-json']?.trim();
   const baseUrl = args['source-base-url'] || process.env.LEGACY_MEDIA_BASE_URL;
   const manifest = await readManifest(args.manifest);
   const r2 = resolveR2Config(args);
@@ -320,7 +322,7 @@ async function main() {
       .filter(Boolean)
   );
 
-  if (!baseUrl && manifest.size === 0 && !r2) {
+  if (!verifyOnly && !baseUrl && manifest.size === 0 && !r2) {
     throw new Error(
       'Provide --source-base-url=<legacy-public-base>, --manifest=<json-file>, or private R2 credentials so legacy assets can be fetched.'
     );
@@ -339,29 +341,45 @@ async function main() {
   let copied = 0;
   let skipped = 0;
   let failed = 0;
+  const missingKeys: string[] = [];
+  const failedKeys: Array<{ key: string; message: string }> = [];
 
+  if (!verifyOnly) {
+    for (const asset of filteredAssets) {
+      const alreadyExists = force ? false : await existsInBunny(asset.key);
+      if (alreadyExists) {
+        skipped += 1;
+        console.log(`SKIP  ${asset.kind.padEnd(11)} ${asset.key} (already in Bunny)`);
+        continue;
+      }
+
+      if (dryRun) {
+        skipped += 1;
+        console.log(`DRY   ${asset.kind.padEnd(11)} ${asset.key} <= ${asset.sourceUrl ?? (r2 ? 'private-r2' : 'unresolved source')}`);
+        continue;
+      }
+
+      try {
+        await copyAsset(asset, { r2 });
+        copied += 1;
+        console.log(`COPY  ${asset.kind.padEnd(11)} ${asset.key}`);
+      } catch (error) {
+        failed += 1;
+        const message = error instanceof Error ? error.message : String(error);
+        failedKeys.push({ key: asset.key, message });
+        console.error(`FAIL  ${asset.kind.padEnd(11)} ${asset.key}`);
+        console.error(message);
+      }
+    }
+  }
+
+  let verifiedPresent = 0;
   for (const asset of filteredAssets) {
-    const alreadyExists = force ? false : await existsInBunny(asset.key);
-    if (alreadyExists) {
-      skipped += 1;
-      console.log(`SKIP  ${asset.kind.padEnd(11)} ${asset.key} (already in Bunny)`);
-      continue;
-    }
-
-    if (dryRun) {
-      skipped += 1;
-      console.log(`DRY   ${asset.kind.padEnd(11)} ${asset.key} <= ${asset.sourceUrl ?? (r2 ? 'private-r2' : 'unresolved source')}`);
-      continue;
-    }
-
-    try {
-      await copyAsset(asset, { r2 });
-      copied += 1;
-      console.log(`COPY  ${asset.kind.padEnd(11)} ${asset.key}`);
-    } catch (error) {
-      failed += 1;
-      console.error(`FAIL  ${asset.kind.padEnd(11)} ${asset.key}`);
-      console.error(error instanceof Error ? error.message : String(error));
+    const present = await existsInBunny(asset.key);
+    if (present) {
+      verifiedPresent += 1;
+    } else {
+      missingKeys.push(asset.key);
     }
   }
 
@@ -370,8 +388,38 @@ async function main() {
   console.log(`Copied:  ${copied}`);
   console.log(`Skipped: ${skipped}`);
   console.log(`Failed:  ${failed}`);
+  console.log(`Verified in Bunny: ${verifiedPresent}/${filteredAssets.length}`);
 
-  if (failed > 0) {
+  if (missingKeys.length) {
+    console.log('Missing in Bunny after verification:');
+    for (const key of missingKeys.slice(0, 25)) {
+      console.log(`- ${key}`);
+    }
+    if (missingKeys.length > 25) {
+      console.log(`...and ${missingKeys.length - 25} more`);
+    }
+  }
+
+  if (reportPath) {
+    const { writeFile } = await import('node:fs/promises');
+    await writeFile(reportPath, JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      dryRun,
+      verifyOnly,
+      force,
+      totalDiscovered: assets.length,
+      totalProcessed: filteredAssets.length,
+      copied,
+      skipped,
+      failed,
+      verifiedPresent,
+      missingKeys,
+      failedKeys
+    }, null, 2));
+    console.log(`Report written to ${reportPath}`);
+  }
+
+  if (failed > 0 || missingKeys.length > 0) {
     process.exitCode = 1;
   }
 }

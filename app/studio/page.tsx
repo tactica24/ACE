@@ -35,8 +35,8 @@ export default async function StudioPage() {
         }
       })
     : 0;
-  const liveTitles = videos.filter((video) => video.status === 'APPROVED').length;
-  const pendingTitles = videos.filter((video) => video.status !== 'APPROVED').length;
+  const liveTitles = videos.filter((video) => ['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)).length;
+  const pendingTitles = videos.filter((video) => !['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)).length;
   const walletBalanceLabel = getRegionalMoneyDisplay(requestHeaders, creatorProfile?.earningsBalanceNaira ?? 0).label;
 
   return (

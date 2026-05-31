@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { buildFfmpegCommand } from '@/lib/video-processing';
 import { MAX_MASTER_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
@@ -29,6 +29,10 @@ type ProcessingVideo = {
   hlsReadyAt?: string | null;
   masterDeletionEligible?: boolean;
   masterDeletedAt?: string | null;
+  bunnyFolderPrefix?: string | null;
+  latestPipelineEvent?: string | null;
+  latestPipelineEventAt?: string | null;
+  latestPipelineMessage?: string | null;
   qualities: string[];
   trailerDownloadHref: string | null;
   posterDownloadHref: string | null;
@@ -51,10 +55,12 @@ type UploadStatus = {
 };
 
 const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
-  { id: 'uploaded', label: 'Queued / processing', description: 'Master exists and is moving through Akash, Livepeer, and Bunny HLS.' },
+  { id: 'uploaded', label: 'Uploaded / processing', description: 'Assets are stored in Bunny. Admin starts Contabo HLS when ready.' },
   { id: 'processed', label: 'Ready / published', description: 'Titles with verified HLS playback.' },
   { id: 'needs-master', label: 'Needs MP4', description: 'Movie record exists, but the master file is still missing.' }
 ];
+
+const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
 
 function formatBytes(value: number | null) {
   if (!value) return 'No file';
@@ -65,6 +71,11 @@ function formatBytes(value: number | null) {
 
 function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : 'Not uploaded';
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return 'No callback yet';
+  return new Date(value).toLocaleString();
 }
 
 function isSupportedMasterFile(file: File) {
@@ -81,7 +92,7 @@ function toStorageUploadError(error: unknown) {
   return message;
 }
 
-async function uploadMasterToStorage(file: File) {
+async function uploadMasterToStorage(file: File, videoId: string) {
   if (!isSupportedMasterFile(file)) {
     throw new Error('Upload a playable MP4 master file.');
   }
@@ -97,7 +108,8 @@ async function uploadMasterToStorage(file: File) {
       filename: file.name,
       contentType: file.type || 'application/octet-stream',
       fileSize: file.size,
-      purpose: 'master'
+      purpose: 'master',
+      folderId: videoId
     })
   });
   const presignPayload = await presign.json().catch(() => ({}));
@@ -121,7 +133,7 @@ async function uploadMasterToStorage(file: File) {
 }
 
 function getBucket(video: ProcessingVideo): ProducerBucket {
-  if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)) {
+  if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
     return 'processed';
   }
   if (video.masterKey) {
@@ -134,6 +146,29 @@ function getBucketTone(bucket: ProducerBucket) {
   if (bucket === 'processed') return 'status-live';
   if (bucket === 'uploaded') return 'status-warn';
   return 'status-review';
+}
+
+function isPipelineWorking(video: ProcessingVideo) {
+  return ACTIVE_PIPELINE_STATUSES.has(video.processingStatus);
+}
+
+function getPipelineSummary(video: ProcessingVideo) {
+  if (video.processingStatus === 'READY_TO_STREAM') {
+    return 'HLS uploaded to Bunny and verified.';
+  }
+  if (video.processingStatus === 'CONTABO_QUEUED') {
+    return 'Contabo job queued. Waiting for worker pickup.';
+  }
+  if (video.processingStatus === 'ENCODING_STARTED') {
+    return 'Contabo is transcoding and preparing Bunny HLS output.';
+  }
+  if (video.processingStatus === 'TRANSCODE_FAILED') {
+    return video.transcodeError ?? 'Transcode failed.';
+  }
+  if (video.masterKey) {
+    return 'Master is stored in Bunny and ready for admin processing.';
+  }
+  return 'Waiting for a master upload.';
 }
 
 export default function AdminVideoProcessingPanel({ initialProducers }: { initialProducers: ProcessingProducer[] }) {
@@ -152,6 +187,39 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
   const selectedProducer = sortedProducers.find((producer) => producer.id === selectedProducerId) ?? null;
   const producerVideos = selectedProducer?.videos ?? [];
   const visibleVideos = selectedBucket ? producerVideos.filter((video) => getBucket(video) === selectedBucket) : [];
+
+  useEffect(() => {
+    const activeVideos = visibleVideos.filter((video) => isPipelineWorking(video));
+    if (!activeVideos.length) return;
+
+    let cancelled = false;
+    const run = async () => {
+      const results = await Promise.allSettled(
+        activeVideos.map((video) =>
+          fetch(`/api/admin/videos/${video.id}/processing`, { method: 'GET' })
+            .then((response) => response.json().catch(() => ({})).then((payload) => ({ ok: response.ok, payload })))
+        )
+      );
+
+      if (cancelled) return;
+
+      for (const result of results) {
+        if (result.status !== 'fulfilled' || !result.value.ok || !result.value.payload?.video) continue;
+        const refreshedVideo = result.value.payload.video as Record<string, unknown>;
+        const videoId = typeof refreshedVideo.id === 'string' ? refreshedVideo.id : '';
+        if (videoId) {
+          void refreshVideo(videoId, refreshedVideo);
+        }
+      }
+    };
+
+    void run();
+    const interval = window.setInterval(run, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [visibleVideos]);
 
   async function refreshVideo(videoId: string, payload: Record<string, unknown>) {
     setProducers((current) =>
@@ -187,10 +255,10 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     setMessage(null);
     setUploadStatuses((current) => ({
       ...current,
-      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 to Bunny Storage...' }
+      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 master...' }
     }));
     try {
-      const key = await uploadMasterToStorage(file);
+      const key = await uploadMasterToStorage(file, videoId);
 
       const save = await fetch('/api/admin/videos/master', {
         method: 'POST',
@@ -256,7 +324,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
   async function startPipeline(videoId: string) {
     setPendingId(videoId);
-    setMessage('Queueing Akash worker...');
+    setMessage('Queueing Contabo worker...');
     try {
       const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
@@ -266,7 +334,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? 'HLS pipeline started.');
+      setMessage(payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to start HLS pipeline.');
     } finally {
@@ -383,6 +451,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 <span className={`status-chip ${getBucketTone(getBucket(video))}`}>{getBucket(video).replace('-', ' ')}</span>
                 <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
                 <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
+                <p className="muted" style={{ marginTop: 6 }}>{getPipelineSummary(video)}</p>
               </div>
               <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
                 {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
@@ -415,10 +484,10 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
               <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
               <button className="btn btn-primary" type="button" disabled={!video.masterKey || busy} onClick={() => void startPipeline(video.id)}>
-                Start HLS pipeline
+                Start Contabo HLS
               </button>
               <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void completeProcessing(video.id)}>
-                Sync HLS status
+                Sync Contabo status
               </button>
               <button className="btn btn-ghost" type="button" disabled={!video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
               {canPublish ? (
@@ -467,17 +536,26 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Akash</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'AKASH'} job linked` : 'Not queued yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Livepeer</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'LIVEPEER'} task linked` : 'Not started yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Bunny movie folder</span><strong>{video.bunnyFolderPrefix ?? 'Will be created on first upload'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Contabo</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'CONTABO'} job linked` : 'Not queued yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Transcode</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'FFMPEG'} task linked` : 'Not started yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">HLS output</span><strong>{video.hlsOutputPath ?? 'Not assigned yet'}</strong></div>
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
               <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{video.hlsManifestKey ?? 'Not generated yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? video.hlsReadyAt.slice(0, 10) : 'No'}</strong></div>
+              <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? formatDateTime(video.hlsReadyAt) : 'No'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Latest callback</span><strong>{video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{video.transcodeError ?? 'None recorded'}</strong></div>
             </div>
+
+            {video.latestPipelineMessage ? (
+              <div className="detail-card" style={{ marginTop: 14 }}>
+                <span className="detail-label">Callback note</span>
+                <strong>{video.latestPipelineMessage}</strong>
+              </div>
+            ) : null}
           </div>
         );
       })}

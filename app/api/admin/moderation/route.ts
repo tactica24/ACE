@@ -11,8 +11,7 @@ export async function GET(req: NextRequest) {
 
   const items = await prisma.moderationItem.findMany({
     where: {
-      status: { in: ['PENDING', 'APPROVED'] },
-      video: { status: { in: ['PENDING', 'APPROVED'] } }
+      status: { in: ['PENDING', 'APPROVED'] }
     },
     include: {
       video: {

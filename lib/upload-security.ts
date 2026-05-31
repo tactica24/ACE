@@ -47,6 +47,10 @@ export function sanitizeUploadFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]/g, '-');
 }
 
+export function sanitizeUploadFolderId(folderId: string) {
+  return folderId.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 100);
+}
+
 export function isUploadPurpose(value: string | undefined): value is UploadPurpose {
   return (
     value === 'video' ||
@@ -61,15 +65,46 @@ export function buildOwnedUploadKey({
   userId,
   purpose,
   filename,
-  assetId
+  assetId,
+  folderId
 }: {
   userId: string;
   purpose: UploadPurpose;
   filename: string;
   assetId: string;
+  folderId?: string | null;
 }) {
-  const storagePurpose = purpose === 'master' ? 'movie' : purpose;
-  return `uploads/${userId}/${storagePurpose}/${assetId}-${sanitizeUploadFilename(filename)}`;
+  const folder = sanitizeUploadFolderId(folderId ?? '');
+  const fileName = `${assetId}-${sanitizeUploadFilename(filename)}`;
+
+  if (folder) {
+    const storagePurpose = purpose === 'master' ? 'masters' : `${purpose}s`;
+    return `uploads/${userId}/movies/${folder}/${storagePurpose}/${fileName}`;
+  }
+
+  const legacyPurpose = purpose === 'master' ? 'movie' : purpose;
+  return `uploads/${userId}/${legacyPurpose}/${fileName}`;
+}
+
+export function getUploadFolderIdFromKey(key: string) {
+  const match = key.match(/^uploads\/[^/]+\/movies\/([^/]+)\//);
+  return match?.[1] ?? null;
+}
+
+export function getMovieUploadFolderPrefix(userId: string, folderId: string) {
+  const normalizedUserId = userId.trim();
+  const normalizedFolderId = sanitizeUploadFolderId(folderId);
+  if (!normalizedUserId || !normalizedFolderId) {
+    throw new Error('userId and folderId are required to build the Bunny movie folder path.');
+  }
+
+  return `uploads/${normalizedUserId}/movies/${normalizedFolderId}`;
+}
+
+export function getMovieUploadFolderPrefixFromKey(key: string | null | undefined) {
+  const normalizedKey = String(key ?? '').trim();
+  const match = normalizedKey.match(/^(uploads\/[^/]+\/movies\/[^/]+)/);
+  return match?.[1] ?? null;
 }
 
 export function validateUploadRequest({
@@ -130,8 +165,15 @@ export function isOwnedUploadKey(key: string, userId: string, purpose?: UploadPu
   }
 
   if (purpose === 'master') {
-    return key.startsWith(`${basePrefix}movie/`) || key.startsWith(`${basePrefix}master/`);
+    return (
+      key.startsWith(`${basePrefix}movie/`) ||
+      key.startsWith(`${basePrefix}master/`) ||
+      /^uploads\/[^/]+\/movies\/[^/]+\/masters\//.test(key)
+    );
   }
 
-  return key.startsWith(`${basePrefix}${purpose}/`);
+  return (
+    key.startsWith(`${basePrefix}${purpose}/`) ||
+    key.startsWith(`${basePrefix}movies/`) && key.includes(`/${purpose}s/`)
+  );
 }

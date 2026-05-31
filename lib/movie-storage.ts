@@ -12,7 +12,7 @@ export async function getMovieMp4StorageStatus(
       candidates,
       selectedKey: null,
       bunnyStorageConfigured,
-      error: 'No MP4 candidates found. Ensure the video has a masterKey, primaryStorageKey, or fallbackStorageKey with .mp4 extension.'
+      error: 'No viewer MP4 candidates found. Attach a primaryStorageKey or fallbackStorageKey with a .mp4 extension, or finish the HLS pipeline.'
     };
   }
 

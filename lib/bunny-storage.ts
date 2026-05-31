@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from './env';
 import { normalizeMediaKey } from './media';
+import { getMovieUploadFolderPrefix } from './upload-security';
 
 const OBJECT_METADATA_TTL_MS = 1000 * 60 * 10;
 const UPLOAD_TOKEN_TTL = '30m';
@@ -80,6 +81,9 @@ function contentTypeForKey(key: string) {
   if (lower.endsWith('.png')) return 'image/png';
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.vtt')) return 'text/vtt';
+  if (lower.endsWith('.m3u8')) return 'application/vnd.apple.mpegurl';
+  if (lower.endsWith('.ts')) return 'video/mp2t';
+  if (lower.endsWith('.m4s')) return 'video/iso.segment';
   if (lower.endsWith('.pdf')) return 'application/pdf';
   if (lower.endsWith('.apk')) return 'application/vnd.android.package-archive';
   if (lower.endsWith('.webm')) return 'video/webm';
@@ -196,6 +200,34 @@ export async function putObject(
   const response = await fetch(getStorageUrl(key), requestInit);
   await assertOk(response, 'upload');
   objectMetadataCache.delete(`${env.BUNNY_STORAGE_ZONE}:${normalizeMediaKey(key)}`);
+}
+
+export async function ensureStorageFolderMarker(prefix: string, markerFileName = '__folder__.keep') {
+  const normalizedPrefix = normalizeMediaKey(prefix)?.replace(/\/+$/, '');
+  if (!normalizedPrefix) {
+    throw new Error('Storage prefix is required.');
+  }
+
+  const markerKey = `${normalizedPrefix}/${markerFileName}`;
+  try {
+    await headObject(markerKey);
+    return markerKey;
+  } catch {
+    await putObject(markerKey, Buffer.from(''), 'text/plain');
+    return markerKey;
+  }
+}
+
+export async function ensureMovieUploadFolders(userId: string, folderId: string) {
+  const basePrefix = getMovieUploadFolderPrefix(userId, folderId);
+  const folders = ['masters', 'posters', 'trailers', 'subtitles'];
+
+  await Promise.all(folders.map((folder) => ensureStorageFolderMarker(`${basePrefix}/${folder}`)));
+
+  return {
+    basePrefix,
+    folders: folders.map((folder) => `${basePrefix}/${folder}`)
+  };
 }
 
 export async function deleteObject(key: string) {

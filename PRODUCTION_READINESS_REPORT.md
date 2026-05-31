@@ -1,5 +1,5 @@
 # ACE Studio Production Readiness Report
-> Historical note: this document predates the Bunny-only Akash + Livepeer HLS pipeline and should not be used as the current deployment runbook.
+> Historical note: this document predates the Contabo + Bunny HLS pipeline and should not be used as the current deployment runbook.
 **Date:** April 16, 2026  
 **Status:** 99.9% Complete - International Standard Ready
 

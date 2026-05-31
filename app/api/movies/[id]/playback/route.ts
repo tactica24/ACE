@@ -4,6 +4,7 @@ import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { prisma } from '@/lib/db';
 import { createSignedHlsManifestUrl, resolveVideoHlsManifestKey } from '@/lib/hls';
 import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { ensureStreamSession } from '@/lib/stream-sessions';
 import { canPreviewVideo, isSeriesContainer } from '@/lib/video-access';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
@@ -50,7 +51,7 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
   }
 
   const canPreview = canPreviewVideo(video, auth);
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status) && !canPreview) {
+  if (!isViewerVisibleStatus(video.status) && !canPreview) {
     return NextResponse.json({ error: 'Movie not available' }, { status: 403 });
   }
 

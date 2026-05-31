@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const result = await queueVideoHlsPipeline(videoId);
     return NextResponse.json({
       ok: true,
-      message: `Akash queued the HLS pipeline for this title (${result.dseq}).`,
+      message: `Contabo queued the HLS pipeline for this title (${result.jobId}). Bunny stream folders are ready and the admin panel will update after callback.`,
       video: await getProcessingVideo(videoId)
     });
   }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     await syncPipelineTask(videoId);
     return NextResponse.json({
       ok: true,
-      message: 'Pipeline status synced from Livepeer.',
+      message: 'Pipeline status synced from Contabo.',
       video: await getProcessingVideo(videoId)
     });
   }

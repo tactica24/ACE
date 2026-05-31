@@ -99,10 +99,11 @@ const labelize = (value?: string) =>
         .join(' ')
     : 'Not set';
 
-const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster') => {
+const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster', folderId: string) => {
   const formData = new FormData();
   formData.set('file', file);
   formData.set('purpose', purpose);
+  formData.set('folderId', folderId);
 
   const response = await fetch('/api/admin/assets/upload', {
     method: 'POST',
@@ -206,10 +207,10 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
 
     try {
       if (assets.trailer) {
-        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer');
+        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer', item.video.id);
       }
       if (assets.poster) {
-        posterKey = await prepareAssetUpload(assets.poster, 'poster');
+        posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id);
       }
     } catch (uploadErr: any) {
       setErrors((prev) => ({ ...prev, [item.video.id]: uploadErr?.message || 'Failed to upload trailer or poster.' }));

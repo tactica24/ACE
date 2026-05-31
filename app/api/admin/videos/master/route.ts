@@ -3,7 +3,6 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { isOwnedUploadKey } from '@/lib/upload-security';
-import { queueVideoHlsPipeline } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 function hasSupportedMasterExtension(key: string) {
@@ -91,16 +90,9 @@ export async function POST(req: NextRequest) {
 
   revalidateApprovedCatalog();
 
-  let message = 'MP4 uploaded and attached. HLS pipeline started.';
-  try {
-    await queueVideoHlsPipeline(videoId);
-  } catch (error) {
-    message = `MP4 uploaded, but the HLS pipeline did not start automatically: ${error instanceof Error ? error.message : 'Unknown error.'}`;
-  }
-
   return NextResponse.json({
     ok: true,
-    message,
+    message: 'MP4 master uploaded into the Bunny movie folder and attached. Start Contabo HLS when you are ready to process this movie.',
     video: await getProcessingVideo(videoId)
   });
 }

@@ -483,6 +483,7 @@ export default function UploadForm({
   const uploadAsset = async (
     file: File,
     purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master',
+    folderId: string,
     onProgress: (loaded: number, total: number) => void
   ) => {
     const presign = await fetch(uploadEndpoint, {
@@ -492,7 +493,8 @@ export default function UploadForm({
         filename: file.name,
         contentType: file.type || 'application/octet-stream',
         fileSize: file.size,
-        purpose
+        purpose,
+        folderId
       })
     });
     const presignData = await presign.json().catch(() => ({}));
@@ -515,6 +517,7 @@ export default function UploadForm({
       label: string;
       file: File;
       purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master';
+      folderId: string;
     },
     completedBytes: number,
     totalBytes: number
@@ -522,7 +525,7 @@ export default function UploadForm({
     setUploadLabel(item.label);
     markUploadStep(item.id, { status: 'uploading', loaded: 0, total: item.file.size, error: undefined });
     try {
-      const fileKey = await uploadAsset(item.file, item.purpose, (loaded, total) => {
+      const fileKey = await uploadAsset(item.file, item.purpose, item.folderId, (loaded, total) => {
         const safeTotal = total || item.file.size || 1;
         const safeLoaded = Math.min(loaded, safeTotal);
         const overallLoaded = completedBytes + safeLoaded;
@@ -682,6 +685,7 @@ export default function UploadForm({
           label: string;
           file: File;
           purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master';
+          folderId: string;
           subtitleMeta?: {
             label: string;
             languageCode: string;
@@ -690,13 +694,15 @@ export default function UploadForm({
           };
         };
 
+        const releaseFolderId = createId();
         const uploadQueue: UploadQueueItem[] = [
           ...(masterFile
             ? [{
                 id: 'master',
                 label: `Uploading final playable MP4 master: ${masterFile.name}`,
                 file: masterFile,
-                purpose: 'master' as const
+                purpose: 'master' as const,
+                folderId: releaseFolderId
               }]
             : []),
           ...(posterFile
@@ -704,7 +710,8 @@ export default function UploadForm({
                 id: 'poster',
                 label: `Uploading poster: ${posterFile.name}`,
                 file: posterFile,
-                purpose: 'poster' as const
+                purpose: 'poster' as const,
+                folderId: releaseFolderId
               }]
             : []),
           ...(trailerFile
@@ -712,7 +719,8 @@ export default function UploadForm({
                 id: 'trailer',
                 label: `Uploading trailer: ${trailerFile.name}`,
                 file: trailerFile,
-                purpose: 'trailer' as const
+                purpose: 'trailer' as const,
+                folderId: releaseFolderId
               }]
             : []),
           ...subtitleTracks.map((track, index) => ({
@@ -720,6 +728,7 @@ export default function UploadForm({
             label: `Uploading subtitle ${index + 1}: ${track.file?.name ?? track.label}`,
             file: track.file as File,
             purpose: 'subtitle' as const,
+            folderId: releaseFolderId,
             subtitleMeta: {
               label: track.label.trim() || getLanguageLabel(track.languageCode),
               languageCode: track.languageCode,
@@ -929,13 +938,15 @@ export default function UploadForm({
       let completedBytes = 0;
       let storedSeriesPosterKey: string | null = null;
       let storedSeriesTrailerKey: string | null = null;
+      const seriesFolderId = isAddingToExistingSeries ? selectedSeriesId : createId();
 
       if (!isAddingToExistingSeries && posterFile) {
         storedSeriesPosterKey = await uploadTrackedAsset({
           id: 'series-poster',
           label: `Uploading series poster: ${posterFile.name}`,
           file: posterFile,
-          purpose: 'poster'
+          purpose: 'poster',
+          folderId: seriesFolderId
         }, completedBytes, totalBytes);
         completedBytes += posterFile.size;
       }
@@ -946,7 +957,8 @@ export default function UploadForm({
             id: 'series-trailer',
             label: `Uploading trailer: ${trailerFile.name}`,
             file: trailerFile,
-            purpose: 'trailer'
+            purpose: 'trailer',
+            folderId: seriesFolderId
           }, completedBytes, totalBytes);
           completedBytes += trailerFile.size;
         }
@@ -955,6 +967,7 @@ export default function UploadForm({
       const episodePayload = [];
       for (const episode of episodes) {
         setUploadLabel(`Uploading ${episode.title || `Season ${episode.seasonNumber} Episode ${episode.episodeNumber}`}`);
+        const episodeFolderId = `${seriesFolderId}-s${episode.seasonNumber}-e${episode.episodeNumber}-${episode.id}`;
         let primaryVideoKey: string | undefined;
         let fallbackVideoKey: string | undefined;
 
@@ -963,7 +976,8 @@ export default function UploadForm({
             id: `${episode.id}-primary`,
             label: `Uploading ${episode.title || `Season ${episode.seasonNumber} Episode ${episode.episodeNumber}`} 1080p`,
             file: episode.primaryVideoFile,
-            purpose: 'video'
+            purpose: 'video',
+            folderId: episodeFolderId
           }, completedBytes, totalBytes);
           completedBytes += episode.primaryVideoFile.size;
         }
@@ -973,7 +987,8 @@ export default function UploadForm({
             id: `${episode.id}-fallback`,
             label: `Uploading ${episode.title || `Season ${episode.seasonNumber} Episode ${episode.episodeNumber}`} 720p`,
             file: episode.fallbackVideoFile,
-            purpose: 'video'
+            purpose: 'video',
+            folderId: episodeFolderId
           }, completedBytes, totalBytes);
           completedBytes += episode.fallbackVideoFile.size;
         }
@@ -984,7 +999,8 @@ export default function UploadForm({
             id: `${episode.id}-poster`,
             label: `Uploading ${episode.title || `Season ${episode.seasonNumber} Episode ${episode.episodeNumber}`} poster`,
             file: episode.posterFile,
-            purpose: 'poster'
+            purpose: 'poster',
+            folderId: episodeFolderId
           }, completedBytes, totalBytes);
           completedBytes += episode.posterFile.size;
         }
@@ -1003,7 +1019,8 @@ export default function UploadForm({
             id: `${episode.id}-subtitle-${track.id}`,
             label: `Uploading ${episode.title || `Season ${episode.seasonNumber} Episode ${episode.episodeNumber}`} subtitle ${trackIndex + 1}: ${track.file.name}`,
             file: track.file,
-            purpose: 'subtitle'
+            purpose: 'subtitle',
+            folderId: episodeFolderId
           }, completedBytes, totalBytes);
           completedBytes += track.file.size;
           episodeSubtitleKeys.push({

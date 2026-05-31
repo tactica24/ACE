@@ -1,8 +1,9 @@
+import { randomUUID } from 'crypto';
+import { ensureStorageFolderMarker } from './bunny-storage';
 import { prisma } from './db';
-import { createAkashDeployment, buildAkashWorkerSdl, closeAkashDeployment, createAkashLease, waitForAkashBid } from './akash';
+import { createContaboTranscodeJob, getContaboTranscodeJob, type ContaboTranscodeJob } from './contabo';
 import { env } from './env';
 import { createSignedHlsManifestUrl, getDefaultHlsOutputPath, getHlsManifestKeyFromOutputPath, verifyHlsManifest } from './hls';
-import { getLivepeerHlsOutputPath, getLivepeerManifestKey, getLivepeerTask, getLivepeerTaskPhase, type LivepeerTask } from './livepeer';
 import { normalizeMediaKey } from './media';
 
 type PipelineVideo = {
@@ -13,17 +14,18 @@ type PipelineVideo = {
   technicalMetadata: {
     masterKey: string | null;
     orchestrationJobId: string | null;
-    transcodeTaskId: string | null;
     hlsOutputPath: string | null;
     hlsManifestKey: string | null;
     masterDeletedAt: Date | null;
   } | null;
 };
 
+const ACTIVE_CONTABO_STATUSES = ['CONTABO_QUEUED', 'ENCODING_STARTED'];
+
 function getPipelineCallbackUrl() {
   const baseUrl = env.ACE_APP_BASE_URL?.replace(/\/+$/, '');
   if (!baseUrl) {
-    throw new Error('ACE_APP_BASE_URL is required for Akash callbacks.');
+    throw new Error('ACE_APP_BASE_URL is required for Contabo worker callbacks.');
   }
 
   return `${baseUrl}/api/internal/video-pipeline/callback`;
@@ -41,7 +43,6 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
         select: {
           masterKey: true,
           orchestrationJobId: true,
-          transcodeTaskId: true,
           hlsOutputPath: true,
           hlsManifestKey: true,
           masterDeletedAt: true
@@ -54,7 +55,7 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
 function ensureVideoCanStartPipeline(video: PipelineVideo) {
   const masterKey = normalizeMediaKey(video.technicalMetadata?.masterKey);
   if (!masterKey) {
-    throw new Error('Upload a Bunny master first before starting HLS processing.');
+    throw new Error('Upload a master file first before starting HLS processing.');
   }
 
   if (video.technicalMetadata?.masterDeletedAt) {
@@ -64,30 +65,47 @@ function ensureVideoCanStartPipeline(video: PipelineVideo) {
   return masterKey;
 }
 
+async function ensureSingleActiveContaboJob(videoId: string) {
+  const activeJob = await prisma.videoTechnicalMetadata.findFirst({
+    where: {
+      videoId: { not: videoId },
+      processingStatus: { in: ACTIVE_CONTABO_STATUSES },
+      orchestrationProvider: 'CONTABO'
+    },
+    select: {
+      video: { select: { title: true } },
+      orchestrationJobId: true
+    }
+  });
+
+  if (activeJob) {
+    throw new Error(
+      `Another Contabo transcode is already active${activeJob.video?.title ? ` for "${activeJob.video.title}"` : ''}. Finish or fail it before starting the next movie.`
+    );
+  }
+}
+
+function normalizeJobStatus(job: ContaboTranscodeJob) {
+  return String(job.status ?? '').trim().toLowerCase();
+}
+
+function getContaboError(job: ContaboTranscodeJob, fallbackMessage?: string) {
+  return job.error ?? job.message ?? fallbackMessage ?? 'Transcoding failed.';
+}
+
 export async function queueVideoHlsPipeline(videoId: string) {
   const video = await getPipelineVideo(videoId);
   if (!video) {
     throw new Error('Movie not found.');
   }
 
+  await ensureSingleActiveContaboJob(videoId);
+
   const masterKey = ensureVideoCanStartPipeline(video);
   const hlsOutputPath = video.technicalMetadata?.hlsOutputPath ?? getDefaultHlsOutputPath(videoId);
-  const sdl = buildAkashWorkerSdl({
-    callbackUrl: getPipelineCallbackUrl(),
-    videoId,
-    masterKey,
-    hlsOutputPath
-  });
+  const jobId = randomUUID();
 
-  const deployment = await createAkashDeployment(sdl);
-  const bid = await waitForAkashBid(deployment.dseq);
-  await createAkashLease({
-    manifest: deployment.manifest,
-    dseq: deployment.dseq,
-    gseq: bid.gseq,
-    oseq: bid.oseq,
-    provider: bid.provider
-  });
+  await ensureStorageFolderMarker(hlsOutputPath);
 
   await prisma.$transaction([
     prisma.video.update({
@@ -101,12 +119,13 @@ export async function queueVideoHlsPipeline(videoId: string) {
       create: {
         videoId,
         masterKey,
-        processingStatus: 'AKASH_QUEUED',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: deployment.dseq,
+        processingStatus: 'CONTABO_QUEUED',
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId,
         hlsOutputPath,
         hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath),
-        transcodeProvider: 'LIVEPEER',
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId,
         transcodeError: null,
         transcodeFailedAt: null,
         hlsReadyAt: null,
@@ -114,12 +133,13 @@ export async function queueVideoHlsPipeline(videoId: string) {
         masterDeletionEligible: false
       },
       update: {
-        processingStatus: 'AKASH_QUEUED',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: deployment.dseq,
+        processingStatus: 'CONTABO_QUEUED',
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId,
         hlsOutputPath,
         hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath),
-        transcodeProvider: 'LIVEPEER',
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId,
         transcodeError: null,
         transcodeFailedAt: null,
         hlsReadyAt: null,
@@ -130,8 +150,26 @@ export async function queueVideoHlsPipeline(videoId: string) {
     })
   ]);
 
+  try {
+    await createContaboTranscodeJob({
+      jobId,
+      callbackUrl: getPipelineCallbackUrl(),
+      videoId,
+      title: video.title,
+      masterKey,
+      hlsOutputPath
+    });
+  } catch (error) {
+    await applyPipelineFailure({
+      videoId,
+      orchestrationJobId: jobId,
+      fallbackMessage: error instanceof Error ? error.message : 'Unable to create Contabo job.'
+    });
+    throw error;
+  }
+
   return {
-    dseq: deployment.dseq,
+    jobId,
     hlsOutputPath
   };
 }
@@ -140,36 +178,37 @@ export async function applyPipelineSubmission(input: {
   videoId: string;
   orchestrationJobId?: string | null;
   taskId?: string | null;
-  task?: LivepeerTask | null;
   hlsOutputPath?: string | null;
+  hlsManifestKey?: string | null;
 }) {
-  const hlsOutputPath = input.hlsOutputPath ?? getLivepeerHlsOutputPath(input.task ?? { id: input.taskId ?? '' }, input.videoId) ?? getDefaultHlsOutputPath(input.videoId);
+  const hlsOutputPath = input.hlsOutputPath ?? getDefaultHlsOutputPath(input.videoId);
+  const jobId = input.orchestrationJobId ?? input.taskId ?? null;
   await prisma.videoTechnicalMetadata.upsert({
     where: { videoId: input.videoId },
     create: {
       videoId: input.videoId,
       processingStatus: 'ENCODING_STARTED',
-      orchestrationProvider: 'AKASH',
-      orchestrationJobId: input.orchestrationJobId ?? null,
-      transcodeProvider: 'LIVEPEER',
-      transcodeTaskId: input.taskId ?? null,
+      orchestrationProvider: 'CONTABO',
+      orchestrationJobId: jobId,
+      transcodeProvider: 'FFMPEG',
+      transcodeTaskId: jobId,
       transcodeRequestedAt: new Date(),
       transcodeError: null,
       transcodeFailedAt: null,
       hlsOutputPath,
-      hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath)
+      hlsManifestKey: input.hlsManifestKey ?? getHlsManifestKeyFromOutputPath(hlsOutputPath)
     },
     update: {
       processingStatus: 'ENCODING_STARTED',
-      orchestrationProvider: 'AKASH',
-      orchestrationJobId: input.orchestrationJobId ?? undefined,
-      transcodeProvider: 'LIVEPEER',
-      transcodeTaskId: input.taskId ?? undefined,
+      orchestrationProvider: 'CONTABO',
+      orchestrationJobId: jobId ?? undefined,
+      transcodeProvider: 'FFMPEG',
+      transcodeTaskId: jobId ?? undefined,
       transcodeRequestedAt: new Date(),
       transcodeError: null,
       transcodeFailedAt: null,
       hlsOutputPath,
-      hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath)
+      hlsManifestKey: input.hlsManifestKey ?? getHlsManifestKeyFromOutputPath(hlsOutputPath)
     }
   });
 }
@@ -178,14 +217,11 @@ export async function applyPipelineFailure(input: {
   videoId: string;
   orchestrationJobId?: string | null;
   taskId?: string | null;
-  task?: LivepeerTask | null;
+  job?: ContaboTranscodeJob | null;
   fallbackMessage?: string;
 }) {
-  const message =
-    input.task?.status?.error ??
-    input.task?.status?.message ??
-    input.fallbackMessage ??
-    'Transcoding failed.';
+  const jobId = input.orchestrationJobId ?? input.taskId ?? input.job?.id ?? null;
+  const message = getContaboError(input.job ?? { id: jobId ?? '' }, input.fallbackMessage);
 
   await prisma.$transaction([
     prisma.video.update({
@@ -199,20 +235,20 @@ export async function applyPipelineFailure(input: {
       create: {
         videoId: input.videoId,
         processingStatus: 'TRANSCODE_FAILED',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: input.orchestrationJobId ?? null,
-        transcodeProvider: 'LIVEPEER',
-        transcodeTaskId: input.taskId ?? null,
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId,
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId,
         transcodeFailedAt: new Date(),
         transcodeError: message,
         masterDeletionEligible: false
       },
       update: {
         processingStatus: 'TRANSCODE_FAILED',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: input.orchestrationJobId ?? undefined,
-        transcodeProvider: 'LIVEPEER',
-        transcodeTaskId: input.taskId ?? undefined,
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId ?? undefined,
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId ?? undefined,
         transcodeFailedAt: new Date(),
         transcodeError: message,
         masterDeletionEligible: false
@@ -225,19 +261,22 @@ export async function finalizePipelineSuccess(input: {
   videoId: string;
   orchestrationJobId?: string | null;
   taskId?: string | null;
-  task?: LivepeerTask | null;
+  job?: ContaboTranscodeJob | null;
   hlsOutputPath?: string | null;
+  hlsManifestKey?: string | null;
 }) {
   const hlsOutputPath =
     input.hlsOutputPath ??
-    getLivepeerHlsOutputPath(input.task ?? { id: input.taskId ?? '' }, input.videoId) ??
+    input.job?.hlsOutputPath ??
     getDefaultHlsOutputPath(input.videoId);
   const manifestKey =
-    getLivepeerManifestKey(input.task ?? { id: input.taskId ?? '' }, input.videoId) ??
+    input.hlsManifestKey ??
+    input.job?.hlsManifestKey ??
     getHlsManifestKeyFromOutputPath(hlsOutputPath);
+  const jobId = input.orchestrationJobId ?? input.taskId ?? input.job?.id ?? null;
 
   if (!manifestKey) {
-    throw new Error('Livepeer completed but no HLS manifest path was returned.');
+    throw new Error('Contabo completed but no HLS manifest path was returned.');
   }
 
   await verifyHlsManifest(manifestKey);
@@ -255,10 +294,10 @@ export async function finalizePipelineSuccess(input: {
       create: {
         videoId: input.videoId,
         processingStatus: 'READY_TO_STREAM',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: input.orchestrationJobId ?? null,
-        transcodeProvider: 'LIVEPEER',
-        transcodeTaskId: input.taskId ?? null,
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId,
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId,
         hlsOutputPath,
         hlsManifestKey: manifestKey,
         hlsReadyAt: new Date(),
@@ -270,10 +309,10 @@ export async function finalizePipelineSuccess(input: {
       },
       update: {
         processingStatus: 'READY_TO_STREAM',
-        orchestrationProvider: 'AKASH',
-        orchestrationJobId: input.orchestrationJobId ?? undefined,
-        transcodeProvider: 'LIVEPEER',
-        transcodeTaskId: input.taskId ?? undefined,
+        orchestrationProvider: 'CONTABO',
+        orchestrationJobId: jobId ?? undefined,
+        transcodeProvider: 'FFMPEG',
+        transcodeTaskId: jobId ?? undefined,
         hlsOutputPath,
         hlsManifestKey: manifestKey,
         hlsReadyAt: new Date(),
@@ -289,48 +328,37 @@ export async function finalizePipelineSuccess(input: {
 
 export async function syncPipelineTask(videoId: string) {
   const video = await getPipelineVideo(videoId);
-  if (!video?.technicalMetadata?.transcodeTaskId) {
-    throw new Error('No Livepeer task is linked to this title yet.');
+  if (!video?.technicalMetadata?.orchestrationJobId) {
+    throw new Error('No Contabo job is linked to this title yet.');
   }
 
-  const task = await getLivepeerTask(video.technicalMetadata.transcodeTaskId);
-  const phase = getLivepeerTaskPhase(task);
-  if (phase === 'completed' || phase === 'success' || phase === 'ready') {
+  const job = await getContaboTranscodeJob(video.technicalMetadata.orchestrationJobId);
+  const status = normalizeJobStatus(job);
+  if (status === 'completed' || status === 'success' || status === 'ready') {
     await finalizePipelineSuccess({
       videoId,
       orchestrationJobId: video.technicalMetadata.orchestrationJobId,
-      taskId: video.technicalMetadata.transcodeTaskId,
-      task
+      job
     });
-  } else if (phase === 'failed' || phase === 'error') {
+  } else if (status === 'failed' || status === 'error' || status === 'timeout') {
     await applyPipelineFailure({
       videoId,
       orchestrationJobId: video.technicalMetadata.orchestrationJobId,
-      taskId: video.technicalMetadata.transcodeTaskId,
-      task
+      job
     });
   } else {
     await prisma.videoTechnicalMetadata.update({
       where: { videoId },
       data: {
-        processingStatus: 'ENCODING_STARTED',
+        processingStatus: status === 'queued' ? 'CONTABO_QUEUED' : 'ENCODING_STARTED',
         transcodeError: null
       }
     });
   }
 
-  return task;
+  return job;
 }
 
-export async function closePipelineDeployment(orchestrationJobId?: string | null) {
-  if (!orchestrationJobId) return;
-
-  try {
-    await closeAkashDeployment(orchestrationJobId);
-  } catch (error) {
-    console.error('[video-pipeline] unable to close Akash deployment', {
-      orchestrationJobId,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
+export async function closePipelineDeployment(_orchestrationJobId?: string | null) {
+  return;
 }

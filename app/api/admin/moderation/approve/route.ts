@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { getStatusAfterApproval } from '@/lib/release-status';
 import { isSeriesContainer } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
           primaryStorageKey: true,
           fallbackStorageKey: true,
           technicalMetadata: {
-            select: { masterKey: true }
+            select: { masterKey: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
           },
           episodes: {
             select: {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
               primaryStorageKey: true,
               fallbackStorageKey: true,
               technicalMetadata: {
-                select: { masterKey: true }
+                select: { masterKey: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
               }
             },
             orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }]
@@ -83,9 +84,17 @@ export async function POST(req: NextRequest) {
     }
   });
 
+  const targetStatus = getStatusAfterApproval(moderation.video);
+  const episodeUpdates = moderation.video.episodes.map((episode) =>
+    prisma.video.update({
+      where: { id: episode.id },
+      data: { status: getStatusAfterApproval(episode) }
+    })
+  );
+
   await prisma.$transaction([
-    prisma.video.update({ where: { id: moderation.videoId }, data: { status: 'APPROVED' } }),
-    prisma.video.updateMany({ where: { seriesId: moderation.videoId }, data: { status: 'APPROVED' } })
+    prisma.video.update({ where: { id: moderation.videoId }, data: { status: targetStatus } }),
+    ...episodeUpdates
   ]);
   revalidateApprovedCatalog();
 

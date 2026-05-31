@@ -3,8 +3,8 @@ import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-import { createStorageUploadUrl } from '@/lib/bunny-storage';
-import { buildOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
+import { createStorageUploadUrl, ensureMovieUploadFolders } from '@/lib/bunny-storage';
+import { buildOwnedUploadKey, isUploadPurpose, sanitizeUploadFolderId, validateUploadRequest } from '@/lib/upload-security';
 
 async function getUploadAuth(req: NextRequest) {
   const [sessionAuth, uploadCreatorLinkAuth, shortUploadCreatorLinkAuth] = await Promise.all([
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     const filename = typeof body?.filename === 'string' ? body.filename.trim() : '';
     const contentType = typeof body?.contentType === 'string' ? body.contentType.trim() : '';
     const purpose = typeof body?.purpose === 'string' ? body.purpose.trim() : '';
+    const folderId = typeof body?.folderId === 'string' ? sanitizeUploadFolderId(body.folderId.trim()) : null;
     const fileSize = Number(body?.fileSize ?? 0);
 
     if (!filename || !contentType || !purpose) {
@@ -54,7 +55,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const key = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid() });
+    if (folderId) {
+      await ensureMovieUploadFolders(auth.sub, folderId);
+    }
+
+    const key = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid(), folderId });
     const url = await createStorageUploadUrl(key, contentType);
 
     return NextResponse.json({ url, key, purpose, contentType });

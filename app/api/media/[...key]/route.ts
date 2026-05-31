@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { normalizeMediaKey } from '@/lib/media';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const runtime = 'nodejs';
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       return NextResponse.json({ error: 'Asset not available' }, { status: 404 });
     }
 
-    const match = matches.find(({ video }) => ['APPROVED', 'PUBLISHED'].includes(video.status) || canPreviewVideo(video, auth));
+    const match = matches.find(({ video }) => isViewerVisibleStatus(video.status) || canPreviewVideo(video, auth));
     if (!match) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 403 });
     }

@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { getStatusAfterApproval } from '@/lib/release-status';
 import { isSeriesContainer } from '@/lib/video-access';
 
 const ALLOWED_VIDEO_STATUSES = new Set(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED']);
@@ -35,7 +36,10 @@ export async function POST(req: NextRequest) {
       fallbackStorageKey: true,
       technicalMetadata: {
         select: {
-          masterKey: true
+          masterKey: true,
+          processingStatus: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true
         }
       },
       episodes: {
@@ -48,7 +52,10 @@ export async function POST(req: NextRequest) {
           fallbackStorageKey: true,
           technicalMetadata: {
             select: {
-              masterKey: true
+              masterKey: true,
+              processingStatus: true,
+              hlsManifestKey: true,
+              hlsReadyAt: true
             }
           }
         },
@@ -84,17 +91,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await prisma.video.update({
-    where: { id: videoId },
-    data: { status: status as 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' }
-  });
+  const nextStatus =
+    status === 'APPROVED'
+      ? getStatusAfterApproval(existingVideo)
+      : status;
+  const childUpdates = existingVideo.videoType === 'SERIES' && !existingVideo.seriesId
+    ? existingVideo.episodes.map((episode) =>
+        prisma.video.update({
+          where: { id: episode.id },
+          data: {
+            status: (status === 'APPROVED' ? getStatusAfterApproval(episode) : status) as
+              'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'MASTER_UPLOADED' | 'PROCESSING' | 'READY' | 'PUBLISHED'
+          }
+        })
+      )
+    : [];
 
-  if (existingVideo.videoType === 'SERIES' && !existingVideo.seriesId) {
-    await prisma.video.updateMany({
-      where: { seriesId: videoId },
-      data: { status: status as 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' }
-    });
-  }
+  await prisma.$transaction([
+    prisma.video.update({
+      where: { id: videoId },
+      data: { status: nextStatus as 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'MASTER_UPLOADED' | 'PROCESSING' | 'READY' | 'PUBLISHED' }
+    }),
+    ...childUpdates
+  ]);
 
   if (status === 'APPROVED' || status === 'PENDING' || status === 'REJECTED') {
     await prisma.moderationItem.upsert({
@@ -117,13 +136,17 @@ export async function POST(req: NextRequest) {
     ok: true,
     message:
       status === 'APPROVED'
-        ? 'Movie is now visible to viewers again.'
+        ? nextStatus === 'READY'
+          ? 'Title is approved and now waiting for publish.'
+          : nextStatus === 'MASTER_UPLOADED' || nextStatus === 'PROCESSING'
+            ? 'Title is approved for release, but playback processing still needs to finish.'
+            : 'Title approval was recorded.'
         : status === 'DRAFT'
           ? 'Movie has been hidden from viewers but kept in the producer library.'
           : `Movie status updated to ${status}.`,
     video: {
       id: existingVideo.id,
-      status
+      status: nextStatus
     }
   });
 }

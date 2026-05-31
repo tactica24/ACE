@@ -1,0 +1,44 @@
+import { hasMovieMp4 } from './movie-assets';
+import { hasReadyVideoHls } from './hls';
+
+type ReleaseLifecycleVideo = {
+  status: string;
+  primaryStorageKey?: string | null;
+  fallbackStorageKey?: string | null;
+  technicalMetadata?: {
+    masterKey?: string | null;
+    processingStatus?: string | null;
+    hlsManifestKey?: string | null;
+    hlsReadyAt?: Date | string | null;
+  } | null;
+};
+
+const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
+export const VIEWER_VISIBLE_STATUSES = ['APPROVED', 'READY', 'PUBLISHED'] as const;
+
+export function isViewerVisibleStatus(status: string | null | undefined) {
+  return VIEWER_VISIBLE_STATUSES.includes((status ?? '') as (typeof VIEWER_VISIBLE_STATUSES)[number]);
+}
+
+export function getStatusAfterApproval(video: ReleaseLifecycleVideo) {
+  if (video.status === 'PUBLISHED') {
+    return 'PUBLISHED' as const;
+  }
+
+  if (hasReadyVideoHls(video) || hasMovieMp4(video)) {
+    return 'READY' as const;
+  }
+
+  if (
+    video.status === 'PROCESSING' ||
+    ACTIVE_PIPELINE_STATUSES.has(video.technicalMetadata?.processingStatus ?? '')
+  ) {
+    return 'PROCESSING' as const;
+  }
+
+  if (video.status === 'MASTER_UPLOADED' || video.technicalMetadata?.masterKey) {
+    return 'MASTER_UPLOADED' as const;
+  }
+
+  return 'PENDING' as const;
+}

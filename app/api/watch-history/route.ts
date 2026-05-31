@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { canPreviewVideo, isSeriesContainer } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const previewAllowed = canPreviewVideo(video, auth);
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status) && !previewAllowed) {
+  if (!isViewerVisibleStatus(video.status) && !previewAllowed) {
     return NextResponse.json({ error: 'Video not available' }, { status: 403 });
   }
 

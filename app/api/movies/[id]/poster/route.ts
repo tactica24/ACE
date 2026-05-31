@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveMoviePosterKeyFromCandidates } from '@/lib/movie-assets';
 import { createSignedStorageUrl } from '@/lib/bunny-storage';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   const auth = await getAuthFromRequest(req);
-  const visible = ['APPROVED', 'PUBLISHED'].includes(video.status) || canPreviewVideo(video, auth);
+  const visible = isViewerVisibleStatus(video.status) || canPreviewVideo(video, auth);
 
   if (!visible) {
     const hasUnlock = auth && await prisma.unlock.findFirst({

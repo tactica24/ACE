@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
-import { putObject } from '@/lib/bunny-storage';
-import { buildOwnedUploadKey, validateUploadRequest } from '@/lib/upload-security';
+import { ensureMovieUploadFolders, putObject } from '@/lib/bunny-storage';
+import { buildOwnedUploadKey, sanitizeUploadFolderId, validateUploadRequest } from '@/lib/upload-security';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +15,9 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData().catch(() => null);
   const file = formData?.get('file');
   const purposeValue = formData?.get('purpose');
+  const folderIdValue = formData?.get('folderId');
   const purpose = typeof purposeValue === 'string' ? purposeValue.trim() : '';
+  const folderId = typeof folderIdValue === 'string' ? sanitizeUploadFolderId(folderIdValue.trim()) : '';
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'Upload file is required.' }, { status: 400 });
@@ -36,11 +38,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
+  if (folderId) {
+    await ensureMovieUploadFolders(auth.sub, folderId);
+  }
+
   const key = buildOwnedUploadKey({
     userId: auth.sub,
     purpose,
     filename: file.name,
-    assetId: uuid()
+    assetId: uuid(),
+    folderId: folderId || null
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());

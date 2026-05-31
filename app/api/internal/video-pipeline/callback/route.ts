@@ -14,14 +14,18 @@ export const dynamic = 'force-dynamic';
 type CallbackBody = {
   stage?: string;
   videoId?: string;
+  jobId?: string | null;
   taskId?: string | null;
-  task?: Record<string, unknown> | null;
+  job?: Record<string, unknown> | null;
   hlsOutputPath?: string | null;
+  hlsManifestKey?: string | null;
+  error?: string | null;
+  message?: string | null;
 };
 
 function isAuthorized(req: NextRequest) {
   const providedSecret = req.headers.get('x-ace-pipeline-secret')?.trim();
-  return Boolean(env.AKASH_CALLBACK_SECRET && providedSecret && providedSecret === env.AKASH_CALLBACK_SECRET);
+  return Boolean(env.CONTABO_PIPELINE_SECRET && providedSecret && providedSecret === env.CONTABO_PIPELINE_SECRET);
 }
 
 export async function POST(req: NextRequest) {
@@ -32,8 +36,13 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as CallbackBody | null;
   const videoId = typeof body?.videoId === 'string' ? body.videoId.trim() : '';
   const stage = typeof body?.stage === 'string' ? body.stage.trim().toLowerCase() : '';
-  const taskId = typeof body?.taskId === 'string' ? body.taskId.trim() : null;
+  const taskId = typeof body?.jobId === 'string'
+    ? body.jobId.trim()
+    : typeof body?.taskId === 'string'
+      ? body.taskId.trim()
+      : null;
   const hlsOutputPath = typeof body?.hlsOutputPath === 'string' ? body.hlsOutputPath.trim() : null;
+  const hlsManifestKey = typeof body?.hlsManifestKey === 'string' ? body.hlsManifestKey.trim() : null;
 
   if (!videoId || !stage) {
     return NextResponse.json({ error: 'videoId and stage are required.' }, { status: 400 });
@@ -60,27 +69,31 @@ export async function POST(req: NextRequest) {
     if (stage === 'submitted') {
       await applyPipelineSubmission({
         videoId,
-        orchestrationJobId: technicalMetadata?.orchestrationJobId ?? null,
+        orchestrationJobId: taskId ?? technicalMetadata?.orchestrationJobId ?? null,
         taskId,
-        task: (body?.task as never) ?? null,
-        hlsOutputPath
+        hlsOutputPath,
+        hlsManifestKey
       });
     } else if (stage === 'completed') {
       await finalizePipelineSuccess({
         videoId,
-        orchestrationJobId: technicalMetadata?.orchestrationJobId ?? null,
+        orchestrationJobId: taskId ?? technicalMetadata?.orchestrationJobId ?? null,
         taskId,
-        task: (body?.task as never) ?? null,
-        hlsOutputPath
+        job: (body?.job as never) ?? null,
+        hlsOutputPath,
+        hlsManifestKey
       });
       await closePipelineDeployment(technicalMetadata?.orchestrationJobId);
     } else if (stage === 'failed' || stage === 'timeout') {
       await applyPipelineFailure({
         videoId,
-        orchestrationJobId: technicalMetadata?.orchestrationJobId ?? null,
+        orchestrationJobId: taskId ?? technicalMetadata?.orchestrationJobId ?? null,
         taskId,
-        task: (body?.task as never) ?? null,
-        fallbackMessage: stage === 'timeout' ? 'The Akash worker timed out while waiting for Livepeer.' : undefined
+        job: (body?.job as never) ?? null,
+        fallbackMessage:
+          body?.error ??
+          body?.message ??
+          (stage === 'timeout' ? 'The Contabo worker timed out while transcoding the movie.' : undefined)
       });
       await closePipelineDeployment(technicalMetadata?.orchestrationJobId);
     } else {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { deleteObject, getObjectStream } from '@/lib/bunny-storage';
+import { deleteContaboJobArtifacts } from '@/lib/contabo';
 import { getMasterDownloadFileName } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
 import { Readable } from 'stream';
@@ -61,7 +62,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           playbackUrl: true,
           processingStatus: true,
           masterDeletionEligible: true,
-          hlsManifestKey: true
+          hlsManifestKey: true,
+          orchestrationProvider: true,
+          orchestrationJobId: true
         }
       }
     }
@@ -75,6 +78,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({
       error: 'Keep the master until HLS is verified and marked safe for cleanup.'
     }, { status: 400 });
+  }
+
+  if (video.technicalMetadata.orchestrationProvider === 'CONTABO' && video.technicalMetadata.orchestrationJobId) {
+    await deleteContaboJobArtifacts(video.technicalMetadata.orchestrationJobId);
   }
 
   await deleteObject(video.technicalMetadata.masterKey);

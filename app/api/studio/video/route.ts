@@ -5,12 +5,10 @@ import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
 import { getObjectBuffer, putObject } from '@/lib/bunny-storage';
 import { srtToVtt, ensureVttFilename } from '@/lib/subtitle-convert';
-import { buildOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
+import { buildOwnedUploadKey, getUploadFolderIdFromKey, isOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
 import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
-import { isOwnedUploadKey } from '@/lib/upload-security';
-import { queueVideoHlsPipeline } from '@/lib/video-pipeline';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -127,7 +125,13 @@ async function convertSubtitleTracksIfNeeded(tracks: Array<{ fileKey: string; la
         const vttBuffer = srtToVtt(buffer);
         const originalName = track.fileKey.split('/').pop() || 'subtitle.srt';
         const newFilename = ensureVttFilename(sanitizeUploadFilename(originalName));
-        const newKey = buildOwnedUploadKey({ userId, purpose: 'subtitle', filename: newFilename, assetId: uuid() });
+        const newKey = buildOwnedUploadKey({
+          userId,
+          purpose: 'subtitle',
+          filename: newFilename,
+          assetId: uuid(),
+          folderId: getUploadFolderIdFromKey(track.fileKey)
+        });
         await putObject(newKey, vttBuffer, 'text/vtt');
         track.fileKey = newKey;
       } catch (error) {
@@ -314,18 +318,8 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null, m
   };
 }
 
-async function queuePipelinesForVideos(videoIds: string[]) {
-  const uniqueIds = Array.from(new Set(videoIds.filter(Boolean)));
-  const results = await Promise.allSettled(uniqueIds.map((videoId) => queueVideoHlsPipeline(videoId)));
-
-  return results.flatMap((result, index) => {
-    if (result.status === 'fulfilled') {
-      return [];
-    }
-
-    const message = result.reason instanceof Error ? result.reason.message : 'Unknown pipeline error.';
-    return [`${uniqueIds[index]}: ${message}`];
-  });
+function getDeferredPipelineWarnings(videoIds: string[]) {
+  return Array.from(new Set(videoIds.filter(Boolean))).map((videoId) => `${videoId}: Awaiting admin Contabo processing.`);
 }
 
 export async function POST(req: NextRequest) {
@@ -575,13 +569,13 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
-    const pipelineWarnings = await queuePipelinesForVideos([video.id]);
+    const pipelineWarnings = getDeferredPipelineWarnings([video.id]);
 
     return NextResponse.json({
       ok: true,
       videoId: video.id,
       requiresContract: true,
-      pipelineStarted: pipelineWarnings.length === 0,
+      pipelineStarted: false,
       pipelineWarnings
     });
   }
@@ -779,14 +773,14 @@ export async function POST(req: NextRequest) {
       return items;
     });
 
-    const pipelineWarnings = await queuePipelinesForVideos(createdEpisodes.map((episode) => episode.id));
+    const pipelineWarnings = getDeferredPipelineWarnings(createdEpisodes.map((episode) => episode.id));
 
     return NextResponse.json({
       ok: true,
       videoId: series.id,
       addedEpisodeIds: createdEpisodes.map((episode) => episode.id),
       requiresContract: false,
-      pipelineStarted: pipelineWarnings.length === 0,
+      pipelineStarted: false,
       pipelineWarnings
     });
   }
@@ -902,14 +896,14 @@ export async function POST(req: NextRequest) {
     return { series, createdEpisodes };
   });
 
-  const pipelineWarnings = await queuePipelinesForVideos(result.createdEpisodes.map((episode) => episode.id));
+  const pipelineWarnings = getDeferredPipelineWarnings(result.createdEpisodes.map((episode) => episode.id));
 
   return NextResponse.json({
     ok: true,
     videoId: result.series.id,
     addedEpisodeIds: result.createdEpisodes.map((episode) => episode.id),
     requiresContract: true,
-    pipelineStarted: pipelineWarnings.length === 0,
+    pipelineStarted: false,
     pipelineWarnings
   });
 }

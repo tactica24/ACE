@@ -148,6 +148,7 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
   async function prepareUpload(
     file: File,
     purpose: 'master' | 'trailer' | 'poster' | 'subtitle',
+    folderId: string,
     onProgress: (loaded: number, total: number) => void
   ) {
     const response = await fetch('/api/uploads/sign', {
@@ -160,6 +161,7 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
         filename: file.name,
         contentType: file.type || 'application/octet-stream',
         purpose,
+        folderId,
         fileSize: file.size
       })
     });
@@ -256,19 +258,19 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
         let posterKey: string | undefined;
 
         if (row.masterFile) {
-          masterUploadKey = await prepareUpload(row.masterFile, 'master', createProgressCallback(row.id));
+          masterUploadKey = await prepareUpload(row.masterFile, 'master', row.id, createProgressCallback(row.id));
         }
 
         if (row.trailerFile) {
-          trailerKey = await prepareUpload(row.trailerFile, 'trailer', createProgressCallback(row.id));
+          trailerKey = await prepareUpload(row.trailerFile, 'trailer', row.id, createProgressCallback(row.id));
         }
 
         if (row.posterFile) {
-          posterKey = await prepareUpload(row.posterFile, 'poster', createProgressCallback(row.id));
+          posterKey = await prepareUpload(row.posterFile, 'poster', row.id, createProgressCallback(row.id));
         }
 
         if (row.subtitleFile) {
-          const key = await prepareUpload(row.subtitleFile, 'subtitle', createProgressCallback(row.id));
+          const key = await prepareUpload(row.subtitleFile, 'subtitle', row.id, createProgressCallback(row.id));
           subtitleTracks.push({
             fileKey: key,
             label: row.subtitleFile.name || 'Subtitles',
@@ -279,7 +281,7 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
         }
 
         if (row.trailerSubtitleFile) {
-          const key = await prepareUpload(row.trailerSubtitleFile, 'subtitle', createProgressCallback(row.id));
+          const key = await prepareUpload(row.trailerSubtitleFile, 'subtitle', row.id, createProgressCallback(row.id));
           subtitleTracks.push({
             fileKey: key,
             label: 'Trailer subtitles',

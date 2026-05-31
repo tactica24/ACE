@@ -5,6 +5,7 @@ import { encryptFile, generateAceKey, wrapKey } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { VIEWER_VISIBLE_STATUSES, isViewerVisibleStatus } from '@/lib/release-status';
 import { ensureCached } from '@/lib/stream';
 import { resolveAvailableMovieMp4Key } from '@/lib/movie-storage';
 import {
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
     prisma.unlock.findMany({
       where: {
         userId: auth.sub,
-        video: { status: { in: ['APPROVED', 'PUBLISHED'] } }
+        video: { status: { in: [...VIEWER_VISIBLE_STATUSES] } }
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
       }
     }
   });
-  if (!video || !['APPROVED', 'PUBLISHED'].includes(video.status)) {
+  if (!video || !isViewerVisibleStatus(video.status)) {
     return NextResponse.json({ error: 'Video not available.' }, { status: 404 });
   }
 

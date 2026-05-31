@@ -1,6 +1,6 @@
 # Ace Studio
 
-Ace Studio is an Africa-first video marketplace with Firebase Auth identity, Neon-backed relational data, Bunny Storage delivery, wallet unlocks, creator analytics, admin moderation, and an Akash + Livepeer HLS pipeline for full movies.
+Ace Studio is an Africa-first video marketplace with Firebase Auth identity, Neon-backed relational data, Bunny Storage delivery, wallet unlocks, creator analytics, admin moderation, and a Contabo + FFmpeg HLS pipeline for full movies.
 
 ## Stack
 - Next.js App Router on Vercel
@@ -8,8 +8,8 @@ Ace Studio is an Africa-first video marketplace with Firebase Auth identity, Neo
 - Firebase Authentication
 - Prisma + Neon PostgreSQL
 - Bunny Storage + Bunny CDN token authentication
-- Akash orchestration for video pipeline jobs
-- Livepeer transcoding into Bunny HLS output
+- Contabo VPS worker for one-at-a-time video pipeline jobs
+- FFmpeg transcoding into Bunny HLS output
 - Paystack payments (NG)
 - Stripe Checkout (Diaspora)
 
@@ -27,10 +27,10 @@ npm run dev
 ```
 
 ## Production deployment
-For the current production media stack (`Vercel or Railway + Neon + Firebase + Bunny + Akash + Livepeer`), use:
+For the current production media stack (`Vercel or Railway + Neon + Firebase + Bunny + Contabo + FFmpeg`), use:
 
 - `.env.production.example`
-- [`DEPLOY_AKASH_LIVEPEER_BUNNY.md`](DEPLOY_AKASH_LIVEPEER_BUNNY.md)
+- [`DEPLOY_CONTABO_BUNNY.md`](DEPLOY_CONTABO_BUNNY.md)
 - `vercel.json` if deploying on Vercel and you want production migrations during deploy
 
 ## Demo accounts (seed)
@@ -76,12 +76,12 @@ Approved titles stream through signed playback URLs. Posters and public media as
 For a full movie:
 
 1. Admin uploads poster, trailer, subtitles, and master to Bunny.
-2. The app stores Bunny keys in the database.
-3. The app queues an Akash worker after the master is attached.
-4. The Akash worker submits the master to Livepeer.
-5. Livepeer writes HLS output to Bunny using Bunny's S3-compatible endpoint.
+2. The app creates the Bunny movie folder on first upload prep and stores assets under that folder.
+3. Admin clicks `Start Contabo HLS` for the movie they want to process.
+4. The Contabo worker downloads the Bunny master, transcodes it with FFmpeg, and uploads HLS output to Bunny.
+5. The worker calls back into the app with the HLS manifest key.
 6. The app verifies the HLS manifest and marks the title ready to stream.
-7. Admin can publish the title, then optionally delete the original master once HLS is verified.
+7. Admin can publish the title, then delete the original master and Contabo local artifacts once HLS is verified.
 
 Subscription pass purchases also credit the wallet immediately in the current backend flow.
 
@@ -98,6 +98,12 @@ You can also use a manifest file when the old URLs do not match the stored Bunny
 
 ```bash
 npm run storage:backfill:legacy -- --manifest=./scripts/legacy-media-manifest.example.json
+
+After migration, verify what actually exists in Bunny and optionally write a report:
+
+```bash
+npm run storage:backfill:legacy -- --verify-only --report-json=./backfill-report.json
+```
 ```
 
 ## Success targets

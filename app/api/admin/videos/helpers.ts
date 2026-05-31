@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { getMovieUploadFolderPrefixFromKey } from '@/lib/upload-security';
 
 function serializeFileSize(value: bigint | number | null | undefined) {
   if (value === null || value === undefined) return null;
@@ -56,6 +57,33 @@ export async function getProcessingVideo(videoId: string) {
 
   if (!video) return null;
 
+  const externalIds = [video.technicalMetadata?.orchestrationJobId, videoId].filter(Boolean) as string[];
+  const latestPipelineEvent = await prisma.webhookEvent.findFirst({
+    where: {
+      endpoint: 'video-pipeline-callback',
+      ...(externalIds.length ? { externalId: { in: externalIds } } : {})
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      eventType: true,
+      createdAt: true,
+      payload: true
+    }
+  });
+
+  const payload = latestPipelineEvent?.payload as Record<string, unknown> | null | undefined;
+  const latestPipelineMessage =
+    typeof payload?.message === 'string'
+      ? payload.message
+      : typeof payload?.error === 'string'
+        ? payload.error
+        : null;
+  const bunnyFolderPrefix =
+    getMovieUploadFolderPrefixFromKey(video.technicalMetadata?.masterKey) ??
+    getMovieUploadFolderPrefixFromKey(video.posterKey) ??
+    getMovieUploadFolderPrefixFromKey(video.technicalMetadata?.trailerKey) ??
+    null;
+
   return {
     id: video.id,
     title: video.title,
@@ -81,6 +109,10 @@ export async function getProcessingVideo(videoId: string) {
     hlsReadyAt: video.technicalMetadata?.hlsReadyAt?.toISOString() ?? null,
     masterDeletionEligible: video.technicalMetadata?.masterDeletionEligible ?? false,
     masterDeletedAt: video.technicalMetadata?.masterDeletedAt?.toISOString() ?? null,
+    bunnyFolderPrefix,
+    latestPipelineEvent: latestPipelineEvent?.eventType ?? null,
+    latestPipelineEventAt: latestPipelineEvent?.createdAt?.toISOString() ?? null,
+    latestPipelineMessage,
     qualities: video.qualities,
     trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
     posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null

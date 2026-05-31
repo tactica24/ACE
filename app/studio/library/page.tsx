@@ -5,7 +5,7 @@ import VideoCard from '@/components/VideoCard';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
-import { hasMovieMp4 } from '@/lib/movie-assets';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { getStudioNavItems } from '@/lib/studio-nav';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
 import {
@@ -39,7 +39,9 @@ export default async function LibraryPage() {
           fallbackStorageKey: true,
           technicalMetadata: {
             select: {
-              masterKey: true
+              masterKey: true,
+              hlsManifestKey: true,
+              hlsReadyAt: true
             }
           }
         }
@@ -70,12 +72,12 @@ export default async function LibraryPage() {
           <strong>{videos.length}</strong>
         </div>
         <div className="detail-card">
-          <span className="detail-label">Approved</span>
-          <strong>{videos.filter((video) => video.status === 'APPROVED').length}</strong>
+          <span className="detail-label">Ready / live</span>
+          <strong>{videos.filter((video) => ['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)).length}</strong>
         </div>
         <div className="detail-card">
-          <span className="detail-label">Pending or draft</span>
-          <strong>{videos.filter((video) => video.status !== 'APPROVED').length}</strong>
+          <span className="detail-label">Pending or processing</span>
+          <strong>{videos.filter((video) => !['READY', 'PUBLISHED', 'APPROVED'].includes(video.status)).length}</strong>
         </div>
         <div className="detail-card">
           <span className="detail-label">Unsigned contracts</span>
@@ -89,7 +91,7 @@ export default async function LibraryPage() {
             <div key={video.id} className="card library-card">
               {(() => {
                 const readyEpisodeCount = video.episodes.filter(
-                  (episode) => episode.status === 'APPROVED' && hasMovieMp4(episode)
+                  (episode) => ['READY', 'PUBLISHED', 'APPROVED'].includes(episode.status) && hasReadyMoviePlayback(episode)
                 ).length;
 
                 return (

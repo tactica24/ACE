@@ -5,8 +5,10 @@ import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEma
 import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
+import { hasReadyVideoHls } from '@/lib/hls';
 import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { readReferralCode, resolveReferral } from '@/lib/referrals';
 import { planUnlockDebit } from '@/lib/unlock-debit';
 import { isSeriesContainer } from '@/lib/video-access';
@@ -50,25 +52,31 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   });
   if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-  if (!['APPROVED', 'PUBLISHED'].includes(video.status)) {
+  if (!isViewerVisibleStatus(video.status)) {
     return NextResponse.json({ error: 'This title is not available for unlock yet.' }, { status: 403 });
   }
   if (isSeriesContainer(video)) {
     return NextResponse.json({ error: 'Select an episode to unlock and watch.' }, { status: 400 });
   }
-  const mp4Status = await getMovieMp4StorageStatus(video);
-  if (!mp4Status.selectedKey) {
+  const hlsReady = hasReadyVideoHls(video);
+  const mp4Status = hlsReady ? null : await getMovieMp4StorageStatus(video);
+  if (!hlsReady && !mp4Status?.selectedKey) {
+    const storageStatus = mp4Status ?? {
+      bunnyStorageConfigured: false,
+      candidates: [] as string[],
+      error: 'No progressive MP4 status could be resolved.'
+    };
     console.error('[movie-unlock] MP4 storage lookup failed', {
       videoId,
-      bunnyStorageConfigured: mp4Status.bunnyStorageConfigured,
-      candidates: mp4Status.candidates,
-      error: mp4Status.error
+      bunnyStorageConfigured: storageStatus.bunnyStorageConfigured,
+      candidates: storageStatus.candidates,
+      error: storageStatus.error
     });
     return NextResponse.json({
-      error: mp4Status.candidates.length
+      error: storageStatus.candidates.length
         ? 'The MP4 file for this title is missing from storage. Please try again after it is re-uploaded.'
         : 'No playable MP4 is attached to this title yet.',
-      details: process.env.NODE_ENV === 'development' ? mp4Status.error : undefined
+      details: process.env.NODE_ENV === 'development' ? storageStatus.error : undefined
     }, { status: 409 });
   }
 

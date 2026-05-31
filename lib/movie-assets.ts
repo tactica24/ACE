@@ -27,7 +27,6 @@ function unique(values: Array<string | null>) {
 
 export function resolveMovieMp4Candidates(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
   return unique([
-    normalizeMediaKey(video.technicalMetadata?.masterKey),
     normalizeMediaKey(video.primaryStorageKey),
     normalizeMediaKey(video.fallbackStorageKey)
   ]).filter((key) => hasExtension(key, ['.mp4']));
