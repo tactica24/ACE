@@ -116,9 +116,10 @@ const payoutCases: Case[] = [
 
 const videoCases: Case[] = [
   {
-    name: 'approved videos are accessible to signed-out viewers',
+    name: 'viewer-visible videos are accessible to signed-out viewers',
     run: () => {
       assert.equal(canAccessVideo(creatorVideo, null), true);
+      assert.equal(canAccessVideo({ ...creatorVideo, status: 'READY' }, null), true);
       assert.equal(canAccessVideo({ ...creatorVideo, status: 'PUBLISHED' }, null), true);
       assert.equal(canPreviewVideo(creatorVideo, null), false);
     },
@@ -195,7 +196,17 @@ const videoCases: Case[] = [
       assert.equal(isPlayableVideo(episode), true);
       assert.equal(isPlayableVideo(emptyAsset), false);
       assert.equal(isPlayableVideo(fallbackOnlyAsset), true);
-      assert.equal(isPlayableVideo(masterOnlyAsset), true);
+      assert.equal(isPlayableVideo(masterOnlyAsset), false);
+      assert.equal(
+        isPlayableVideo({
+          ...emptyAsset,
+          technicalMetadata: {
+            hlsManifestKey: 'streams/movie-1/hls/index.m3u8',
+            hlsReadyAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        }),
+        true,
+      );
     },
   },
   {
@@ -274,13 +285,20 @@ const videoCases: Case[] = [
       assert.deepEqual(catalogWhere, {
         AND: [{ seriesId: null }, anyVideoWhere],
       });
-      assert.deepEqual(anyVideoWhere.status, { in: ['APPROVED', 'PUBLISHED'] });
+      assert.deepEqual(anyVideoWhere.status, { in: ['APPROVED', 'READY', 'PUBLISHED'] });
       assert.equal(Array.isArray(anyVideoWhere.OR), true);
       assert.equal(anyVideoWhere.OR?.length, 3);
       assert.deepEqual(getPlayableAssetWhere().OR, [
+        {
+          technicalMetadata: {
+            is: {
+              hlsManifestKey: { not: null },
+              hlsReadyAt: { not: null },
+            },
+          },
+        },
         { primaryStorageKey: { endsWith: '.mp4', mode: 'insensitive' } },
         { fallbackStorageKey: { endsWith: '.mp4', mode: 'insensitive' } },
-        { technicalMetadata: { is: { masterKey: { endsWith: '.mp4', mode: 'insensitive' } } } },
       ]);
     },
   },
@@ -293,7 +311,7 @@ const videoCases: Case[] = [
             masterKey: 'uploads/admin/movie/movie.mp4',
           },
         }),
-        'uploads/admin/movie/movie.mp4',
+        null,
       );
       assert.equal(
         resolveMovieMp4Key({

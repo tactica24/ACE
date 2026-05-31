@@ -1,5 +1,6 @@
 import { type AuthTokenPayload } from './auth';
 import { hasReadyMoviePlayback } from './movie-assets';
+import { isViewerVisibleStatus } from './release-status';
 
 type AccessVideo = {
   creatorId: string;
@@ -21,7 +22,7 @@ export function canPreviewVideo(video: Pick<AccessVideo, 'creatorId'>, auth: Pic
 }
 
 export function canAccessVideo(video: Pick<AccessVideo, 'creatorId' | 'status'>, auth: Pick<AuthTokenPayload, 'role' | 'sub'> | null | undefined) {
-  return video.status === 'APPROVED' || video.status === 'PUBLISHED' || canPreviewVideo(video, auth);
+  return isViewerVisibleStatus(video.status) || canPreviewVideo(video, auth);
 }
 
 export function isSeriesContainer(video: Pick<AccessVideo, 'videoType' | 'seriesId'>) {
