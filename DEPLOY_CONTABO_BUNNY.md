@@ -12,6 +12,7 @@
 ## App environment
 
 ```bash
+API_BASE_URL=https://your-production-domain.com
 BUNNY_STORAGE_API_KEY=
 BUNNY_STORAGE_ZONE=ace-studio
 BUNNY_STORAGE_ENDPOINT=https://storage.bunnycdn.com
@@ -22,11 +23,39 @@ BUNNY_TOKEN_KEY=
 CONTABO_TRANSCODE_API_URL=https://transcode.example.com
 CONTABO_PIPELINE_SECRET=
 ACE_APP_BASE_URL=https://your-production-domain.com
+ACE_UPLOAD_PROXY_BASE_URL=https://upload.your-production-domain.com
 ```
 
 `CONTABO_PIPELINE_SECRET` must match the secret configured on the VPS worker.
 
 Contabo account API credentials such as client ID/client secret are not needed by the movie pipeline unless you later automate VPS provisioning or server management. Keep those credentials outside git and set them only in the secure environment where that automation runs.
+
+`ACE_UPLOAD_PROXY_BASE_URL` should point to a separate upload service that only accepts signed upload tokens and streams request bodies straight into Bunny Storage. This keeps large source uploads independent from FFmpeg job capacity and avoids app-host `413 Payload Too Large` failures.
+
+## Upload gateway
+
+Run the upload gateway as a separate process or service from the Contabo worker:
+
+```bash
+npm run gateway:upload
+```
+
+Gateway environment:
+
+```bash
+PORT=8081
+ACE_APP_BASE_URL=https://your-production-domain.com
+ACE_STREAM_SIGNING_SECRET=
+BUNNY_STORAGE_API_KEY=
+BUNNY_STORAGE_ZONE=ace-studio
+BUNNY_STORAGE_ENDPOINT=https://storage.bunnycdn.com
+```
+
+Recommended routing:
+
+- `upload.your-production-domain.com` -> Bunny upload gateway
+- `transcode.your-production-domain.com` -> Contabo HLS worker
+- `www.your-production-domain.com` -> main ACE Studio app
 
 ## Contabo worker requirements
 

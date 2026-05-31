@@ -30,6 +30,7 @@ function getEnvValue(key) {
 function inspectEnv() {
   const required = [
     'DATABASE_URL',
+    'API_BASE_URL',
     'ACE_STREAM_SIGNING_SECRET',
     'FIREBASE_PROJECT_ID',
     'FIREBASE_CLIENT_EMAIL',
@@ -49,7 +50,8 @@ function inspectEnv() {
     'BUNNY_TOKEN_KEY',
     'CONTABO_TRANSCODE_API_URL',
     'CONTABO_PIPELINE_SECRET',
-    'ACE_APP_BASE_URL'
+    'ACE_APP_BASE_URL',
+    'ACE_UPLOAD_PROXY_BASE_URL'
   ];
 
   const missing = required.filter((key) => !getEnvValue(key));

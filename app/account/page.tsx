@@ -2,13 +2,44 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import AccountActions from '@/components/AccountActions';
 import AccountVerificationPanel from '@/components/AccountVerificationPanel';
+import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
+import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
 import { prisma } from '@/lib/db';
+import { type PriceTierValue } from '@/lib/media-types';
 import { getRegionalMoneyDisplay } from '@/lib/pricing';
 import { getViewerReadyAnyVideoWhere } from '@/lib/video-visibility';
 
-function getViewerTitleHref(video: { id: string; seriesId?: string | null }) {
-  return video.seriesId ? `/v/${video.seriesId}?episode=${video.id}` : `/v/${video.id}`;
+type LibraryVideo = {
+  id: string;
+  seriesId?: string | null;
+  title: string;
+  description: string;
+  priceTier: PriceTierValue;
+  unlockPrice: number | null;
+  posterKey: string | null;
+  genres: string[];
+  durationSec: number;
+  releaseYear: number | null;
+  videoType: string;
+  ageRating: string;
+  category: string;
+  series?: {
+    posterKey: string | null;
+  } | null;
+};
+
+function toLibraryCard(video: LibraryVideo, options?: { progressPercent?: number; accessLabel?: string }) {
+  return {
+    ...video,
+    posterKey: video.posterKey ?? video.series?.posterKey ?? null,
+    progressPercent: options?.progressPercent,
+    accessLabel: options?.accessLabel
+  };
+}
+
+function toProgressPercent(progressSec: number, durationSec: number) {
+  return Math.max(1, Math.min(99, Math.round((progressSec / Math.max(durationSec, 1)) * 100)));
 }
 
 export default async function AccountPage() {
@@ -47,7 +78,22 @@ export default async function AccountPage() {
           select: {
             id: true,
             title: true,
-            seriesId: true
+            seriesId: true,
+            description: true,
+            priceTier: true,
+            unlockPrice: true,
+            posterKey: true,
+            genres: true,
+            durationSec: true,
+            releaseYear: true,
+            videoType: true,
+            ageRating: true,
+            category: true,
+            series: {
+              select: {
+                posterKey: true
+              }
+            }
           }
         }
       }
@@ -66,7 +112,21 @@ export default async function AccountPage() {
             id: true,
             title: true,
             seriesId: true,
-            durationSec: true
+            description: true,
+            priceTier: true,
+            unlockPrice: true,
+            posterKey: true,
+            genres: true,
+            durationSec: true,
+            releaseYear: true,
+            videoType: true,
+            ageRating: true,
+            category: true,
+            series: {
+              select: {
+                posterKey: true
+              }
+            }
           }
         }
       }
@@ -85,6 +145,23 @@ export default async function AccountPage() {
       }
     })
   ]);
+
+  const unlockedCards = onlyCatalogVideosWithPosters(
+    recentUnlocks.map((unlock) =>
+      toLibraryCard(unlock.video as LibraryVideo, {
+        accessLabel: 'In your library'
+      })
+    )
+  );
+
+  const continueWatchingCards = onlyCatalogVideosWithPosters(
+    continueWatching.map((entry) =>
+      toLibraryCard(entry.video as LibraryVideo, {
+        progressPercent: toProgressPercent(entry.progressSec, entry.durationSec ?? entry.video.durationSec),
+        accessLabel: 'Continue watching'
+      })
+    )
+  );
 
   return (
     <div className="section">
@@ -135,20 +212,12 @@ export default async function AccountPage() {
 
           <div className="card" id="my-movies">
             <h3>My Movies</h3>
-            {recentUnlocks.length === 0 ? (
+            {unlockedCards.length === 0 ? (
               <p className="muted">No unlocks recorded on this account yet.</p>
             ) : (
-              <div className="stack-list">
-                {recentUnlocks.map((unlock) => (
-                  <div key={unlock.id} className="stack-row">
-                    <div>
-                      <strong>{unlock.video.title}</strong>
-                      <p className="muted">{unlock.createdAt.toISOString().slice(0, 10)}</p>
-                    </div>
-                    <Link className="btn btn-ghost" href={getViewerTitleHref(unlock.video)}>
-                      Open title
-                    </Link>
-                  </div>
+              <div className="video-grid">
+                {unlockedCards.map((video) => (
+                  <VideoCard key={video.id} video={video} />
                 ))}
               </div>
             )}
@@ -156,31 +225,13 @@ export default async function AccountPage() {
 
           <div className="card">
             <h3>Continue watching</h3>
-            {continueWatching.length === 0 ? (
+            {continueWatchingCards.length === 0 ? (
               <p className="muted">Playback progress will appear here after you start a title.</p>
             ) : (
-              <div className="stack-list">
-                {continueWatching.map((entry) => {
-                  const percent = Math.max(
-                    1,
-                    Math.min(
-                      99,
-                      Math.round((entry.progressSec / Math.max(entry.durationSec ?? entry.video.durationSec, 1)) * 100)
-                    )
-                  );
-
-                  return (
-                    <div key={entry.id} className="stack-row">
-                      <div>
-                        <strong>{entry.video.title}</strong>
-                        <p className="muted">{percent}% watched</p>
-                      </div>
-                      <Link className="btn btn-ghost" href={getViewerTitleHref(entry.video)}>
-                        Resume
-                      </Link>
-                    </div>
-                  );
-                })}
+              <div className="video-grid">
+                {continueWatchingCards.map((video) => (
+                  <VideoCard key={video.id} video={video} />
+                ))}
               </div>
             )}
           </div>

@@ -26,6 +26,7 @@
     "db:migrate:deploy": "node scripts/run-prisma.mjs migrate deploy",
     "cleanup:storage": "tsx scripts/cleanup-storage.ts",
     "storage:backfill:legacy": "tsx scripts/backfill-legacy-media-to-bunny.ts",
+    "gateway:upload": "node scripts/bunny-upload-gateway.mjs",
     "worker:contabo": "node scripts/contabo-hls-worker.mjs",
     "build:android-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-apk.ps1",
     "sync:github-android-secrets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-github-android-secrets.ps1",

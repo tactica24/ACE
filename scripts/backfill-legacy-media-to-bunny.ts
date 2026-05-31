@@ -51,6 +51,10 @@ function encodePathPreservingSlashes(key: string) {
   return key.split('/').map(encodeURIComponent).join('/');
 }
 
+function isSampleAssetKey(key: string) {
+  return key.startsWith('samples/');
+}
+
 function resolveR2Config(args: Record<string, string>): R2Config | null {
   const endpoint = (
     args['r2-endpoint'] ||
@@ -119,8 +123,18 @@ function getSigningKey(secretAccessKey: string, dateStamp: string, region: strin
   return hmac(kService, 'aws4_request');
 }
 
-function buildSignedR2Request(config: R2Config, key: string) {
-  const url = new URL(`${config.endpoint}/${encodePathPreservingSlashes(config.bucket)}/${encodePathPreservingSlashes(key)}`);
+function buildR2ObjectUrl(config: R2Config, key: string, style: 'path' | 'virtual-hosted') {
+  const normalizedKey = encodePathPreservingSlashes(key);
+  if (style === 'virtual-hosted') {
+    const endpoint = new URL(config.endpoint);
+    return new URL(`${endpoint.protocol}//${encodeURIComponent(config.bucket)}.${endpoint.host}/${normalizedKey}`);
+  }
+
+  return new URL(`${config.endpoint}/${encodePathPreservingSlashes(config.bucket)}/${normalizedKey}`);
+}
+
+function buildSignedR2Request(config: R2Config, key: string, style: 'path' | 'virtual-hosted') {
+  const url = buildR2ObjectUrl(config, key, style);
   const { amzDate, dateStamp } = toAmzDateParts();
   const payloadHash = hashSha256Hex('');
   const host = url.host;
@@ -276,17 +290,25 @@ async function existsInBunny(key: string) {
 }
 
 async function fetchR2Object(config: R2Config, key: string) {
-  const request = buildSignedR2Request(config, key);
-  const response = await fetch(request.url, {
-    method: 'GET',
-    headers: request.headers
-  });
+  const attempts: Array<'path' | 'virtual-hosted'> = ['path', 'virtual-hosted'];
+  const failures: string[] = [];
 
-  if (!response.ok || !response.body) {
-    throw new Error(`R2 fetch failed (${response.status}) for ${key}`);
+  for (const style of attempts) {
+    const request = buildSignedR2Request(config, key, style);
+    const response = await fetch(request.url, {
+      method: 'GET',
+      headers: request.headers
+    });
+
+    if (response.ok && response.body) {
+      return response;
+    }
+
+    const text = await response.text().catch(() => '');
+    failures.push(`${style}: ${response.status}${text ? ` ${text.slice(0, 200)}` : ''}`);
   }
 
-  return response;
+  throw new Error(`R2 fetch failed for ${key}. Attempts: ${failures.join(' | ')}`);
 }
 
 async function copyAsset(asset: AssetRecord, options: { r2: R2Config | null }) {
@@ -311,6 +333,7 @@ async function main() {
   const dryRun = 'dry-run' in args;
   const verifyOnly = 'verify-only' in args;
   const force = 'force' in args;
+  const includeSamples = 'include-samples' in args;
   const reportPath = args['report-json']?.trim();
   const baseUrl = args['source-base-url'] || process.env.LEGACY_MEDIA_BASE_URL;
   const manifest = await readManifest(args.manifest);
@@ -329,11 +352,21 @@ async function main() {
   }
 
   const assets = await collectAssets(baseUrl, manifest);
-  const filteredAssets = onlyKinds.size
-    ? assets.filter((asset) => onlyKinds.has(asset.kind))
-    : assets;
+  const filteredAssets = assets.filter((asset) => {
+    if (!includeSamples && isSampleAssetKey(asset.key)) {
+      return false;
+    }
+
+    return onlyKinds.size ? onlyKinds.has(asset.kind) : true;
+  });
 
   console.log(`Discovered ${assets.length} unique video-related asset keys.`);
+  if (!includeSamples) {
+    const excludedSamples = assets.filter((asset) => isSampleAssetKey(asset.key)).length;
+    if (excludedSamples) {
+      console.log(`Excluded ${excludedSamples} sample asset(s). Pass --include-samples to migrate demo keys too.`);
+    }
+  }
   if (onlyKinds.size) {
     console.log(`Filtered to ${filteredAssets.length} asset(s) for kinds: ${[...onlyKinds].join(', ')}`);
   }

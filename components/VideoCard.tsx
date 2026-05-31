@@ -38,6 +38,7 @@ export type VideoCardData = {
   posterKey?: string | null;
   price?: { currency: string; amountMinor: number; amountNaira?: number };
   progressPercent?: number;
+  accessLabel?: string;
 };
 
 const PREVIEW_DELAY_MS = 320;
@@ -63,6 +64,8 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceLabel = formatCurrencyMinor(priceMinor, currencyCode);
   const genreLabel = video.genres?.filter(Boolean).slice(0, 2).join(' / ') || labelize(video.videoType);
   const releaseLabel = video.releaseYear ? String(video.releaseYear) : null;
+  const href = video.seriesId ? `/v/${video.seriesId}?episode=${video.id}` : `/v/${video.id}`;
+  const accessLabel = video.accessLabel ?? `Unlock ${priceLabel}`;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -179,7 +182,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
 
   return (
     <Link
-      href={`/v/${video.id}`}
+      href={href}
       className={`video-card ${previewReady && isInteractive ? 'video-card-preview-active' : ''}`}
       onPointerEnter={() => setIsInteractive(true)}
       onPointerLeave={() => setIsInteractive(false)}
@@ -234,7 +237,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
         <div className="video-card-line">
           <span>{releaseLabel ?? labelize(video.videoType)}</span>
           <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
-          <strong className="video-card-price">Unlock {priceLabel}</strong>
+          <strong className="video-card-price">{accessLabel}</strong>
         </div>
         <div className="video-card-reveal">
           <span className="video-card-meta">{genreLabel}</span>

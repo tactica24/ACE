@@ -118,6 +118,10 @@ export function verifyStorageUploadToken(token: string): UploadTokenPayload {
 
 export function createStorageUploadUrl(key: string, contentType: string) {
   const token = createStorageUploadToken({ key, contentType });
+  const uploadProxyBaseUrl = env.ACE_UPLOAD_PROXY_BASE_URL?.replace(/\/+$/, '');
+  if (uploadProxyBaseUrl) {
+    return `${uploadProxyBaseUrl}/uploads/bunny?token=${encodeURIComponent(token)}`;
+  }
   return `/api/uploads/bunny?token=${encodeURIComponent(token)}`;
 }
 

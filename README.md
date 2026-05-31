@@ -33,6 +33,14 @@ For the current production media stack (`Vercel or Railway + Neon + Firebase + B
 - [`DEPLOY_CONTABO_BUNNY.md`](DEPLOY_CONTABO_BUNNY.md)
 - `vercel.json` if deploying on Vercel and you want production migrations during deploy
 
+For large source uploads, run the dedicated Bunny upload gateway separately from the Contabo transcode worker:
+
+```bash
+npm run gateway:upload
+```
+
+Set `ACE_UPLOAD_PROXY_BASE_URL` on the app host so `/api/uploads/sign` returns the gateway URL instead of proxying multi-GB uploads through the Next.js app host.
+
 ## Demo accounts (seed)
 - Admin: `admin@acestudio.local` / `AdminPass123!`
 - Creator: `creator@acestudio.local` / `CreatorPass123!`
@@ -98,12 +106,18 @@ You can also use a manifest file when the old URLs do not match the stored Bunny
 
 ```bash
 npm run storage:backfill:legacy -- --manifest=./scripts/legacy-media-manifest.example.json
+```
+
+By default the backfill now skips demo `samples/` keys, since those are often not present in private R2. Include them only when you know the source objects exist:
+
+```bash
+npm run storage:backfill:legacy -- --include-samples
+```
 
 After migration, verify what actually exists in Bunny and optionally write a report:
 
 ```bash
 npm run storage:backfill:legacy -- --verify-only --report-json=./backfill-report.json
-```
 ```
 
 ## Success targets
