@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { deleteObject, getObjectStream } from '@/lib/bunny-storage';
 import { getMasterDownloadFileName } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
-import { Readable } from 'node:stream';
+import { Readable } from 'stream';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await getAuthFromRequest(req);

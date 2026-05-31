@@ -1,4 +1,4 @@
-import { Buffer } from 'node:buffer';
+import { Buffer } from 'buffer';
 
 export function convertSubtitleToVtt(input: Buffer | Uint8Array): Buffer {
   const text = Buffer.from(input).toString('utf8');

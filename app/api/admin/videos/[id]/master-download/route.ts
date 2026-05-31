@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getObjectStream } from '@/lib/bunny-storage';
 import { prisma } from '@/lib/db';
-import { Readable } from 'node:stream';
+import { Readable } from 'stream';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthFromRequest(req);

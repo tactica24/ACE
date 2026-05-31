@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { Readable } from 'stream';
 import { NextRequest } from 'next/server';
 import { verifyStreamToken } from '@/lib/auth';
 import { getObjectMetadata } from '@/lib/bunny-storage';

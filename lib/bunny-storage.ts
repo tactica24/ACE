@@ -1,5 +1,5 @@
-import { Readable } from 'node:stream';
-import crypto from 'node:crypto';
+import { Readable } from 'stream';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from './env';
 import { normalizeMediaKey } from './media';

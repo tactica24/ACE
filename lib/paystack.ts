@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 import { env } from './env';
 
 const PAYSTACK_BASE = 'https://api.paystack.co';
