@@ -35,8 +35,8 @@ export default async function LibraryPage() {
       episodes: {
         select: {
           status: true,
-          r2Key: true,
-          fallbackR2Key: true,
+          primaryStorageKey: true,
+          fallbackStorageKey: true,
           technicalMetadata: {
             select: {
               masterKey: true
@@ -115,8 +115,8 @@ export default async function LibraryPage() {
                           {getViewerPackageStatus({
                             videoType: video.videoType,
                             seriesId: video.seriesId,
-                            primaryReady: Boolean(video.r2Key?.toLowerCase().endsWith('.mp4')),
-                            fallbackReady: Boolean(video.fallbackR2Key?.toLowerCase().endsWith('.mp4')),
+                            primaryReady: Boolean(video.primaryStorageKey?.toLowerCase().endsWith('.mp4')),
+                            fallbackReady: Boolean(video.fallbackStorageKey?.toLowerCase().endsWith('.mp4')),
                             masterReady: Boolean(video.technicalMetadata?.masterKey?.toLowerCase().endsWith('.mp4')),
                             episodeCount: video._count.episodes,
                             readyEpisodeCount

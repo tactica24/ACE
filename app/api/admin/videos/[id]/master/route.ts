@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createPresignedGetUrl, deleteObject } from '@/lib/r2';
+import { deleteObject, getObjectStream } from '@/lib/bunny-storage';
 import { getMasterDownloadFileName } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
+import { Readable } from 'node:stream';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await getAuthFromRequest(req);
@@ -28,15 +29,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Private master not found.' }, { status: 404 });
   }
 
-  const url = await createPresignedGetUrl(
-    video.technicalMetadata.masterKey,
-    {
-      contentDisposition: `attachment; filename="${getMasterDownloadFileName(video.technicalMetadata.masterFileName, video.title)}"`,
-      contentType: 'application/octet-stream'
-    }
-  );
+  const fileName = getMasterDownloadFileName(video.technicalMetadata.masterFileName, video.title).replace(/"/g, '\\"');
+  const result = await getObjectStream(video.technicalMetadata.masterKey);
+  const body = result.Body as Readable | undefined;
+  if (!body) {
+    return NextResponse.json({ error: 'Private master could not be loaded.' }, { status: 502 });
+  }
 
-  return NextResponse.redirect(url);
+  return new Response(Readable.toWeb(body) as never, {
+    status: 200,
+    headers: {
+      'Content-Type': result.ContentType || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      ...(typeof result.ContentLength === 'number' ? { 'Content-Length': String(result.ContentLength) } : {})
+    }
+  });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
@@ -52,7 +59,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         select: {
           masterKey: true,
           playbackUrl: true,
-          processingStatus: true
+          processingStatus: true,
+          masterDeletionEligible: true,
+          hlsManifestKey: true
         }
       }
     }
@@ -60,6 +69,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   if (!video?.technicalMetadata?.masterKey) {
     return NextResponse.json({ error: 'Private master not found.' }, { status: 404 });
+  }
+
+  if (!video.technicalMetadata.masterDeletionEligible || !video.technicalMetadata.hlsManifestKey) {
+    return NextResponse.json({
+      error: 'Keep the master until HLS is verified and marked safe for cleanup.'
+    }, { status: 400 });
   }
 
   await deleteObject(video.technicalMetadata.masterKey);
@@ -70,7 +85,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       masterFileName: null,
       masterFileSize: null,
       masterUploadedAt: null,
-      processingStatus: 'NO_MASTER'
+      processingStatus: 'READY_TO_STREAM',
+      masterDeletedAt: new Date()
     }
   });
 

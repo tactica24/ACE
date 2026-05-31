@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
-import { createPresignedPutUrl } from '@/lib/r2';
+import { createStorageUploadUrl } from '@/lib/bunny-storage';
 
 function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]/g, '-');
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   const key = `contract-signatures/${scope}/${auth.sub}/${uuid()}-${sanitizeFilename(filename)}`;
-  const url = await createPresignedPutUrl(key, contentType);
+  const url = await createStorageUploadUrl(key, contentType);
 
   return NextResponse.json({ ok: true, key, url });
 }

@@ -1,9 +1,10 @@
 import 'server-only';
 
 import { prisma } from './db';
-import { headObject } from './r2';
+import { headObject } from './bunny-storage';
 import { getConfiguredRelayTargets } from './relay';
 import { getViewerReadyCatalogWhere } from './video-visibility';
+import { env } from './env';
 
 export type InfrastructureCheckStatus = 'READY' | 'ACTION' | 'OPTIONAL' | 'ERROR';
 
@@ -24,6 +25,7 @@ export type InfrastructureSnapshot = {
 
 const REQUIRED_ENV_KEYS = [
   'DATABASE_URL',
+  'API_BASE_URL',
   'ACE_STREAM_SIGNING_SECRET',
   'FIREBASE_PROJECT_ID',
   'FIREBASE_CLIENT_EMAIL',
@@ -34,10 +36,8 @@ const REQUIRED_ENV_KEYS = [
   'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
   'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
   'NEXT_PUBLIC_FIREBASE_APP_ID',
-  'R2_ENDPOINT',
-  'R2_ACCESS_KEY_ID',
-  'R2_SECRET_ACCESS_KEY',
-  'R2_BUCKET',
+  'PAYSTACK_SECRET_KEY',
+  'PAYSTACK_PUBLIC_KEY',
   'ACE_APP_BASE_URL'
 ] as const;
 
@@ -50,8 +50,7 @@ function formatError(error: unknown) {
 }
 
 function isReachableStorageResponse(error: unknown) {
-  const statusCode = (error as { $metadata?: { httpStatusCode?: number } } | undefined)?.$metadata?.httpStatusCode;
-  return statusCode === 404;
+  return error instanceof Error && /not found/i.test(error.message);
 }
 
 export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapshot> {
@@ -97,44 +96,44 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     };
   }
 
-  const missingStorageEnv = ['R2_ENDPOINT', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'].filter(
+  const missingBunnyEnv = ['BUNNY_STORAGE_API_KEY', 'BUNNY_STORAGE_ZONE', 'BUNNY_STORAGE_ENDPOINT', 'BUNNY_CDN_HOSTNAME', 'BUNNY_TOKEN_KEY'].filter(
     (key) => !process.env[key]?.trim()
   );
 
-  let storageCheck: InfrastructureCheck;
-  if (missingStorageEnv.length) {
-    storageCheck = {
-      id: 'storage',
-      label: 'R2 storage',
+  let bunnyStorageCheck: InfrastructureCheck;
+  if (missingBunnyEnv.length) {
+    bunnyStorageCheck = {
+      id: 'bunny-storage',
+      label: 'Bunny Storage',
       status: 'ACTION',
-      summary: 'R2 is not fully configured yet.',
-      detail: `Missing: ${missingStorageEnv.join(', ')}`
+      summary: 'Bunny Storage is not fully configured yet.',
+      detail: `Missing: ${missingBunnyEnv.join(', ')}`
     };
   } else {
     try {
       await headObject('__ace__/readiness-probe.txt');
-      storageCheck = {
-        id: 'storage',
-        label: 'R2 storage',
+      bunnyStorageCheck = {
+        id: 'bunny-storage',
+        label: 'Bunny Storage',
         status: 'READY',
-        summary: 'R2 credentials are working.',
-        detail: 'Producer uploads can write media and posters directly to object storage.'
+        summary: 'Bunny Storage credentials are working.',
+        detail: `Storage zone: ${env.BUNNY_STORAGE_ZONE || 'ace-studio'}. Uploads and signed CDN delivery are available.`
       };
     } catch (error) {
       if (isReachableStorageResponse(error)) {
-        storageCheck = {
-          id: 'storage',
-          label: 'R2 storage',
+        bunnyStorageCheck = {
+          id: 'bunny-storage',
+          label: 'Bunny Storage',
           status: 'READY',
-          summary: 'R2 credentials are working.',
-          detail: 'The probe object was not found, which still confirms the bucket and credentials are reachable.'
+          summary: 'Bunny Storage credentials are working.',
+          detail: 'The probe object was not found, which still confirms the storage zone and credentials are reachable.'
         };
       } else {
-        storageCheck = {
-          id: 'storage',
-          label: 'R2 storage',
+        bunnyStorageCheck = {
+          id: 'bunny-storage',
+          label: 'Bunny Storage',
           status: 'ERROR',
-          summary: 'R2 connectivity failed.',
+          summary: 'Bunny Storage connectivity failed.',
           detail: formatError(error)
         };
       }
@@ -151,30 +150,30 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
         detail: missingEnv.length ? `Missing: ${missingEnv.join(', ')}` : 'Auth, payments, database, and storage values are present.'
       },
       databaseCheck,
-      storageCheck,
+      bunnyStorageCheck,
       {
         id: 'delivery',
         label: 'Streaming delivery',
         status: relayTargets.length ? 'READY' : 'OPTIONAL',
         summary: relayTargets.length
-          ? 'Relay delivery endpoints are configured.'
-          : 'Direct app streaming is active until you add a relay node.',
+          ? 'Relay endpoints are configured as optional acceleration targets.'
+          : 'Bunny CDN delivery is active without relay nodes.',
         detail: relayTargets.length
           ? `Configured relay targets: ${relayTargets.join(', ')}`
-          : 'Approved titles will stream from R2 through the app, so you can fully test upload, approval, homepage placement, and playback now.'
+          : 'Approved titles stream from Bunny with signed HLS and signed asset URLs. Relay nodes are optional, not required.'
       },
       {
         id: 'catalog',
         label: 'Approval to catalog flow',
-        status: databaseCheck.status === 'READY' && storageCheck.status === 'READY' ? 'READY' : 'ACTION',
+        status: databaseCheck.status === 'READY' && bunnyStorageCheck.status === 'READY' ? 'READY' : 'ACTION',
         summary:
-          databaseCheck.status === 'READY' && storageCheck.status === 'READY'
+          databaseCheck.status === 'READY' && bunnyStorageCheck.status === 'READY'
             ? 'Producer uploads are ready for moderation and release.'
             : 'Fix database or storage issues before testing moderation.',
         detail:
-          databaseCheck.status === 'READY' && storageCheck.status === 'READY'
+          databaseCheck.status === 'READY' && bunnyStorageCheck.status === 'READY'
             ? 'Admin approvals publish titles to homepage and browse. Admin removals clear cached shelves immediately.'
-            : 'The upload and release flow depends on both Neon and R2 being healthy.'
+            : 'The upload and release flow depends on both Neon and storage being healthy.'
       }
     ],
     approvedVideos,

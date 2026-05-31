@@ -38,7 +38,17 @@ export async function getProcessingVideo(videoId: string) {
           masterUploadedAt: true,
           processingStatus: true,
           playbackUrl: true,
-          trailerKey: true
+          trailerKey: true,
+          orchestrationProvider: true,
+          orchestrationJobId: true,
+          hlsOutputPath: true,
+          transcodeProvider: true,
+          transcodeTaskId: true,
+          transcodeError: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true,
+          masterDeletionEligible: true,
+          masterDeletedAt: true
         }
       }
     }
@@ -61,6 +71,16 @@ export async function getProcessingVideo(videoId: string) {
     masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
     processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
     playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
+    orchestrationProvider: video.technicalMetadata?.orchestrationProvider ?? null,
+    orchestrationJobId: video.technicalMetadata?.orchestrationJobId ?? null,
+    transcodeProvider: video.technicalMetadata?.transcodeProvider ?? null,
+    transcodeTaskId: video.technicalMetadata?.transcodeTaskId ?? null,
+    transcodeError: video.technicalMetadata?.transcodeError ?? null,
+    hlsOutputPath: video.technicalMetadata?.hlsOutputPath ?? null,
+    hlsManifestKey: video.technicalMetadata?.hlsManifestKey ?? null,
+    hlsReadyAt: video.technicalMetadata?.hlsReadyAt?.toISOString() ?? null,
+    masterDeletionEligible: video.technicalMetadata?.masterDeletionEligible ?? false,
+    masterDeletedAt: video.technicalMetadata?.masterDeletedAt?.toISOString() ?? null,
     qualities: video.qualities,
     trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
     posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null

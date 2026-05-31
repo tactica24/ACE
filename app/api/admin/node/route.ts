@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   const health = await getNodeHealth();
-  const deliveryMode = getConfiguredRelayTargets().length ? 'Relay ready' : 'Direct app streaming';
+  const deliveryMode = getConfiguredRelayTargets().length ? 'Bunny CDN + relay' : 'Bunny CDN';
   const latencyMs = Math.max(1, Date.now() - startedAt);
   const latest = await prisma.nodeHealth.findFirst({
     where: { nodeName: health.nodeName },

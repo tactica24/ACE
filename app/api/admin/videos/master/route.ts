@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { isOwnedUploadKey } from '@/lib/upload-security';
+import { queueVideoHlsPipeline } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 function hasSupportedMasterExtension(key: string) {
@@ -45,7 +46,20 @@ export async function POST(req: NextRequest) {
         masterFileSize,
         masterUploadedAt: new Date(),
         playbackUrl: null,
-        processingStatus: 'MASTER_UPLOADED'
+        processingStatus: 'MASTER_UPLOADED',
+        orchestrationProvider: null,
+        orchestrationJobId: null,
+        transcodeProvider: null,
+        transcodeTaskId: null,
+        transcodeRequestedAt: null,
+        transcodeFailedAt: null,
+        transcodeError: null,
+        hlsManifestKey: null,
+        hlsOutputPath: null,
+        hlsReadyAt: null,
+        readyToStreamAt: null,
+        masterDeletionEligible: false,
+        masterDeletedAt: null
       },
       update: {
         masterKey: key,
@@ -53,7 +67,20 @@ export async function POST(req: NextRequest) {
         masterFileSize,
         masterUploadedAt: new Date(),
         playbackUrl: null,
-        processingStatus: 'MASTER_UPLOADED'
+        processingStatus: 'MASTER_UPLOADED',
+        orchestrationProvider: null,
+        orchestrationJobId: null,
+        transcodeProvider: null,
+        transcodeTaskId: null,
+        transcodeRequestedAt: null,
+        transcodeFailedAt: null,
+        transcodeError: null,
+        hlsManifestKey: null,
+        hlsOutputPath: null,
+        hlsReadyAt: null,
+        readyToStreamAt: null,
+        masterDeletionEligible: false,
+        masterDeletedAt: null
       }
     }),
     prisma.video.update({
@@ -64,8 +91,16 @@ export async function POST(req: NextRequest) {
 
   revalidateApprovedCatalog();
 
+  let message = 'MP4 uploaded and attached. HLS pipeline started.';
+  try {
+    await queueVideoHlsPipeline(videoId);
+  } catch (error) {
+    message = `MP4 uploaded, but the HLS pipeline did not start automatically: ${error instanceof Error ? error.message : 'Unknown error.'}`;
+  }
+
   return NextResponse.json({
     ok: true,
+    message,
     video: await getProcessingVideo(videoId)
   });
 }

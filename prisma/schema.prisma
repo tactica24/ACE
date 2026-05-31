@@ -251,8 +251,8 @@ model Video {
   durationSec Int
   teaserSec   Int
   highlightSeconds Int[]   @default([])
-  r2Key       String?
-  fallbackR2Key String?
+  primaryStorageKey String?
+  fallbackStorageKey String?
   posterKey   String?
   qualities   String[]     @default([])
   unlockPrice Int?
@@ -304,12 +304,24 @@ model VideoTechnicalMetadata {
   masterFileSize           BigInt?
   masterUploadedAt         DateTime?
   masterUploadKey          String?
+  orchestrationProvider    String?
+  orchestrationJobId       String?
+  transcodeProvider        String?
+  transcodeTaskId          String?
+  transcodeRequestedAt     DateTime?
+  transcodeFailedAt        DateTime?
+  transcodeError           String?
   masterProcessingStatus   String?
   processingStatus         String   @default("NO_MASTER")
   encodingStartedAt        DateTime?
   encodingCompletedAt      DateTime?
   readyToStreamAt          DateTime?
   playbackUrl              String?
+  hlsManifestKey           String?
+  hlsOutputPath            String?
+  hlsReadyAt               DateTime?
+  masterDeletionEligible   Boolean  @default(false)
+  masterDeletedAt          DateTime?
   availabilityRegion       String   @default("GLOBAL")
   deliveryResolution       String   @default("HD")
   has4kMaster              Boolean  @default(false)
@@ -705,6 +717,21 @@ model ProducerEarning {
 
   @@index([producerId, reportMonth])
   @@index([videoId, reportMonth])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  endpoint    String
+  eventType   String?
+  externalId  String?
+  payload     Json
+  processed   Boolean  @default(false)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([endpoint, createdAt])
+  @@index([processed, createdAt])
+  @@index([externalId])
 }
 
 model SupportTicket {

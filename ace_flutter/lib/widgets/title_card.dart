@@ -38,7 +38,7 @@ class TitleCard extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(24)),
               child: AspectRatio(
-                aspectRatio: 16 / 10,
+                aspectRatio: 2 / 3,
                 child: posterUrl == null
                     ? _FallbackPoster(title: title)
                     : CachedNetworkImage(

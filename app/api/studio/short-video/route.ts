@@ -5,10 +5,11 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { normalizeSubtitleTracks, isSupportedLanguageCode, type SubmittedSubtitleTrack } from '@/lib/content-metadata';
 import { isOwnedUploadKey, buildOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
-import { getObjectBuffer, putObject } from '@/lib/r2';
+import { getObjectBuffer, putObject } from '@/lib/bunny-storage';
 import { convertSubtitleToVtt, ensureVttFilename } from '@/lib/subtitle-convert';
 import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
+import { queueVideoHlsPipeline } from '@/lib/video-pipeline';
 
 // Minimal short upload: accepts array of up to 5 items with title and file keys
 // Example item: { title?: string, masterUploadKey?: string, trailerKey?: string, posterKey?: string, subtitleTracks?: [{ fileKey }] }
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
     }
 
     const createdIds: string[] = [];
+    const pipelineVideoIds: string[] = [];
+    const pipelineWarnings: string[] = [];
 
     for (const item of items) {
     const title = typeof item.title === 'string' && item.title.trim() ? item.title.trim().slice(0, 240) : 'Untitled';
@@ -139,9 +142,31 @@ export async function POST(req: NextRequest) {
     });
 
     createdIds.push(created.id);
+    if (masterUploadKey) {
+      pipelineVideoIds.push(created.id);
+    }
   }
 
-  return NextResponse.json({ ok: true, createdIds });
+  const pipelineResults = await Promise.allSettled(
+    Array.from(new Set(pipelineVideoIds)).map((videoId) => queueVideoHlsPipeline(videoId))
+  );
+
+  pipelineResults.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      return;
+    }
+
+    const videoId = Array.from(new Set(pipelineVideoIds))[index];
+    const message = result.reason instanceof Error ? result.reason.message : 'Unknown pipeline error.';
+    pipelineWarnings.push(`${videoId}: ${message}`);
+  });
+
+  return NextResponse.json({
+    ok: true,
+    createdIds,
+    pipelineStarted: pipelineWarnings.length === 0,
+    pipelineWarnings
+  });
   } catch (error) {
     console.error('Short upload endpoint error:', error);
     return NextResponse.json(

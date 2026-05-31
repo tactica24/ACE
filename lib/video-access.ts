@@ -1,15 +1,18 @@
 import { type AuthTokenPayload } from './auth';
-import { hasMovieMp4 } from './movie-assets';
+import { hasReadyMoviePlayback } from './movie-assets';
 
 type AccessVideo = {
   creatorId: string;
   status: string;
   videoType: string;
   seriesId?: string | null;
-  r2Key?: string | null;
-  fallbackR2Key?: string | null;
+  primaryStorageKey?: string | null;
+  fallbackStorageKey?: string | null;
   technicalMetadata?: {
     masterKey?: string | null;
+    hlsManifestKey?: string | null;
+    hlsOutputPath?: string | null;
+    hlsReadyAt?: Date | string | null;
   } | null;
 };
 
@@ -29,6 +32,6 @@ export function isEpisodeVideo(video: Pick<AccessVideo, 'seriesId'>) {
   return Boolean(video.seriesId);
 }
 
-export function isPlayableVideo(video: Pick<AccessVideo, 'videoType' | 'seriesId' | 'r2Key' | 'fallbackR2Key' | 'technicalMetadata'>) {
-  return !isSeriesContainer(video) && hasMovieMp4(video);
+export function isPlayableVideo(video: Pick<AccessVideo, 'videoType' | 'seriesId' | 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
+  return !isSeriesContainer(video) && hasReadyMoviePlayback(video);
 }

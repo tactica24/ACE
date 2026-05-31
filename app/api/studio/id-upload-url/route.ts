@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest, hasVerifiedEmail, EMAIL_VERIFICATION_REQUIRED_MESSAGE } from '@/lib/auth';
-import { createPresignedPutUrl } from '@/lib/r2';
+import { createStorageUploadUrl } from '@/lib/bunny-storage';
 
 const allowedContentTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const key = `creator-kyc/${targetUserId}/${uuid()}-${filename}`;
-  const url = await createPresignedPutUrl(key, contentType);
+  const url = await createStorageUploadUrl(key, contentType);
 
   return NextResponse.json({ ok: true, url, key });
 }

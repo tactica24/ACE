@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-import { createPresignedPutUrl } from '@/lib/r2';
+import { createStorageUploadUrl } from '@/lib/bunny-storage';
 import { buildOwnedUploadKey, isUploadPurpose, validateUploadRequest } from '@/lib/upload-security';
 
 async function getUploadAuth(req: NextRequest) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const key = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid() });
-    const url = await createPresignedPutUrl(key, contentType);
+    const url = await createStorageUploadUrl(key, contentType);
 
     return NextResponse.json({ url, key, purpose, contentType });
   } catch (error) {

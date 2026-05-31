@@ -3,13 +3,14 @@ import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { type RightsTierValue } from '@/lib/contracts';
 import { normalizeContentWarnings, normalizeLanguageCodes, normalizeSubtitleTracks } from '@/lib/content-metadata';
-import { getObjectBuffer, putObject } from '@/lib/r2';
+import { getObjectBuffer, putObject } from '@/lib/bunny-storage';
 import { srtToVtt, ensureVttFilename } from '@/lib/subtitle-convert';
 import { buildOwnedUploadKey, sanitizeUploadFilename } from '@/lib/upload-security';
 import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { isOwnedUploadKey } from '@/lib/upload-security';
+import { queueVideoHlsPipeline } from '@/lib/video-pipeline';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -32,8 +33,8 @@ type EpisodePayload = {
   teaserSec?: number;
   durationSec?: number;
   highlightSeconds?: number[];
-  r2Key?: string;
-  fallbackR2Key?: string;
+  primaryStorageKey?: string;
+  fallbackStorageKey?: string;
   posterKey?: string | null;
   masterKey?: string | null;
   subtitleTracks?: SubtitlePayload[];
@@ -313,6 +314,20 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null, m
   };
 }
 
+async function queuePipelinesForVideos(videoIds: string[]) {
+  const uniqueIds = Array.from(new Set(videoIds.filter(Boolean)));
+  const results = await Promise.allSettled(uniqueIds.map((videoId) => queueVideoHlsPipeline(videoId)));
+
+  return results.flatMap((result, index) => {
+    if (result.status === 'fulfilled') {
+      return [];
+    }
+
+    const message = result.reason instanceof Error ? result.reason.message : 'Unknown pipeline error.';
+    return [`${uniqueIds[index]}: ${message}`];
+  });
+}
+
 export async function POST(req: NextRequest) {
   const [sessionAuth, creatorLinkAuth] = await Promise.all([
     getAuthFromRequest(req),
@@ -345,8 +360,8 @@ export async function POST(req: NextRequest) {
     durationSec,
     tags,
     highlightSeconds,
-    r2Key,
-    fallbackR2Key,
+    primaryStorageKey,
+    fallbackStorageKey,
     posterKey,
     masterUploadKey,
     masterFileName,
@@ -373,8 +388,8 @@ export async function POST(req: NextRequest) {
     durationSec?: number;
     tags?: string[];
     highlightSeconds?: number[];
-    r2Key?: string;
-    fallbackR2Key?: string;
+    primaryStorageKey?: string;
+    fallbackStorageKey?: string;
     posterKey?: string | null;
     masterUploadKey?: string | null;
     masterFileName?: string | null;
@@ -388,8 +403,8 @@ export async function POST(req: NextRequest) {
   const safeTitle = title?.trim();
   const safeDescription = description?.trim();
   const safeCategory = category?.trim() || 'General';
-  const safeR2Key = r2Key?.trim() || '';
-  const safeFallbackR2Key = fallbackR2Key?.trim() || '';
+  const safePrimaryStorageKey = primaryStorageKey?.trim() || '';
+  const safeFallbackStorageKey = fallbackStorageKey?.trim() || '';
   const safePosterKey = posterKey?.trim() || null;
   const safeMasterUploadKey = masterUploadKey?.trim() || null;
   const safeMasterFileName = masterFileName?.trim() || null;
@@ -472,14 +487,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (safeR2Key) {
-      if (!hasSupportedVideoExtension(safeR2Key) || !validateOwnedKey(safeR2Key, auth.sub, 'video')) {
+    if (safePrimaryStorageKey) {
+      if (!hasSupportedVideoExtension(safePrimaryStorageKey) || !validateOwnedKey(safePrimaryStorageKey, auth.sub, 'video')) {
         return NextResponse.json({ error: 'Upload a valid 1080p MP4 playback file that belongs to your studio account.' }, { status: 400 });
       }
     }
 
-    if (safeFallbackR2Key) {
-      if (!hasSupportedVideoExtension(safeFallbackR2Key) || !validateOwnedKey(safeFallbackR2Key, auth.sub, 'video')) {
+    if (safeFallbackStorageKey) {
+      if (!hasSupportedVideoExtension(safeFallbackStorageKey) || !validateOwnedKey(safeFallbackStorageKey, auth.sub, 'video')) {
         return NextResponse.json({ error: 'Upload a valid 720p MP4 playback file that belongs to your studio account.' }, { status: 400 });
       }
     }
@@ -528,8 +543,8 @@ export async function POST(req: NextRequest) {
           durationSec: safeDurationSec,
           tags: safeTags,
           highlightSeconds: safeHighlights,
-          r2Key: null,
-          fallbackR2Key: null,
+          primaryStorageKey: null,
+          fallbackStorageKey: null,
           posterKey: safePosterKey,
           subtitleTracks: safeSubtitleTracks.length
             ? {
@@ -560,7 +575,15 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
-    return NextResponse.json({ ok: true, videoId: video.id, requiresContract: true });
+    const pipelineWarnings = await queuePipelinesForVideos([video.id]);
+
+    return NextResponse.json({
+      ok: true,
+      videoId: video.id,
+      requiresContract: true,
+      pipelineStarted: pipelineWarnings.length === 0,
+      pipelineWarnings
+    });
   }
 
   const safeEpisodes = (episodes ?? []).map((episode) => {
@@ -573,8 +596,8 @@ export async function POST(req: NextRequest) {
       teaserSec: Math.max(0, Math.floor(Number(episode.teaserSec ?? 0))),
       durationSec: Math.max(0, Math.floor(Number(episode.durationSec ?? 0))),
       highlightSeconds: normalizeHighlights(episode.highlightSeconds),
-      r2Key: episode.r2Key?.trim() || '',
-      fallbackR2Key: episode.fallbackR2Key?.trim() || '',
+      primaryStorageKey: episode.primaryStorageKey?.trim() || '',
+      fallbackStorageKey: episode.fallbackStorageKey?.trim() || '',
       posterKey: episode.posterKey?.trim() || null,
       masterKey: episode.masterKey?.trim() || null,
       subtitleTracks: normalizedSubtitleTracks
@@ -599,16 +622,16 @@ export async function POST(req: NextRequest) {
       !episode.title ||
       !episode.description ||
       !episode.durationSec ||
-      (!episode.r2Key && !episode.fallbackR2Key && !episode.masterKey)
+      (!episode.primaryStorageKey && !episode.fallbackStorageKey && !episode.masterKey)
     ) {
       return NextResponse.json({ error: 'Each episode needs a title, synopsis, season, episode number, runtime, and a playable MP4 master.' }, { status: 400 });
     }
 
-    if (episode.r2Key && (!hasSupportedVideoExtension(episode.r2Key) || !validateOwnedKey(episode.r2Key, auth.sub, 'video'))) {
+    if (episode.primaryStorageKey && (!hasSupportedVideoExtension(episode.primaryStorageKey) || !validateOwnedKey(episode.primaryStorageKey, auth.sub, 'video'))) {
       return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid 1080p MP4 upload.` }, { status: 400 });
     }
 
-    if (episode.fallbackR2Key && (!hasSupportedVideoExtension(episode.fallbackR2Key) || !validateOwnedKey(episode.fallbackR2Key, auth.sub, 'video'))) {
+    if (episode.fallbackStorageKey && (!hasSupportedVideoExtension(episode.fallbackStorageKey) || !validateOwnedKey(episode.fallbackStorageKey, auth.sub, 'video'))) {
       return NextResponse.json({ error: `Episode ${episode.seasonNumber}.${episode.episodeNumber} has an invalid 720p MP4 upload.` }, { status: 400 });
     }
 
@@ -628,7 +651,7 @@ export async function POST(req: NextRequest) {
   await assertUploadedObjectExists(safePosterKey, 'Series poster artwork');
   for (const episode of safeEpisodes) {
     await assertUploadedObjectExists(
-      episode.masterKey || episode.r2Key || episode.fallbackR2Key,
+      episode.masterKey || episode.primaryStorageKey || episode.fallbackStorageKey,
       `Episode ${episode.seasonNumber}.${episode.episodeNumber} playable MP4`
     );
     await assertUploadedObjectExists(episode.posterKey, `Episode ${episode.seasonNumber}.${episode.episodeNumber} poster artwork`);
@@ -694,7 +717,7 @@ export async function POST(req: NextRequest) {
       const items = [];
 
       for (const episode of safeEpisodes) {
-        const playableKey = episode.masterKey || episode.r2Key || episode.fallbackR2Key || null;
+        const playableKey = episode.masterKey || episode.primaryStorageKey || episode.fallbackStorageKey || null;
         const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
           const created = await tx.video.create({
             data: {
@@ -719,8 +742,8 @@ export async function POST(req: NextRequest) {
               durationSec: episode.durationSec,
               tags: series.tags,
               highlightSeconds: episode.highlightSeconds,
-              r2Key: episode.r2Key || null,
-              fallbackR2Key: episode.fallbackR2Key || null,
+              primaryStorageKey: episode.primaryStorageKey || null,
+              fallbackStorageKey: episode.fallbackStorageKey || null,
               posterKey: episode.posterKey ?? series.posterKey,
               subtitleTracks: episode.subtitleTracks.length
                 ? {
@@ -756,11 +779,15 @@ export async function POST(req: NextRequest) {
       return items;
     });
 
+    const pipelineWarnings = await queuePipelinesForVideos(createdEpisodes.map((episode) => episode.id));
+
     return NextResponse.json({
       ok: true,
       videoId: series.id,
       addedEpisodeIds: createdEpisodes.map((episode) => episode.id),
-      requiresContract: false
+      requiresContract: false,
+      pipelineStarted: pipelineWarnings.length === 0,
+      pipelineWarnings
     });
   }
 
@@ -799,8 +826,8 @@ export async function POST(req: NextRequest) {
         durationSec: totalDurationSec,
         tags: safeTags,
         highlightSeconds: [],
-        r2Key: null,
-        fallbackR2Key: null,
+        primaryStorageKey: null,
+        fallbackStorageKey: null,
         posterKey: safePosterKey,
         technicalMetadata: technicalMetadataInput
           ? {
@@ -812,7 +839,7 @@ export async function POST(req: NextRequest) {
 
     const createdEpisodes = [];
     for (const episode of safeEpisodes) {
-      const playableKey = episode.masterKey || episode.r2Key || episode.fallbackR2Key || null;
+      const playableKey = episode.masterKey || episode.primaryStorageKey || episode.fallbackStorageKey || null;
       const hasExplicitDefaultSubtitle = episode.subtitleTracks.some((track) => track.isDefault);
       const created = await tx.video.create({
         data: {
@@ -837,8 +864,8 @@ export async function POST(req: NextRequest) {
           durationSec: episode.durationSec,
           tags: safeTags,
           highlightSeconds: episode.highlightSeconds,
-          r2Key: episode.r2Key || null,
-          fallbackR2Key: episode.fallbackR2Key || null,
+          primaryStorageKey: episode.primaryStorageKey || null,
+          fallbackStorageKey: episode.fallbackStorageKey || null,
           posterKey: episode.posterKey ?? safePosterKey,
           subtitleTracks: episode.subtitleTracks.length
             ? {
@@ -875,10 +902,14 @@ export async function POST(req: NextRequest) {
     return { series, createdEpisodes };
   });
 
+  const pipelineWarnings = await queuePipelinesForVideos(result.createdEpisodes.map((episode) => episode.id));
+
   return NextResponse.json({
     ok: true,
     videoId: result.series.id,
     addedEpisodeIds: result.createdEpisodes.map((episode) => episode.id),
-    requiresContract: true
+    requiresContract: true,
+    pipelineStarted: pipelineWarnings.length === 0,
+    pipelineWarnings
   });
 }

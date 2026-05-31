@@ -113,8 +113,7 @@ function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Upload failed.';
   if (message.toLowerCase().includes('network error') || message.toLowerCase().includes('failed to fetch')) {
     return (
-      'Storage upload failed before R2 accepted the file. This usually means the R2 bucket CORS does not allow this website origin. ' +
-      'Allow both https://www.acestudio.ng and https://acestudio.ng on the upload bucket, then try again.'
+      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
     );
   }
   return message;

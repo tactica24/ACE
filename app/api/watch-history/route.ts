@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
       durationSec: true,
       videoType: true,
       seriesId: true,
-      r2Key: true,
-      fallbackR2Key: true
+      primaryStorageKey: true,
+      fallbackStorageKey: true
     }
   });
 

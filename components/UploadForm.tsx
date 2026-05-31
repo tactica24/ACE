@@ -15,8 +15,6 @@ import {
   MAX_SUBTITLE_BYTES,
   MAX_TRAILER_BYTES,
   MAX_VIDEO_BYTES,
-  MULTIPART_CHUNK_BYTES,
-  SINGLE_PUT_SAFE_BYTES,
   formatUploadLimit
 } from '@/lib/upload-limits';
 
@@ -217,8 +215,7 @@ function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Upload failed';
   if (message.toLowerCase().includes('network error') || message.toLowerCase().includes('failed to fetch')) {
     return (
-      'Storage upload failed before R2 accepted the file. This usually means the R2 bucket CORS does not allow this website origin. ' +
-      'Allow both https://www.acestudio.ng and https://acestudio.ng on the upload bucket, then try again.'
+      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
     );
   }
   return message;
@@ -255,45 +252,9 @@ async function uploadFileToSignedUrl(
       }
     };
     xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-    xhr.ontimeout = () => reject(new Error('Storage upload timed out before R2 accepted the file.'));
+    xhr.ontimeout = () => reject(new Error('Storage upload timed out before Bunny Storage accepted the file.'));
     xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
     xhr.send(file);
-  });
-}
-
-async function uploadBlobToSignedUrl(
-  url: string,
-  blob: Blob,
-  onProgress: (loaded: number, total: number) => void
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(event.loaded, event.total);
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const etag = xhr.getResponseHeader('ETag');
-        if (!etag) {
-          reject(new Error('Storage upload completed but R2 did not return a part ETag.'));
-          return;
-        }
-        resolve(etag);
-      } else {
-        reject(
-          new Error(
-            `Storage upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`
-          )
-        );
-      }
-    };
-    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-    xhr.ontimeout = () => reject(new Error('Storage upload timed out before R2 accepted the file.'));
-    xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
-    xhr.send(blob);
   });
 }
 
@@ -524,10 +485,6 @@ export default function UploadForm({
     purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master',
     onProgress: (loaded: number, total: number) => void
   ) => {
-    if (file.size > SINGLE_PUT_SAFE_BYTES) {
-      return uploadMultipartAsset(file, purpose, onProgress);
-    }
-
     const presign = await fetch(uploadEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(requestHeaders ?? {}) },
@@ -546,78 +503,6 @@ export default function UploadForm({
     const uploadContentType = (presignData.contentType as string) || file.type || 'application/octet-stream';
     await uploadFileToSignedUrl(presignData.url as string, file, uploadContentType, onProgress);
     return presignData.key as string;
-  };
-
-  const uploadMultipartAsset = async (
-    file: File,
-    purpose: 'video' | 'trailer' | 'poster' | 'subtitle' | 'master',
-    onProgress: (loaded: number, total: number) => void
-  ) => {
-    const headers = { 'Content-Type': 'application/json', ...(requestHeaders ?? {}) };
-    const initiate = await fetch('/api/uploads/multipart', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        action: 'initiate',
-        filename: file.name,
-        contentType: file.type || 'application/octet-stream',
-        fileSize: file.size,
-        purpose
-      })
-    });
-    const session = await initiate.json().catch(() => ({}));
-    if (!initiate.ok || !session.key || !session.uploadId) {
-      throw new Error(session.error || 'Unable to start large file upload.');
-    }
-
-    const key = session.key as string;
-    const uploadId = session.uploadId as string;
-    const parts: Array<{ ETag: string; PartNumber: number }> = [];
-    let uploadedBeforeCurrentPart = 0;
-
-    try {
-      const totalParts = Math.ceil(file.size / MULTIPART_CHUNK_BYTES);
-      for (let index = 0; index < totalParts; index += 1) {
-        const partNumber = index + 1;
-        const start = index * MULTIPART_CHUNK_BYTES;
-        const end = Math.min(file.size, start + MULTIPART_CHUNK_BYTES);
-        const blob = file.slice(start, end);
-        const partResponse = await fetch('/api/uploads/multipart', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ action: 'part', key, uploadId, purpose, partNumber })
-        });
-        const partPayload = await partResponse.json().catch(() => ({}));
-        if (!partResponse.ok || !partPayload.url) {
-          throw new Error(partPayload.error || `Unable to prepare upload part ${partNumber}.`);
-        }
-
-        const ETag = await uploadBlobToSignedUrl(partPayload.url as string, blob, (loaded) => {
-          onProgress(uploadedBeforeCurrentPart + loaded, file.size);
-        });
-        uploadedBeforeCurrentPart += blob.size;
-        parts.push({ ETag, PartNumber: partNumber });
-      }
-
-      const complete = await fetch('/api/uploads/multipart', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ action: 'complete', key, uploadId, purpose, parts })
-      });
-      const completePayload = await complete.json().catch(() => ({}));
-      if (!complete.ok) {
-        throw new Error(completePayload.error || 'Unable to finalize large file upload.');
-      }
-      onProgress(file.size, file.size);
-      return key;
-    } catch (error) {
-      await fetch('/api/uploads/multipart', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ action: 'abort', key, uploadId, purpose })
-      }).catch(() => null);
-      throw error;
-    }
   };
 
   const markUploadStep = (id: string, patch: Partial<UploadStep>) => {
@@ -919,8 +804,8 @@ export default function UploadForm({
               .map((value) => parseInt(value.trim(), 10))
               .filter((value) => Number.isFinite(value)),
             subtitleTracks: subtitlePayload,
-            r2Key: null,
-            fallbackR2Key: null,
+            primaryStorageKey: null,
+            fallbackStorageKey: null,
             posterKey: storedPosterKey,
             masterUploadKey: storedMasterKey,
             masterFileName: masterFile?.name ?? null,
@@ -1140,8 +1025,8 @@ export default function UploadForm({
             .split(',')
             .map((value) => parseInt(value.trim(), 10))
             .filter((value) => Number.isFinite(value)),
-          r2Key: primaryVideoKey || '',
-          fallbackR2Key: fallbackVideoKey || '',
+          primaryStorageKey: primaryVideoKey || '',
+          fallbackStorageKey: fallbackVideoKey || '',
           posterKey: episodePosterKey,
           subtitleTracks: episodeSubtitleKeys.length ? episodeSubtitleKeys : undefined
         });

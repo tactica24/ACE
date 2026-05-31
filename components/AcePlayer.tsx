@@ -105,6 +105,8 @@ type AudioTrackLike = {
   language?: string;
 };
 
+type PlaybackKind = 'progressive' | 'hls';
+
 export default function AcePlayer({
   videoId,
   teaserSec,
@@ -150,6 +152,7 @@ export default function AcePlayer({
   const [unlockState, setUnlockState] = useState<UnlockState>('idle');
   const [watchMode, setWatchMode] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string>('');
+  const [streamKind, setStreamKind] = useState<PlaybackKind>('progressive');
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(Boolean(trailerKey));
   const [feedback, setFeedback] = useState<string | null>(null);
   const [resumePrompt, setResumePrompt] = useState<number | null>(null);
@@ -373,6 +376,7 @@ export default function AcePlayer({
 
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
+    setStreamKind('progressive');
     setStreamUrl(previewUrl);
     return true;
   }, [isAuthenticated, videoId]);
@@ -382,6 +386,7 @@ export default function AcePlayer({
       if (initialStreamUrl) {
         pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
         pendingAutoplayRef.current = Boolean(autoplay);
+        setStreamKind('progressive');
         setStreamUrl(initialStreamUrl);
         return;
       }
@@ -408,7 +413,18 @@ export default function AcePlayer({
       throw new Error(data.error ?? 'Unable to start playback.');
     }
 
-    if (!data.allowed || !data.playbackUrl) {
+    const hlsUrl =
+      typeof data.playback?.hlsUrl === 'string'
+        ? data.playback.hlsUrl
+        : null;
+    const progressiveUrl =
+      typeof data.playback?.progressiveUrl === 'string'
+        ? data.playback.progressiveUrl
+        : typeof data.playbackUrl === 'string'
+          ? data.playbackUrl
+          : null;
+
+    if (!data.allowed || (!hlsUrl && !progressiveUrl)) {
       setShowPaywall(true);
       return;
     }
@@ -416,7 +432,8 @@ export default function AcePlayer({
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
     setPlaybackSessionId(data.sessionId);
-    setStreamUrl(data.playbackUrl);
+    setStreamKind(hlsUrl ? 'hls' : 'progressive');
+    setStreamUrl(hlsUrl ?? progressiveUrl ?? '');
   }, [isAuthenticated, initialStreamUrl, loadPreviewStream, videoId]);
 
   const handleMovieModeRequest = useCallback(() => {
@@ -621,6 +638,58 @@ export default function AcePlayer({
   useEffect(() => {
     applySubtitleSelection();
   }, [applySubtitleSelection]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !activeVideoSrc) {
+      return;
+    }
+
+    if (isPlayingTrailer || streamKind === 'progressive') {
+      if (video.src !== activeVideoSrc) {
+        video.src = activeVideoSrc;
+      }
+      return;
+    }
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = activeVideoSrc;
+      return;
+    }
+
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+
+    void import('hls.js')
+      .then(({ default: Hls }) => {
+        if (disposed) return;
+        if (!Hls.isSupported()) {
+          setFeedback('This browser cannot play HLS right now. Try Safari or a newer browser.');
+          return;
+        }
+
+        const hls = new Hls({
+          enableWorker: true
+        });
+        hls.loadSource(activeVideoSrc);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data?.fatal) {
+            setFeedback('This HLS stream could not be played right now.');
+            hls.destroy();
+          }
+        });
+        cleanup = () => hls.destroy();
+      })
+      .catch(() => {
+        setFeedback('This browser could not load the HLS player.');
+      });
+
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, [activeVideoSrc, isPlayingTrailer, streamKind]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -924,9 +993,9 @@ export default function AcePlayer({
 
       {activeVideoSrc ? (
         <video
-          key={activeVideoSrc}
+          key={`${streamKind}:${activeVideoSrc}`}
           ref={videoRef}
-          src={activeVideoSrc}
+          src={streamKind === 'progressive' || isPlayingTrailer ? activeVideoSrc : undefined}
           controls
           playsInline
           preload="metadata"

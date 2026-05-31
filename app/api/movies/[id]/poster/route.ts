@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveMoviePosterKeyFromCandidates } from '@/lib/movie-assets';
-import { createPresignedGetUrl } from '@/lib/r2';
+import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const dynamic = 'force-dynamic';
@@ -45,8 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   // Use longer expiry for poster images and set proper content type
-  const url = await createPresignedGetUrl(posterKey, {
-    contentType: 'image/jpeg',
+  const url = await createSignedStorageUrl(posterKey, {
     expiresIn: 7200 // 2 hours for poster images
   });
   return NextResponse.redirect(url);

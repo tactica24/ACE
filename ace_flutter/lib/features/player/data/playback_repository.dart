@@ -54,6 +54,11 @@ class PlaybackRepository {
     }
 
     final playback = payload['playback'] as Map<String, dynamic>?;
+    final nestedHlsUrl = playback?['hlsUrl'];
+    if (progressive == null && nestedHlsUrl is String && nestedHlsUrl.isNotEmpty) {
+      progressive = apiClient.resolve(nestedHlsUrl).toString();
+    }
+
     final nestedPlaybackUrl = playback?['progressiveUrl'];
     if (progressive == null && nestedPlaybackUrl is String && nestedPlaybackUrl.isNotEmpty) {
       progressive = apiClient.resolve(nestedPlaybackUrl).toString();

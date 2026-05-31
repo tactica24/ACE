@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
-import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
-import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { queueVideoHlsPipeline, syncPipelineTask } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 const STATUS_UPDATES: Record<string, { status: string }> = {
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       status: true,
-      r2Key: true,
-      fallbackR2Key: true,
+      primaryStorageKey: true,
+      fallbackStorageKey: true,
       technicalMetadata: {
         select: {
           processingStatus: true,
@@ -49,25 +49,27 @@ export async function POST(req: NextRequest) {
       where: { id: videoId },
       select: {
         status: true,
-        r2Key: true,
-        fallbackR2Key: true,
+        primaryStorageKey: true,
+        fallbackStorageKey: true,
         technicalMetadata: {
           select: {
             processingStatus: true,
-            masterKey: true
+            masterKey: true,
+            hlsManifestKey: true,
+            hlsOutputPath: true,
+            hlsReadyAt: true
           }
         }
       }
     });
 
-    const mp4Status = videoForPublish ? await getMovieMp4StorageStatus(videoForPublish) : null;
-
     if (
       videoForPublish?.status !== 'READY' ||
       videoForPublish.technicalMetadata?.processingStatus !== 'READY_TO_STREAM' ||
-      !mp4Status?.selectedKey
+      !videoForPublish ||
+      !hasReadyMoviePlayback(videoForPublish)
     ) {
-      return NextResponse.json({ error: 'Validate MP4 playback before publishing.' }, { status: 400 });
+      return NextResponse.json({ error: 'Wait for HLS readiness before publishing this title.' }, { status: 400 });
     }
 
     await prisma.video.update({
@@ -81,6 +83,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       message: 'Movie published and available for streaming.',
+      video: await getProcessingVideo(videoId)
+    });
+  }
+
+  if (action === 'START_PIPELINE') {
+    const result = await queueVideoHlsPipeline(videoId);
+    return NextResponse.json({
+      ok: true,
+      message: `Akash queued the HLS pipeline for this title (${result.dseq}).`,
+      video: await getProcessingVideo(videoId)
+    });
+  }
+
+  if (action === 'SYNC_PIPELINE') {
+    await syncPipelineTask(videoId);
+    return NextResponse.json({
+      ok: true,
+      message: 'Pipeline status synced from Livepeer.',
       video: await getProcessingVideo(videoId)
     });
   }

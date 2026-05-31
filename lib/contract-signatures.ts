@@ -1,4 +1,4 @@
-import { getObjectBuffer } from './r2';
+import { getObjectBuffer } from './bunny-storage';
 
 export type StoredSignatureAsset = {
   key: string;

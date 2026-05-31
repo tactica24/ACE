@@ -102,10 +102,21 @@ export default function HomeSpotlightPreview({
           const tokenPayload = (await tokenResponse.json()) as {
             token?: string;
             playback?: {
+              previewUrl?: string;
               preferred?: string;
               progressiveUrl?: string;
             };
           };
+
+          const previewUrl =
+            typeof tokenPayload.playback?.previewUrl === 'string'
+              ? tokenPayload.playback.previewUrl
+              : null;
+          if (previewUrl) {
+            cachePreviewSource(videoId, previewUrl);
+            return previewUrl;
+          }
+
           if (!tokenPayload.token) {
             return null;
           }

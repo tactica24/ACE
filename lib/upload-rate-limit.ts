@@ -1,3 +1,5 @@
+// Kept for compatibility with existing tests while browser-side multipart uploads
+// are retired in favor of Bunny direct uploads.
 export type MultipartUploadAction = 'initiate' | 'part' | 'complete' | 'abort';
 
 const MULTIPART_UPLOAD_WINDOW_MS = 1000 * 60 * 10;

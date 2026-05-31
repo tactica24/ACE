@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createPresignedGetUrl } from '@/lib/r2';
+import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { normalizeMediaKey } from '@/lib/media';
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -27,6 +27,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Trailer not available for this title.' }, { status: 404 });
   }
 
-  const url = await createPresignedGetUrl(trailerKey);
+  const url = await createSignedStorageUrl(trailerKey);
   return NextResponse.redirect(url);
 }

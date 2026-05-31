@@ -1,0 +1,10 @@
+[
+  {
+    "key": "posters/example-movie.jpg",
+    "url": "https://legacy-media.example.com/posters/example-movie.jpg"
+  },
+  {
+    "key": "uploads/admin-123/example-movie-master.mp4",
+    "url": "https://legacy-media.example.com/uploads/admin-123/example-movie-master.mp4"
+  }
+]

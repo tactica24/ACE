@@ -10,7 +10,7 @@ export async function GET() {
   return NextResponse.json(
     {
       ok: missingEnv.length === 0,
-      deliveryMode: relayTargets.length ? 'relay' : 'direct-app',
+      deliveryMode: relayTargets.length ? 'bunny-cdn+relay' : 'bunny-cdn',
       missingEnv,
       timestamp: new Date().toISOString()
     },

@@ -1,4 +1,5 @@
 # ACE Studio Production Readiness Report
+> Historical note: this document predates the Bunny-only Akash + Livepeer HLS pipeline and should not be used as the current deployment runbook.
 **Date:** April 16, 2026  
 **Status:** 99.9% Complete - International Standard Ready
 
@@ -126,7 +127,7 @@ ACE Studio has been successfully elevated to international standards with compre
 
 ### Production Environment
 - **Database**: Neon PostgreSQL with connection pooling
-- **Storage**: Cloudflare R2 with CDN
+- **Storage**: Bunny Storage with Bunny CDN
 - **Authentication**: Firebase with proper configuration
 - **Payments**: Paystack (NGN) + Stripe (International)
 - **Monitoring**: Comprehensive logging and alerting

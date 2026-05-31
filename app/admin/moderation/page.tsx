@@ -48,8 +48,8 @@ export default async function ModerationPage() {
                   posterKey: true
                 }
               },
-              r2Key: true,
-              fallbackR2Key: true,
+              primaryStorageKey: true,
+              fallbackStorageKey: true,
               createdAt: true,
               creator: {
                 select: {
@@ -82,8 +82,8 @@ export default async function ModerationPage() {
                   id: true,
                   title: true,
                   status: true,
-                  r2Key: true,
-                  fallbackR2Key: true,
+                  primaryStorageKey: true,
+                  fallbackStorageKey: true,
                   technicalMetadata: {
                     select: {
                       masterKey: true
@@ -127,8 +127,8 @@ export default async function ModerationPage() {
               posterKey: true
             }
           },
-          r2Key: true,
-          fallbackR2Key: true,
+          primaryStorageKey: true,
+          fallbackStorageKey: true,
           createdAt: true,
           creator: {
             select: {
@@ -161,8 +161,8 @@ export default async function ModerationPage() {
               id: true,
               title: true,
               status: true,
-              r2Key: true,
-              fallbackR2Key: true,
+              primaryStorageKey: true,
+              fallbackStorageKey: true,
               technicalMetadata: {
                 select: {
                   masterKey: true
@@ -178,7 +178,7 @@ export default async function ModerationPage() {
 
     const mapQueueVideo = (video: (typeof items)[number]['video'] | (typeof orphanApprovedVideos)[number]) => {
       const readyEpisodeCount = video.episodes.filter(
-        (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key || episode.technicalMetadata?.masterKey)
+        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || episode.technicalMetadata?.masterKey)
       ).length;
 
       return {
@@ -211,8 +211,8 @@ export default async function ModerationPage() {
         packageStatus: getViewerPackageStatus({
           videoType: video.videoType,
           seriesId: video.seriesId,
-          primaryReady: Boolean(video.r2Key),
-          fallbackReady: Boolean(video.fallbackR2Key),
+          primaryReady: Boolean(video.primaryStorageKey),
+          fallbackReady: Boolean(video.fallbackStorageKey),
           masterReady: Boolean(video.technicalMetadata?.masterKey),
           episodeCount: video._count.episodes,
           readyEpisodeCount

@@ -108,8 +108,8 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           releaseYear: true,
           createdAt: true,
           posterKey: true,
-          r2Key: true,
-          fallbackR2Key: true,
+          primaryStorageKey: true,
+          fallbackStorageKey: true,
           series: {
             select: {
               title: true,
@@ -127,8 +127,8 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           episodes: {
             select: {
               status: true,
-              r2Key: true,
-              fallbackR2Key: true
+              primaryStorageKey: true,
+              fallbackStorageKey: true
             }
           },
           technicalMetadata: {
@@ -311,11 +311,11 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     packageStatus: getViewerPackageStatus({
                       videoType: video.videoType,
                       seriesId: video.seriesId,
-                      primaryReady: Boolean(video.r2Key),
-                      fallbackReady: Boolean(video.fallbackR2Key),
+                      primaryReady: Boolean(video.primaryStorageKey),
+                      fallbackReady: Boolean(video.fallbackStorageKey),
                       episodeCount: video._count.episodes,
                       readyEpisodeCount: video.episodes.filter(
-                        (episode) => episode.status === 'APPROVED' && Boolean(episode.r2Key || episode.fallbackR2Key)
+                        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey)
                       ).length
                     }),
                     subtitleStatus: getSubtitlePackageStatus({

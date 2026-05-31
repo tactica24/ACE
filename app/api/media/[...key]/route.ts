@@ -1,9 +1,7 @@
-import { Readable } from 'node:stream';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createPresignedGetUrl } from '@/lib/r2';
-import { streamR2Object } from '@/lib/stream';
+import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { normalizeMediaKey } from '@/lib/media';
 import { canPreviewVideo } from '@/lib/video-access';
 
@@ -64,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
         status: true,
         videoType: true,
         seriesId: true,
-        r2Key: true,
+        primaryStorageKey: true,
         subtitleTracks: {
           select: {
             fileKey: true
@@ -106,20 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
 
     const { video, storedKey } = match;
     const objectKey = normalizeMediaKey(storedKey) ?? storedKey;
-    const isTrailerAsset = normalizedEquals(video.technicalMetadata?.trailerKey, storedKey);
-    const isSubtitleAsset = video.subtitleTracks.some((track) => normalizedEquals(track.fileKey, storedKey));
-
-    if (isTrailerAsset || isSubtitleAsset) {
-      const rangeHeader = req.headers.get('range');
-      const result = await streamR2Object(objectKey, rangeHeader);
-
-      return new Response(Readable.toWeb(result.stream) as never, {
-        status: result.status,
-        headers: result.headers
-      });
-    }
-
-    const url = await createPresignedGetUrl(objectKey);
+    const url = createSignedStorageUrl(objectKey, { expiresIn: 60 * 60 });
     return NextResponse.redirect(url);
   } catch {
     return NextResponse.json({ error: 'Asset not available' }, { status: 404 });

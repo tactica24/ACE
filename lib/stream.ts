@@ -1,8 +1,8 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { Readable } from 'stream';
 import { cacheExists, getCachePath, writeCacheFromStream, ensureStorageDirs } from './cache';
-import { getObjectStream, headObject } from './r2';
+import { getObjectStream, headObject } from './bunny-storage';
 
 export type StreamResult = {
   status: number;
@@ -12,7 +12,7 @@ export type StreamResult = {
 
 const pendingCacheWrites = new Map<string, Promise<string>>();
 
-export async function ensureCached(key: string, bucketName?: string) {
+export async function ensureCached(key: string) {
   await ensureStorageDirs();
   if (await cacheExists(key)) return getCachePath(key);
 
@@ -24,9 +24,9 @@ export async function ensureCached(key: string, bucketName?: string) {
   const cacheWrite = (async () => {
     if (await cacheExists(key)) return getCachePath(key);
 
-    const object = await getObjectStream(key, undefined, bucketName);
+    const object = await getObjectStream(key);
     const body = object.Body as Readable | undefined;
-    if (!body) throw new Error('Missing R2 object body');
+    if (!body) throw new Error('Missing Bunny Storage object body');
     return writeCacheFromStream(key, body);
   })();
 
@@ -83,13 +83,12 @@ function getSafeObjectSize(size: number | undefined) {
   return typeof size === 'number' && Number.isFinite(size) ? Math.max(0, size) : 0;
 }
 
-export async function streamR2Object(
+export async function streamStoredObject(
   key: string,
   rangeHeader: string | null,
-  maxBytes?: number,
-  bucketName?: string
+  maxBytes?: number
 ): Promise<StreamResult> {
-  const objectHead = await headObject(key, bucketName);
+  const objectHead = await headObject(key);
   const totalSize = getSafeObjectSize(objectHead.ContentLength);
   const effectiveSize = maxBytes ? Math.min(maxBytes, totalSize) : totalSize;
   const contentType = objectHead.ContentType?.trim() || getVideoContentType(key);
@@ -112,9 +111,9 @@ export async function streamR2Object(
       ? `bytes=0-${Math.max(effectiveSize - 1, 0)}`
       : undefined;
 
-  const object = await getObjectStream(key, rangeValue, bucketName);
+  const object = await getObjectStream(key, rangeValue);
   const body = object.Body as Readable | undefined;
-  if (!body) throw new Error('Missing R2 object body');
+  if (!body) throw new Error('Missing Bunny Storage object body');
 
   if (!range) {
     return {

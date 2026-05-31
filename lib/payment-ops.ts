@@ -67,6 +67,11 @@ async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: Pa
         expiresAt
       }
     });
+    await tx.wallet.upsert({
+      where: { userId: payment.userId },
+      update: { credits: { increment: credits } },
+      create: { userId: payment.userId, credits }
+    });
     return;
   }
 

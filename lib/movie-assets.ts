@@ -1,16 +1,20 @@
 import { normalizeMediaKey } from './media';
+import { hasReadyVideoHls } from './hls';
 
 export type MovieAssetVideo = {
   id: string;
-  r2Key?: string | null;
-  fallbackR2Key?: string | null;
+  primaryStorageKey?: string | null;
+  fallbackStorageKey?: string | null;
   posterKey?: string | null;
   technicalMetadata?: {
     masterKey?: string | null;
+    hlsManifestKey?: string | null;
+    hlsOutputPath?: string | null;
+    hlsReadyAt?: Date | string | null;
   } | null;
 };
 
-const BLOCKED_POSTER_MARKERS = ['placeholder', 'default-poster', 'ace-studio', 'ace_studio'];
+const BLOCKED_POSTER_MARKERS = ['placeholder', 'default-poster', 'ace_studio'];
 
 function hasExtension(value: string, extensions: string[]) {
   const lower = value.toLowerCase();
@@ -21,20 +25,24 @@ function unique(values: Array<string | null>) {
   return Array.from(new Set(values.filter(Boolean) as string[]));
 }
 
-export function resolveMovieMp4Candidates(video: Pick<MovieAssetVideo, 'r2Key' | 'fallbackR2Key' | 'technicalMetadata'>) {
+export function resolveMovieMp4Candidates(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
   return unique([
     normalizeMediaKey(video.technicalMetadata?.masterKey),
-    normalizeMediaKey(video.r2Key),
-    normalizeMediaKey(video.fallbackR2Key)
+    normalizeMediaKey(video.primaryStorageKey),
+    normalizeMediaKey(video.fallbackStorageKey)
   ]).filter((key) => hasExtension(key, ['.mp4']));
 }
 
-export function resolveMovieMp4Key(video: Pick<MovieAssetVideo, 'r2Key' | 'fallbackR2Key' | 'technicalMetadata'>) {
+export function resolveMovieMp4Key(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
   return resolveMovieMp4Candidates(video)[0] ?? null;
 }
 
-export function hasMovieMp4(video: Pick<MovieAssetVideo, 'r2Key' | 'fallbackR2Key' | 'technicalMetadata'>) {
+export function hasMovieMp4(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
   return Boolean(resolveMovieMp4Key(video));
+}
+
+export function hasReadyMoviePlayback(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
+  return hasReadyVideoHls(video) || hasMovieMp4(video);
 }
 
 export function resolveMoviePosterKey(video: Pick<MovieAssetVideo, 'posterKey'>) {

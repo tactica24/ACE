@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { syncPipelineTask } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 export async function POST(req: NextRequest) {
@@ -22,11 +23,13 @@ export async function POST(req: NextRequest) {
       id: true,
       title: true,
       status: true,
-      r2Key: true,
-      fallbackR2Key: true,
+      primaryStorageKey: true,
+      fallbackStorageKey: true,
       technicalMetadata: {
         select: {
-          masterKey: true
+          masterKey: true,
+          hlsManifestKey: true,
+          hlsOutputPath: true
         }
       }
     }
@@ -36,15 +39,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
   }
 
-  const mp4Status = await getMovieMp4StorageStatus(video);
-  const passed = Boolean(mp4Status.selectedKey);
-  const errors = passed
-    ? []
-    : [
-        mp4Status.candidates.length
-          ? 'The listed MP4 key was not found in the active R2 bucket.'
-          : 'No playable MP4 key is attached to this title.'
-      ];
+  let synced = false;
+  if (video.technicalMetadata?.hlsManifestKey || video.technicalMetadata?.hlsOutputPath) {
+    await syncPipelineTask(movieId).catch(() => null);
+    synced = true;
+  }
+
+  const refreshedVideo = await prisma.video.findUnique({
+    where: { id: movieId },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      primaryStorageKey: true,
+      fallbackStorageKey: true,
+      technicalMetadata: {
+        select: {
+          masterKey: true,
+          hlsManifestKey: true,
+          hlsOutputPath: true,
+          hlsReadyAt: true,
+          processingStatus: true
+        }
+      }
+    }
+  });
+
+  const passed = Boolean(refreshedVideo && hasReadyMoviePlayback(refreshedVideo));
+  const errors = passed ? [] : ['No viewer-ready HLS playback is attached to this title yet.'];
 
   if (passed) {
     await prisma.$transaction([
@@ -72,11 +94,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     movieId,
     title: video.title,
-    mp4Key: mp4Status.selectedKey,
+    synced,
     checks: {
-      storageConfigured: mp4Status.storageConfigured,
-      candidates: mp4Status.candidates,
-      selectedKey: mp4Status.selectedKey
+      hlsManifestKey: refreshedVideo?.technicalMetadata?.hlsManifestKey ?? null,
+      hlsReadyAt: refreshedVideo?.technicalMetadata?.hlsReadyAt ?? null,
+      processingStatus: refreshedVideo?.technicalMetadata?.processingStatus ?? 'NO_MASTER'
     },
     passed,
     errors,

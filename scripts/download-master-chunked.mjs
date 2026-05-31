@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync } from 'node:fs';
-import { getObjectStream, headObject } from '@/lib/r2';
+import { getObjectStream, headObject } from '@/lib/bunny-storage';
 
 const args = Object.fromEntries(process.argv.slice(2).map((value) => {
   const [key, raw = ''] = value.replace(/^--/, '').split('=');

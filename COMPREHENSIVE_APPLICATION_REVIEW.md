@@ -1,4 +1,5 @@
 # ACE Studio Comprehensive End-to-End Application Review
+> Historical note: this review predates the Bunny-only Akash + Livepeer HLS rollout and is not the source of truth for current deployment.
 **Date:** April 16, 2026  
 **Status:** 99.95% Complete - Premium Excellence Achieved  
 **Review Scope:** Complete application architecture, features, and production readiness
@@ -32,7 +33,7 @@ ACE Studio has been comprehensively reviewed and demonstrates **world-class exce
 
 ### ✅ **Infrastructure**
 - **Vercel deployment** with CI/CD pipeline
-- **Cloudflare R2** for media delivery with CDN
+- **Bunny Storage** for media delivery with Bunny CDN
 - **Environment management** with proper configuration
 - **Monitoring and logging** with comprehensive error tracking
 - **Security hardening** with OWASP compliance

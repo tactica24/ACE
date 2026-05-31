@@ -485,8 +485,8 @@ button {
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 22px;
 }
 
 .video-card {
@@ -514,8 +514,8 @@ button {
 
 .video-thumb {
   background: radial-gradient(circle at 36% 28%, rgba(106, 182, 255, 0.18), transparent 30%), linear-gradient(135deg, #162030, #0c111b 62%, #070a11);
-  aspect-ratio: 16 / 9;
-  min-height: 142px;
+  aspect-ratio: 2 / 3;
+  min-height: 220px;
   display: grid;
   place-items: center;
   font-weight: 700;

@@ -135,11 +135,12 @@ $optionalSecretMap = @(
   @{ Name = "ACE_FIREBASE_PROJECT_ID"; Fallbacks = @("NEXT_PUBLIC_FIREBASE_PROJECT_ID", "FIREBASE_PROJECT_ID") },
   @{ Name = "ACE_FIREBASE_AUTH_DOMAIN"; Fallbacks = @("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN") },
   @{ Name = "ACE_FIREBASE_STORAGE_BUCKET"; Fallbacks = @("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "FIREBASE_STORAGE_BUCKET") },
-  @{ Name = "R2_ENDPOINT"; Fallbacks = @() },
-  @{ Name = "R2_ACCESS_KEY_ID"; Fallbacks = @("AWS_ACCESS_KEY_ID") },
-  @{ Name = "R2_SECRET_ACCESS_KEY"; Fallbacks = @("AWS_SECRET_ACCESS_KEY") },
-  @{ Name = "R2_BUCKET"; Fallbacks = @() },
-  @{ Name = "ACE_ANDROID_APK_R2_KEY"; Fallbacks = @() }
+  @{ Name = "BUNNY_STORAGE_API_KEY"; Fallbacks = @() },
+  @{ Name = "BUNNY_STORAGE_ZONE"; Fallbacks = @() },
+  @{ Name = "BUNNY_STORAGE_ENDPOINT"; Fallbacks = @() },
+  @{ Name = "BUNNY_CDN_HOSTNAME"; Fallbacks = @() },
+  @{ Name = "BUNNY_TOKEN_KEY"; Fallbacks = @() },
+  @{ Name = "ACE_ANDROID_APK_STORAGE_KEY"; Fallbacks = @() }
 )
 
 foreach ($secret in $optionalSecretMap) {

@@ -41,10 +41,17 @@ function inspectEnv() {
     'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
     'NEXT_PUBLIC_FIREBASE_APP_ID',
     'PAYSTACK_SECRET_KEY',
-    'R2_ENDPOINT',
-    'R2_ACCESS_KEY_ID',
-    'R2_SECRET_ACCESS_KEY',
-    'R2_BUCKET',
+    'BUNNY_STORAGE_API_KEY',
+    'BUNNY_STORAGE_ZONE',
+    'BUNNY_STORAGE_ENDPOINT',
+    'BUNNY_STORAGE_S3_ENDPOINT',
+    'BUNNY_CDN_HOSTNAME',
+    'BUNNY_TOKEN_KEY',
+    'AKASH_API_BASE_URL',
+    'AKASH_API_KEY',
+    'AKASH_CALLBACK_SECRET',
+    'LIVEPEER_API_BASE_URL',
+    'LIVEPEER_API_KEY',
     'ACE_APP_BASE_URL'
   ];
 
@@ -62,7 +69,8 @@ function inspectEnv() {
     /replace-with-your-web-api-key/i,
     /sk_test_xxx/i,
     /pk_test_xxx/i,
-    /<accountid>/i,
+    /replace-with-bunny/i,
+    /replace-with-random-shared-secret/i,
     /"replace"/i
   ];
   const hasPlaceholder = placeholderPatterns.some((pattern) => pattern.test(inspectedValues));
@@ -83,7 +91,7 @@ function inspectEnv() {
     relayConfigured ? 'DONE' : 'OPTIONAL',
     relayConfigured
       ? 'Relay delivery endpoints are configured.'
-      : 'No relay node is configured yet. The app will stream approved titles directly from R2 through Next.js for now.'
+      : 'No relay node is configured yet. The app will stream approved titles through Bunny Storage and signed CDN URLs.'
   );
 
   if (!existsSync('.env') && !required.some((key) => process.env[key]?.trim())) {

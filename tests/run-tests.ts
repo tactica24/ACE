@@ -53,8 +53,8 @@ const creatorVideo = {
   status: 'APPROVED',
   videoType: 'MOVIE',
   seriesId: null,
-  r2Key: 'video/movie.mp4',
-  fallbackR2Key: 'video/movie-720.mp4',
+  primaryStorageKey: 'video/movie.mp4',
+  fallbackStorageKey: 'video/movie-720.mp4',
 };
 
 const payoutCases: Case[] = [
@@ -153,8 +153,8 @@ const videoCases: Case[] = [
         status: 'APPROVED',
         videoType: 'SERIES',
         seriesId: null,
-        r2Key: null,
-        fallbackR2Key: null,
+        primaryStorageKey: null,
+        fallbackStorageKey: null,
       };
 
       assert.equal(isSeriesContainer(seriesContainer), true);
@@ -169,23 +169,23 @@ const videoCases: Case[] = [
         status: 'APPROVED',
         videoType: 'SERIES',
         seriesId: 'series-1',
-        r2Key: 'video/episode-1.mp4',
-        fallbackR2Key: 'video/episode-1-720.mp4',
+        primaryStorageKey: 'video/episode-1.mp4',
+        fallbackStorageKey: 'video/episode-1-720.mp4',
       };
       const emptyAsset = {
         ...creatorVideo,
-        r2Key: null,
-        fallbackR2Key: null,
+        primaryStorageKey: null,
+        fallbackStorageKey: null,
       };
       const fallbackOnlyAsset = {
         ...creatorVideo,
-        r2Key: null,
-        fallbackR2Key: 'video/movie-720.mp4',
+        primaryStorageKey: null,
+        fallbackStorageKey: 'video/movie-720.mp4',
       };
       const masterOnlyAsset = {
         ...creatorVideo,
-        r2Key: null,
-        fallbackR2Key: null,
+        primaryStorageKey: null,
+        fallbackStorageKey: null,
         technicalMetadata: {
           masterKey: 'uploads/creator-1/movie/movie.mp4',
         },
@@ -278,8 +278,8 @@ const videoCases: Case[] = [
       assert.equal(Array.isArray(anyVideoWhere.OR), true);
       assert.equal(anyVideoWhere.OR?.length, 3);
       assert.deepEqual(getPlayableAssetWhere().OR, [
-        { r2Key: { endsWith: '.mp4', mode: 'insensitive' } },
-        { fallbackR2Key: { endsWith: '.mp4', mode: 'insensitive' } },
+        { primaryStorageKey: { endsWith: '.mp4', mode: 'insensitive' } },
+        { fallbackStorageKey: { endsWith: '.mp4', mode: 'insensitive' } },
         { technicalMetadata: { is: { masterKey: { endsWith: '.mp4', mode: 'insensitive' } } } },
       ]);
     },
@@ -336,7 +336,7 @@ const videoCases: Case[] = [
       );
       assert.equal(normalizeMediaKey(' /posters\\\\movie one.jpg '), 'posters/movie one.jpg');
       assert.equal(
-        normalizeMediaKey('https://9509c1f9654bf983a2d806d29210f6ad.r2.cloudflarestorage.com/acestudio/uploads/admin/poster/movie%20one.webp?X-Amz-Signature=expired'),
+        normalizeMediaKey('https://cdn.acestudio.ng/uploads/admin/poster/movie%20one.webp?token=expired'),
         'uploads/admin/poster/movie one.webp',
       );
       assert.equal(
@@ -349,7 +349,7 @@ const videoCases: Case[] = [
       );
       assert.equal(
         resolveMovieMp4Key({
-          r2Key: 'https://9509c1f9654bf983a2d806d29210f6ad.r2.cloudflarestorage.com/acestudio/uploads/admin/video/movie.mp4',
+          primaryStorageKey: 'https://cdn.acestudio.ng/uploads/admin/video/movie.mp4',
         }),
         'uploads/admin/video/movie.mp4',
       );

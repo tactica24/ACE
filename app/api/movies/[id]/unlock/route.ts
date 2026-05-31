@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!mp4Status.selectedKey) {
     console.error('[movie-unlock] MP4 storage lookup failed', {
       videoId,
-      storageConfigured: mp4Status.storageConfigured,
+      bunnyStorageConfigured: mp4Status.bunnyStorageConfigured,
       candidates: mp4Status.candidates,
       error: mp4Status.error
     });

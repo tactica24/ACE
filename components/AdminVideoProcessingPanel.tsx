@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { buildFfmpegCommand } from '@/lib/video-processing';
-import { MAX_MASTER_BYTES, MULTIPART_CHUNK_BYTES, SINGLE_PUT_SAFE_BYTES, formatUploadLimit } from '@/lib/upload-limits';
+import { MAX_MASTER_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
 type ProcessingVideo = {
   id: string;
@@ -19,6 +19,16 @@ type ProcessingVideo = {
   masterUploadedAt: string | null;
   processingStatus: string;
   playbackUrl: string | null;
+  orchestrationProvider?: string | null;
+  orchestrationJobId?: string | null;
+  transcodeProvider?: string | null;
+  transcodeTaskId?: string | null;
+  transcodeError?: string | null;
+  hlsOutputPath?: string | null;
+  hlsManifestKey?: string | null;
+  hlsReadyAt?: string | null;
+  masterDeletionEligible?: boolean;
+  masterDeletedAt?: string | null;
   qualities: string[];
   trailerDownloadHref: string | null;
   posterDownloadHref: string | null;
@@ -41,9 +51,9 @@ type UploadStatus = {
 };
 
 const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
-  { id: 'uploaded', label: 'Uploaded MP4s', description: 'Validate the MP4 and mark it ready for playback.' },
-  { id: 'processed', label: 'Ready / published', description: 'Titles with validated MP4 playback.' },
-  { id: 'needs-master', label: 'Needs MP4', description: 'Movie record exists, but the playable MP4 is missing.' }
+  { id: 'uploaded', label: 'Queued / processing', description: 'Master exists and is moving through Akash, Livepeer, and Bunny HLS.' },
+  { id: 'processed', label: 'Ready / published', description: 'Titles with verified HLS playback.' },
+  { id: 'needs-master', label: 'Needs MP4', description: 'Movie record exists, but the master file is still missing.' }
 ];
 
 function formatBytes(value: number | null) {
@@ -65,30 +75,10 @@ function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Unable to upload MP4.';
   if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
     return (
-      'Storage upload failed before R2 accepted the file. This usually means the R2 bucket CORS does not allow this website origin. ' +
-      'Allow both https://www.acestudio.ng and https://acestudio.ng on the upload bucket, then try again.'
+      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
     );
   }
   return message;
-}
-
-async function uploadBlobToSignedUrl(url: string, blob: Blob): Promise<string> {
-  let response: Response;
-  try {
-    response = await fetch(url, { method: 'PUT', body: blob });
-  } catch (error) {
-    throw new Error(toStorageUploadError(error));
-  }
-  if (!response.ok) {
-    throw new Error(`MP4 upload failed with status ${response.status}.`);
-  }
-
-  const etag = response.headers.get('ETag');
-  if (!etag) {
-    throw new Error('MP4 upload completed but R2 did not return a part ETag.');
-  }
-
-  return etag;
 }
 
 async function uploadMasterToStorage(file: File) {
@@ -100,97 +90,34 @@ async function uploadMasterToStorage(file: File) {
     throw new Error(`MP4 file is too large. Keep it under ${formatUploadLimit(MAX_MASTER_BYTES)}.`);
   }
 
-  if (file.size <= SINGLE_PUT_SAFE_BYTES) {
-    const presign = await fetch('/api/uploads/sign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: file.type || 'application/octet-stream',
-        fileSize: file.size,
-        purpose: 'master'
-      })
-    });
-    const presignPayload = await presign.json().catch(() => ({}));
-    if (!presign.ok || !presignPayload.url || !presignPayload.key) {
-      throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
-    }
-
-    let upload: Response;
-    try {
-      upload = await fetch(presignPayload.url as string, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file
-      });
-    } catch (error) {
-      throw new Error(toStorageUploadError(error));
-    }
-    if (!upload.ok) throw new Error(`MP4 upload failed with status ${upload.status}.`);
-
-    return presignPayload.key as string;
-  }
-
-  const headers = { 'Content-Type': 'application/json' };
-  const initiate = await fetch('/api/uploads/multipart', {
+  const presign = await fetch('/api/uploads/sign', {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      action: 'initiate',
       filename: file.name,
       contentType: file.type || 'application/octet-stream',
       fileSize: file.size,
       purpose: 'master'
     })
   });
-  const session = await initiate.json().catch(() => ({}));
-  if (!initiate.ok || !session.key || !session.uploadId) {
-    throw new Error(session.error ?? 'Unable to start large MP4 upload.');
+  const presignPayload = await presign.json().catch(() => ({}));
+  if (!presign.ok || !presignPayload.url || !presignPayload.key) {
+    throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
   }
 
-  const key = session.key as string;
-  const uploadId = session.uploadId as string;
-  const parts: Array<{ ETag: string; PartNumber: number }> = [];
-
+  let upload: Response;
   try {
-    const totalParts = Math.ceil(file.size / MULTIPART_CHUNK_BYTES);
-    for (let index = 0; index < totalParts; index += 1) {
-      const partNumber = index + 1;
-      const start = index * MULTIPART_CHUNK_BYTES;
-      const blob = file.slice(start, Math.min(file.size, start + MULTIPART_CHUNK_BYTES));
-      const partResponse = await fetch('/api/uploads/multipart', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ action: 'part', key, uploadId, purpose: 'master', partNumber })
-      });
-      const partPayload = await partResponse.json().catch(() => ({}));
-      if (!partResponse.ok || !partPayload.url) {
-        throw new Error(partPayload.error ?? `Unable to prepare upload part ${partNumber}.`);
-      }
-
-      const ETag = await uploadBlobToSignedUrl(partPayload.url as string, blob);
-      parts.push({ ETag, PartNumber: partNumber });
-    }
-
-    const complete = await fetch('/api/uploads/multipart', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ action: 'complete', key, uploadId, purpose: 'master', parts })
+    upload = await fetch(presignPayload.url as string, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
     });
-    const completePayload = await complete.json().catch(() => ({}));
-    if (!complete.ok) {
-      throw new Error(completePayload.error ?? 'Unable to finalize large MP4 upload.');
-    }
-
-    return key;
   } catch (error) {
-    await fetch('/api/uploads/multipart', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ action: 'abort', key, uploadId, purpose: 'master' })
-    }).catch(() => null);
-    throw error;
+    throw new Error(toStorageUploadError(error));
   }
+  if (!upload.ok) throw new Error(`MP4 upload failed with status ${upload.status}.`);
+
+  return presignPayload.key as string;
 }
 
 function getBucket(video: ProcessingVideo): ProducerBucket {
@@ -260,7 +187,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     setMessage(null);
     setUploadStatuses((current) => ({
       ...current,
-      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 to R2...' }
+      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 to Bunny Storage...' }
     }));
     try {
       const key = await uploadMasterToStorage(file);
@@ -273,11 +200,12 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       const savePayload = await save.json().catch(() => ({}));
       if (!save.ok) throw new Error(savePayload.error ?? 'Unable to save MP4 details.');
       await refreshVideo(videoId, savePayload.video);
+      const successMessage = typeof savePayload.message === 'string' ? savePayload.message : 'MP4 uploaded and attached.';
       setUploadStatuses((current) => ({
         ...current,
-        [videoId]: { phase: 'done', progress: 100, message: 'MP4 uploaded and attached.' }
+        [videoId]: { phase: 'done', progress: 100, message: successMessage }
       }));
-      setMessage('MP4 uploaded and attached.');
+      setMessage(successMessage);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unable to upload MP4.';
       setUploadStatuses((current) => ({
@@ -298,7 +226,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to delete MP4.');
       await refreshVideo(videoId, payload.video);
-      setMessage('MP4 master deleted.');
+      setMessage('Master deleted. HLS remains as the viewer playback source.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to delete MP4.');
     } finally {
@@ -308,19 +236,39 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
   async function completeProcessing(videoId: string) {
     setPendingId(videoId);
-    setMessage('Validating MP4 playback...');
+    setMessage('Syncing HLS pipeline status...');
     try {
-      const response = await fetch('/api/admin/videos/validate', {
+      const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ movieId: videoId })
+        body: JSON.stringify({ videoId, action: 'SYNC_PIPELINE' })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to validate MP4.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to sync HLS pipeline.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.passed ? 'MP4 validated. Movie moved to ready.' : `Validation failed: ${payload.errors.join(', ')}`);
+      setMessage(payload.message ?? 'HLS pipeline synced.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to validate MP4.');
+      setMessage(error instanceof Error ? error.message : 'Unable to sync HLS pipeline.');
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function startPipeline(videoId: string) {
+    setPendingId(videoId);
+    setMessage('Queueing Akash worker...');
+    try {
+      const response = await fetch('/api/admin/videos/processing-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, action: 'START_PIPELINE' })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
+      await refreshVideo(videoId, payload.video);
+      setMessage(payload.message ?? 'HLS pipeline started.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to start HLS pipeline.');
     } finally {
       setPendingId(null);
     }
@@ -346,7 +294,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               {} as Record<ProducerBucket, number>
             );
             const nextAction = counts.uploaded > 0
-              ? 'Validate MP4'
+              ? 'Pipeline active'
               : counts.processed > 0
                 ? 'Processed'
                 : producer.videos.length > 0
@@ -361,7 +309,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 </span>
                 <span className="admin-producer-metrics">
                   <span><strong>{producer.videos.length}</strong> titles</span>
-                  <span><strong>{counts.uploaded}</strong> MP4s</span>
+                  <span><strong>{counts.uploaded}</strong> pipeline</span>
                   <span><strong>{counts.processed}</strong> ready</span>
                 </span>
                 <div className="admin-producer-action">
@@ -457,7 +405,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ margin: '16px 0' }}>
-              <div className="detail-card"><span className="detail-label">MP4 upload</span><strong>{video.masterKey ? 'Uploaded' : 'Missing'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Master upload</span><strong>{video.masterKey ? 'Uploaded' : 'Missing'}</strong></div>
               <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No MP4'}</strong></div>
               <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
               <div className="detail-card"><span className="detail-label">Uploaded date</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
@@ -465,11 +413,14 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
             <div className="action-list">
               {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy MP4 normalize command</button>
-              <button className="btn btn-primary" type="button" disabled={!video.masterKey || busy} onClick={() => void completeProcessing(video.id)}>
-                Validate MP4
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
+              <button className="btn btn-primary" type="button" disabled={!video.masterKey || busy} onClick={() => void startPipeline(video.id)}>
+                Start HLS pipeline
               </button>
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void deleteMaster(video.id)}>Delete MP4</button>
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void completeProcessing(video.id)}>
+                Sync HLS status
+              </button>
+              <button className="btn btn-ghost" type="button" disabled={!video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
               {canPublish ? (
                 <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
                   Publish
@@ -482,10 +433,10 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 <div className="stack-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="detail-label">
                     {uploadStatus.phase === 'error'
-                      ? 'MP4 upload error'
+                      ? 'Master upload error'
                       : uploadStatus.phase === 'done'
-                        ? 'MP4 upload complete'
-                        : 'MP4 upload progress'}
+                        ? 'Master upload complete'
+                        : 'Master upload progress'}
                   </span>
                   <strong>{uploadStatus.progress}%</strong>
                 </div>
@@ -505,14 +456,27 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             ) : null}
 
             <div className="detail-card" style={{ marginTop: 14 }}>
-              <span className="detail-label">MP4 normalize command</span>
+              <span className="detail-label">Master normalize command</span>
               <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Playback</span><strong>MP4 via gateway</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : 'MP4 via gateway'}</strong></div>
               <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Gateway stream token'}</strong></div>
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
+            </div>
+
+            <div className="detail-grid" style={{ marginTop: 14 }}>
+              <div className="detail-card"><span className="detail-label">Akash</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'AKASH'} job linked` : 'Not queued yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Livepeer</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'LIVEPEER'} task linked` : 'Not started yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">HLS output</span><strong>{video.hlsOutputPath ?? 'Not assigned yet'}</strong></div>
+            </div>
+
+            <div className="detail-grid" style={{ marginTop: 14 }}>
+              <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{video.hlsManifestKey ?? 'Not generated yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? video.hlsReadyAt.slice(0, 10) : 'No'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{video.transcodeError ?? 'None recorded'}</strong></div>
             </div>
           </div>
         );

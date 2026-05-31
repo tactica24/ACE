@@ -5,8 +5,8 @@ const mp4KeyFilter = { endsWith: '.mp4', mode: Prisma.QueryMode.insensitive } sa
 export function getPlayableAssetWhere(): Prisma.VideoWhereInput {
   return {
     OR: [
-      { r2Key: mp4KeyFilter },
-      { fallbackR2Key: mp4KeyFilter },
+      { primaryStorageKey: mp4KeyFilter },
+      { fallbackStorageKey: mp4KeyFilter },
       { technicalMetadata: { is: { masterKey: mp4KeyFilter } } }
     ]
   };

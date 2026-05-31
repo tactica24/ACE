@@ -1,12 +1,15 @@
 # Ace Studio
 
-Ace Studio is a production-ready, Africa-first video marketplace with Firebase Auth identity, Neon-backed relational data, Cloudflare R2 media delivery, wallet unlocks, creator analytics, and admin moderation.
+Ace Studio is an Africa-first video marketplace with Firebase Auth identity, Neon-backed relational data, Bunny Storage delivery, wallet unlocks, creator analytics, admin moderation, and an Akash + Livepeer HLS pipeline for full movies.
 
 ## Stack
 - Next.js App Router on Vercel
+- Railway-compatible Next.js deployment
 - Firebase Authentication
 - Prisma + Neon PostgreSQL
-- Cloudflare R2 (S3 compatible)
+- Bunny Storage + Bunny CDN token authentication
+- Akash orchestration for video pipeline jobs
+- Livepeer transcoding into Bunny HLS output
 - Paystack payments (NG)
 - Stripe Checkout (Diaspora)
 
@@ -24,11 +27,11 @@ npm run dev
 ```
 
 ## Production deployment
-For the recommended production stack (`Vercel + Firebase Auth + Neon + Cloudflare R2`), use:
+For the current production media stack (`Vercel or Railway + Neon + Firebase + Bunny + Akash + Livepeer`), use:
 
 - `.env.production.example`
-- `DEPLOY_VERCEL_NEON_R2.md`
-- `vercel.json` for automatic production migrations during deploy
+- [`DEPLOY_AKASH_LIVEPEER_BUNNY.md`](DEPLOY_AKASH_LIVEPEER_BUNNY.md)
+- `vercel.json` if deploying on Vercel and you want production migrations during deploy
 
 ## Demo accounts (seed)
 - Admin: `admin@acestudio.local` / `AdminPass123!`
@@ -66,8 +69,36 @@ volumes:
 ```
 
 ## Streaming cache
-Streaming requests first check `storage/cache`. Cache misses pull from R2 and persist locally for future playback.
-You can launch without a dedicated relay node first. In that mode, approved titles stream directly through the app from R2 until you add regional relay nodes later.
+Approved titles stream through signed playback URLs. Posters and public media assets redirect to signed Bunny CDN URLs. Full protected playback prefers signed Bunny HLS manifests, while the app keeps wallet and access control in front of playback authorization.
+
+## Media pipeline
+
+For a full movie:
+
+1. Admin uploads poster, trailer, subtitles, and master to Bunny.
+2. The app stores Bunny keys in the database.
+3. The app queues an Akash worker after the master is attached.
+4. The Akash worker submits the master to Livepeer.
+5. Livepeer writes HLS output to Bunny using Bunny's S3-compatible endpoint.
+6. The app verifies the HLS manifest and marks the title ready to stream.
+7. Admin can publish the title, then optionally delete the original master once HLS is verified.
+
+Subscription pass purchases also credit the wallet immediately in the current backend flow.
+
+## Legacy asset backfill
+
+If older posters, trailers, subtitles, or masters still live on legacy storage, copy them into Bunny before cutover:
+
+```bash
+npm run storage:backfill:legacy -- --source-base-url=https://legacy-media.example.com --dry-run
+npm run storage:backfill:legacy -- --source-base-url=https://legacy-media.example.com
+```
+
+You can also use a manifest file when the old URLs do not match the stored Bunny key paths:
+
+```bash
+npm run storage:backfill:legacy -- --manifest=./scripts/legacy-media-manifest.example.json
+```
 
 ## Success targets
 - Latency: < 20ms in Nigeria
@@ -83,7 +114,7 @@ npm run build:android-apk
 
 The script reads Firebase values from `.env.local`, `.env.production`, or `.env`, using the existing `NEXT_PUBLIC_FIREBASE_*` keys when matching `ACE_FIREBASE_*` keys are not set. For production release signing, set `ACE_ANDROID_KEYSTORE_PATH`, `ACE_ANDROID_KEYSTORE_PASSWORD`, `ACE_ANDROID_KEY_ALIAS`, and `ACE_ANDROID_KEY_PASSWORD`.
 
-For public downloads, upload the APK to your own storage. The app checks `ACE_ANDROID_APK_URL` first, then `public/downloads/ace-studio-android.apk`, then `ACE_ANDROID_APK_R2_KEY` in Cloudflare R2. The default R2 key is `downloads/ace-studio-android.apk`.
+For public downloads, upload the APK to Bunny Storage. The app checks `ACE_ANDROID_APK_URL` first, then `public/downloads/ace-studio-android.apk`, then `ACE_ANDROID_APK_STORAGE_KEY` in Bunny Storage. The default storage key is `downloads/ace-studio-android.apk`.
 
 To build in GitHub instead of on a local machine, install GitHub CLI, run `gh auth login`, then sync the Android signing and storage secrets:
 
@@ -97,7 +128,7 @@ If the storage secrets already live in Vercel, install and log in to both CLIs, 
 npm run sync:vercel-android-secrets
 ```
 
-The Android app loads Firebase public config from `/api/mobile/firebase-config` at startup, so GitHub does not need Firebase secrets to build the APK. After syncing signing/storage secrets, run the `Flutter Mobile` workflow manually from GitHub Actions with `publish_release=true`. If R2 secrets are configured, the workflow uploads `ace-studio-android.apk` to `downloads/ace-studio-android.apk` in your R2 bucket, and the website serves users from storage without requiring GitHub access.
+The Android app loads Firebase public config from `/api/mobile/firebase-config` at startup, so GitHub does not need Firebase secrets to build the APK. After syncing signing/storage secrets, run the `Flutter Mobile` workflow manually from GitHub Actions with `publish_release=true`. If Bunny Storage secrets are configured, the website serves users from storage without requiring GitHub access.
 
 ## Archived Expo prototype
 The older Expo app remains in `mobile/` for reference only. It is not part of the current production release path, CI release gates, or website download flow.

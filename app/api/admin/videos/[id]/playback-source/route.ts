@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
-import { resolveAvailableMovieMp4Key } from '@/lib/movie-storage';
+import { resolveVideoHlsManifestKey } from '@/lib/hls';
 import { getProcessingVideo } from '../../helpers';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,19 +14,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const body = await req.json().catch(() => ({}));
   const mode = typeof body.mode === 'string' ? body.mode.trim().toLowerCase() : '';
 
-  if (mode !== 'mp4') {
-    return NextResponse.json({ error: 'MP4 is the only active playback source.' }, { status: 400 });
+  if (mode !== 'hls') {
+    return NextResponse.json({ error: 'HLS is the active viewer playback source.' }, { status: 400 });
   }
 
   const video = await prisma.video.findUnique({
     where: { id: params.id },
     select: {
       id: true,
-      r2Key: true,
-      fallbackR2Key: true,
       technicalMetadata: {
         select: {
-          masterKey: true
+          hlsManifestKey: true,
+          hlsOutputPath: true,
+          hlsReadyAt: true
         }
       }
     }
@@ -36,10 +36,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Movie not found.' }, { status: 404 });
   }
 
-  const mp4Available = Boolean(await resolveAvailableMovieMp4Key(video));
-
-  if (!mp4Available) {
-    return NextResponse.json({ error: 'Upload a playable MP4 file before activating playback.' }, { status: 400 });
+  const hlsManifestKey = resolveVideoHlsManifestKey(video);
+  if (!hlsManifestKey || !video.technicalMetadata?.hlsReadyAt) {
+    return NextResponse.json({ error: 'The HLS pipeline is not ready for this title yet.' }, { status: 400 });
   }
 
   await prisma.videoTechnicalMetadata.upsert({
@@ -59,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({
     ok: true,
-    message: 'MP4 playback is active.',
+    message: 'HLS playback is active.',
     video: await getProcessingVideo(params.id)
   });
 }

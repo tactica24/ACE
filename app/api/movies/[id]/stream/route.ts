@@ -1,8 +1,8 @@
 import { Readable } from 'node:stream';
 import { NextRequest } from 'next/server';
 import { verifyStreamToken } from '@/lib/auth';
-import { getObjectMetadata } from '@/lib/r2';
-import { streamR2Object } from '@/lib/stream';
+import { getObjectMetadata } from '@/lib/bunny-storage';
+import { streamStoredObject } from '@/lib/stream';
 import { touchStreamSession } from '@/lib/stream-sessions';
 
 export const runtime = 'nodejs';
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       maxBytes = getMaxPreviewBytes(totalBytes, payload);
     }
 
-    const result = await streamR2Object(payload.streamKey, req.headers.get('range'), maxBytes);
+    const result = await streamStoredObject(payload.streamKey, req.headers.get('range'), maxBytes);
     return new Response(Readable.toWeb(result.stream) as never, {
       status: result.status,
       headers: getHeaders(result.headers, fullAccess)

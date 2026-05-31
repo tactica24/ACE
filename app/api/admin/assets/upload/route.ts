@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
-import { putObject } from '@/lib/r2';
+import { putObject } from '@/lib/bunny-storage';
 import { buildOwnedUploadKey, validateUploadRequest } from '@/lib/upload-security';
 
 export const runtime = 'nodejs';

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
-import { getMovieMp4StorageStatus } from '@/lib/movie-storage';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { isSeriesContainer } from '@/lib/video-access';
 
 export async function POST(req: NextRequest) {
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
           title: true,
           videoType: true,
           seriesId: true,
-          r2Key: true,
-          fallbackR2Key: true,
+          primaryStorageKey: true,
+          fallbackStorageKey: true,
           technicalMetadata: {
             select: { masterKey: true }
           },
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
               title: true,
               videoType: true,
               seriesId: true,
-              r2Key: true,
-              fallbackR2Key: true,
+              primaryStorageKey: true,
+              fallbackStorageKey: true,
               technicalMetadata: {
                 select: { masterKey: true }
               }
@@ -61,12 +61,9 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
   }
 
-  const readiness = await Promise.all(readinessTargets.map(async (video) => {
-    const mp4Status = await getMovieMp4StorageStatus(video);
-    return {
-      video,
-      ready: Boolean(mp4Status.selectedKey)
-    };
+  const readiness = readinessTargets.map((video) => ({
+    video,
+    ready: hasReadyMoviePlayback(video)
   }));
 
   const notReady = readiness.filter((entry) => !entry.ready);

@@ -109,9 +109,9 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
 
       const tokenPayload = (await tokenResponse.json()) as {
         token?: string;
-        playback?: { progressiveUrl?: string | null };
+        playback?: { previewUrl?: string | null; progressiveUrl?: string | null };
       };
-      const source = tokenPayload.playback?.progressiveUrl ?? null;
+      const source = tokenPayload.playback?.previewUrl ?? tokenPayload.playback?.progressiveUrl ?? null;
       if (!source) {
         return;
       }
