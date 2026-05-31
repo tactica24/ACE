@@ -213,12 +213,13 @@ function formatUploadBytes(value: number): string {
 
 function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Upload failed';
-  if (message.includes('status 413')) {
+  const normalizedMessage = message.toLowerCase();
+  if (normalizedMessage.includes('status 413') || normalizedMessage.includes('payload_too_large')) {
     return (
       'Storage upload was rejected because the app host is still handling the file body. Set ACE_UPLOAD_PROXY_BASE_URL to your Bunny upload gateway and retry the upload.'
     );
   }
-  if (message.toLowerCase().includes('network error') || message.toLowerCase().includes('failed to fetch')) {
+  if (normalizedMessage.includes('network error') || normalizedMessage.includes('failed to fetch')) {
     return (
       'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
     );
