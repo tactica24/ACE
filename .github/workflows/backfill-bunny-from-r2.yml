@@ -6,7 +6,7 @@ on:
       dry_run:
         description: "List the assets that would be copied without writing to Bunny"
         required: true
-        default: true
+        default: false
         type: boolean
 
 permissions:
