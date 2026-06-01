@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
+import type { PreparedStorageUpload } from '@/lib/storage-upload';
 import { buildFfmpegCommand } from '@/lib/video-processing';
 import { MAX_MASTER_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
@@ -86,7 +88,7 @@ function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Unable to upload MP4.';
   if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
     return (
-      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
+      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again.'
     );
   }
   return message;
@@ -113,21 +115,21 @@ async function uploadMasterToStorage(file: File, videoId: string) {
     })
   });
   const presignPayload = await presign.json().catch(() => ({}));
-  if (!presign.ok || !presignPayload.url || !presignPayload.key) {
+  if (!presign.ok || !presignPayload.strategy || !presignPayload.key) {
     throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
   }
 
   let upload: Response;
   try {
-    upload = await fetch(presignPayload.url as string, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
-    });
+    await uploadPreparedStorageAsset(presignPayload as PreparedStorageUpload, file, () => {});
+    upload = new Response(null, { status: 200 });
   } catch (error) {
     throw new Error(toStorageUploadError(error));
   }
-  if (!upload.ok) throw new Error(`MP4 upload failed with status ${upload.status}.`);
+  if (!upload.ok) {
+    const responseText = await upload.text().catch(() => '');
+    throw new Error(responseText ? `MP4 upload failed with status ${upload.status}: ${responseText}` : `MP4 upload failed with status ${upload.status}.`);
+  }
 
   return presignPayload.key as string;
 }

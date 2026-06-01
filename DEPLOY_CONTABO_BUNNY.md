@@ -23,18 +23,17 @@ BUNNY_TOKEN_KEY=
 CONTABO_TRANSCODE_API_URL=https://transcode.example.com
 CONTABO_PIPELINE_SECRET=
 ACE_APP_BASE_URL=https://your-production-domain.com
-ACE_UPLOAD_PROXY_BASE_URL=https://upload.your-production-domain.com
 ```
 
 `CONTABO_PIPELINE_SECRET` must match the secret configured on the VPS worker.
 
 Contabo account API credentials such as client ID/client secret are not needed by the movie pipeline unless you later automate VPS provisioning or server management. Keep those credentials outside git and set them only in the secure environment where that automation runs.
 
-`ACE_UPLOAD_PROXY_BASE_URL` should point to a separate upload service that only accepts signed upload tokens and streams request bodies straight into Bunny Storage. This keeps large source uploads independent from FFmpeg job capacity and avoids app-host `413 Payload Too Large` failures.
+With `BUNNY_STORAGE_S3_ENDPOINT` configured, the browser uploads directly to Bunny S3 using presigned single-part or multipart URLs. `ACE_UPLOAD_PROXY_BASE_URL` is no longer required for normal uploads.
 
-## Upload gateway
+## Optional upload gateway fallback
 
-Run the upload gateway as a separate process or service from the Contabo worker:
+Only use the upload gateway if Bunny S3 direct uploads are unavailable in your environment. In that fallback mode, run the upload gateway as a separate process or service from the Contabo worker:
 
 ```bash
 npm run gateway:upload

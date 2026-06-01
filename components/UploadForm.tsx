@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
+import type { PreparedStorageUpload } from '@/lib/storage-upload';
 import {
   CONTENT_WARNING_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -216,12 +218,12 @@ function toStorageUploadError(error: unknown) {
   const normalizedMessage = message.toLowerCase();
   if (normalizedMessage.includes('status 413') || normalizedMessage.includes('payload_too_large')) {
     return (
-      'Storage upload was rejected because the app host is still handling the file body. Set ACE_UPLOAD_PROXY_BASE_URL to your Bunny upload gateway and retry the upload.'
+      'Storage upload was rejected before Bunny accepted the file. Confirm direct Bunny S3 uploads are enabled for this environment and retry.'
     );
   }
   if (normalizedMessage.includes('network error') || normalizedMessage.includes('failed to fetch')) {
     return (
-      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
+      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again.'
     );
   }
   return message;
@@ -229,45 +231,6 @@ function toStorageUploadError(error: unknown) {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function uploadFileToSignedUrl(
-  url: string,
-  file: File,
-  contentType: string,
-  onProgress: (loaded: number, total: number) => void
-): Promise<void> {
-  const publicUploadProxyBaseUrl = process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL?.trim().replace(/\/+$/, '');
-  const uploadUrl =
-    publicUploadProxyBaseUrl && url.startsWith('/api/uploads/bunny')
-      ? `${publicUploadProxyBaseUrl}${url}`
-      : url;
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('Content-Type', contentType);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(event.loaded, event.total);
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(
-          new Error(
-            `Storage upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`
-          )
-        );
-      }
-    };
-    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-    xhr.ontimeout = () => reject(new Error('Storage upload timed out before Bunny Storage accepted the file.'));
-    xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
-    xhr.send(file);
-  });
 }
 
 function isSupportedVideoFile(file: File | null) {
@@ -510,12 +473,16 @@ export default function UploadForm({
       })
     });
     const presignData = await presign.json().catch(() => ({}));
-    if (!presign.ok || !presignData.url || !presignData.key) {
+    if (!presign.ok || !presignData.key || !presignData.strategy) {
       throw new Error(presignData.error || 'Unable to prepare upload');
     }
 
-    const uploadContentType = (presignData.contentType as string) || file.type || 'application/octet-stream';
-    await uploadFileToSignedUrl(presignData.url as string, file, uploadContentType, onProgress);
+    await uploadPreparedStorageAsset(
+      presignData as PreparedStorageUpload,
+      file,
+      onProgress,
+      { completeHeaders: requestHeaders }
+    );
     return presignData.key as string;
   };
 

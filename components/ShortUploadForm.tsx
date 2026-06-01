@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
+import type { PreparedStorageUpload } from '@/lib/storage-upload';
 import { MAX_MASTER_BYTES, MAX_POSTER_BYTES, MAX_SUBTITLE_BYTES, MAX_TRAILER_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
 type ShortUploadFormProps = {
@@ -76,56 +78,17 @@ function validateFile(file: File | null, purpose: 'master' | 'trailer' | 'poster
   return null;
 }
 
-async function uploadFileToSignedUrl(
-  url: string,
-  file: File,
-  contentType: string,
-  onProgress: (loaded: number, total: number) => void
-): Promise<void> {
-  const publicUploadProxyBaseUrl = process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL?.trim().replace(/\/+$/, '');
-  const uploadUrl =
-    publicUploadProxyBaseUrl && url.startsWith('/api/uploads/bunny')
-      ? `${publicUploadProxyBaseUrl}${url}`
-      : url;
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('Content-Type', contentType);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(event.loaded, event.total);
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(
-          new Error(
-            `Storage upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`
-          )
-        );
-      }
-    };
-    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
-    xhr.ontimeout = () => reject(new Error('Storage upload timed out before storage accepted the file.'));
-    xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
-    xhr.send(file);
-  });
-}
-
 function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Upload failed.';
   const normalizedMessage = message.toLowerCase();
   if (normalizedMessage.includes('status 413') || normalizedMessage.includes('payload_too_large')) {
     return (
-      'Storage upload was rejected because the app host is still handling the file body. Set ACE_UPLOAD_PROXY_BASE_URL to your Bunny upload gateway and retry the upload.'
+      'Storage upload was rejected before Bunny accepted the file. Confirm direct Bunny S3 uploads are enabled for this environment and retry.'
     );
   }
   if (normalizedMessage.includes('network error') || normalizedMessage.includes('failed to fetch')) {
     return (
-      'Storage upload failed before Bunny Storage accepted the file. Check Bunny Storage credentials and try again.'
+      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again.'
     );
   }
   return message;
@@ -179,11 +142,13 @@ export default function ShortUploadForm({ requestHeaders }: ShortUploadFormProps
     });
 
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.url || !payload.key) {
+    if (!response.ok || !payload.strategy || !payload.key) {
       throw new Error(payload.error || 'Could not prepare upload.');
     }
 
-    await uploadFileToSignedUrl(payload.url, file, file.type || 'application/octet-stream', onProgress);
+    await uploadPreparedStorageAsset(payload as PreparedStorageUpload, file, onProgress, {
+      completeHeaders: requestHeaders
+    });
     return payload.key as string;
   }
 

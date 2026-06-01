@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
-import { createStorageUploadUrl, ensureMovieUploadFolders } from '@/lib/bunny-storage';
+import { createPreparedStorageUpload, ensureMovieUploadFolders } from '@/lib/bunny-storage';
 import { buildOwnedUploadKey, isUploadPurpose, sanitizeUploadFolderId, validateUploadRequest } from '@/lib/upload-security';
 
 async function getUploadAuth(req: NextRequest) {
@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
     }
 
     const key = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid(), folderId });
-    const url = await createStorageUploadUrl(key, contentType);
+    const upload = await createPreparedStorageUpload(key, contentType, fileSize);
 
-    return NextResponse.json({ url, key, purpose, contentType });
+    return NextResponse.json({ ...upload, purpose });
   } catch (error) {
     console.error('[upload-sign] failed', error);
     return NextResponse.json(

@@ -2,8 +2,10 @@ import { Readable } from 'stream';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from './env';
+import { createStorageUploadTarget as createStorageUploadTargetViaS3, hasConfiguredBunnyStorageS3 } from './bunny-storage-s3';
 import { normalizeMediaKey } from './media';
 import { getMovieUploadFolderPrefix } from './upload-security';
+import type { PreparedStorageUpload } from './storage-upload';
 
 const OBJECT_METADATA_TTL_MS = 1000 * 60 * 10;
 const UPLOAD_TOKEN_TTL = '30m';
@@ -116,13 +118,34 @@ export function verifyStorageUploadToken(token: string): UploadTokenPayload {
   return jwt.verify(token, env.ACE_STREAM_SIGNING_SECRET) as UploadTokenPayload;
 }
 
-export function createStorageUploadUrl(key: string, contentType: string) {
+export async function createStorageUploadUrl(key: string, contentType: string) {
+  if (hasConfiguredBunnyStorageS3()) {
+    const upload = await createStorageUploadTargetViaS3(key, contentType, 0);
+    if (upload.strategy !== 'single') {
+      throw new Error('Expected single-part upload target for this request.');
+    }
+    return upload.url;
+  }
+
   const token = createStorageUploadToken({ key, contentType });
   const uploadProxyBaseUrl = env.ACE_UPLOAD_PROXY_BASE_URL?.replace(/\/+$/, '');
   if (uploadProxyBaseUrl) {
     return `${uploadProxyBaseUrl}/uploads/bunny?token=${encodeURIComponent(token)}`;
   }
   return `/api/uploads/bunny?token=${encodeURIComponent(token)}`;
+}
+
+export async function createPreparedStorageUpload(key: string, contentType: string, fileSize: number): Promise<PreparedStorageUpload> {
+  if (hasConfiguredBunnyStorageS3()) {
+    return createStorageUploadTargetViaS3(key, contentType, fileSize);
+  }
+
+  return {
+    strategy: 'single',
+    key,
+    contentType,
+    url: await createStorageUploadUrl(key, contentType)
+  };
 }
 
 export function createSignedStorageUrl(

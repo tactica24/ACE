@@ -77,8 +77,7 @@ const REQUIRED_PRODUCTION_ENV = [
   'NEXT_PUBLIC_FIREBASE_APP_ID',
   'PAYSTACK_SECRET_KEY',
   'PAYSTACK_PUBLIC_KEY',
-  'ACE_APP_BASE_URL',
-  'ACE_UPLOAD_PROXY_BASE_URL'
+  'ACE_APP_BASE_URL'
 ] as const satisfies ReadonlyArray<keyof Env>;
 
 function normalizeEnvValue(value: string | undefined) {
