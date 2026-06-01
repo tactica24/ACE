@@ -45,7 +45,8 @@ const envSchema = z.object({
   ACE_FAMILY_PASS_CREDITS: z.string().min(1).optional(),
   ACE_GRAFANA_URL: z.string().min(1).optional(),
   ACE_APP_BASE_URL: z.string().min(1).default('http://localhost:3000'),
-  ACE_UPLOAD_PROXY_BASE_URL: z.string().min(1).optional()
+  ACE_UPLOAD_PROXY_BASE_URL: z.string().min(1).optional(),
+  NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL: z.string().min(1).optional()
 });
 
 type Env = z.infer<typeof envSchema>;
@@ -130,7 +131,8 @@ function loadEnv(): Env {
     ACE_FAMILY_PASS_CREDITS: normalizeEnvValue(process.env.ACE_FAMILY_PASS_CREDITS),
     ACE_GRAFANA_URL: normalizeEnvValue(process.env.ACE_GRAFANA_URL),
     ACE_APP_BASE_URL: normalizeEnvValue(process.env.ACE_APP_BASE_URL),
-    ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.ACE_UPLOAD_PROXY_BASE_URL)
+    ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.ACE_UPLOAD_PROXY_BASE_URL),
+    NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL)
   });
 
   if (process.env.NODE_ENV === 'production') {
@@ -185,7 +187,8 @@ export function getMissingProductionEnvKeys() {
     PAYSTACK_SECRET_KEY: normalizeEnvValue(process.env.PAYSTACK_SECRET_KEY),
     PAYSTACK_PUBLIC_KEY: normalizeEnvValue(process.env.PAYSTACK_PUBLIC_KEY),
     ACE_APP_BASE_URL: normalizeEnvValue(process.env.ACE_APP_BASE_URL),
-    ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.ACE_UPLOAD_PROXY_BASE_URL)
+    ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.ACE_UPLOAD_PROXY_BASE_URL),
+    NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL)
   });
 
   return REQUIRED_PRODUCTION_ENV.filter((key) => !parsedEnv[key]);

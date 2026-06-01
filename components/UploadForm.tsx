@@ -237,9 +237,15 @@ async function uploadFileToSignedUrl(
   contentType: string,
   onProgress: (loaded: number, total: number) => void
 ): Promise<void> {
+  const publicUploadProxyBaseUrl = process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL?.trim().replace(/\/+$/, '');
+  const uploadUrl =
+    publicUploadProxyBaseUrl && url.startsWith('/api/uploads/bunny')
+      ? `${publicUploadProxyBaseUrl}${url}`
+      : url;
+
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
+    xhr.open('PUT', uploadUrl);
     xhr.setRequestHeader('Content-Type', contentType);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
