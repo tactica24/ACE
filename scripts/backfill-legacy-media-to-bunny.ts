@@ -37,6 +37,8 @@ type R2Config = {
 };
 
 const prisma = new PrismaClient();
+const DEFAULT_FETCH_TIMEOUT_MS = 1000 * 60 * 5;
+const DEFAULT_FETCH_RETRIES = 3;
 
 function parseArgs() {
   return Object.fromEntries(
@@ -45,6 +47,11 @@ function parseArgs() {
       return [rawKey, rest.join('=')];
     })
   ) as Record<string, string>;
+}
+
+function parseIntegerArg(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt((value ?? '').trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function encodePathPreservingSlashes(key: string) {
@@ -280,6 +287,41 @@ async function collectAssets(baseUrl: string | undefined, manifest: Map<string, 
   return [...assets.values()].sort((left, right) => left.key.localeCompare(right.key));
 }
 
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  options: {
+    retries: number;
+    timeoutMs: number;
+    label: string;
+  }
+) {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= options.retries; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs);
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      return response;
+    } catch (error) {
+      clearTimeout(timer);
+      lastError = error;
+      if (attempt >= options.retries) break;
+      console.warn(`[retry ${attempt}/${options.retries}] ${options.label}`);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Request failed for ${options.label}`);
+}
+
 async function existsInBunny(key: string) {
   try {
     await getObjectMetadata(key);
@@ -289,15 +331,26 @@ async function existsInBunny(key: string) {
   }
 }
 
-async function fetchR2Object(config: R2Config, key: string) {
+async function fetchR2Object(
+  config: R2Config,
+  key: string,
+  options: {
+    retries: number;
+    timeoutMs: number;
+  }
+) {
   const attempts: Array<'path' | 'virtual-hosted'> = ['path', 'virtual-hosted'];
   const failures: string[] = [];
 
   for (const style of attempts) {
     const request = buildSignedR2Request(config, key, style);
-    const response = await fetch(request.url, {
+    const response = await fetchWithRetry(request.url, {
       method: 'GET',
       headers: request.headers
+    }, {
+      retries: options.retries,
+      timeoutMs: options.timeoutMs,
+      label: `R2 ${style} ${key}`
     });
 
     if (response.ok && response.body) {
@@ -311,16 +364,32 @@ async function fetchR2Object(config: R2Config, key: string) {
   throw new Error(`R2 fetch failed for ${key}. Attempts: ${failures.join(' | ')}`);
 }
 
-async function copyAsset(asset: AssetRecord, options: { r2: R2Config | null }) {
+async function copyAsset(
+  asset: AssetRecord,
+  options: {
+    r2: R2Config | null;
+    retries: number;
+    timeoutMs: number;
+  }
+) {
   let response: Response;
 
   if (asset.sourceUrl) {
-    response = await fetch(asset.sourceUrl);
+    response = await fetchWithRetry(asset.sourceUrl, {
+      method: 'GET'
+    }, {
+      retries: options.retries,
+      timeoutMs: options.timeoutMs,
+      label: `legacy URL ${asset.key}`
+    });
     if (!response.ok || !response.body) {
       throw new Error(`Legacy fetch failed (${response.status}) for ${asset.sourceUrl}`);
     }
   } else if (options.r2) {
-    response = await fetchR2Object(options.r2, asset.key);
+    response = await fetchR2Object(options.r2, asset.key, {
+      retries: options.retries,
+      timeoutMs: options.timeoutMs
+    });
   } else {
     throw new Error('No legacy source URL or R2 configuration could be resolved for this asset.');
   }
@@ -334,10 +403,15 @@ async function main() {
   const verifyOnly = 'verify-only' in args;
   const force = 'force' in args;
   const includeSamples = 'include-samples' in args;
+  const limit = parseIntegerArg(args.limit, Number.MAX_SAFE_INTEGER);
+  const retries = parseIntegerArg(args.retries, DEFAULT_FETCH_RETRIES);
+  const timeoutMs = parseIntegerArg(args['timeout-ms'], DEFAULT_FETCH_TIMEOUT_MS);
   const reportPath = args['report-json']?.trim();
   const baseUrl = args['source-base-url'] || process.env.LEGACY_MEDIA_BASE_URL;
   const manifest = await readManifest(args.manifest);
   const r2 = resolveR2Config(args);
+  const videoIdFilter = (args['video-id'] || '').trim();
+  const keyPrefixFilter = (args['key-prefix'] || '').trim();
   const onlyKinds = new Set(
     (args.kinds || '')
       .split(',')
@@ -357,8 +431,16 @@ async function main() {
       return false;
     }
 
+    if (videoIdFilter && asset.videoId !== videoIdFilter) {
+      return false;
+    }
+
+    if (keyPrefixFilter && !asset.key.startsWith(keyPrefixFilter)) {
+      return false;
+    }
+
     return onlyKinds.size ? onlyKinds.has(asset.kind) : true;
-  });
+  }).slice(0, limit);
 
   console.log(`Discovered ${assets.length} unique video-related asset keys.`);
   if (!includeSamples) {
@@ -370,6 +452,16 @@ async function main() {
   if (onlyKinds.size) {
     console.log(`Filtered to ${filteredAssets.length} asset(s) for kinds: ${[...onlyKinds].join(', ')}`);
   }
+  if (videoIdFilter) {
+    console.log(`Filtered to videoId=${videoIdFilter}`);
+  }
+  if (keyPrefixFilter) {
+    console.log(`Filtered to key prefix=${keyPrefixFilter}`);
+  }
+  if (Number.isFinite(limit) && limit !== Number.MAX_SAFE_INTEGER) {
+    console.log(`Limited to first ${filteredAssets.length} asset(s).`);
+  }
+  console.log(`Fetch retries=${retries}, timeoutMs=${timeoutMs}`);
 
   let copied = 0;
   let skipped = 0;
@@ -393,7 +485,7 @@ async function main() {
       }
 
       try {
-        await copyAsset(asset, { r2 });
+        await copyAsset(asset, { r2, retries, timeoutMs });
         copied += 1;
         console.log(`COPY  ${asset.kind.padEnd(11)} ${asset.key}`);
       } catch (error) {

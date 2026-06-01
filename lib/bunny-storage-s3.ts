@@ -19,6 +19,13 @@ import {
 
 const SIGNED_UPLOAD_TTL_SECONDS = 60 * 60;
 
+async function getPresignedS3Url(command: PutObjectCommand | UploadPartCommand) {
+  const client = getBunnyStorageS3Client();
+  return getSignedUrl(client as never, command as never, {
+    expiresIn: SIGNED_UPLOAD_TTL_SECONDS
+  });
+}
+
 function getNormalizedS3Key(key: string) {
   const normalizedKey = normalizeMediaKey(key);
   if (!normalizedKey) {
@@ -80,15 +87,12 @@ export async function createStorageUploadTarget(
     return createMultipartStorageUpload(normalizedKey, contentType, fileSize);
   }
 
-  const client = getBunnyStorageS3Client();
-  const url = await getSignedUrl(
-    client,
+  const url = await getPresignedS3Url(
     new PutObjectCommand({
       Bucket: getBunnyStorageBucket(),
       Key: normalizedKey,
       ContentType: contentType || 'application/octet-stream'
-    }),
-    { expiresIn: SIGNED_UPLOAD_TTL_SECONDS }
+    })
   );
 
   return {
@@ -125,15 +129,13 @@ export async function createMultipartStorageUpload(
   const urls = await Promise.all(
     Array.from({ length: partCount }, async (_item, index) => {
       const partNumber = index + 1;
-      const url = await getSignedUrl(
-        client,
+      const url = await getPresignedS3Url(
         new UploadPartCommand({
           Bucket: bucket,
           Key: normalizedKey,
           UploadId: created.UploadId,
           PartNumber: partNumber
-        }),
-        { expiresIn: SIGNED_UPLOAD_TTL_SECONDS }
+        })
       );
 
       return {
