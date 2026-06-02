@@ -36,6 +36,12 @@ type R2Config = {
   region: string;
 };
 
+type LegacyBunnyConfig = {
+  endpoint: string;
+  apiKey: string;
+  zone: string;
+};
+
 const prisma = new PrismaClient();
 const DEFAULT_FETCH_TIMEOUT_MS = 1000 * 60 * 5;
 const DEFAULT_FETCH_RETRIES = 3;
@@ -104,6 +110,37 @@ function resolveR2Config(args: Record<string, string>): R2Config | null {
     secretAccessKey,
     bucket,
     region: region || 'auto'
+  };
+}
+
+function resolveLegacyBunnyConfig(args: Record<string, string>): LegacyBunnyConfig | null {
+  const endpoint = (
+    args['legacy-bunny-endpoint'] ||
+    process.env.LEGACY_BUNNY_STORAGE_ENDPOINT ||
+    process.env.LEGACY_BUNNY_ENDPOINT ||
+    ''
+  ).trim();
+  const apiKey = (
+    args['legacy-bunny-api-key'] ||
+    process.env.LEGACY_BUNNY_STORAGE_API_KEY ||
+    process.env.LEGACY_BUNNY_API_KEY ||
+    ''
+  ).trim();
+  const zone = (
+    args['legacy-bunny-zone'] ||
+    process.env.LEGACY_BUNNY_STORAGE_ZONE ||
+    process.env.LEGACY_BUNNY_ZONE ||
+    ''
+  ).trim();
+
+  if (!endpoint || !apiKey || !zone) {
+    return null;
+  }
+
+  return {
+    endpoint: endpoint.replace(/\/+$/, ''),
+    apiKey,
+    zone
   };
 }
 
@@ -331,6 +368,50 @@ async function existsInBunny(key: string) {
   }
 }
 
+function buildLegacyBunnyObjectUrl(config: LegacyBunnyConfig, key: string) {
+  const normalizedKey = normalizeMediaKey(key);
+  if (!normalizedKey) {
+    throw new Error('Legacy Bunny source key is required.');
+  }
+
+  return `${config.endpoint}/${encodeURIComponent(config.zone)}/${normalizedKey
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`;
+}
+
+async function fetchLegacyBunnyObject(
+  config: LegacyBunnyConfig,
+  key: string,
+  options: {
+    retries: number;
+    timeoutMs: number;
+  }
+) {
+  const url = buildLegacyBunnyObjectUrl(config, key);
+  const response = await fetchWithRetry(
+    url,
+    {
+      method: 'GET',
+      headers: {
+        AccessKey: config.apiKey
+      }
+    },
+    {
+      retries: options.retries,
+      timeoutMs: options.timeoutMs,
+      label: `legacy Bunny ${key}`
+    }
+  );
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Legacy Bunny fetch failed (${response.status}) for ${key}${text ? `: ${text.slice(0, 200)}` : ''}`);
+  }
+
+  return response;
+}
+
 async function fetchR2Object(
   config: R2Config,
   key: string,
@@ -368,6 +449,7 @@ async function copyAsset(
   asset: AssetRecord,
   options: {
     r2: R2Config | null;
+    legacyBunny: LegacyBunnyConfig | null;
     retries: number;
     timeoutMs: number;
   }
@@ -390,8 +472,13 @@ async function copyAsset(
       retries: options.retries,
       timeoutMs: options.timeoutMs
     });
+  } else if (options.legacyBunny) {
+    response = await fetchLegacyBunnyObject(options.legacyBunny, asset.key, {
+      retries: options.retries,
+      timeoutMs: options.timeoutMs
+    });
   } else {
-    throw new Error('No legacy source URL or R2 configuration could be resolved for this asset.');
+    throw new Error('No legacy source URL, private R2 configuration, or legacy Bunny source could be resolved for this asset.');
   }
 
   await putObject(asset.key, response.body, response.headers.get('content-type') ?? 'application/octet-stream');
@@ -410,6 +497,7 @@ async function main() {
   const baseUrl = args['source-base-url'] || process.env.LEGACY_MEDIA_BASE_URL;
   const manifest = await readManifest(args.manifest);
   const r2 = resolveR2Config(args);
+  const legacyBunny = resolveLegacyBunnyConfig(args);
   const videoIdFilter = (args['video-id'] || '').trim();
   const keyPrefixFilter = (args['key-prefix'] || '').trim();
   const onlyKinds = new Set(
@@ -419,9 +507,9 @@ async function main() {
       .filter(Boolean)
   );
 
-  if (!verifyOnly && !baseUrl && manifest.size === 0 && !r2) {
+  if (!verifyOnly && !baseUrl && manifest.size === 0 && !r2 && !legacyBunny) {
     throw new Error(
-      'Provide --source-base-url=<legacy-public-base>, --manifest=<json-file>, or private R2 credentials so legacy assets can be fetched.'
+      'Provide --source-base-url=<legacy-public-base>, --manifest=<json-file>, private R2 credentials, or legacy Bunny source credentials so legacy assets can be fetched.'
     );
   }
 
@@ -480,12 +568,16 @@ async function main() {
 
       if (dryRun) {
         skipped += 1;
-        console.log(`DRY   ${asset.kind.padEnd(11)} ${asset.key} <= ${asset.sourceUrl ?? (r2 ? 'private-r2' : 'unresolved source')}`);
+        console.log(
+          `DRY   ${asset.kind.padEnd(11)} ${asset.key} <= ${
+            asset.sourceUrl ?? (r2 ? 'private-r2' : legacyBunny ? 'legacy-bunny' : 'unresolved source')
+          }`
+        );
         continue;
       }
 
       try {
-        await copyAsset(asset, { r2, retries, timeoutMs });
+        await copyAsset(asset, { r2, legacyBunny, retries, timeoutMs });
         copied += 1;
         console.log(`COPY  ${asset.kind.padEnd(11)} ${asset.key}`);
       } catch (error) {
