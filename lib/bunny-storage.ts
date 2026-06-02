@@ -118,6 +118,15 @@ export function verifyStorageUploadToken(token: string): UploadTokenPayload {
   return jwt.verify(token, env.ACE_STREAM_SIGNING_SECRET) as UploadTokenPayload;
 }
 
+function createGatewayUploadUrl(key: string, contentType: string) {
+  const token = createStorageUploadToken({ key, contentType });
+  const uploadProxyBaseUrl = env.ACE_UPLOAD_PROXY_BASE_URL?.replace(/\/+$/, '');
+  if (uploadProxyBaseUrl) {
+    return `${uploadProxyBaseUrl}/uploads/bunny?token=${encodeURIComponent(token)}`;
+  }
+  return `/api/uploads/bunny?token=${encodeURIComponent(token)}`;
+}
+
 export async function createStorageUploadUrl(key: string, contentType: string) {
   if (hasConfiguredBunnyStorageS3()) {
     const upload = await createStorageUploadTargetViaS3(key, contentType, 0);
@@ -127,24 +136,23 @@ export async function createStorageUploadUrl(key: string, contentType: string) {
     return upload.url;
   }
 
-  const token = createStorageUploadToken({ key, contentType });
-  const uploadProxyBaseUrl = env.ACE_UPLOAD_PROXY_BASE_URL?.replace(/\/+$/, '');
-  if (uploadProxyBaseUrl) {
-    return `${uploadProxyBaseUrl}/uploads/bunny?token=${encodeURIComponent(token)}`;
-  }
-  return `/api/uploads/bunny?token=${encodeURIComponent(token)}`;
+  return createGatewayUploadUrl(key, contentType);
 }
 
 export async function createPreparedStorageUpload(key: string, contentType: string, fileSize: number): Promise<PreparedStorageUpload> {
   if (hasConfiguredBunnyStorageS3()) {
-    return createStorageUploadTargetViaS3(key, contentType, fileSize);
+    const upload = await createStorageUploadTargetViaS3(key, contentType, fileSize);
+    if (env.ACE_UPLOAD_PROXY_BASE_URL?.trim()) {
+      upload.fallbackUrl = createGatewayUploadUrl(key, contentType);
+    }
+    return upload;
   }
 
   return {
     strategy: 'single',
     key,
     contentType,
-    url: await createStorageUploadUrl(key, contentType)
+    url: createGatewayUploadUrl(key, contentType)
   };
 }
 

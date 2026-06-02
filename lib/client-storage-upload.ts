@@ -8,13 +8,15 @@ type UploadPreparedStorageAssetOptions = {
 async function uploadBlobWithXhr(
   url: string,
   blob: Blob,
-  contentType: string,
+  contentType: string | null,
   onProgress: ProgressHandler
 ) {
   return new Promise<{ etag: string | null }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', contentType);
+    if (contentType) {
+      xhr.setRequestHeader('Content-Type', contentType);
+    }
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         onProgress(event.loaded, event.total);
@@ -46,9 +48,30 @@ export async function uploadPreparedStorageAsset(
   onProgress: ProgressHandler,
   options: UploadPreparedStorageAssetOptions = {}
 ) {
-  if (upload.strategy === 'single') {
-    await uploadBlobWithXhr(upload.url, file, upload.contentType || file.type || 'application/octet-stream', onProgress);
+  const uploadViaFallback = async () => {
+    if (!upload.fallbackUrl) {
+      throw new Error('No upload fallback is configured for this environment.');
+    }
+
+    await uploadBlobWithXhr(
+      upload.fallbackUrl,
+      file,
+      upload.contentType || file.type || 'application/octet-stream',
+      onProgress
+    );
     return upload.key;
+  };
+
+  if (upload.strategy === 'single') {
+    try {
+      await uploadBlobWithXhr(upload.url, file, upload.contentType || file.type || 'application/octet-stream', onProgress);
+      return upload.key;
+    } catch (error) {
+      if (!upload.fallbackUrl) {
+        throw error;
+      }
+      return uploadViaFallback();
+    }
   }
 
   const total = file.size;
@@ -60,14 +83,9 @@ export async function uploadPreparedStorageAsset(
     const end = Math.min(file.size, start + upload.partSize);
     const chunk = file.slice(start, end);
 
-    const { etag } = await uploadBlobWithXhr(
-      part.url,
-      chunk,
-      upload.contentType || file.type || 'application/octet-stream',
-      (loaded) => {
-        onProgress(uploadedBytes + loaded, total);
-      }
-    );
+    const { etag } = await uploadBlobWithXhr(part.url, chunk, null, (loaded) => {
+      onProgress(uploadedBytes + loaded, total);
+    });
 
     uploadedBytes += chunk.size;
     onProgress(uploadedBytes, total);
@@ -78,22 +96,29 @@ export async function uploadPreparedStorageAsset(
     });
   }
 
-  const response = await fetch('/api/uploads/complete', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.completeHeaders ?? {})
-    },
-    body: JSON.stringify({
-      key: upload.key,
-      uploadId: upload.uploadId,
-      parts: uploadedParts
-    })
-  });
+  try {
+    const response = await fetch('/api/uploads/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.completeHeaders ?? {})
+      },
+      body: JSON.stringify({
+        key: upload.key,
+        uploadId: upload.uploadId,
+        parts: uploadedParts
+      })
+    });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error ?? 'Unable to finalize multipart upload.');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error ?? 'Unable to finalize multipart upload.');
+    }
+  } catch (error) {
+    if (!upload.fallbackUrl) {
+      throw error;
+    }
+    return uploadViaFallback();
   }
 
   return upload.key;

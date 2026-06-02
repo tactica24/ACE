@@ -6,6 +6,7 @@ export type PreparedStorageUploadSingle = {
   key: string;
   contentType: string;
   url: string;
+  fallbackUrl?: string;
 };
 
 export type PreparedStorageUploadMultipart = {
@@ -18,6 +19,7 @@ export type PreparedStorageUploadMultipart = {
     partNumber: number;
     url: string;
   }>;
+  fallbackUrl?: string;
 };
 
 export type PreparedStorageUpload =
