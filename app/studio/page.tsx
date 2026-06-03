@@ -42,14 +42,14 @@ export default async function StudioPage() {
   return (
     <DashboardShell
       title="Studio Dashboard"
-      description="Manage your producer profile, uploads, contracts, release status, and earnings from one internal dashboard."
+      description="Manage your producer profile, Dropbox source intake, contracts, release status, and earnings from one internal dashboard."
       sideNav={
         <SideNav
           active="/studio"
           items={getStudioNavItems()}
         />
       }
-      actions={<Link className="btn btn-primary" href="/studio/upload">Upload a title</Link>}
+      actions={<Link className="btn btn-primary" href="/studio/upload">Create a title</Link>}
     >
       <AnalyticsTicker />
 
@@ -122,7 +122,7 @@ export default async function StudioPage() {
             <div className="stack-row">
               <div>
                 <strong>Release queue</strong>
-                <p className="muted">Track titles that are still in review so releases move from upload to publication without delay.</p>
+                <p className="muted">Track titles that are still in review so releases move from Dropbox intake to publication without delay.</p>
               </div>
               <span className={`status-chip ${pendingTitles === 0 ? 'status-live' : 'status-review'}`}>
                 {pendingTitles === 0 ? 'Clear' : `${pendingTitles} pending`}
@@ -146,7 +146,7 @@ export default async function StudioPage() {
             </div>
           </div>
           <div className="action-list" style={{ marginTop: 18 }}>
-            <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
+            <Link className="btn btn-primary" href="/studio/upload">Create title</Link>
             <Link className="btn btn-ghost" href="/studio/wallet">View wallet</Link>
             <Link className="btn btn-ghost" href="/studio/library">Open library</Link>
             <Link className="btn btn-ghost" href="/studio/contracts">View documents</Link>

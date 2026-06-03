@@ -37,10 +37,10 @@ export default function StudioWorkspacePanel({
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Releases</span>
           <h3>Release pipeline</h3>
-          <p className="muted">Upload titles, review contracts, monitor moderation, and manage the release process from one place.</p>
+          <p className="muted">Create titles from Dropbox sources, review contracts, monitor moderation, and manage the release process from one place.</p>
         </div>
         <div className="workspace-links">
-          <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
+          <Link className="btn btn-primary" href="/studio/upload">Create title</Link>
           <Link className="btn btn-ghost" href="/studio/library">Open library</Link>
         </div>
         <div className="workspace-kpis">
@@ -69,7 +69,7 @@ export default function StudioWorkspacePanel({
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Documents</span>
           <h3>Contracts and support</h3>
-          <p className="muted">Keep agreements current and contact support quickly when an upload, contract, or payout issue needs attention.</p>
+          <p className="muted">Keep agreements current and contact support quickly when a source intake, contract, or payout issue needs attention.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/contracts">Open documents</Link>

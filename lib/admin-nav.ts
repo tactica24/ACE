@@ -29,7 +29,7 @@ export function getAdminNavItems(counts: AdminNavCounts = {}) {
       label: 'Payments',
       count: typeof counts.pendingPayouts === 'number' ? `${counts.pendingPayouts}` : undefined
     },
-    { href: '/admin/upload', label: 'Upload' },
+    { href: '/admin/upload', label: 'Create titles' },
     { href: '/admin/videos', label: 'Videos' },
     { href: '/admin/delivery-health', label: 'Delivery Health' },
     { href: '/admin/finance', label: 'Finance' },

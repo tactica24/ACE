@@ -67,7 +67,7 @@ export default async function LibraryPage() {
           items={getStudioNavItems()}
         />
       }
-      actions={<Link className="btn btn-primary" href="/studio/upload">Upload another title</Link>}
+      actions={<Link className="btn btn-primary" href="/studio/upload">Create another title</Link>}
     >
       <div className="detail-grid" style={{ marginBottom: 20 }}>
         <div className="detail-card">
@@ -187,11 +187,6 @@ export default async function LibraryPage() {
                 {video.videoType !== 'SERIES' ? (
                   <Link className="btn btn-ghost" href={`/studio/library/${video.id}`}>
                     Audience insights
-                  </Link>
-                ) : null}
-                {video.videoType === 'SERIES' ? (
-                  <Link className="btn btn-ghost" href={`/studio/upload?seriesId=${video.id}`}>
-                    Add episodes
                   </Link>
                 ) : null}
                 {video.contracts[0]?.producerAccepted ? (

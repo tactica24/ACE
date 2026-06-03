@@ -40,6 +40,7 @@ type Item = {
     deliveryFormat?: string;
     licensedTerritories?: string[];
     availabilityRegion?: string;
+    masterKey?: string | null;
     masterSourceUrl?: string | null;
     processingStatus?: string | null;
     hlsManifestReady?: boolean;
@@ -460,7 +461,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Master source</span>
-                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : 'Bunny upload or missing'}</strong>
+                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : item.video.masterKey ? 'Legacy Bunny source' : 'Source missing'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Stream package</span>

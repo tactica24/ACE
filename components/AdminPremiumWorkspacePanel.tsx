@@ -369,7 +369,7 @@ export default function AdminPremiumWorkspacePanel({
         <div className="admin-quick-actions-grid">
           <Link href="/admin/upload" className="admin-quick-action">
             <Film className="w-5 h-5" />
-            <span>Upload Content</span>
+            <span>Create Title</span>
           </Link>
           <Link href="/admin/users/create" className="admin-quick-action">
             <Users className="w-5 h-5" />

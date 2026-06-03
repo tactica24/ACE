@@ -9,6 +9,7 @@ type PublicUploadState = {
   ageRating: string;
   creatorName: string;
   creatorEmail: string;
+  dropboxUrl: string;
 };
 
 const initialState: PublicUploadState = {
@@ -18,12 +19,11 @@ const initialState: PublicUploadState = {
   ageRating: 'ALL',
   creatorName: '',
   creatorEmail: '',
+  dropboxUrl: '',
 };
 
 export default function PublicUploadForm() {
   const [form, setForm] = useState<PublicUploadState>(initialState);
-  const [masterFile, setMasterFile] = useState<File | null>(null);
-  const [posterFile, setPosterFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -35,13 +35,8 @@ export default function PublicUploadForm() {
     event.preventDefault();
     setMessage(null);
 
-    if (!form.title.trim() || !form.description.trim() || !form.creatorName.trim() || !form.creatorEmail.trim()) {
+    if (!form.title.trim() || !form.description.trim() || !form.creatorName.trim() || !form.creatorEmail.trim() || !form.dropboxUrl.trim()) {
       setMessage('Please fill in all required fields.');
-      return;
-    }
-
-    if (!masterFile) {
-      setMessage('Please select a final playable MP4 master.');
       return;
     }
 
@@ -157,26 +152,14 @@ export default function PublicUploadForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Final playable MP4 master *
+          Dropbox source link *
         </label>
         <input
-          type="file"
-          accept=".mp4,video/mp4"
+          type="url"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => setMasterFile(e.target.files?.[0] ?? null)}
+          value={form.dropboxUrl}
+          onChange={(e) => updateField('dropboxUrl', e.target.value)}
           required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Poster Image
-        </label>
-        <input
-          type="file"
-          accept=".jpg,.jpeg,.png,.webp"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
         />
       </div>
 

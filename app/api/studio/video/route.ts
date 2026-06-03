@@ -9,6 +9,7 @@ import { buildOwnedUploadKey, getUploadFolderIdFromKey, isOwnedUploadKey, saniti
 import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
+import { normalizeDropboxSourceUrl } from '@/lib/master-source';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -283,6 +284,7 @@ function normalizeDeliveryMetadata(payload: DeliveryMetadataPayload | undefined,
 
 function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null, masterFields?: {
   masterUploadKey?: string | null;
+  masterSourceUrl?: string | null;
   masterFileName?: string | null;
   masterFileSize?: number | null;
 }) {
@@ -309,12 +311,13 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null, m
     ...(metadata?.castCredits && metadata.castCredits.length ? { castCredits: metadata.castCredits } : {}),
     ...(metadata?.crewCredits && metadata.crewCredits.length ? { crewCredits: metadata.crewCredits } : {}),
     masterKey: masterFields?.masterUploadKey ?? null,
+    masterSourceUrl: masterFields?.masterSourceUrl ?? null,
     masterFileName: masterFields?.masterFileName ?? null,
     masterFileSize: Number.isFinite(masterFields?.masterFileSize)
       ? BigInt(Math.max(0, Math.floor(masterFields?.masterFileSize ?? 0)))
       : null,
-    masterUploadedAt: masterFields?.masterUploadKey ? new Date() : undefined,
-    processingStatus: masterFields?.masterUploadKey ? 'MASTER_UPLOADED' : 'NO_MASTER'
+    masterUploadedAt: masterFields?.masterUploadKey || masterFields?.masterSourceUrl ? new Date() : undefined,
+    processingStatus: masterFields?.masterUploadKey || masterFields?.masterSourceUrl ? 'MASTER_UPLOADED' : 'NO_MASTER'
   };
 }
 
@@ -358,6 +361,7 @@ export async function POST(req: NextRequest) {
     fallbackStorageKey,
     posterKey,
     masterUploadKey,
+    masterSourceUrl,
     masterFileName,
     masterFileSize,
     deliveryMetadata,
@@ -386,6 +390,7 @@ export async function POST(req: NextRequest) {
     fallbackStorageKey?: string;
     posterKey?: string | null;
     masterUploadKey?: string | null;
+    masterSourceUrl?: string | null;
     masterFileName?: string | null;
     masterFileSize?: number;
     deliveryMetadata?: DeliveryMetadataPayload;
@@ -401,6 +406,8 @@ export async function POST(req: NextRequest) {
   const safeFallbackStorageKey = fallbackStorageKey?.trim() || '';
   const safePosterKey = posterKey?.trim() || null;
   const safeMasterUploadKey = masterUploadKey?.trim() || null;
+  const rawMasterSourceUrl = typeof masterSourceUrl === 'string' ? masterSourceUrl.trim() : '';
+  const safeMasterSourceUrl = rawMasterSourceUrl ? normalizeDropboxSourceUrl(rawMasterSourceUrl) : null;
   const safeMasterFileName = masterFileName?.trim() || null;
   const safeMasterFileSize = Number.isFinite(masterFileSize) ? Math.max(0, Math.floor(masterFileSize ?? 0)) : null;
   const safeSeriesId = seriesId?.trim() || null;
@@ -416,6 +423,7 @@ export async function POST(req: NextRequest) {
   const safeDeliveryMetadata = normalizeDeliveryMetadata(deliveryMetadata, safeSubtitleTracks);
   const technicalMetadataInput = toTechnicalMetadataInput(safeDeliveryMetadata, {
     masterUploadKey: safeMasterUploadKey,
+    masterSourceUrl: safeMasterSourceUrl,
     masterFileName: safeMasterFileName,
     masterFileSize: safeMasterFileSize
   });
@@ -467,12 +475,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'The 16:9 key art upload is invalid for this studio account.' }, { status: 400 });
   }
 
+  if (rawMasterSourceUrl && !safeMasterSourceUrl) {
+    return NextResponse.json({ error: 'Provide a valid Dropbox share URL for the movie source.' }, { status: 400 });
+  }
+
   await assertUploadedObjectExists(safeDeliveryMetadata?.trailerKey, 'Trailer MP4');
   await assertUploadedObjectExists(safeDeliveryMetadata?.landscapeArtworkKey, 'Landscape artwork');
 
   if (safeVideoType !== 'SERIES') {
-    if (!safeTitle || !safeDescription || !safeMasterUploadKey) {
-      return NextResponse.json({ error: 'Please upload a final playable MP4 master for your movie.' }, { status: 400 });
+    if (!safeTitle || !safeDescription || (!safeMasterUploadKey && !safeMasterSourceUrl)) {
+      return NextResponse.json({ error: 'Enter the movie details and paste a Dropbox source link for the master video.' }, { status: 400 });
     }
 
     if (safeMasterUploadKey) {
@@ -493,11 +505,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!safePosterKey) {
-      return NextResponse.json({ error: 'Upload one poster artwork file for this title.' }, { status: 400 });
-    }
-
-    if (!validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
+    if (safePosterKey && !validateOwnedKey(safePosterKey, auth.sub, 'poster')) {
       return NextResponse.json({ error: 'Poster upload is invalid for this studio account.' }, { status: 400 });
     }
 

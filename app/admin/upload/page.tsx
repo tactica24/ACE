@@ -23,7 +23,7 @@ export default async function AdminUploadPage({
         ? searchParams.producerId[0]?.trim() ?? ''
         : '';
 
-  const [producers, seriesOptions] = await Promise.all([
+  const [producers] = await Promise.all([
     prisma.user.findMany({
       where: {
         OR: [
@@ -45,25 +45,13 @@ export default async function AdminUploadPage({
           }
         }
       }
-    }),
-    prisma.video.findMany({
-      where: {
-        videoType: 'SERIES',
-        seriesId: null
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { episodes: true }
-        }
-      }
     })
   ]);
 
   return (
     <DashboardShell
-      title="Admin upload desk"
-      description="Upload titles on behalf of producers, attach the correct rights holder, and keep catalog reporting tied to the proper producer record."
+      title="Admin title desk"
+      description="Create titles on behalf of producers from Dropbox source links, attach the correct rights holder, and keep catalog reporting tied to the proper producer record."
       sideNav={
         <SideNav
           active="/admin/upload"
@@ -83,9 +71,9 @@ export default async function AdminUploadPage({
       </div>
 
       <AdminDisclosureSection
-        title="Upload workspace"
-        description="Choose a producer and expand the full upload form only when you are ready to create or add titles."
-        badge="Upload"
+        title="Title workspace"
+        description="Choose a producer and create the movie record from a Dropbox source link. Poster and trailer can be attached later in moderation or admin videos."
+        badge="Create"
         defaultOpen
       >
         <AdminUploadWorkspace
@@ -95,20 +83,6 @@ export default async function AdminUploadPage({
             displayName: producer.creator?.displayName ?? producer.email,
             creatorNumber: producer.creator?.creatorNumber ?? null,
             verified: producer.creator?.verified ?? false
-          }))}
-          seriesOptions={seriesOptions.map((series) => ({
-            id: series.id,
-            creatorId: series.creatorId,
-            title: series.title,
-            status: series.status,
-            priceTier: series.priceTier,
-            rightsTier: series.rightsTier,
-            category: series.category,
-            ageRating: series.ageRating,
-            originalLanguage: series.originalLanguage,
-            audioLanguages: series.audioLanguages,
-            releaseYear: series.releaseYear,
-            episodeCount: series._count.episodes
           }))}
           initialProducerId={requestedProducerId || null}
         />

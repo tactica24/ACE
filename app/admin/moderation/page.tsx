@@ -10,7 +10,6 @@ import {
   getViewerPackageStatus
 } from '@/lib/delivery-package';
 import { hasVideoMasterSource } from '@/lib/master-source';
-import { hasMoviePosterFromCandidates } from '@/lib/movie-assets';
 
 export const dynamic = 'force-dynamic';
 
@@ -260,11 +259,6 @@ export default async function ModerationPage() {
        }))
      ];
 
-     // Filter to only items with posters (same logic as visitor homepage)
-     queueItems = queueItems.filter(item => {
-       const video = item.video;
-       return hasMoviePosterFromCandidates(video, video.series);
-     });
    } catch {
      queueItems = [];
    }

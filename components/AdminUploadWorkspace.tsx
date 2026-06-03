@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import UploadForm from '@/components/UploadForm';
+import DropboxMovieIntakeForm from '@/components/DropboxMovieIntakeForm';
 
 type ProducerOption = {
   id: string;
@@ -11,28 +11,11 @@ type ProducerOption = {
   verified?: boolean;
 };
 
-type SeriesOption = {
-  id: string;
-  creatorId: string;
-  title: string;
-  status: string;
-  priceTier: string;
-  rightsTier: string;
-  category: string;
-  ageRating: string;
-  originalLanguage: string | null;
-  audioLanguages: string[];
-  releaseYear: number | null;
-  episodeCount: number;
-};
-
 export default function AdminUploadWorkspace({
   producers,
-  seriesOptions,
   initialProducerId
 }: {
   producers: ProducerOption[];
-  seriesOptions: SeriesOption[];
   initialProducerId?: string | null;
 }) {
   const safeInitialProducerId =
@@ -44,11 +27,6 @@ export default function AdminUploadWorkspace({
   const selectedProducer = useMemo(
     () => producers.find((producer) => producer.id === selectedProducerId) ?? null,
     [producers, selectedProducerId]
-  );
-
-  const filteredSeriesOptions = useMemo(
-    () => seriesOptions.filter((series) => series.creatorId === selectedProducerId),
-    [selectedProducerId, seriesOptions]
   );
 
   if (!producers.length) {
@@ -92,29 +70,15 @@ export default function AdminUploadWorkspace({
             </span>
           </div>
           <div className="detail-card">
-            <span className="detail-label">Upload package</span>
-            <strong>Playable MP4 master</strong>
-            <span className="muted">Approved titles go live after the MP4 is uploaded and validated.</span>
+            <span className="detail-label">Source package</span>
+            <strong>Dropbox source intake</strong>
+            <span className="muted">Create the movie record now, then let Contabo turn the Dropbox source into HLS for Bunny playback.</span>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <UploadForm
-          key={selectedProducerId}
-          seriesOptions={filteredSeriesOptions.map((series) => ({
-            id: series.id,
-            title: series.title,
-            status: series.status,
-            priceTier: series.priceTier,
-            rightsTier: series.rightsTier,
-            category: series.category,
-            ageRating: series.ageRating,
-            originalLanguage: series.originalLanguage,
-            audioLanguages: series.audioLanguages,
-            releaseYear: series.releaseYear,
-            episodeCount: series.episodeCount
-          }))}
+        <DropboxMovieIntakeForm
           extraPayload={{ targetCreatorUserId: selectedProducerId }}
           successRedirectPath={`/admin/users/${selectedProducerId}`}
           contractRedirectBasePath={null}

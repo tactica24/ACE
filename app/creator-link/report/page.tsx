@@ -196,7 +196,7 @@ export default async function CreatorReportLinkPage({
           </p>
           <div className="action-list">
             <Link className="btn btn-primary" href={`/api/creator-link/auth?token=${encodeURIComponent(uploadToken)}&redirect=/creator-link/upload`}>
-              Upload new title
+              Create new title
             </Link>
           </div>
         </div>

@@ -192,7 +192,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
         <div className="action-list">
           <PromoteAdminButton userId={user.id} email={user.email} role={user.role} />
           {user.signupIntent === 'CREATOR' || user.creator ? (
-            <Link className="btn btn-ghost" href={`/admin/upload?producerId=${encodeURIComponent(user.id)}`}>Upload for producer</Link>
+            <Link className="btn btn-ghost" href={`/admin/upload?producerId=${encodeURIComponent(user.id)}`}>Create title for producer</Link>
           ) : null}
           <Link className="btn btn-ghost" href={`mailto:${user.email}`}>Email user</Link>
           <Link className="btn btn-ghost" href="/admin/users">Back to users</Link>

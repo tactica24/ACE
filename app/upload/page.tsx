@@ -12,9 +12,9 @@ export default async function PublicUploadPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload to ACE Studio</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Submit a Dropbox source to ACE Studio</h1>
             <p className="text-gray-600">
-              Submit your content for review and distribution on the ACE platform.
+              Share your movie details and Dropbox source link for review and distribution on the ACE platform.
             </p>
           </div>
 

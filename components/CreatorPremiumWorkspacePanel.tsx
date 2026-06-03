@@ -113,10 +113,10 @@ export default function CreatorPremiumWorkspacePanel({
     {
       id: 'content',
       title: 'Content Management',
-      description: 'Upload, manage, and track your film catalog with advanced content tools and analytics.',
+      description: 'Create titles from Dropbox sources, manage your film catalog, and track release health with advanced tools and analytics.',
       icon: <Film className="w-6 h-6" />,
       primaryAction: {
-        label: 'Upload New Title',
+        label: 'Create New Title',
         href: '/studio/upload',
         variant: 'primary'
       },
@@ -469,7 +469,7 @@ export default function CreatorPremiumWorkspacePanel({
         <div className="creator-quick-actions-grid">
           <Link href="/studio/upload" className="creator-quick-action">
             <Upload className="w-5 h-5" />
-            <span>Upload Content</span>
+            <span>Create Title</span>
           </Link>
           <Link href="/studio/analytics" className="creator-quick-action">
             <BarChart3 className="w-5 h-5" />

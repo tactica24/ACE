@@ -134,17 +134,17 @@ export default function AdminCreateProducerForm() {
 
       {creatorId ? (
         <div className="detail-card">
-          <span className="detail-label">Admin upload desk</span>
-          <a className="btn btn-ghost" href={`/admin/upload?producerId=${encodeURIComponent(creatorId)}`}>Open producer upload workspace</a>
+          <span className="detail-label">Admin title desk</span>
+          <a className="btn btn-ghost" href={`/admin/upload?producerId=${encodeURIComponent(creatorId)}`}>Open producer title workspace</a>
         </div>
       ) : null}
 
       {links ? (
         <div className="stack-list">
           <div className="detail-card">
-            <span className="detail-label">Creator upload link</span>
+            <span className="detail-label">Creator intake link</span>
             <input className="input" value={links.uploadUrl} readOnly />
-            <button className="btn btn-ghost" type="button" onClick={() => copyToClipboard(links.uploadUrl)}>Copy upload link</button>
+            <button className="btn btn-ghost" type="button" onClick={() => copyToClipboard(links.uploadUrl)}>Copy intake link</button>
           </div>
           <div className="detail-card">
             <span className="detail-label">Creator report link</span>

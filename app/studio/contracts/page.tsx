@@ -35,7 +35,7 @@ export default async function ContractsPage() {
       }
       actions={
         <div className="action-list">
-          <Link className="btn btn-primary" href="/studio/upload">Upload title</Link>
+          <Link className="btn btn-primary" href="/studio/upload">Create title</Link>
           <Link className="btn btn-ghost" href="/studio/library">Release library</Link>
           <Link className="btn btn-ghost" href="/studio/contact">Support</Link>
         </div>
@@ -62,7 +62,7 @@ export default async function ContractsPage() {
 
       <div className="card">
         {contracts.length === 0 ? (
-          <p className="muted">No producer documents yet. Upload a title, then sign the agreement that appears after upload.</p>
+          <p className="muted">No producer documents yet. Create a title from Dropbox, then sign the agreement that appears after intake.</p>
         ) : (
           <div className="stack-list">
             {contracts.map((contract) => (

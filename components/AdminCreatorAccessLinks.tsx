@@ -78,10 +78,10 @@ export default function AdminCreatorAccessLinks({
       }));
       setMessage(
         scope === 'upload'
-          ? 'Upload link generated.'
+          ? 'Dropbox intake link generated.'
           : scope === 'report'
             ? 'Report link generated.'
-            : 'Upload link generated.'
+            : 'Producer upload link generated.'
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `Unable to generate ${scope} link.`);
@@ -141,7 +141,7 @@ export default function AdminCreatorAccessLinks({
 
       <div className="action-list">
         <button className="btn btn-ghost" type="button" onClick={() => generateLink('upload')} disabled={loading || !creatorNumber}>
-          {loading ? 'Generating...' : (links.upload ? 'Get upload link' : 'Generate upload link')}
+          {loading ? 'Generating...' : (links.upload ? 'Get intake link' : 'Generate intake link')}
         </button>
         <button className="btn btn-ghost" type="button" onClick={() => generateLink('short-upload')} disabled={loading || !creatorNumber}>
           {loading ? 'Generating...' : (links.shortUpload ? 'Get producer upload link' : 'Generate producer upload link')}
@@ -151,19 +151,19 @@ export default function AdminCreatorAccessLinks({
         </button>
       </div>
 
-      {!creatorNumber ? <p className="muted">Generate the producer ID before creating upload or report links.</p> : null}
+      {!creatorNumber ? <p className="muted">Generate the producer ID before creating intake or report links.</p> : null}
 
       {links.upload ? (
         <div className="detail-card">
-          <span className="detail-label">Upload link</span>
+          <span className="detail-label">Dropbox intake link</span>
           <input className="input" value={links.upload.url} readOnly />
-          <button className="btn btn-ghost" type="button" onClick={() => copyToClipboard(links.upload!.url)}>Copy upload link</button>
+          <button className="btn btn-ghost" type="button" onClick={() => copyToClipboard(links.upload!.url)}>Copy intake link</button>
           <span className="muted" style={{ fontSize: '0.85rem' }}>
             Does not expire while the producer account remains active.
           </span>
         </div>
       ) : (
-        <p className="muted">No upload link generated yet.</p>
+        <p className="muted">No Dropbox intake link generated yet.</p>
       )}
 
       {links.shortUpload ? (

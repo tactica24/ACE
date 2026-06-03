@@ -1,10 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
-import type { PreparedStorageUpload } from '@/lib/storage-upload';
 import { buildFfmpegCommand } from '@/lib/video-processing';
-import { MAX_MASTER_BYTES, formatUploadLimit } from '@/lib/upload-limits';
 
 type ProcessingVideo = {
   id: string;
@@ -51,11 +48,6 @@ type ProcessingProducer = {
 };
 
 type ProducerBucket = 'needs-master' | 'uploaded' | 'processed';
-type UploadStatus = {
-  phase: 'uploading' | 'done' | 'error';
-  progress: number;
-  message: string;
-};
 
 const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
   { id: 'uploaded', label: 'Source attached / processing', description: 'A Dropbox or Bunny master is attached. Admin starts Contabo HLS when ready.' },
@@ -79,60 +71,6 @@ function formatDate(value: string | null) {
 function formatDateTime(value: string | null | undefined) {
   if (!value) return 'No callback yet';
   return new Date(value).toLocaleString();
-}
-
-function isSupportedMasterFile(file: File) {
-  return /\.mp4$/i.test(file.name) && (!file.type || ['video/mp4', 'application/octet-stream'].includes(file.type));
-}
-
-function toStorageUploadError(error: unknown) {
-  const message = error instanceof Error ? error.message : 'Unable to upload MP4.';
-  if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
-    return (
-      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again. Dropbox source import remains available below.'
-    );
-  }
-  return message;
-}
-
-async function uploadMasterToStorage(file: File, videoId: string) {
-  if (!isSupportedMasterFile(file)) {
-    throw new Error('Upload a playable MP4 master file.');
-  }
-
-  if (file.size > MAX_MASTER_BYTES) {
-    throw new Error(`MP4 file is too large. Keep it under ${formatUploadLimit(MAX_MASTER_BYTES)}.`);
-  }
-
-  const presign = await fetch('/api/uploads/sign', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filename: file.name,
-      contentType: file.type || 'application/octet-stream',
-      fileSize: file.size,
-      purpose: 'master',
-      folderId: videoId
-    })
-  });
-  const presignPayload = await presign.json().catch(() => ({}));
-  if (!presign.ok || !presignPayload.strategy || !presignPayload.key) {
-    throw new Error(presignPayload.error ?? 'Unable to prepare MP4 upload.');
-  }
-
-  let upload: Response;
-  try {
-    await uploadPreparedStorageAsset(presignPayload as PreparedStorageUpload, file, () => {});
-    upload = new Response(null, { status: 200 });
-  } catch (error) {
-    throw new Error(toStorageUploadError(error));
-  }
-  if (!upload.ok) {
-    const responseText = await upload.text().catch(() => '');
-    throw new Error(responseText ? `MP4 upload failed with status ${upload.status}: ${responseText}` : `MP4 upload failed with status ${upload.status}.`);
-  }
-
-  return presignPayload.key as string;
 }
 
 function getBucket(video: ProcessingVideo): ProducerBucket {
@@ -181,7 +119,6 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
   const [producers, setProducers] = useState(initialProducers);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({});
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
   const [selectedBucket, setSelectedBucket] = useState<ProducerBucket | null>(null);
   const [sourceDrafts, setSourceDrafts] = useState<Record<string, string>>({});
@@ -252,42 +189,6 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       setMessage(payload.message ?? 'Processing status updated.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to update processing status.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function uploadMaster(videoId: string, file: File) {
-    setPendingId(videoId);
-    setMessage(null);
-    setUploadStatuses((current) => ({
-      ...current,
-      [videoId]: { phase: 'uploading', progress: 0, message: 'Uploading MP4 master...' }
-    }));
-    try {
-      const key = await uploadMasterToStorage(file, videoId);
-
-      const save = await fetch('/api/admin/videos/master', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, key, fileName: file.name, fileSize: file.size })
-      });
-      const savePayload = await save.json().catch(() => ({}));
-      if (!save.ok) throw new Error(savePayload.error ?? 'Unable to save MP4 details.');
-      await refreshVideo(videoId, savePayload.video);
-      const successMessage = typeof savePayload.message === 'string' ? savePayload.message : 'MP4 uploaded and attached.';
-      setUploadStatuses((current) => ({
-        ...current,
-        [videoId]: { phase: 'done', progress: 100, message: successMessage }
-      }));
-      setMessage(successMessage);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unable to upload MP4.';
-      setUploadStatuses((current) => ({
-        ...current,
-        [videoId]: { phase: 'error', progress: current[videoId]?.progress ?? 0, message: errorMessage }
-      }));
-      setMessage(errorMessage);
     } finally {
       setPendingId(null);
     }
@@ -474,7 +375,6 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
       {visibleVideos.map((video) => {
         const busy = pendingId === video.id;
-        const uploadStatus = uploadStatuses[video.id];
         const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
         const canPublish = video.status === 'READY';
 
@@ -490,20 +390,6 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
                 {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
                 {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download poster</a> : null}
-                <label className="btn btn-ghost">
-                  Upload MP4 to Bunny
-                  <input
-                    type="file"
-                    accept=".mp4,video/mp4"
-                    hidden
-                    disabled={busy}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadMaster(video.id, file);
-                      event.currentTarget.value = '';
-                    }}
-                  />
-                </label>
               </div>
             </div>
 
@@ -552,33 +438,6 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 </button>
               ) : null}
             </div>
-
-            {uploadStatus ? (
-              <div className="detail-card" style={{ marginTop: 14 }}>
-                <div className="stack-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="detail-label">
-                    {uploadStatus.phase === 'error'
-                      ? 'Master upload error'
-                      : uploadStatus.phase === 'done'
-                        ? 'Master upload complete'
-                        : 'Master upload progress'}
-                  </span>
-                  <strong>{uploadStatus.progress}%</strong>
-                </div>
-                <div className="upload-progress-track" aria-hidden="true">
-                  <span
-                    className="upload-progress-fill"
-                    style={{
-                      width: `${uploadStatus.progress}%`,
-                      background: uploadStatus.phase === 'error'
-                        ? 'linear-gradient(135deg, #ef4444, #991b1b)'
-                        : 'linear-gradient(135deg, #22c55e, #0f766e)'
-                    }}
-                  />
-                </div>
-                <p className="muted" style={{ marginBottom: 0 }}>{uploadStatus.message}</p>
-              </div>
-            ) : null}
 
             {video.masterKey ? (
               <div className="detail-card" style={{ marginTop: 14 }}>
