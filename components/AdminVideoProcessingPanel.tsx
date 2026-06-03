@@ -16,6 +16,7 @@ type ProcessingVideo = {
   creatorName: string;
   creatorEmail: string;
   masterKey: string | null;
+  masterSourceUrl: string | null;
   masterFileName: string | null;
   masterFileSize: number | null;
   masterUploadedAt: string | null;
@@ -138,7 +139,7 @@ function getBucket(video: ProcessingVideo): ProducerBucket {
   if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
     return 'processed';
   }
-  if (video.masterKey) {
+  if (video.masterKey || video.masterSourceUrl) {
     return 'uploaded';
   }
   return 'needs-master';
@@ -167,6 +168,9 @@ function getPipelineSummary(video: ProcessingVideo) {
   if (video.processingStatus === 'TRANSCODE_FAILED') {
     return video.transcodeError ?? 'Transcode failed.';
   }
+  if (video.masterSourceUrl) {
+    return 'Dropbox source is attached and ready for Contabo processing.';
+  }
   if (video.masterKey) {
     return 'Master is stored in Bunny and ready for admin processing.';
   }
@@ -180,6 +184,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
   const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({});
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
   const [selectedBucket, setSelectedBucket] = useState<ProducerBucket | null>(null);
+  const [sourceDrafts, setSourceDrafts] = useState<Record<string, string>>({});
 
   const sortedProducers = useMemo(
     () => [...producers].sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name)),
@@ -319,6 +324,33 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       setMessage(payload.message ?? 'HLS pipeline synced.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to sync HLS pipeline.');
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function attachDropboxSource(videoId: string) {
+    const sourceUrl = sourceDrafts[videoId]?.trim() ?? '';
+    if (!sourceUrl) {
+      setMessage('Paste a Dropbox share link before attaching the master source.');
+      return;
+    }
+
+    setPendingId(videoId);
+    setMessage(null);
+    try {
+      const response = await fetch('/api/admin/videos/master', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, sourceUrl })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to attach Dropbox source.');
+      await refreshVideo(videoId, payload.video);
+      setSourceDrafts((current) => ({ ...current, [videoId]: '' }));
+      setMessage(payload.message ?? 'Dropbox source attached.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to attach Dropbox source.');
     } finally {
       setPendingId(null);
     }
@@ -476,22 +508,44 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ margin: '16px 0' }}>
-              <div className="detail-card"><span className="detail-label">Master upload</span><strong>{video.masterKey ? 'Uploaded' : 'Missing'}</strong></div>
-              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No MP4'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Master source</span><strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey ? 'Bunny uploaded' : 'Missing'}</strong></div>
+              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
               <div className="detail-card"><span className="detail-label">Uploaded date</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
             </div>
 
+            <div className="detail-card" style={{ marginBottom: 16 }}>
+              <span className="detail-label">Dropbox master source</span>
+              <div className="stack-row" style={{ alignItems: 'center' }}>
+                <input
+                  type="url"
+                  value={sourceDrafts[video.id] ?? ''}
+                  onChange={(event) => setSourceDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
+                  placeholder="Paste Dropbox share link"
+                  disabled={busy}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => void attachDropboxSource(video.id)}>
+                  Attach Dropbox URL
+                </button>
+                {video.masterSourceUrl ? (
+                  <a className="btn btn-ghost" href={video.masterSourceUrl} target="_blank" rel="noreferrer">
+                    Open source
+                  </a>
+                ) : null}
+              </div>
+            </div>
+
             <div className="action-list">
               {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
-              <button className="btn btn-primary" type="button" disabled={!video.masterKey || busy} onClick={() => void startPipeline(video.id)}>
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey && !video.masterSourceUrl} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
+              <button className="btn btn-primary" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void startPipeline(video.id)}>
                 Start Contabo HLS
               </button>
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void completeProcessing(video.id)}>
+              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void completeProcessing(video.id)}>
                 Sync Contabo status
               </button>
-              <button className="btn btn-ghost" type="button" disabled={!video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
+              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
               {canPublish ? (
                 <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
                   Publish
@@ -532,8 +586,8 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : 'MP4 via gateway'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Gateway stream token'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : 'MP4 via gateway'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.masterSourceUrl ?? 'Gateway stream token')}</strong></div>
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
             </div>
 

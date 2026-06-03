@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           processingStatus: true,
-          masterKey: true
+          masterKey: true,
+          masterSourceUrl: true
         }
       }
     }
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
           select: {
             processingStatus: true,
             masterKey: true,
+            masterSourceUrl: true,
             hlsManifestKey: true,
             hlsOutputPath: true,
             hlsReadyAt: true

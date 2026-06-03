@@ -300,6 +300,7 @@ model VideoTechnicalMetadata {
   productAvailability      Json?
   landscapeArtworkKey      String?
   masterKey                String?
+  masterSourceUrl          String?
   masterFileName           String?
   masterFileSize           BigInt?
   masterUploadedAt         DateTime?

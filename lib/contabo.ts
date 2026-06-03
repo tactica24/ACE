@@ -50,12 +50,14 @@ export async function createContaboTranscodeJob(input: {
   callbackUrl: string;
   videoId: string;
   title: string;
-  masterKey: string;
+  masterKey?: string | null;
+  masterUrl?: string | null;
   hlsOutputPath: string;
 }) {
-  const masterKey = normalizeMediaKey(input.masterKey);
-  if (!masterKey) {
-    throw new Error('A Bunny master key is required before sending the video to Contabo.');
+  const masterKey = normalizeMediaKey(input.masterKey ?? null);
+  const masterUrl = typeof input.masterUrl === 'string' ? input.masterUrl.trim() : '';
+  if (!masterKey && !masterUrl) {
+    throw new Error('A Bunny master key or source master URL is required before sending the video to Contabo.');
   }
 
   const response = await fetch(`${getContaboApiBaseUrl()}/jobs`, {
@@ -65,7 +67,8 @@ export async function createContaboTranscodeJob(input: {
       jobId: input.jobId,
       videoId: input.videoId,
       title: input.title,
-      masterKey,
+      ...(masterKey ? { masterKey } : {}),
+      ...(masterUrl ? { masterUrl } : {}),
       hlsOutputPath: input.hlsOutputPath,
       callbackUrl: input.callbackUrl
     })

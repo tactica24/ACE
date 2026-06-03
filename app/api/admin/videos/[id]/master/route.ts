@@ -59,6 +59,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           playbackUrl: true,
           processingStatus: true,
           masterDeletionEligible: true,
@@ -70,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
   });
 
-  if (!video?.technicalMetadata?.masterKey) {
+  if (!video?.technicalMetadata?.masterKey && !video?.technicalMetadata?.masterSourceUrl) {
     return NextResponse.json({ error: 'Private master not found.' }, { status: 404 });
   }
 
@@ -84,11 +85,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     await deleteContaboJobArtifacts(video.technicalMetadata.orchestrationJobId);
   }
 
-  await deleteObject(video.technicalMetadata.masterKey);
+  if (video.technicalMetadata.masterKey) {
+    await deleteObject(video.technicalMetadata.masterKey);
+  }
   await prisma.videoTechnicalMetadata.update({
     where: { videoId: params.id },
     data: {
       masterKey: null,
+      masterSourceUrl: null,
       masterFileName: null,
       masterFileSize: null,
       masterUploadedAt: null,

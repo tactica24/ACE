@@ -49,6 +49,30 @@ function bunnyUrl(key) {
   return `${BUNNY_STORAGE_ENDPOINT}/${encodeURIComponent(BUNNY_STORAGE_ZONE)}/${normalizeKey(key).split('/').map(encodeURIComponent).join('/')}`;
 }
 
+function normalizeDropboxDownloadUrl(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return trimmed;
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === 'dropbox.com') {
+    url.hostname = 'www.dropbox.com';
+  }
+
+  if (url.hostname === 'www.dropbox.com') {
+    url.searchParams.delete('dl');
+    url.searchParams.set('raw', '1');
+  }
+
+  return url.toString();
+}
+
 function assertWorkerConfig() {
   const missing = [];
   if (!PIPELINE_SECRET) missing.push('CONTABO_PIPELINE_SECRET');
@@ -95,11 +119,13 @@ async function downloadMaster(job) {
   const masterPath = join(jobDir(job.id), 'master', 'source.mp4');
   await mkdir(dirname(masterPath), { recursive: true });
 
-  const response = await fetch(bunnyUrl(job.masterKey), {
-    headers: { AccessKey: BUNNY_STORAGE_API_KEY }
-  });
+  const response = job.masterUrl
+    ? await fetch(normalizeDropboxDownloadUrl(job.masterUrl))
+    : await fetch(bunnyUrl(job.masterKey), {
+        headers: { AccessKey: BUNNY_STORAGE_API_KEY }
+      });
   if (!response.ok || !response.body) {
-    throw new Error(`Bunny master download failed (${response.status}) for ${job.masterKey}`);
+    throw new Error(`Master download failed (${response.status}) for ${job.masterUrl || job.masterKey}`);
   }
 
   await pipeline(response.body, createWriteStream(masterPath));
@@ -250,11 +276,12 @@ async function createJob(req, res) {
   const body = await readJson(req);
   const videoId = String(body.videoId || '').trim();
   const masterKey = normalizeKey(body.masterKey);
+  const masterUrl = String(body.masterUrl || '').trim();
   const hlsOutputPath = normalizeKey(body.hlsOutputPath || `streams/${videoId}/hls`);
   const callbackUrl = String(body.callbackUrl || '').trim();
 
-  if (!videoId || !masterKey || !hlsOutputPath || !callbackUrl) {
-    return json(res, 400, { error: 'videoId, masterKey, hlsOutputPath, and callbackUrl are required.' });
+  if (!videoId || (!masterKey && !masterUrl) || !hlsOutputPath || !callbackUrl) {
+    return json(res, 400, { error: 'videoId, masterKey or masterUrl, hlsOutputPath, and callbackUrl are required.' });
   }
 
   const jobId = String(body.jobId || randomUUID()).trim();
@@ -264,6 +291,7 @@ async function createJob(req, res) {
     videoId,
     title: String(body.title || videoId),
     masterKey,
+    masterUrl,
     hlsOutputPath,
     hlsManifestKey: `${hlsOutputPath}/index.m3u8`,
     callbackUrl,

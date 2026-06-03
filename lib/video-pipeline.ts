@@ -13,6 +13,7 @@ type PipelineVideo = {
   creatorId: string;
   technicalMetadata: {
     masterKey: string | null;
+    masterSourceUrl: string | null;
     orchestrationJobId: string | null;
     hlsOutputPath: string | null;
     hlsManifestKey: string | null;
@@ -42,6 +43,7 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           orchestrationJobId: true,
           hlsOutputPath: true,
           hlsManifestKey: true,
@@ -54,15 +56,22 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
 
 function ensureVideoCanStartPipeline(video: PipelineVideo) {
   const masterKey = normalizeMediaKey(video.technicalMetadata?.masterKey);
-  if (!masterKey) {
-    throw new Error('Upload a master file first before starting HLS processing.');
+  const masterSourceUrl =
+    typeof video.technicalMetadata?.masterSourceUrl === 'string'
+      ? video.technicalMetadata.masterSourceUrl.trim()
+      : '';
+  if (!masterKey && !masterSourceUrl) {
+    throw new Error('Attach a Bunny master or Dropbox master URL first before starting HLS processing.');
   }
 
   if (video.technicalMetadata?.masterDeletedAt) {
     throw new Error('This title no longer has a master file. Re-upload the master before reprocessing.');
   }
 
-  return masterKey;
+  return {
+    masterKey,
+    masterSourceUrl: masterSourceUrl || null
+  };
 }
 
 async function ensureSingleActiveContaboJob(videoId: string) {
@@ -101,7 +110,7 @@ export async function queueVideoHlsPipeline(videoId: string) {
 
   await ensureSingleActiveContaboJob(videoId);
 
-  const masterKey = ensureVideoCanStartPipeline(video);
+  const source = ensureVideoCanStartPipeline(video);
   const hlsOutputPath = video.technicalMetadata?.hlsOutputPath ?? getDefaultHlsOutputPath(videoId);
   const jobId = randomUUID();
 
@@ -118,7 +127,7 @@ export async function queueVideoHlsPipeline(videoId: string) {
       where: { videoId },
       create: {
         videoId,
-        masterKey,
+        masterKey: source.masterKey,
         processingStatus: 'CONTABO_QUEUED',
         orchestrationProvider: 'CONTABO',
         orchestrationJobId: jobId,
@@ -156,7 +165,8 @@ export async function queueVideoHlsPipeline(videoId: string) {
       callbackUrl: getPipelineCallbackUrl(),
       videoId,
       title: video.title,
-      masterKey,
+      masterKey: source.masterKey,
+      masterUrl: source.masterSourceUrl,
       hlsOutputPath
     });
   } catch (error) {

@@ -34,6 +34,7 @@ export async function getProcessingVideo(videoId: string) {
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           masterFileName: true,
           masterFileSize: true,
           masterUploadedAt: true,
@@ -94,6 +95,7 @@ export async function getProcessingVideo(videoId: string) {
     creatorName: video.creator.creator?.displayName ?? video.creator.email,
     creatorEmail: video.creator.email,
     masterKey: video.technicalMetadata?.masterKey ?? null,
+    masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
     masterFileName: video.technicalMetadata?.masterFileName ?? null,
     masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
     masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,

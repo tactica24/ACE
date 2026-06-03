@@ -48,6 +48,7 @@ export default async function AdminVideosPage() {
               technicalMetadata: {
                 select: {
                   masterKey: true,
+                  masterSourceUrl: true,
                   masterFileName: true,
                   masterFileSize: true,
                   masterUploadedAt: true,
@@ -97,6 +98,7 @@ export default async function AdminVideosPage() {
             creatorName: producer.displayName,
             creatorEmail: producer.user.email,
             masterKey: video.technicalMetadata?.masterKey ?? null,
+            masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
             masterFileName: video.technicalMetadata?.masterFileName ?? null,
             masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
             masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
