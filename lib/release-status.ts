@@ -1,5 +1,6 @@
 import { hasMovieMp4 } from './movie-assets';
 import { hasReadyVideoHls } from './hls';
+import { hasVideoMasterSource } from './master-source';
 
 type ReleaseLifecycleVideo = {
   status: string;
@@ -7,6 +8,7 @@ type ReleaseLifecycleVideo = {
   fallbackStorageKey?: string | null;
   technicalMetadata?: {
     masterKey?: string | null;
+    masterSourceUrl?: string | null;
     processingStatus?: string | null;
     hlsManifestKey?: string | null;
     hlsReadyAt?: Date | string | null;
@@ -36,7 +38,7 @@ export function getStatusAfterApproval(video: ReleaseLifecycleVideo) {
     return 'PROCESSING' as const;
   }
 
-  if (video.status === 'MASTER_UPLOADED' || video.technicalMetadata?.masterKey) {
+  if (video.status === 'MASTER_UPLOADED' || hasVideoMasterSource(video)) {
     return 'MASTER_UPLOADED' as const;
   }
 

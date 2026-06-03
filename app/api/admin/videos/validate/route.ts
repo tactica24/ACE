@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import { syncPipelineTask } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           hlsManifestKey: true,
           hlsOutputPath: true
         }
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           hlsManifestKey: true,
           hlsOutputPath: true,
           hlsReadyAt: true,
@@ -66,7 +69,11 @@ export async function POST(req: NextRequest) {
   });
 
   const passed = Boolean(refreshedVideo && hasReadyMoviePlayback(refreshedVideo));
-  const errors = passed ? [] : ['No viewer-ready HLS playback is attached to this title yet.'];
+  const errors = passed
+    ? []
+    : hasVideoMasterSource(refreshedVideo ?? video)
+      ? ['A master source is attached, but no viewer-ready HLS playback is attached to this title yet.']
+      : ['No master source or viewer-ready HLS playback is attached to this title yet.'];
 
   if (passed) {
     await prisma.$transaction([

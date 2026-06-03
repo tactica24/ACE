@@ -137,7 +137,11 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
         select: {
           licensedTerritories: true,
           availabilityRegion: true,
-          trailerKey: true
+          trailerKey: true,
+          masterSourceUrl: true,
+          processingStatus: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true
         }
       }
     }
@@ -152,7 +156,10 @@ if (!Number.isFinite(unlockPrice) || unlockPrice < 0) {
       licensedTerritories: video.technicalMetadata?.licensedTerritories ?? [],
       availabilityRegion: video.technicalMetadata?.availabilityRegion ?? 'GLOBAL',
       trailerKey: video.technicalMetadata?.trailerKey ?? null,
-      posterKey: video.posterKey ?? null
+      posterKey: video.posterKey ?? null,
+      masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
+      processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+      hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt)
     }
   });
 }

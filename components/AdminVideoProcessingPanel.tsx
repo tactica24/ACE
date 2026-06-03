@@ -58,9 +58,9 @@ type UploadStatus = {
 };
 
 const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
-  { id: 'uploaded', label: 'Uploaded / processing', description: 'Assets are stored in Bunny. Admin starts Contabo HLS when ready.' },
+  { id: 'uploaded', label: 'Source attached / processing', description: 'A Dropbox or Bunny master is attached. Admin starts Contabo HLS when ready.' },
   { id: 'processed', label: 'Ready / published', description: 'Titles with verified HLS playback.' },
-  { id: 'needs-master', label: 'Needs MP4', description: 'Movie record exists, but the master file is still missing.' }
+  { id: 'needs-master', label: 'Needs source', description: 'Movie record exists, but the master file is still missing.' }
 ];
 
 const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
@@ -89,7 +89,7 @@ function toStorageUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : 'Unable to upload MP4.';
   if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
     return (
-      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again.'
+      'Storage upload failed before Bunny accepted the file. Check the Bunny S3 endpoint, credentials, and browser CORS settings, then try again. Dropbox source import remains available below.'
     );
   }
   return message;
@@ -172,9 +172,9 @@ function getPipelineSummary(video: ProcessingVideo) {
     return 'Dropbox source is attached and ready for Contabo processing.';
   }
   if (video.masterKey) {
-    return 'Master is stored in Bunny and ready for admin processing.';
+    return 'Master is stored in Bunny and ready for Contabo processing.';
   }
-  return 'Waiting for a master upload.';
+  return 'Waiting for a Dropbox or Bunny master source.';
 }
 
 export default function AdminVideoProcessingPanel({ initialProducers }: { initialProducers: ProcessingProducer[] }) {
@@ -299,11 +299,11 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     try {
       const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to delete MP4.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to delete source.');
       await refreshVideo(videoId, payload.video);
-      setMessage('Master deleted. HLS remains as the viewer playback source.');
+      setMessage('Source deleted. HLS remains as the viewer playback source.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete MP4.');
+      setMessage(error instanceof Error ? error.message : 'Unable to delete source.');
     } finally {
       setPendingId(null);
     }
@@ -400,7 +400,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               : counts.processed > 0
                 ? 'Processed'
                 : producer.videos.length > 0
-                  ? 'Needs MP4'
+                  ? 'Needs source'
                   : 'Awaiting uploads';
 
             return (
@@ -491,7 +491,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
                 {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
                 {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download poster</a> : null}
                 <label className="btn btn-ghost">
-                  Upload/replace MP4
+                  Upload MP4 to Bunny
                   <input
                     type="file"
                     accept=".mp4,video/mp4"
@@ -538,14 +538,14 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
 
             <div className="action-list">
               {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey && !video.masterSourceUrl} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
+              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
               <button className="btn btn-primary" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void startPipeline(video.id)}>
                 Start Contabo HLS
               </button>
               <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void completeProcessing(video.id)}>
                 Sync Contabo status
               </button>
-              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete master</button>
+              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete source</button>
               {canPublish ? (
                 <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
                   Publish
@@ -580,14 +580,16 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
               </div>
             ) : null}
 
-            <div className="detail-card" style={{ marginTop: 14 }}>
-              <span className="detail-label">Master normalize command</span>
-              <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
-            </div>
+            {video.masterKey ? (
+              <div className="detail-card" style={{ marginTop: 14 }}>
+                <span className="detail-label">Master normalize command</span>
+                <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
+              </div>
+            ) : null}
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : 'MP4 via gateway'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.masterSourceUrl ?? 'Gateway stream token')}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.hlsManifestKey ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
             </div>
 

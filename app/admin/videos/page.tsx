@@ -78,7 +78,7 @@ export default async function AdminVideosPage() {
   return (
     <DashboardShell
       title="Admin videos"
-      description="Operate MP4 masters, playback validation, cleanup, and publish gating from one desk."
+      description="Operate Dropbox masters, Contabo HLS processing, Bunny playback validation, and publish gating from one desk."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel

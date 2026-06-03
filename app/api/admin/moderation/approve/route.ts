@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
           primaryStorageKey: true,
           fallbackStorageKey: true,
           technicalMetadata: {
-            select: { masterKey: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
+            select: { masterKey: true, masterSourceUrl: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
           },
           episodes: {
             select: {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
               primaryStorageKey: true,
               fallbackStorageKey: true,
               technicalMetadata: {
-                select: { masterKey: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
+                select: { masterKey: true, masterSourceUrl: true, processingStatus: true, hlsManifestKey: true, hlsReadyAt: true }
               }
             },
             orderBy: [{ seasonNumber: 'asc' }, { episodeNumber: 'asc' }]

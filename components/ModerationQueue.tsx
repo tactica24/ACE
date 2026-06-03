@@ -40,6 +40,9 @@ type Item = {
     deliveryFormat?: string;
     licensedTerritories?: string[];
     availabilityRegion?: string;
+    masterSourceUrl?: string | null;
+    processingStatus?: string | null;
+    hlsManifestReady?: boolean;
   };
   status: string;
   notes?: string | null;
@@ -65,6 +68,7 @@ type VideoDraft = {
   contentWarnings: string;
   licensedTerritories: string;
   availabilityRegion: string;
+  sourceUrl: string;
 };
 
 const categoryOptions = [
@@ -143,7 +147,8 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       genres: (item.video.genres ?? []).join(', '),
       contentWarnings: (item.video.contentWarnings ?? []).join(', '),
       licensedTerritories: (item.video.licensedTerritories ?? []).join(', '),
-      availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL'
+      availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL',
+      sourceUrl: item.video.masterSourceUrl ?? ''
     };
 
   const getEditAssets = (videoId: string) => editAssets[videoId] ?? { trailer: null, poster: null };
@@ -192,7 +197,8 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
           genres: '',
           contentWarnings: '',
           licensedTerritories: '',
-          availabilityRegion: 'GLOBAL'
+          availabilityRegion: 'GLOBAL',
+          sourceUrl: ''
         }),
         [key]: value
       }
@@ -215,6 +221,19 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     } catch (uploadErr: any) {
       setErrors((prev) => ({ ...prev, [item.video.id]: uploadErr?.message || 'Failed to upload trailer or poster.' }));
       return;
+    }
+
+    if (draft.sourceUrl.trim() && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '')) {
+      const sourceResponse = await fetch('/api/admin/videos/master', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId: item.video.id, sourceUrl: draft.sourceUrl.trim() })
+      });
+      const sourcePayload = await sourceResponse.json().catch(() => ({}));
+      if (!sourceResponse.ok) {
+        setErrors((prev) => ({ ...prev, [item.video.id]: sourcePayload.error || 'The Dropbox master source could not be attached.' }));
+        return;
+      }
     }
 
     const res = await fetch('/api/admin/videos/update', {
@@ -429,7 +448,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Viewer package</span>
-                  <strong>{item.video.packageLabel ?? '1080p MP4 + 720p MP4'}</strong>
+                  <strong>{item.video.packageLabel ?? 'HLS package'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Package status</span>
@@ -437,7 +456,15 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Delivery format</span>
-                  <strong>{item.video.deliveryFormat ?? 'MP4 viewer package'}</strong>
+                  <strong>{item.video.deliveryFormat ?? 'HLS viewer package'}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Master source</span>
+                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : 'Bunny upload or missing'}</strong>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Stream package</span>
+                  <strong>{item.video.hlsManifestReady ? 'HLS ready in Bunny' : item.video.processingStatus ?? 'Awaiting source'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Subtitles</span>
@@ -556,6 +583,16 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   <label className="field">
                     <span className="field-label">Licensed territories</span>
                     <input className="input" value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
+                  </label>
+                  <label className="field" style={{ gridColumn: '1/-1' }}>
+                    <span className="field-label">Dropbox master source URL</span>
+                    <input
+                      className="input"
+                      type="url"
+                      value={getDraft(item).sourceUrl}
+                      onChange={(event) => updateDraft(item.video.id, 'sourceUrl', event.target.value)}
+                      placeholder="Paste Dropbox share link"
+                    />
                   </label>
                    <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Description</span>

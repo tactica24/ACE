@@ -9,6 +9,7 @@ import {
   getViewerPackageLabel,
   getViewerPackageStatus
 } from '@/lib/delivery-package';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import { hasMoviePosterFromCandidates } from '@/lib/movie-assets';
 
 export const dynamic = 'force-dynamic';
@@ -65,6 +66,10 @@ export default async function ModerationPage() {
                 select: {
                   trailerKey: true,
                   masterKey: true,
+                  masterSourceUrl: true,
+                  processingStatus: true,
+                  hlsManifestKey: true,
+                  hlsReadyAt: true,
                   deliveryFormat: true,
                   englishSubtitlesProvided: true,
                   licensedTerritories: true,
@@ -86,7 +91,8 @@ export default async function ModerationPage() {
                   fallbackStorageKey: true,
                   technicalMetadata: {
                     select: {
-                      masterKey: true
+                      masterKey: true,
+                      masterSourceUrl: true
                     }
                   }
                 }
@@ -144,6 +150,10 @@ export default async function ModerationPage() {
             select: {
               trailerKey: true,
               masterKey: true,
+              masterSourceUrl: true,
+              processingStatus: true,
+              hlsManifestKey: true,
+              hlsReadyAt: true,
               deliveryFormat: true,
               englishSubtitlesProvided: true,
               licensedTerritories: true,
@@ -165,7 +175,8 @@ export default async function ModerationPage() {
               fallbackStorageKey: true,
               technicalMetadata: {
                 select: {
-                  masterKey: true
+                  masterKey: true,
+                  masterSourceUrl: true
                 }
               }
             }
@@ -178,7 +189,7 @@ export default async function ModerationPage() {
 
     const mapQueueVideo = (video: (typeof items)[number]['video'] | (typeof orphanApprovedVideos)[number]) => {
       const readyEpisodeCount = video.episodes.filter(
-        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || episode.technicalMetadata?.masterKey)
+        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || hasVideoMasterSource(episode))
       ).length;
 
       return {
@@ -201,6 +212,9 @@ export default async function ModerationPage() {
         genres: video.genres,
         contentWarnings: video.contentWarnings,
         posterKey: video.posterKey ?? video.series?.posterKey ?? null,
+        masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
+        processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+        hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
         trailerDownloadHref: video.technicalMetadata?.trailerKey
           ? `/api/admin/videos/${video.id}/trailer`
           : null,
@@ -213,7 +227,7 @@ export default async function ModerationPage() {
           seriesId: video.seriesId,
           primaryReady: Boolean(video.primaryStorageKey),
           fallbackReady: Boolean(video.fallbackStorageKey),
-          masterReady: Boolean(video.technicalMetadata?.masterKey),
+          masterReady: hasVideoMasterSource(video),
           episodeCount: video._count.episodes,
           readyEpisodeCount
         }),

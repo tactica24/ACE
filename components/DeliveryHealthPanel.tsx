@@ -7,6 +7,8 @@ type DeliveryHealthVideo = {
   title: string;
   status: string;
   masterKey: string | null;
+  masterSourceUrl?: string | null;
+  hlsManifestReady?: boolean;
   playbackUrl: string | null;
   updatedAt: string;
 };
@@ -29,11 +31,11 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
 
       setMessage(
         payload.passed
-          ? 'MP4 validation passed.'
-          : `Validation failed: ${(payload.errors ?? ['Unknown error']).join(', ')}`
+          ? 'Playback validation passed.'
+          : `Validation failed: ${(payload.errors ?? ['Unknown error']).join(', ')}` 
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to validate MP4.');
+      setMessage(error instanceof Error ? error.message : 'Unable to validate playback.');
     } finally {
       setPendingId(null);
     }
@@ -57,15 +59,19 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
                   disabled={pendingId === video.id}
                   onClick={() => void validate(video.id)}
                 >
-                  {pendingId === video.id ? 'Validating...' : 'Re-validate MP4'}
+                  {pendingId === video.id ? 'Validating...' : 'Re-validate playback'}
                 </button>
               </div>
             </div>
 
             <div className="detail-grid" style={{ marginTop: 14 }}>
               <div className="detail-card">
-                <span className="detail-label">MP4 key</span>
-                <strong>{video.masterKey || 'Not set'}</strong>
+                <span className="detail-label">Master source</span>
+                <strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey || 'Not set'}</strong>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">HLS ready</span>
+                <strong>{video.hlsManifestReady ? 'Yes' : 'No'}</strong>
               </div>
               <div className="detail-card">
                 <span className="detail-label">Playback</span>
@@ -80,8 +86,8 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
         ))
       ) : (
         <div className="card">
-          <h3>No MP4 videos yet</h3>
-          <p className="muted">Validated MP4 titles will appear here after admin processing.</p>
+          <h3>No delivery items yet</h3>
+          <p className="muted">Titles with attached sources or verified HLS playback will appear here after admin processing.</p>
         </div>
       )}
     </div>

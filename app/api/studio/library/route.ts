@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import {
   getDeliveryFormatLabel,
   getSubtitlePackageStatus,
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
         select: {
           deliveryFormat: true,
           englishSubtitlesProvided: true,
-          masterKey: true
+          masterKey: true,
+          masterSourceUrl: true
         }
       },
       _count: {
@@ -42,6 +44,7 @@ export async function GET(req: NextRequest) {
           technicalMetadata: {
             select: {
               masterKey: true,
+              masterSourceUrl: true,
               hlsManifestKey: true,
               hlsReadyAt: true
             }
@@ -60,7 +63,7 @@ export async function GET(req: NextRequest) {
         seriesId: video.seriesId,
         primaryReady: Boolean(video.primaryStorageKey),
         fallbackReady: Boolean(video.fallbackStorageKey),
-        masterReady: Boolean(video.technicalMetadata?.masterKey),
+        masterReady: hasVideoMasterSource(video),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
           (episode) => hasReadyMoviePlayback(episode)

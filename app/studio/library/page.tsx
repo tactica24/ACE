@@ -5,6 +5,7 @@ import VideoCard from '@/components/VideoCard';
 import { requireCreatorUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { getStudioNavItems } from '@/lib/studio-nav';
 import { getRegionalPriceForVideo } from '@/lib/video-pricing';
@@ -29,7 +30,8 @@ export default async function LibraryPage() {
         select: {
           deliveryFormat: true,
           englishSubtitlesProvided: true,
-          masterKey: true
+          masterKey: true,
+          masterSourceUrl: true
         }
       },
       episodes: {
@@ -40,6 +42,7 @@ export default async function LibraryPage() {
           technicalMetadata: {
             select: {
               masterKey: true,
+              masterSourceUrl: true,
               hlsManifestKey: true,
               hlsReadyAt: true
             }
@@ -96,9 +99,9 @@ export default async function LibraryPage() {
 
                 return (
                   <>
-                    {video.technicalMetadata?.masterKey ? (
+                    {hasVideoMasterSource(video) ? (
                       <div className="badge badge-info" style={{ marginBottom: 8 }}>
-                        MP4 master uploaded for playback validation
+                        Master source attached for HLS validation
                       </div>
                     ) : null}
                     <VideoCard video={{ ...video, price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig) }} />
@@ -119,7 +122,7 @@ export default async function LibraryPage() {
                             seriesId: video.seriesId,
                             primaryReady: Boolean(video.primaryStorageKey?.toLowerCase().endsWith('.mp4')),
                             fallbackReady: Boolean(video.fallbackStorageKey?.toLowerCase().endsWith('.mp4')),
-                            masterReady: Boolean(video.technicalMetadata?.masterKey?.toLowerCase().endsWith('.mp4')),
+                            masterReady: hasVideoMasterSource(video),
                             episodeCount: video._count.episodes,
                             readyEpisodeCount
                           })}

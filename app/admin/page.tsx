@@ -9,6 +9,7 @@ import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getViewerPackageStatus } from '@/lib/delivery-package';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import { getNodeHealth } from '@/lib/metrics';
 import { getRegionalMoneyDisplay } from '@/lib/pricing';
 import { getReconciliationSummary } from '@/lib/reconciliation';
@@ -82,7 +83,8 @@ export default async function AdminPage() {
           fallbackStorageKey: true,
           technicalMetadata: {
             select: {
-              masterKey: true
+              masterKey: true,
+              masterSourceUrl: true
             }
           },
           _count: { select: { episodes: true } },
@@ -93,7 +95,8 @@ export default async function AdminPage() {
               fallbackStorageKey: true,
               technicalMetadata: {
                 select: {
-                  masterKey: true
+                  masterKey: true,
+                  masterSourceUrl: true
                 }
               }
             }
@@ -124,10 +127,10 @@ export default async function AdminPage() {
         seriesId: video.seriesId,
         primaryReady: Boolean(video.primaryStorageKey),
         fallbackReady: Boolean(video.fallbackStorageKey),
-        masterReady: Boolean(video.technicalMetadata?.masterKey),
+        masterReady: hasVideoMasterSource(video),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
-          (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || episode.technicalMetadata?.masterKey)
+          (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || hasVideoMasterSource(episode))
         ).length
       })
     }));

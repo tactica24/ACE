@@ -21,8 +21,8 @@ export function isSeriesContainerDelivery(input: Pick<DeliveryPackageInput, 'vid
 
 export function getViewerPackageLabel(input: Pick<DeliveryPackageInput, 'videoType' | 'seriesId'>) {
   return isSeriesContainerDelivery(input)
-    ? 'Per-episode playable MP4'
-    : 'Playable MP4';
+    ? 'Per-episode HLS package'
+    : 'HLS package';
 }
 
 export function getViewerPackageStatus(input: DeliveryPackageInput) {
@@ -42,7 +42,7 @@ export function getViewerPackageStatus(input: DeliveryPackageInput) {
   }
 
   if (input.masterReady) {
-    return 'Playable MP4 master ready';
+    return 'Master source attached; HLS pending';
   }
 
   if (input.primaryReady) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
+import { normalizeDropboxSourceUrl } from '@/lib/master-source';
 import { isOwnedUploadKey } from '@/lib/upload-security';
 import { getProcessingVideo } from '../helpers';
 
@@ -9,32 +10,16 @@ function hasSupportedMasterExtension(key: string) {
   return /\.mp4$/i.test(key);
 }
 
-function normalizeDropboxUrl(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  let url: URL;
+function getDropboxSourceLabel(sourceUrl: string) {
   try {
-    url = new URL(trimmed);
+    const url = new URL(sourceUrl);
+    const lastPathSegment = url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+    if (lastPathSegment) return decodeURIComponent(lastPathSegment);
   } catch {
-    return null;
+    // Ignore parsing errors and fall back to a generic label.
   }
 
-  const hostname = url.hostname.toLowerCase();
-  if (hostname !== 'dropbox.com' && hostname !== 'www.dropbox.com' && hostname !== 'dl.dropboxusercontent.com') {
-    return null;
-  }
-
-  if (hostname === 'dropbox.com') {
-    url.hostname = 'www.dropbox.com';
-  }
-
-  if (url.hostname === 'www.dropbox.com') {
-    url.searchParams.delete('dl');
-    url.searchParams.set('raw', '1');
-  }
-
-  return url.toString();
+  return 'Dropbox source master';
 }
 
 export async function POST(req: NextRequest) {
@@ -50,7 +35,7 @@ export async function POST(req: NextRequest) {
   const fileName = typeof body.fileName === 'string' ? body.fileName.trim() : '';
   const fileSize = Number.isFinite(body.fileSize) ? Math.max(0, Math.floor(body.fileSize)) : null;
   const masterFileSize = fileSize === null ? null : BigInt(fileSize);
-  const normalizedSourceUrl = sourceUrl ? normalizeDropboxUrl(sourceUrl) : null;
+  const normalizedSourceUrl = sourceUrl ? normalizeDropboxSourceUrl(sourceUrl) : null;
 
   if (!videoId) {
     return NextResponse.json({ error: 'Movie is required.' }, { status: 400 });
@@ -80,7 +65,7 @@ export async function POST(req: NextRequest) {
         videoId,
         masterKey: key || null,
         masterSourceUrl: normalizedSourceUrl,
-        masterFileName: fileName || (normalizedSourceUrl ? 'Dropbox source master' : null),
+        masterFileName: fileName || (normalizedSourceUrl ? getDropboxSourceLabel(normalizedSourceUrl) : null),
         masterFileSize,
         masterUploadedAt: new Date(),
         playbackUrl: null,
@@ -102,7 +87,7 @@ export async function POST(req: NextRequest) {
       update: {
         masterKey: key || null,
         masterSourceUrl: normalizedSourceUrl,
-        masterFileName: fileName || (normalizedSourceUrl ? 'Dropbox source master' : null),
+        masterFileName: fileName || (normalizedSourceUrl ? getDropboxSourceLabel(normalizedSourceUrl) : null),
         masterFileSize,
         masterUploadedAt: new Date(),
         playbackUrl: null,

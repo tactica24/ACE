@@ -8,6 +8,7 @@ export type MovieAssetVideo = {
   posterKey?: string | null;
   technicalMetadata?: {
     masterKey?: string | null;
+    masterSourceUrl?: string | null;
     hlsManifestKey?: string | null;
     hlsOutputPath?: string | null;
     hlsReadyAt?: Date | string | null;

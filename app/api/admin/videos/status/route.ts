@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
+import { hasVideoMasterSource } from '@/lib/master-source';
 import { getStatusAfterApproval } from '@/lib/release-status';
 import { isSeriesContainer } from '@/lib/video-access';
 
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
           processingStatus: true,
           hlsManifestKey: true,
           hlsReadyAt: true
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
           technicalMetadata: {
             select: {
               masterKey: true,
+              masterSourceUrl: true,
               processingStatus: true,
               hlsManifestKey: true,
               hlsReadyAt: true
@@ -139,7 +142,7 @@ export async function POST(req: NextRequest) {
       status === 'APPROVED'
         ? nextStatus === 'READY'
           ? 'Title is approved and now waiting for publish.'
-          : nextStatus === 'MASTER_UPLOADED' || nextStatus === 'PROCESSING'
+          : nextStatus === 'MASTER_UPLOADED' || nextStatus === 'PROCESSING' || hasVideoMasterSource(existingVideo)
             ? 'Title is approved for release, but playback processing still needs to finish.'
             : 'Title approval was recorded.'
         : status === 'DRAFT'

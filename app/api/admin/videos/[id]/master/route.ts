@@ -72,12 +72,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   });
 
   if (!video?.technicalMetadata?.masterKey && !video?.technicalMetadata?.masterSourceUrl) {
-    return NextResponse.json({ error: 'Private master not found.' }, { status: 404 });
+    return NextResponse.json({ error: 'No attached master source was found.' }, { status: 404 });
   }
 
   if (!video.technicalMetadata.masterDeletionEligible || !video.technicalMetadata.hlsManifestKey) {
     return NextResponse.json({
-      error: 'Keep the master until HLS is verified and marked safe for cleanup.'
+      error: 'Keep the source until HLS is verified and marked safe for cleanup.'
     }, { status: 400 });
   }
 

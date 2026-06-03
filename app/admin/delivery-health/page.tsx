@@ -21,6 +21,9 @@ export default async function DeliveryHealthPage() {
       technicalMetadata: {
         select: {
           masterKey: true,
+          masterSourceUrl: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true,
           playbackUrl: true
         }
       },
@@ -32,7 +35,7 @@ export default async function DeliveryHealthPage() {
   return (
     <DashboardShell
       title="Delivery Health"
-      description="Monitor MP4 delivery status and validate playback readiness."
+      description="Monitor master sources, Bunny HLS readiness, and playback validation."
       sideNav={<SideNav active="/admin/delivery-health" items={getAdminNavItems()} />}
     >
       <DeliveryHealthPanel
@@ -41,6 +44,8 @@ export default async function DeliveryHealthPage() {
           title: video.title,
           status: video.status,
           masterKey: video.technicalMetadata?.masterKey ?? null,
+          masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
+          hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
           playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
           updatedAt: video.updatedAt.toISOString().slice(0, 10)
         }))}
