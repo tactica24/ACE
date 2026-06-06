@@ -14,74 +14,101 @@ function serializeFileSize(value: bigint | number | null | undefined) {
 export default async function AdminVideosPage() {
   await requireAdminUser('/admin/videos');
 
-  const producers = await prisma.creatorProfile.findMany({
-    where: {
-      creatorNumber: {
-        not: null
+  const [pendingIntakeCount, moderationPendingCount, moderationApprovedCount, orphanApprovedCount, producers] = await Promise.all([
+    prisma.user.count({
+      where: {
+        signupIntent: 'CREATOR',
+        creatorAccessStatus: 'SUBMITTED',
+        role: 'USER'
       }
-    },
-    orderBy: [
-      { displayName: 'asc' },
-      { id: 'asc' }
-    ],
-    select: {
-      id: true,
-      userId: true,
-      creatorNumber: true,
-      displayName: true,
-      user: {
-        select: {
-          email: true,
-          videos: {
-            where: {
-              seriesId: null
-            },
-            orderBy: { updatedAt: 'desc' },
-            select: {
-              id: true,
-              title: true,
-              status: true,
-              createdAt: true,
-              updatedAt: true,
-              posterKey: true,
-              creatorId: true,
-              technicalMetadata: {
-                select: {
-                  masterKey: true,
-                  masterSourceUrl: true,
-                  masterFileName: true,
-                  masterFileSize: true,
-                  masterUploadedAt: true,
-                  processingStatus: true,
-                  playbackUrl: true,
-                  trailerKey: true,
-                  orchestrationProvider: true,
-                  orchestrationJobId: true,
-                  transcodeProvider: true,
-                  transcodeTaskId: true,
-                  transcodeError: true,
-                  hlsOutputPath: true,
-                  hlsManifestKey: true,
-                  hlsReadyAt: true,
-                  masterDeletionEligible: true,
-                  masterDeletedAt: true
-                }
+    }),
+    prisma.moderationItem.count({
+      where: { status: 'PENDING' }
+    }),
+    prisma.moderationItem.count({
+      where: { status: 'APPROVED' }
+    }),
+    prisma.video.count({
+      where: {
+        status: 'APPROVED',
+        moderation: { is: null }
+      }
+    }),
+    prisma.creatorProfile.findMany({
+      where: {
+        creatorNumber: {
+          not: null
+        }
+      },
+      orderBy: [
+        { displayName: 'asc' },
+        { id: 'asc' }
+      ],
+      select: {
+        id: true,
+        userId: true,
+        creatorNumber: true,
+        displayName: true,
+        user: {
+          select: {
+            email: true,
+            videos: {
+              where: {
+                seriesId: null
               },
-              qualities: true
+              orderBy: { updatedAt: 'desc' },
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+                posterKey: true,
+                creatorId: true,
+                technicalMetadata: {
+                  select: {
+                    masterKey: true,
+                    masterSourceUrl: true,
+                    masterFileName: true,
+                    masterFileSize: true,
+                    masterUploadedAt: true,
+                    processingStatus: true,
+                    playbackUrl: true,
+                    trailerKey: true,
+                    orchestrationProvider: true,
+                    orchestrationJobId: true,
+                    transcodeProvider: true,
+                    transcodeTaskId: true,
+                    transcodeError: true,
+                    hlsOutputPath: true,
+                    hlsManifestKey: true,
+                    hlsReadyAt: true,
+                    masterDeletionEligible: true,
+                    masterDeletedAt: true
+                  }
+                },
+                qualities: true
+              }
             }
           }
         }
       }
-    }
-  });
+    })
+  ]);
 
   return (
     <DashboardShell
-      title="Admin videos"
-      description="Operate Dropbox masters, Contabo HLS processing, Bunny playback validation, and publish gating from one desk."
+      title="Content pipeline"
+      description="Move titles from intake, moderation and master attachment into Contabo HLS processing and live playback validation."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel
+        initialPendingIntakeCount={pendingIntakeCount}
+        initialModerationCounts={{
+          pending: moderationPendingCount,
+          approved: moderationApprovedCount,
+          orphanApproved: orphanApprovedCount
+        }}
         initialProducers={producers.map((producer) => ({
           id: producer.userId,
           profileId: producer.id,

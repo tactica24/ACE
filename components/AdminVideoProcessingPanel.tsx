@@ -47,12 +47,51 @@ type ProcessingProducer = {
   videos: ProcessingVideo[];
 };
 
-type ProducerBucket = 'needs-master' | 'uploaded' | 'processed';
+type ModerationCounts = {
+  pending: number;
+  approved: number;
+  orphanApproved: number;
+};
 
-const BUCKETS: Array<{ id: ProducerBucket; label: string; description: string }> = [
-  { id: 'uploaded', label: 'Source attached / processing', description: 'A Dropbox or Bunny master is attached. Admin starts Contabo HLS when ready.' },
-  { id: 'processed', label: 'Ready / published', description: 'Titles with verified HLS playback.' },
-  { id: 'needs-master', label: 'Needs source', description: 'Movie record exists, but the master file is still missing.' }
+type PipelineStage =
+  | 'overview'
+  | 'intake'
+  | 'moderation'
+  | 'needs-source'
+  | 'ready'
+  | 'in-progress';
+
+const STAGES: Array<{ id: PipelineStage; label: string; description: string }> = [
+  {
+    id: 'overview',
+    label: 'Pipeline overview',
+    description: 'Start-to-finish workflow across intake, moderation, source attachment and HLS processing.'
+  },
+  {
+    id: 'intake',
+    label: 'Intake',
+    description: 'Producer intake and title creation tasks that feed the pipe.'
+  },
+  {
+    id: 'moderation',
+    label: 'Moderation',
+    description: 'Review metadata, poster details and release readiness.'
+  },
+  {
+    id: 'needs-source',
+    label: 'Needs source',
+    description: 'Titles waiting for Dropbox or Bunny masters.'
+  },
+  {
+    id: 'ready',
+    label: 'Ready for processing',
+    description: 'Source attached and ready to queue Contabo.'
+  },
+  {
+    id: 'in-progress',
+    label: 'HLS processing',
+    description: 'Contabo jobs queued and encoding in progress.'
+  }
 ];
 
 const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
@@ -73,7 +112,15 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString();
 }
 
-function getBucket(video: ProcessingVideo): ProducerBucket {
+function isPipelineWorking(video: ProcessingVideo) {
+  return ACTIVE_PIPELINE_STATUSES.has(video.processingStatus);
+}
+
+function isLive(video: ProcessingVideo) {
+  return video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status);
+}
+
+function getBucket(video: ProcessingVideo) {
   if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
     return 'processed';
   }
@@ -83,14 +130,23 @@ function getBucket(video: ProcessingVideo): ProducerBucket {
   return 'needs-master';
 }
 
-function getBucketTone(bucket: ProducerBucket) {
+function getBucketTone(bucket: 'needs-master' | 'uploaded' | 'processed') {
   if (bucket === 'processed') return 'status-live';
   if (bucket === 'uploaded') return 'status-warn';
   return 'status-review';
 }
 
-function isPipelineWorking(video: ProcessingVideo) {
-  return ACTIVE_PIPELINE_STATUSES.has(video.processingStatus);
+function getVideoStage(video: ProcessingVideo): PipelineStage {
+  if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
+    return 'live';
+  }
+  if (isPipelineWorking(video)) {
+    return 'in-progress';
+  }
+  if (video.masterKey || video.masterSourceUrl) {
+    return 'ready';
+  }
+  return 'needs-source';
 }
 
 function getPipelineSummary(video: ProcessingVideo) {
@@ -115,12 +171,20 @@ function getPipelineSummary(video: ProcessingVideo) {
   return 'Waiting for a Dropbox or Bunny master source.';
 }
 
-export default function AdminVideoProcessingPanel({ initialProducers }: { initialProducers: ProcessingProducer[] }) {
+export default function AdminVideoProcessingPanel({
+  initialProducers,
+  initialPendingIntakeCount,
+  initialModerationCounts
+}: {
+  initialProducers: ProcessingProducer[];
+  initialPendingIntakeCount: number;
+  initialModerationCounts: ModerationCounts;
+}) {
   const [producers, setProducers] = useState(initialProducers);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
-  const [selectedBucket, setSelectedBucket] = useState<ProducerBucket | null>(null);
+  const [selectedStage, setSelectedStage] = useState<PipelineStage>('overview');
   const [sourceDrafts, setSourceDrafts] = useState<Record<string, string>>({});
 
   const sortedProducers = useMemo(
@@ -128,12 +192,60 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     [producers]
   );
 
-  const selectedProducer = sortedProducers.find((producer) => producer.id === selectedProducerId) ?? null;
-  const producerVideos = selectedProducer?.videos ?? [];
-  const visibleVideos = selectedBucket ? producerVideos.filter((video) => getBucket(video) === selectedBucket) : [];
+  const allVideos = useMemo(
+    () => producers.flatMap((producer) =>
+      producer.videos.map((video) => ({ ...video, creatorName: producer.name, creatorEmail: producer.email, creatorNumber: producer.creatorNumber }))
+    ),
+    [producers]
+  );
+
+  const selectedProducer = useMemo(
+    () => sortedProducers.find((producer) => producer.id === selectedProducerId) ?? null,
+    [sortedProducers, selectedProducerId]
+  );
+
+  const filteredVideos = useMemo(() => {
+    const source = selectedProducer ? selectedProducer.videos : allVideos;
+
+    if (selectedStage === 'needs-source') {
+      return source.filter((video) => !video.masterKey && !video.masterSourceUrl && !isLive(video));
+    }
+
+    if (selectedStage === 'ready') {
+      return source.filter(
+        (video) =>
+          (video.masterKey || video.masterSourceUrl) &&
+          !isPipelineWorking(video) &&
+          !isLive(video)
+      );
+    }
+
+    if (selectedStage === 'in-progress') {
+      return source.filter((video) => isPipelineWorking(video) && !isLive(video));
+    }
+
+    return source.filter((video) => !isLive(video));
+  }, [allVideos, selectedProducer, selectedStage]);
+
+  const activeVideos = useMemo(() => allVideos.filter(isPipelineWorking), [allVideos]);
+
+  const stageCounts = useMemo(
+    () => ({
+      needsSource: allVideos.filter((video) => !video.masterKey && !video.masterSourceUrl && !isLive(video)).length,
+      ready: allVideos.filter(
+        (video) =>
+          (video.masterKey || video.masterSourceUrl) &&
+          !isPipelineWorking(video) &&
+          !isLive(video)
+      ).length,
+      inProgress: allVideos.filter((video) => isPipelineWorking(video) && !isLive(video)).length,
+      live: allVideos.filter(isLive).length,
+      total: allVideos.filter((video) => !isLive(video)).length
+    }),
+    [allVideos]
+  );
 
   useEffect(() => {
-    const activeVideos = visibleVideos.filter((video) => isPipelineWorking(video));
     if (!activeVideos.length) return;
 
     let cancelled = false;
@@ -163,7 +275,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [visibleVideos]);
+  }, [activeVideos]);
 
   async function refreshVideo(videoId: string, payload: Record<string, unknown>) {
     setProducers((current) =>
@@ -201,6 +313,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to delete source.');
+      if (!payload.video) throw new Error(payload.error ?? 'Source deleted, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
       setMessage('Source deleted. HLS remains as the viewer playback source.');
     } catch (error) {
@@ -221,6 +334,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to sync HLS pipeline.');
+      if (!payload.video) throw new Error(payload.error ?? 'Pipeline sync completed, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
       setMessage(payload.message ?? 'HLS pipeline synced.');
     } catch (error) {
@@ -247,6 +361,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to attach Dropbox source.');
+      if (!payload.video) throw new Error(payload.error ?? 'Dropbox source attached, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
       setSourceDrafts((current) => ({ ...current, [videoId]: '' }));
       setMessage(payload.message ?? 'Dropbox source attached.');
@@ -268,6 +383,7 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
+      if (!payload.video) throw new Error(payload.error ?? 'Contabo HLS pipeline started, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
       setMessage(payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
     } catch (error) {
@@ -281,203 +397,277 @@ export default function AdminVideoProcessingPanel({ initialProducers }: { initia
     await updateStatus(videoId, 'PUBLISH');
   }
 
-  if (!selectedProducer) {
-    return (
-      <div className="stack-list">
-        {message ? <div className="card">{message}</div> : null}
-        <div className="admin-producer-list">
-          <div className="admin-producer-list-head">
-            <span>Producer</span>
-            <span>Pipeline</span>
-            <span>Open</span>
-          </div>
-          {sortedProducers.map((producer) => {
-            const counts = BUCKETS.reduce(
-              (total, bucket) => ({ ...total, [bucket.id]: producer.videos.filter((video) => getBucket(video) === bucket.id).length }),
-              {} as Record<ProducerBucket, number>
-            );
-            const nextAction = counts.uploaded > 0
-              ? 'Pipeline active'
-              : counts.processed > 0
-                ? 'Processed'
-                : producer.videos.length > 0
-                  ? 'Needs source'
-                  : 'Awaiting uploads';
-
-            return (
-              <button key={producer.id} className="admin-producer-row" type="button" onClick={() => setSelectedProducerId(producer.id)}>
-                <span className="admin-producer-identity">
-                  <strong>{producer.name}</strong>
-                  <span>{producer.creatorNumber} - {producer.email}</span>
-                </span>
-                <span className="admin-producer-metrics">
-                  <span><strong>{producer.videos.length}</strong> titles</span>
-                  <span><strong>{counts.uploaded}</strong> pipeline</span>
-                  <span><strong>{counts.processed}</strong> ready</span>
-                </span>
-                <div className="admin-producer-action">
-                  <span className={`status-chip ${producer.videos.length ? 'status-review' : 'status-warn'}`}>{nextAction}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        {!sortedProducers.length ? <div className="card">No producers with producer IDs yet.</div> : null}
-      </div>
-    );
-  }
-
-  if (!selectedBucket) {
-    return (
-      <div className="stack-list">
-        <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <span className="pill">{selectedProducer.creatorNumber}</span>
-            <h2 style={{ margin: '8px 0 0' }}>{selectedProducer.name}</h2>
-            <p className="muted" style={{ margin: '6px 0 0' }}>{selectedProducer.email}</p>
-          </div>
-          <button className="btn btn-ghost" type="button" onClick={() => setSelectedProducerId(null)}>All producers</button>
-        </div>
-        <div className="detail-grid">
-          {BUCKETS.map((bucket) => {
-            const count = producerVideos.filter((video) => getBucket(video) === bucket.id).length;
-            return (
-              <button key={bucket.id} className="detail-card" type="button" style={{ textAlign: 'left' }} onClick={() => setSelectedBucket(bucket.id)}>
-                <span className={`status-chip ${getBucketTone(bucket.id)}`}>{bucket.label}</span>
-                <strong style={{ display: 'block', marginTop: 12 }}>{count} title{count === 1 ? '' : 's'}</strong>
-                <p className="muted" style={{ marginBottom: 0 }}>{bucket.description}</p>
-              </button>
-            );
-          })}
-        </div>
-        {!producerVideos.length ? (
-          <div className="card">This producer has an ID and can upload, but no movie has been submitted yet.</div>
-        ) : null}
-      </div>
-    );
-  }
-
-  const selectedBucketLabel = BUCKETS.find((bucket) => bucket.id === selectedBucket)?.label ?? 'Movies';
+  const selectedStageLabel = STAGES.find((stage) => stage.id === selectedStage)?.label ?? 'Pipeline';
+  const selectedStageDescription = STAGES.find((stage) => stage.id === selectedStage)?.description ?? '';
 
   return (
     <div className="stack-list">
-      {message ? <div className="card">{message}</div> : null}
-      <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <span className="pill">{selectedProducer.name}</span>
-          <h2 style={{ margin: '8px 0 0' }}>{selectedBucketLabel}</h2>
+      {message ? (
+        <div className={`card ${pendingId ? 'status-warn' : 'status-live'}`} style={{ padding: 12, borderRadius: 4, backgroundColor: pendingId ? '#fef3c7' : '#f0fdf4', borderLeft: `4px solid ${pendingId ? '#f59e0b' : '#22c55e'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {pendingId ? (
+              <span style={{ fontSize: 12, animation: 'spin 1s linear infinite' }}>⏳</span>
+            ) : (
+              <span style={{ fontSize: 12 }}>✓</span>
+            )}
+            <strong>{message}</strong>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <span className="pill">Content pipeline</span>
+          <h2 style={{ margin: '8px 0 0' }}>One dashboard for intake, moderation, processing and delivery.</h2>
+          <p className="muted" style={{ margin: '8px 0 0' }}>
+            Manage the producer intake feed, moderation signals, batch masters and Contabo HLS progress from a unified pipeline view.
+          </p>
         </div>
         <div className="action-list" style={{ margin: 0 }}>
-          <button className="btn btn-ghost" type="button" onClick={() => setSelectedBucket(null)}>Producer buckets</button>
-          <button className="btn btn-ghost" type="button" onClick={() => { setSelectedBucket(null); setSelectedProducerId(null); }}>All producers</button>
+          <a className="btn btn-primary" href="/admin/upload">Create title</a>
+          <a className="btn btn-ghost" href="/admin/moderation">Moderation</a>
+          <a className="btn btn-ghost" href="/admin/intake">Producer intake</a>
+          <a className="btn btn-ghost" href="/admin/live">Live movies</a>
         </div>
       </div>
 
-      {visibleVideos.map((video) => {
-        const busy = pendingId === video.id;
-        const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
-        const canPublish = video.status === 'READY';
+      <div className="detail-grid" style={{ margin: '20px 0' }}>
+        <div className="detail-card">
+          <span className="detail-label">Active producers</span>
+          <strong>{producers.length}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Total titles in pipeline</span>
+          <strong>{stageCounts.total}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Pending intake</span>
+          <strong>{initialPendingIntakeCount}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Moderation pending</span>
+          <strong>{initialModerationCounts.pending}</strong>
+        </div>
+        <div className="detail-card">
+          <span className="detail-label">Live titles</span>
+          <strong>{stageCounts.live}</strong>
+          <p className="muted" style={{ margin: '6px 0 0' }}>
+            Live work is moved out of the workflow into the dedicated live movies desk.
+          </p>
+        </div>
+      </div>
 
-        return (
-          <div key={video.id} className="card">
-            <div className="stack-row" style={{ alignItems: 'flex-start' }}>
-              <div>
-                <span className={`status-chip ${getBucketTone(getBucket(video))}`}>{getBucket(video).replace('-', ' ')}</span>
-                <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
-                <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
-                <p className="muted" style={{ marginTop: 6 }}>{getPipelineSummary(video)}</p>
-              </div>
-              <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
-                {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Download trailer</a> : null}
-                {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Download poster</a> : null}
-              </div>
+      <div className="stack-row" style={{ flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+        {STAGES.map((stage) => (
+          <button
+            key={stage.id}
+            type="button"
+            onClick={() => setSelectedStage(stage.id)}
+            className={`btn btn-ghost${selectedStage === stage.id ? ' status-live' : ''}`}
+            style={{ minWidth: 160, textAlign: 'left' }}
+          >
+            <strong>{stage.label}</strong>
+            <p className="muted" style={{ margin: '6px 0 0' }}>{stage.description}</p>
+          </button>
+        ))}
+      </div>
+
+      {selectedStage === 'overview' ? (
+        <div className="detail-grid">
+          <div className="detail-card">
+            <span className="detail-label">Need source</span>
+            <strong>{stageCounts.needsSource}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">Ready for processing</span>
+            <strong>{stageCounts.ready}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">HLS processing</span>
+            <strong>{stageCounts.inProgress}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">Live / ready</span>
+            <strong>{stageCounts.live}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">Selected stage</span>
+            <strong>{selectedStageLabel}</strong>
+            <p className="muted" style={{ margin: '6px 0 0' }}>{selectedStageDescription}</p>
+          </div>
+        </div>
+      ) : selectedStage === 'intake' ? (
+        <div className="card">
+          <h3>Intake and title creation</h3>
+          <p className="muted" style={{ margin: '8px 0' }}>
+            Use the create title desk to build new content for approved producers and keep the inventory moving into moderation.
+          </p>
+          <div className="action-list" style={{ margin: 0 }}>
+            <a className="btn btn-primary" href="/admin/upload">Open create desk</a>
+            <a className="btn btn-ghost" href="/admin/intake">Review producer intake</a>
+          </div>
+        </div>
+      ) : selectedStage === 'moderation' ? (
+        <div className="card">
+          <h3>Moderation queue</h3>
+          <div className="detail-grid" style={{ marginTop: 16 }}>
+            <div className="detail-card"><span className="detail-label">Pending review</span><strong>{initialModerationCounts.pending}</strong></div>
+            <div className="detail-card"><span className="detail-label">Approved</span><strong>{initialModerationCounts.approved}</strong></div>
+            <div className="detail-card"><span className="detail-label">Orphan approved</span><strong>{initialModerationCounts.orphanApproved}</strong></div>
+          </div>
+          <div className="action-list" style={{ margin: '20px 0 0' }}>
+            <a className="btn btn-primary" href="/admin/moderation">Open moderation queue</a>
+            <a className="btn btn-ghost" href="/admin/settings">Pricing controls</a>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <span className="pill">{selectedStageLabel}</span>
+              <h2 style={{ margin: '8px 0 0' }}>{selectedProducer ? `${selectedProducer.name} — ${selectedStageLabel}` : selectedStageLabel}</h2>
+              <p className="muted" style={{ margin: '6px 0 0' }}>{selectedStageDescription}</p>
             </div>
-
-            <div className="detail-grid" style={{ margin: '16px 0' }}>
-              <div className="detail-card"><span className="detail-label">Master source</span><strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey ? 'Bunny uploaded' : 'Missing'}</strong></div>
-              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
-              <div className="detail-card"><span className="detail-label">Uploaded date</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
-            </div>
-
-            <div className="detail-card" style={{ marginBottom: 16 }}>
-              <span className="detail-label">Dropbox master source</span>
-              <div className="stack-row" style={{ alignItems: 'center' }}>
-                <input
-                  type="url"
-                  value={sourceDrafts[video.id] ?? ''}
-                  onChange={(event) => setSourceDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
-                  placeholder="Paste Dropbox share link"
-                  disabled={busy}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => void attachDropboxSource(video.id)}>
-                  Attach Dropbox URL
-                </button>
-                {video.masterSourceUrl ? (
-                  <a className="btn btn-ghost" href={video.masterSourceUrl} target="_blank" rel="noreferrer">
-                    Open source
-                  </a>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="action-list">
-              {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
-              <button className="btn btn-ghost" type="button" disabled={!video.masterKey} onClick={() => void navigator.clipboard.writeText(command)}>Copy master normalize command</button>
-              <button className="btn btn-primary" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void startPipeline(video.id)}>
-                Start Contabo HLS
-              </button>
-              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void completeProcessing(video.id)}>
-                Sync Contabo status
-              </button>
-              <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>Delete source</button>
-              {canPublish ? (
-                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
-                  Publish
+            <div className="action-list" style={{ margin: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="muted">Producer</span>
+                <select
+                  value={selectedProducerId ?? ''}
+                  onChange={(event) => setSelectedProducerId(event.target.value || null)}
+                  className="input"
+                >
+                  <option value="">All producers</option>
+                  {sortedProducers.map((producer) => (
+                    <option key={producer.id} value={producer.id}>{producer.name}</option>
+                  ))}
+                </select>
+              </label>
+              {selectedProducer ? (
+                <button className="btn btn-ghost" type="button" onClick={() => setSelectedProducerId(null)}>
+                  Clear producer filter
                 </button>
               ) : null}
             </div>
-
-            {video.masterKey ? (
-              <div className="detail-card" style={{ marginTop: 14 }}>
-                <span className="detail-label">Master normalize command</span>
-                <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
-              </div>
-            ) : null}
-
-            <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.hlsManifestKey ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
-              <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
-            </div>
-
-            <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">Bunny movie folder</span><strong>{video.bunnyFolderPrefix ?? 'Will be created on first upload'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Contabo</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'CONTABO'} job linked` : 'Not queued yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Transcode</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'FFMPEG'} task linked` : 'Not started yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">HLS output</span><strong>{video.hlsOutputPath ?? 'Not assigned yet'}</strong></div>
-            </div>
-
-            <div className="detail-grid" style={{ marginTop: 14 }}>
-              <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{video.hlsManifestKey ?? 'Not generated yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? formatDateTime(video.hlsReadyAt) : 'No'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Latest callback</span><strong>{video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
-              <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{video.transcodeError ?? 'None recorded'}</strong></div>
-            </div>
-
-            {video.latestPipelineMessage ? (
-              <div className="detail-card" style={{ marginTop: 14 }}>
-                <span className="detail-label">Callback note</span>
-                <strong>{video.latestPipelineMessage}</strong>
-              </div>
-            ) : null}
           </div>
-        );
-      })}
 
-      {!visibleVideos.length ? <div className="card">No movies in this section yet.</div> : null}
+          <div className="detail-grid" style={{ margin: '16px 0' }}>
+            <div className="detail-card"><span className="detail-label">Titles in stage</span><strong>{filteredVideos.length}</strong></div>
+            <div className="detail-card"><span className="detail-label">Active processing</span><strong>{activeVideos.length}</strong></div>
+            <div className="detail-card"><span className="detail-label">Selected producer</span><strong>{selectedProducer ? selectedProducer.name : 'All'}</strong></div>
+          </div>
+
+          {filteredVideos.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((video) => {
+            const busy = pendingId === video.id;
+            const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
+            const canPublish = video.status === 'READY';
+
+            return (
+              <div key={video.id} className="card">
+                <div className="stack-row" style={{ alignItems: 'flex-start' }}>
+                  <div>
+                    <span className={`status-chip ${getBucketTone(getBucket(video))}`}>{getBucket(video).replace('-', ' ')}</span>
+                    <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
+                    <p className="muted">{video.creatorName} · {video.creatorEmail}</p>
+                    <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
+                    <p className="muted" style={{ marginTop: 6 }}>{getPipelineSummary(video)}</p>
+                  </div>
+                  <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
+                    {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Trailer</a> : null}
+                    {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Poster</a> : null}
+                  </div>
+                </div>
+
+                <div className="detail-grid" style={{ margin: '16px 0' }}>
+                  <div className="detail-card"><span className="detail-label">Master source</span><strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey ? 'Bunny uploaded' : 'Missing'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Uploaded</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
+                </div>
+
+                <div className="detail-card" style={{ marginBottom: 16 }}>
+                  <span className="detail-label">Dropbox master source</span>
+                  <div className="stack-row" style={{ alignItems: 'center' }}>
+                    <input
+                      type="url"
+                      value={sourceDrafts[video.id] ?? ''}
+                      onChange={(event) => setSourceDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
+                      placeholder="Paste Dropbox share link"
+                      disabled={busy}
+                      style={{ flex: 1, minWidth: 0 }}
+                    />
+                    <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => void attachDropboxSource(video.id)}>
+                      {busy && pendingId === video.id ? '⏳ Attaching...' : 'Attach Dropbox URL'}
+                    </button>
+                    {video.masterSourceUrl ? (
+                      <a className="btn btn-ghost" href={video.masterSourceUrl} target="_blank" rel="noreferrer">
+                        Open source
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="action-list">
+                  {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
+                  <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void navigator.clipboard.writeText(command)}>
+                    {busy && pendingId === video.id ? '⏳ Copying...' : 'Copy master normalize command'}
+                  </button>
+                  <button className="btn btn-primary" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void startPipeline(video.id)}>
+                    {busy && pendingId === video.id ? '⏳ Starting Contabo...' : 'Start Contabo HLS'}
+                  </button>
+                  <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void completeProcessing(video.id)}>
+                    {busy && pendingId === video.id ? '⏳ Syncing...' : 'Sync Contabo status'}
+                  </button>
+                  <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>
+                    {busy && pendingId === video.id ? '⏳ Deleting...' : 'Delete source'}
+                  </button>
+                  {canPublish ? (
+                    <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
+                      {busy && pendingId === video.id ? '⏳ Publishing...' : 'Publish'}
+                    </button>
+                  ) : null}
+                </div>
+
+                {video.masterKey ? (
+                  <div className="detail-card" style={{ marginTop: 14 }}>
+                    <span className="detail-label">Master normalize command</span>
+                    <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
+                  </div>
+                ) : null}
+
+                <div className="detail-grid" style={{ marginTop: 14 }}>
+                  <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.hlsManifestKey ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
+                </div>
+
+                <div className="detail-grid" style={{ marginTop: 14 }}>
+                  <div className="detail-card"><span className="detail-label">Bunny movie folder</span><strong>{video.bunnyFolderPrefix ?? 'Will be created on first upload'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Contabo</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'CONTABO'} job linked` : 'Not queued yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Transcode</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'FFMPEG'} task linked` : 'Not started yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">HLS output</span><strong>{video.hlsOutputPath ?? 'Not assigned yet'}</strong></div>
+                </div>
+
+                <div className="detail-grid" style={{ marginTop: 14 }}>
+                  <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{video.hlsManifestKey ?? 'Not generated yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? formatDateTime(video.hlsReadyAt) : 'No'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Latest callback</span><strong>{video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{video.transcodeError ?? 'None recorded'}</strong></div>
+                </div>
+
+                {video.latestPipelineMessage ? (
+                  <div className="detail-card" style={{ marginTop: 14 }}>
+                    <span className="detail-label">Callback note</span>
+                    <strong>{video.latestPipelineMessage}</strong>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+
+          {!filteredVideos.length ? <div className="card">No movies in this section yet.</div> : null}
+        </>
+      )}
     </div>
   );
 }
