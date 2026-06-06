@@ -59,7 +59,8 @@ type PipelineStage =
   | 'moderation'
   | 'needs-source'
   | 'ready'
-  | 'in-progress';
+  | 'in-progress'
+  | 'live';
 
 const STAGES: Array<{ id: PipelineStage; label: string; description: string }> = [
   {

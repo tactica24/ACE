@@ -226,7 +226,7 @@ export default async function AdminLiveMoviesPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6b7280' }}>HLS ready at</span>
                       <span style={{ color: '#111827', fontWeight: 600 }}>
-                        {video.technicalMetadata?.hlsReadyAt ? formatDate(video.technicalMetadata.hlsReadyAt.toISOString()) : '—'}
+                        {video.technicalMetadata?.hlsReadyAt ? formatDate(video.technicalMetadata.hlsReadyAt?.toISOString()) : '—'}
                       </span>
                     </div>
                   </div>
