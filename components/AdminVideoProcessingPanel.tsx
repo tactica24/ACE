@@ -406,7 +406,7 @@ export default function AdminVideoProcessingPanel({
         <div className={`card ${pendingId ? 'status-warn' : 'status-live'}`} style={{ padding: 12, borderRadius: 4, backgroundColor: pendingId ? '#fef3c7' : '#f0fdf4', borderLeft: `4px solid ${pendingId ? '#f59e0b' : '#22c55e'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {pendingId ? (
-              <span style={{ fontSize: 12, animation: 'spin 1s linear infinite' }}>⏳</span>
+              <span style={{ fontSize: 12, display: 'inline-block' }} className="spinner">⏳</span>
             ) : (
               <span style={{ fontSize: 12 }}>✓</span>
             )}

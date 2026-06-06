@@ -159,9 +159,9 @@ export default async function AdminLiveMoviesPage() {
                         margin: '6px 0 0',
                         fontSize: 14,
                         color: '#6b7280',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
+                        display: '-webkit-box' as any,
+                        WebkitLineClamp: 2 as any,
+                        WebkitBoxOrient: 'vertical' as any,
                         overflow: 'hidden'
                       }}
                     >
