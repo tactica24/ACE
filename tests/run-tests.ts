@@ -247,8 +247,8 @@ const videoCases: Case[] = [
   {
     name: 'delivery package summaries describe standalone and series readiness cleanly',
     run: () => {
-      assert.equal(getViewerPackageLabel({ videoType: 'FEATURE', seriesId: null }), 'Playable MP4');
-      assert.equal(getViewerPackageLabel({ videoType: 'SERIES', seriesId: null }), 'Per-episode playable MP4');
+      assert.equal(getViewerPackageLabel({ videoType: 'FEATURE', seriesId: null }), 'HLS package');
+      assert.equal(getViewerPackageLabel({ videoType: 'SERIES', seriesId: null }), 'Per-episode HLS package');
       assert.equal(
         getViewerPackageStatus({
           videoType: 'FEATURE',
