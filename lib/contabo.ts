@@ -37,12 +37,21 @@ async function parseJsonResponse(response: Response, action: string) {
   const payload = await response.json().catch(() => ({}));
   if (response.ok) return payload;
 
+  const baseUrl = getContaboApiBaseUrl();
   const message =
     typeof payload?.error === 'string'
       ? payload.error
       : typeof payload?.message === 'string'
         ? payload.message
         : response.statusText;
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(
+      `Contabo worker ${action} was rejected by ${baseUrl} (${response.status}). ` +
+      `Check that CONTABO_PIPELINE_SECRET in this app matches the worker's x-ace-pipeline-secret expectation. ` +
+      `Worker response: ${message}`
+    );
+  }
 
   throw new Error(`Contabo worker ${action} failed (${response.status}): ${message}`);
 }
