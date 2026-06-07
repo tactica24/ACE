@@ -4,6 +4,7 @@ type DeliveryPackageInput = {
   primaryReady?: boolean;
   fallbackReady?: boolean;
   masterReady?: boolean;
+  hlsReady?: boolean;
   episodeCount?: number;
   readyEpisodeCount?: number;
   subtitleTrackCount?: number;
@@ -39,6 +40,10 @@ export function getViewerPackageStatus(input: DeliveryPackageInput) {
 
   if (input.primaryReady && input.fallbackReady) {
     return '1080p and 720p ready';
+  }
+
+  if (input.hlsReady) {
+    return 'Bunny HLS ready';
   }
 
   if (input.masterReady) {

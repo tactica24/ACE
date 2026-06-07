@@ -545,8 +545,8 @@ export async function POST(req: NextRequest) {
           durationSec: safeDurationSec,
           tags: safeTags,
           highlightSeconds: safeHighlights,
-          primaryStorageKey: null,
-          fallbackStorageKey: null,
+          primaryStorageKey: safePrimaryStorageKey || null,
+          fallbackStorageKey: safeFallbackStorageKey || null,
           posterKey: safePosterKey,
           subtitleTracks: safeSubtitleTracks.length
             ? {

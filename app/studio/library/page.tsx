@@ -31,7 +31,9 @@ export default async function LibraryPage() {
           deliveryFormat: true,
           englishSubtitlesProvided: true,
           masterKey: true,
-          masterSourceUrl: true
+          masterSourceUrl: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true
         }
       },
       episodes: {
@@ -123,6 +125,7 @@ export default async function LibraryPage() {
                             primaryReady: Boolean(video.primaryStorageKey?.toLowerCase().endsWith('.mp4')),
                             fallbackReady: Boolean(video.fallbackStorageKey?.toLowerCase().endsWith('.mp4')),
                             masterReady: hasVideoMasterSource(video),
+                            hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
                             episodeCount: video._count.episodes,
                             readyEpisodeCount
                           })}

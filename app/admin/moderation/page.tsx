@@ -10,6 +10,7 @@ import {
   getViewerPackageStatus
 } from '@/lib/delivery-package';
 import { hasVideoMasterSource } from '@/lib/master-source';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,9 @@ export default async function ModerationPage() {
                   technicalMetadata: {
                     select: {
                       masterKey: true,
-                      masterSourceUrl: true
+                      masterSourceUrl: true,
+                      hlsManifestKey: true,
+                      hlsReadyAt: true
                     }
                   }
                 }
@@ -175,7 +178,9 @@ export default async function ModerationPage() {
               technicalMetadata: {
                 select: {
                   masterKey: true,
-                  masterSourceUrl: true
+                  masterSourceUrl: true,
+                  hlsManifestKey: true,
+                  hlsReadyAt: true
                 }
               }
             }
@@ -188,7 +193,7 @@ export default async function ModerationPage() {
 
     const mapQueueVideo = (video: (typeof items)[number]['video'] | (typeof orphanApprovedVideos)[number]) => {
       const readyEpisodeCount = video.episodes.filter(
-        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || hasVideoMasterSource(episode))
+        (episode) => episode.status === 'APPROVED' && hasReadyMoviePlayback(episode)
       ).length;
 
       return {
@@ -227,6 +232,7 @@ export default async function ModerationPage() {
           primaryReady: Boolean(video.primaryStorageKey),
           fallbackReady: Boolean(video.fallbackStorageKey),
           masterReady: hasVideoMasterSource(video),
+          hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
           episodeCount: video._count.episodes,
           readyEpisodeCount
         }),

@@ -253,6 +253,14 @@ const videoCases: Case[] = [
         getViewerPackageStatus({
           videoType: 'FEATURE',
           seriesId: null,
+          hlsReady: true,
+        }),
+        'Bunny HLS ready',
+      );
+      assert.equal(
+        getViewerPackageStatus({
+          videoType: 'FEATURE',
+          seriesId: null,
           primaryReady: true,
           fallbackReady: true,
         }),

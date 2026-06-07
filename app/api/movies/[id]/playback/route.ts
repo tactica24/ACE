@@ -92,7 +92,9 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
       ? ''
       : req.nextUrl.searchParams.get('deviceSessionId')?.trim() || undefined;
 
-  const shouldCheckProgressive = !fullAccess || !hlsManifestKey || !video.technicalMetadata?.hlsReadyAt;
+  const shouldCheckProgressive = fullAccess
+    ? !hlsManifestKey || !video.technicalMetadata?.hlsReadyAt
+    : !video.technicalMetadata?.trailerKey;
   const mp4Status = shouldCheckProgressive ? await getMovieMp4StorageStatus(video) : null;
 
   if (shouldCheckProgressive && !mp4Status?.selectedKey) {

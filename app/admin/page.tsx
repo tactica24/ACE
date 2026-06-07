@@ -10,6 +10,7 @@ import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { getViewerPackageStatus } from '@/lib/delivery-package';
 import { hasVideoMasterSource } from '@/lib/master-source';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { getNodeHealth } from '@/lib/metrics';
 import { getRegionalMoneyDisplay } from '@/lib/pricing';
 import { getReconciliationSummary } from '@/lib/reconciliation';
@@ -84,7 +85,9 @@ export default async function AdminPage() {
           technicalMetadata: {
             select: {
               masterKey: true,
-              masterSourceUrl: true
+              masterSourceUrl: true,
+              hlsManifestKey: true,
+              hlsReadyAt: true
             }
           },
           _count: { select: { episodes: true } },
@@ -96,7 +99,9 @@ export default async function AdminPage() {
               technicalMetadata: {
                 select: {
                   masterKey: true,
-                  masterSourceUrl: true
+                  masterSourceUrl: true,
+                  hlsManifestKey: true,
+                  hlsReadyAt: true
                 }
               }
             }
@@ -128,9 +133,10 @@ export default async function AdminPage() {
         primaryReady: Boolean(video.primaryStorageKey),
         fallbackReady: Boolean(video.fallbackStorageKey),
         masterReady: hasVideoMasterSource(video),
+        hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
-          (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey || hasVideoMasterSource(episode))
+          (episode) => episode.status === 'APPROVED' && hasReadyMoviePlayback(episode)
         ).length
       })
     }));

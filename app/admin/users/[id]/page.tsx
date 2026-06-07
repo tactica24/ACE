@@ -22,6 +22,7 @@ import {
   getViewerPackageStatus
 } from '@/lib/delivery-package';
 import { formatRecordedCharge } from '@/lib/format';
+import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { getRegionalMoneyDisplay } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
@@ -128,14 +129,22 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             select: {
               status: true,
               primaryStorageKey: true,
-              fallbackStorageKey: true
+              fallbackStorageKey: true,
+              technicalMetadata: {
+                select: {
+                  hlsManifestKey: true,
+                  hlsReadyAt: true
+                }
+              }
             }
           },
           technicalMetadata: {
             select: {
               trailerKey: true,
               deliveryFormat: true,
-              englishSubtitlesProvided: true
+              englishSubtitlesProvided: true,
+              hlsManifestKey: true,
+              hlsReadyAt: true
             }
           }
         }
@@ -313,9 +322,10 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                       seriesId: video.seriesId,
                       primaryReady: Boolean(video.primaryStorageKey),
                       fallbackReady: Boolean(video.fallbackStorageKey),
+                      hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
                       episodeCount: video._count.episodes,
                       readyEpisodeCount: video.episodes.filter(
-                        (episode) => episode.status === 'APPROVED' && Boolean(episode.primaryStorageKey || episode.fallbackStorageKey)
+                        (episode) => episode.status === 'APPROVED' && hasReadyMoviePlayback(episode)
                       ).length
                     }),
                     subtitleStatus: getSubtitlePackageStatus({

@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
   const errors = passed
     ? []
     : hasVideoMasterSource(refreshedVideo ?? video)
-      ? ['A master source is attached, but no viewer-ready HLS playback is attached to this title yet.']
-      : ['No master source or viewer-ready HLS playback is attached to this title yet.'];
+      ? ['A master source is attached, but no viewer-ready Bunny playback or fallback MP4 is attached to this title yet.']
+      : ['No master source or viewer-ready Bunny playback or fallback MP4 is attached to this title yet.'];
 
   if (passed) {
     await prisma.$transaction([

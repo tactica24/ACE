@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
           deliveryFormat: true,
           englishSubtitlesProvided: true,
           masterKey: true,
-          masterSourceUrl: true
+          masterSourceUrl: true,
+          hlsManifestKey: true,
+          hlsReadyAt: true
         }
       },
       _count: {
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest) {
         primaryReady: Boolean(video.primaryStorageKey),
         fallbackReady: Boolean(video.fallbackStorageKey),
         masterReady: hasVideoMasterSource(video),
+        hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
         episodeCount: video._count.episodes,
         readyEpisodeCount: video.episodes.filter(
           (episode) => hasReadyMoviePlayback(episode)
