@@ -58,7 +58,6 @@ export default async function AdminLiveMoviesPage() {
           creator: {
             select: {
               displayName: true,
-              displayImage: true
             }
           }
         }
