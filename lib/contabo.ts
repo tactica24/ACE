@@ -12,6 +12,8 @@ export type ContaboTranscodeJob = {
   hlsManifestKey?: string | null;
 };
 
+const DEFAULT_CONTABO_TIMEOUT_MS = 20_000;
+
 function getContaboApiBaseUrl() {
   if (!env.CONTABO_TRANSCODE_API_URL) {
     throw new Error('CONTABO_TRANSCODE_API_URL is required for Contabo transcoding.');
@@ -45,6 +47,38 @@ async function parseJsonResponse(response: Response, action: string) {
   throw new Error(`Contabo worker ${action} failed (${response.status}): ${message}`);
 }
 
+async function fetchContabo(
+  path: string,
+  init: RequestInit,
+  action: string,
+  timeoutMs = DEFAULT_CONTABO_TIMEOUT_MS
+) {
+  const baseUrl = getContaboApiBaseUrl();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(`${baseUrl}${path}`, {
+      ...init,
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(
+        `Contabo worker ${action} timed out after ${Math.round(timeoutMs / 1000)}s. ` +
+        `Check ${baseUrl} and confirm the worker is online.`
+      );
+    }
+
+    throw new Error(
+      `Contabo worker ${action} could not be reached at ${baseUrl}. ` +
+      `${error instanceof Error ? error.message : 'Unknown network error.'}`
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function createContaboTranscodeJob(input: {
   jobId: string;
   callbackUrl: string;
@@ -60,7 +94,7 @@ export async function createContaboTranscodeJob(input: {
     throw new Error('A Bunny master key or source master URL is required before sending the video to Contabo.');
   }
 
-  const response = await fetch(`${getContaboApiBaseUrl()}/jobs`, {
+  const response = await fetchContabo('/jobs', {
     method: 'POST',
     headers: getContaboHeaders(),
     body: JSON.stringify({
@@ -72,7 +106,7 @@ export async function createContaboTranscodeJob(input: {
       hlsOutputPath: input.hlsOutputPath,
       callbackUrl: input.callbackUrl
     })
-  });
+  }, 'job creation');
 
   const payload = (await parseJsonResponse(response, 'job creation')) as ContaboTranscodeJob;
   if (!payload.id) {
@@ -87,10 +121,10 @@ export async function getContaboTranscodeJob(jobId: string) {
     throw new Error('A Contabo job id is required.');
   }
 
-  const response = await fetch(`${getContaboApiBaseUrl()}/jobs/${encodeURIComponent(jobId)}`, {
+  const response = await fetchContabo(`/jobs/${encodeURIComponent(jobId)}`, {
     method: 'GET',
     headers: getContaboHeaders()
-  });
+  }, 'status sync', 12_000);
 
   return parseJsonResponse(response, 'status sync') as Promise<ContaboTranscodeJob>;
 }
@@ -98,10 +132,10 @@ export async function getContaboTranscodeJob(jobId: string) {
 export async function deleteContaboJobArtifacts(jobId: string) {
   if (!jobId) return;
 
-  const response = await fetch(`${getContaboApiBaseUrl()}/jobs/${encodeURIComponent(jobId)}/artifacts`, {
+  const response = await fetchContabo(`/jobs/${encodeURIComponent(jobId)}/artifacts`, {
     method: 'DELETE',
     headers: getContaboHeaders()
-  });
+  }, 'artifact cleanup', 12_000);
 
   await parseJsonResponse(response, 'local artifact cleanup');
 }

@@ -53,6 +53,19 @@ type ModerationCounts = {
   orphanApproved: number;
 };
 
+type PipelineHealth = {
+  contaboReady: boolean;
+  contaboApiUrl: string | null;
+  callbackBaseUrl: string | null;
+  missingConfig: string[];
+};
+
+type OperationState = {
+  tone: 'working' | 'success' | 'error';
+  text: string;
+  videoId: string | null;
+};
+
 type PipelineStage =
   | 'overview'
   | 'intake'
@@ -172,18 +185,79 @@ function getPipelineSummary(video: ProcessingVideo) {
   return 'Waiting for a Dropbox or Bunny master source.';
 }
 
+function getSourceLabel(video: ProcessingVideo) {
+  if (video.masterSourceUrl) return 'Dropbox master attached';
+  if (video.masterKey) return 'Bunny master uploaded';
+  return 'No source attached';
+}
+
+function getDeliveryLabel(video: ProcessingVideo) {
+  if (video.hlsManifestKey && video.hlsReadyAt) return 'Bunny HLS ready';
+  if (video.hlsManifestKey) return 'HLS manifest created';
+  if (video.masterSourceUrl || video.masterKey) return 'Waiting for Contabo HLS';
+  return 'Viewer delivery missing';
+}
+
+function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
+  if (!pipelineHealth.contaboReady) {
+    return 'Complete pipeline configuration before queueing Contabo.';
+  }
+  if (!video.masterKey && !video.masterSourceUrl) {
+    return 'Attach a Dropbox URL or Bunny master first.';
+  }
+  if (video.processingStatus === 'TRANSCODE_FAILED') {
+    return 'Review the worker error, fix the source, then restart Contabo.';
+  }
+  if (isPipelineWorking(video)) {
+    return 'Wait for the worker callback or sync the latest Contabo status.';
+  }
+  if (video.processingStatus === 'READY_TO_STREAM' || video.status === 'READY') {
+    return 'Publish the title when release checks are complete.';
+  }
+  return 'Queue Contabo HLS processing.';
+}
+
+function getOperationStyles(tone: OperationState['tone']) {
+  if (tone === 'error') {
+    return {
+      cardClassName: 'status-error',
+      backgroundColor: '#fef2f2',
+      borderColor: '#dc2626',
+      icon: '!'
+    };
+  }
+
+  if (tone === 'working') {
+    return {
+      cardClassName: 'status-warn',
+      backgroundColor: '#fef3c7',
+      borderColor: '#f59e0b',
+      icon: '...'
+    };
+  }
+
+  return {
+    cardClassName: 'status-live',
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+    icon: 'OK'
+  };
+}
+
 export default function AdminVideoProcessingPanel({
   initialProducers,
+  pipelineHealth,
   initialPendingIntakeCount,
   initialModerationCounts
 }: {
   initialProducers: ProcessingProducer[];
+  pipelineHealth: PipelineHealth;
   initialPendingIntakeCount: number;
   initialModerationCounts: ModerationCounts;
 }) {
   const [producers, setProducers] = useState(initialProducers);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [operation, setOperation] = useState<OperationState | null>(null);
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<PipelineStage>('overview');
   const [sourceDrafts, setSourceDrafts] = useState<Record<string, string>>({});
@@ -287,9 +361,25 @@ export default function AdminVideoProcessingPanel({
     );
   }
 
-  async function updateStatus(videoId: string, action: string) {
+  function startOperation(videoId: string, text: string) {
     setPendingId(videoId);
-    setMessage(null);
+    setOperation({ tone: 'working', text, videoId });
+  }
+
+  function finishOperation(videoId: string, text: string) {
+    setOperation({ tone: 'success', text, videoId });
+  }
+
+  function failOperation(videoId: string | null, error: unknown, fallback: string) {
+    setOperation({
+      tone: 'error',
+      text: error instanceof Error ? error.message : fallback,
+      videoId
+    });
+  }
+
+  async function updateStatus(videoId: string, action: string) {
+    startOperation(videoId, 'Updating processing status...');
     try {
       const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
@@ -299,34 +389,32 @@ export default function AdminVideoProcessingPanel({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to update processing status.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? 'Processing status updated.');
+      finishOperation(videoId, payload.message ?? 'Processing status updated.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update processing status.');
+      failOperation(videoId, error, 'Unable to update processing status.');
     } finally {
       setPendingId(null);
     }
   }
 
   async function deleteMaster(videoId: string) {
-    setPendingId(videoId);
-    setMessage(null);
+    startOperation(videoId, 'Removing source master...');
     try {
       const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Unable to delete source.');
       if (!payload.video) throw new Error(payload.error ?? 'Source deleted, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
-      setMessage('Source deleted. HLS remains as the viewer playback source.');
+      finishOperation(videoId, 'Source deleted. HLS remains as the viewer playback source.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete source.');
+      failOperation(videoId, error, 'Unable to delete source.');
     } finally {
       setPendingId(null);
     }
   }
 
   async function completeProcessing(videoId: string) {
-    setPendingId(videoId);
-    setMessage('Syncing HLS pipeline status...');
+    startOperation(videoId, 'Syncing HLS pipeline status...');
     try {
       const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
@@ -337,9 +425,9 @@ export default function AdminVideoProcessingPanel({
       if (!response.ok) throw new Error(payload.error ?? 'Unable to sync HLS pipeline.');
       if (!payload.video) throw new Error(payload.error ?? 'Pipeline sync completed, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? 'HLS pipeline synced.');
+      finishOperation(videoId, payload.message ?? 'HLS pipeline synced.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to sync HLS pipeline.');
+      failOperation(videoId, error, 'Unable to sync HLS pipeline.');
     } finally {
       setPendingId(null);
     }
@@ -348,12 +436,11 @@ export default function AdminVideoProcessingPanel({
   async function attachDropboxSource(videoId: string) {
     const sourceUrl = sourceDrafts[videoId]?.trim() ?? '';
     if (!sourceUrl) {
-      setMessage('Paste a Dropbox share link before attaching the master source.');
+      failOperation(videoId, new Error('Paste a Dropbox share link before attaching the master source.'), 'Paste a Dropbox share link before attaching the master source.');
       return;
     }
 
-    setPendingId(videoId);
-    setMessage(null);
+    startOperation(videoId, 'Attaching Dropbox source...');
     try {
       const response = await fetch('/api/admin/videos/master', {
         method: 'POST',
@@ -365,17 +452,25 @@ export default function AdminVideoProcessingPanel({
       if (!payload.video) throw new Error(payload.error ?? 'Dropbox source attached, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
       setSourceDrafts((current) => ({ ...current, [videoId]: '' }));
-      setMessage(payload.message ?? 'Dropbox source attached.');
+      finishOperation(videoId, payload.message ?? 'Dropbox source attached.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to attach Dropbox source.');
+      failOperation(videoId, error, 'Unable to attach Dropbox source.');
     } finally {
       setPendingId(null);
     }
   }
 
   async function startPipeline(videoId: string) {
-    setPendingId(videoId);
-    setMessage('Queueing Contabo worker...');
+    if (!pipelineHealth.contaboReady) {
+      failOperation(
+        videoId,
+        new Error(`Contabo pipeline is not fully configured. Missing: ${pipelineHealth.missingConfig.join(', ')}`),
+        'Contabo pipeline is not fully configured.'
+      );
+      return;
+    }
+
+    startOperation(videoId, 'Queueing Contabo worker...');
     try {
       const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
@@ -386,9 +481,9 @@ export default function AdminVideoProcessingPanel({
       if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
       if (!payload.video) throw new Error(payload.error ?? 'Contabo HLS pipeline started, but the updated movie data was not returned.');
       await refreshVideo(videoId, payload.video);
-      setMessage(payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
+      finishOperation(videoId, payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to start HLS pipeline.');
+      failOperation(videoId, error, 'Unable to start HLS pipeline.');
     } finally {
       setPendingId(null);
     }
@@ -400,11 +495,14 @@ export default function AdminVideoProcessingPanel({
 
   const selectedStageLabel = STAGES.find((stage) => stage.id === selectedStage)?.label ?? 'Pipeline';
   const selectedStageDescription = STAGES.find((stage) => stage.id === selectedStage)?.description ?? '';
+  const message = operation?.text ?? null;
+  const bannerTone = operation?.tone ?? 'success';
+  const bannerStyles = getOperationStyles(bannerTone);
 
   return (
     <div className="stack-list">
       {message ? (
-        <div className={`card ${pendingId ? 'status-warn' : 'status-live'}`} style={{ padding: 12, borderRadius: 4, backgroundColor: pendingId ? '#fef3c7' : '#f0fdf4', borderLeft: `4px solid ${pendingId ? '#f59e0b' : '#22c55e'}` }}>
+        <div className={`card ${bannerStyles.cardClassName}`} style={{ padding: 12, borderRadius: 4, backgroundColor: bannerStyles.backgroundColor, borderLeft: `4px solid ${bannerStyles.borderColor}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {pendingId ? (
               <span style={{ fontSize: 12, display: 'inline-block' }} className="spinner">⏳</span>
@@ -415,6 +513,26 @@ export default function AdminVideoProcessingPanel({
           </div>
         </div>
       ) : null}
+
+      <div className={`card ${pipelineHealth.contaboReady ? 'status-live' : 'status-warn'}`}>
+        <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <span className="pill">Pipeline health</span>
+            <h3 style={{ margin: '8px 0 0' }}>
+              {pipelineHealth.contaboReady ? 'Contabo and Bunny are configured for admin pipeline work.' : 'Pipeline setup needs attention before Contabo can run cleanly.'}
+            </h3>
+            <p className="muted" style={{ margin: '8px 0 0' }}>
+              Contabo endpoint: {pipelineHealth.contaboApiUrl ?? 'Missing'} | Callback base URL: {pipelineHealth.callbackBaseUrl ?? 'Missing'}
+            </p>
+          </div>
+          {!pipelineHealth.contaboReady ? (
+            <div className="detail-card" style={{ minWidth: 280 }}>
+              <span className="detail-label">Missing config</span>
+              <strong>{pipelineHealth.missingConfig.join(', ')}</strong>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ flex: 1 }}>
@@ -561,6 +679,17 @@ export default function AdminVideoProcessingPanel({
             const busy = pendingId === video.id;
             const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
             const canPublish = video.status === 'READY';
+            const canStartPipeline = Boolean(
+              pipelineHealth.contaboReady &&
+              (video.masterKey || video.masterSourceUrl) &&
+              !busy &&
+              !isPipelineWorking(video) &&
+              !(video.hlsManifestKey && video.hlsReadyAt)
+            );
+            const canSyncPipeline = Boolean((video.orchestrationJobId || isPipelineWorking(video)) && !busy);
+            const canDeleteSource = Boolean((video.masterKey || video.masterSourceUrl) && video.masterDeletionEligible && !busy);
+            const operationForVideo = operation?.videoId === video.id ? operation : null;
+            const operationForVideoStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
 
             return (
               <div key={video.id} className="card">
@@ -579,7 +708,9 @@ export default function AdminVideoProcessingPanel({
                 </div>
 
                 <div className="detail-grid" style={{ margin: '16px 0' }}>
-                  <div className="detail-card"><span className="detail-label">Master source</span><strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey ? 'Bunny uploaded' : 'Missing'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Master source</span><strong>{getSourceLabel(video)}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Viewer delivery</span><strong>{getDeliveryLabel(video)}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Next step</span><strong>{getNextStep(video, pipelineHealth)}</strong></div>
                   <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
                   <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
                   <div className="detail-card"><span className="detail-label">Uploaded</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
@@ -607,18 +738,25 @@ export default function AdminVideoProcessingPanel({
                   </div>
                 </div>
 
+                {operationForVideo && operationForVideoStyles ? (
+                  <div className={`detail-card ${operationForVideoStyles.cardClassName}`} style={{ marginBottom: 16, backgroundColor: operationForVideoStyles.backgroundColor, borderLeft: `4px solid ${operationForVideoStyles.borderColor}` }}>
+                    <span className="detail-label">Latest action</span>
+                    <strong>{operationForVideo.text}</strong>
+                  </div>
+                ) : null}
+
                 <div className="action-list">
                   {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
                   <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void navigator.clipboard.writeText(command)}>
                     {busy && pendingId === video.id ? '⏳ Copying...' : 'Copy master normalize command'}
                   </button>
-                  <button className="btn btn-primary" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void startPipeline(video.id)}>
+                  <button className="btn btn-primary" type="button" disabled={!canStartPipeline} onClick={() => void startPipeline(video.id)}>
                     {busy && pendingId === video.id ? '⏳ Starting Contabo...' : 'Start Contabo HLS'}
                   </button>
-                  <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || busy} onClick={() => void completeProcessing(video.id)}>
+                  <button className="btn btn-ghost" type="button" disabled={!canSyncPipeline} onClick={() => void completeProcessing(video.id)}>
                     {busy && pendingId === video.id ? '⏳ Syncing...' : 'Sync Contabo status'}
                   </button>
-                  <button className="btn btn-ghost" type="button" disabled={(!video.masterKey && !video.masterSourceUrl) || !video.masterDeletionEligible || busy} onClick={() => void deleteMaster(video.id)}>
+                  <button className="btn btn-ghost" type="button" disabled={!canDeleteSource} onClick={() => void deleteMaster(video.id)}>
                     {busy && pendingId === video.id ? '⏳ Deleting...' : 'Delete source'}
                   </button>
                   {canPublish ? (

@@ -3,6 +3,7 @@ import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { getAdminNavItems } from '@/lib/admin-nav';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
+import { env } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,14 @@ function serializeFileSize(value: bigint | number | null | undefined) {
 
 export default async function AdminVideosPage() {
   await requireAdminUser('/admin/videos');
+
+  const missingPipelineConfig: string[] = [];
+  if (!env.CONTABO_TRANSCODE_API_URL) missingPipelineConfig.push('CONTABO_TRANSCODE_API_URL');
+  if (!env.CONTABO_PIPELINE_SECRET) missingPipelineConfig.push('CONTABO_PIPELINE_SECRET');
+  if (!env.ACE_APP_BASE_URL) missingPipelineConfig.push('ACE_APP_BASE_URL');
+  if (!env.BUNNY_STORAGE_API_KEY) missingPipelineConfig.push('BUNNY_STORAGE_API_KEY');
+  if (!env.BUNNY_STORAGE_ZONE) missingPipelineConfig.push('BUNNY_STORAGE_ZONE');
+  if (!env.BUNNY_STORAGE_ENDPOINT) missingPipelineConfig.push('BUNNY_STORAGE_ENDPOINT');
 
   const [pendingIntakeCount, moderationPendingCount, moderationApprovedCount, orphanApprovedCount, producers] = await Promise.all([
     prisma.user.count({
@@ -103,6 +112,12 @@ export default async function AdminVideosPage() {
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel
+        pipelineHealth={{
+          contaboReady: missingPipelineConfig.length === 0,
+          contaboApiUrl: env.CONTABO_TRANSCODE_API_URL || null,
+          callbackBaseUrl: env.ACE_APP_BASE_URL || null,
+          missingConfig: missingPipelineConfig
+        }}
         initialPendingIntakeCount={pendingIntakeCount}
         initialModerationCounts={{
           pending: moderationPendingCount,

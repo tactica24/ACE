@@ -3,7 +3,13 @@ import { ensureStorageFolderMarker } from './bunny-storage';
 import { prisma } from './db';
 import { createContaboTranscodeJob, getContaboTranscodeJob, type ContaboTranscodeJob } from './contabo';
 import { env } from './env';
-import { createSignedHlsManifestUrl, getDefaultHlsOutputPath, getHlsManifestKeyFromOutputPath, verifyHlsManifest } from './hls';
+import {
+  createSignedHlsManifestUrl,
+  getDefaultHlsOutputPath,
+  getHlsManifestKeyFromOutputPath,
+  resolveVideoHlsManifestKey,
+  verifyHlsManifest
+} from './hls';
 import { normalizeMediaKey } from './media';
 
 type PipelineVideo = {
@@ -14,9 +20,11 @@ type PipelineVideo = {
   technicalMetadata: {
     masterKey: string | null;
     masterSourceUrl: string | null;
+    processingStatus: string | null;
     orchestrationJobId: string | null;
     hlsOutputPath: string | null;
     hlsManifestKey: string | null;
+    hlsReadyAt: Date | null;
     masterDeletedAt: Date | null;
   } | null;
 };
@@ -44,9 +52,11 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
         select: {
           masterKey: true,
           masterSourceUrl: true,
+          processingStatus: true,
           orchestrationJobId: true,
           hlsOutputPath: true,
           hlsManifestKey: true,
+          hlsReadyAt: true,
           masterDeletedAt: true
         }
       }
@@ -55,6 +65,15 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
 }
 
 function ensureVideoCanStartPipeline(video: PipelineVideo) {
+  const processingStatus = video.technicalMetadata?.processingStatus ?? null;
+  if (processingStatus && ACTIVE_CONTABO_STATUSES.includes(processingStatus)) {
+    throw new Error('Contabo is already processing this title. Use sync status to refresh the latest worker state.');
+  }
+
+  if (video.technicalMetadata?.hlsReadyAt && resolveVideoHlsManifestKey(video)) {
+    throw new Error('This title already has Bunny HLS playback ready. Publish it or replace the source before reprocessing.');
+  }
+
   const masterKey = normalizeMediaKey(video.technicalMetadata?.masterKey);
   const masterSourceUrl =
     typeof video.technicalMetadata?.masterSourceUrl === 'string'
