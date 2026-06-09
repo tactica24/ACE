@@ -151,7 +151,6 @@ export async function queueVideoHlsPipeline(videoId: string) {
         orchestrationProvider: 'CONTABO',
         orchestrationJobId: jobId,
         hlsOutputPath,
-        hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath),
         transcodeProvider: 'FFMPEG',
         transcodeTaskId: jobId,
         transcodeError: null,
@@ -165,7 +164,7 @@ export async function queueVideoHlsPipeline(videoId: string) {
         orchestrationProvider: 'CONTABO',
         orchestrationJobId: jobId,
         hlsOutputPath,
-        hlsManifestKey: getHlsManifestKeyFromOutputPath(hlsOutputPath),
+        hlsManifestKey: null,
         transcodeProvider: 'FFMPEG',
         transcodeTaskId: jobId,
         transcodeError: null,
@@ -225,7 +224,7 @@ export async function applyPipelineSubmission(input: {
       transcodeError: null,
       transcodeFailedAt: null,
       hlsOutputPath,
-      hlsManifestKey: input.hlsManifestKey ?? getHlsManifestKeyFromOutputPath(hlsOutputPath)
+      hlsManifestKey: null
     },
     update: {
       processingStatus: 'ENCODING_STARTED',
@@ -237,7 +236,7 @@ export async function applyPipelineSubmission(input: {
       transcodeError: null,
       transcodeFailedAt: null,
       hlsOutputPath,
-      hlsManifestKey: input.hlsManifestKey ?? getHlsManifestKeyFromOutputPath(hlsOutputPath)
+      hlsManifestKey: null
     }
   });
 }
@@ -270,6 +269,10 @@ export async function applyPipelineFailure(input: {
         transcodeTaskId: jobId,
         transcodeFailedAt: new Date(),
         transcodeError: message,
+        playbackUrl: null,
+        hlsManifestKey: null,
+        hlsReadyAt: null,
+        readyToStreamAt: null,
         masterDeletionEligible: false
       },
       update: {
@@ -280,6 +283,10 @@ export async function applyPipelineFailure(input: {
         transcodeTaskId: jobId ?? undefined,
         transcodeFailedAt: new Date(),
         transcodeError: message,
+        playbackUrl: null,
+        hlsManifestKey: null,
+        hlsReadyAt: null,
+        readyToStreamAt: null,
         masterDeletionEligible: false
       }
     })

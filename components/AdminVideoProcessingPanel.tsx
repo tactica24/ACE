@@ -130,8 +130,12 @@ function isPipelineWorking(video: ProcessingVideo) {
   return ACTIVE_PIPELINE_STATUSES.has(video.processingStatus);
 }
 
+function isViewerReady(video: ProcessingVideo) {
+  return Boolean(video.hlsReadyAt) && video.processingStatus === 'READY_TO_STREAM';
+}
+
 function isLive(video: ProcessingVideo) {
-  return video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status);
+  return isViewerReady(video) || ['READY', 'PUBLISHED'].includes(video.status);
 }
 
 function getBucket(video: ProcessingVideo) {
@@ -164,17 +168,17 @@ function getVideoStage(video: ProcessingVideo): PipelineStage {
 }
 
 function getPipelineSummary(video: ProcessingVideo) {
-  if (video.processingStatus === 'READY_TO_STREAM') {
+  if (isViewerReady(video)) {
     return 'HLS uploaded to Bunny and verified.';
   }
   if (video.processingStatus === 'CONTABO_QUEUED') {
-    return 'Contabo job queued. Waiting for worker pickup.';
+    return video.latestPipelineMessage ?? 'Contabo job queued. Waiting for worker pickup.';
   }
   if (video.processingStatus === 'ENCODING_STARTED') {
-    return 'Contabo is transcoding and preparing Bunny HLS output.';
+    return video.latestPipelineMessage ?? 'Contabo is transcoding and preparing Bunny HLS output.';
   }
   if (video.processingStatus === 'TRANSCODE_FAILED') {
-    return video.transcodeError ?? 'Transcode failed.';
+    return video.latestPipelineMessage ?? video.transcodeError ?? 'Transcode failed.';
   }
   if (video.masterSourceUrl) {
     return 'Dropbox source is attached and ready for Contabo processing.';
@@ -192,10 +196,35 @@ function getSourceLabel(video: ProcessingVideo) {
 }
 
 function getDeliveryLabel(video: ProcessingVideo) {
-  if (video.hlsManifestKey && video.hlsReadyAt) return 'Bunny HLS ready';
-  if (video.hlsManifestKey) return 'HLS manifest created';
+  if (isViewerReady(video)) return 'Bunny HLS ready';
+  if (isPipelineWorking(video) && video.hlsOutputPath) return 'Contabo preparing Bunny HLS';
+  if (video.processingStatus === 'TRANSCODE_FAILED') return 'Viewer delivery failed';
   if (video.masterSourceUrl || video.masterKey) return 'Waiting for Contabo HLS';
   return 'Viewer delivery missing';
+}
+
+function getPipelinePhase(video: ProcessingVideo) {
+  if (video.status === 'PUBLISHED') return 'Published to viewers';
+  if (isViewerReady(video)) return 'Viewer playback ready';
+  if (video.processingStatus === 'ENCODING_STARTED') return 'Contabo transcoding in progress';
+  if (video.processingStatus === 'CONTABO_QUEUED') return 'Queued for worker pickup';
+  if (video.processingStatus === 'TRANSCODE_FAILED') return 'Pipeline needs attention';
+  if (video.masterSourceUrl || video.masterKey) return 'Source ready for Contabo';
+  return 'Waiting for source attachment';
+}
+
+function getProgressPercent(video: ProcessingVideo) {
+  if (video.status === 'PUBLISHED') return 100;
+  if (isViewerReady(video)) return 85;
+  if (video.processingStatus === 'ENCODING_STARTED') return 60;
+  if (video.processingStatus === 'CONTABO_QUEUED') return 35;
+  if (video.masterSourceUrl || video.masterKey) return 15;
+  return 0;
+}
+
+function getCurrentPipelineIssue(video: ProcessingVideo) {
+  if (video.processingStatus !== 'TRANSCODE_FAILED') return null;
+  return video.latestPipelineMessage ?? video.transcodeError ?? 'Transcode failed.';
 }
 
 function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
@@ -387,8 +416,10 @@ export default function AdminVideoProcessingPanel({
         body: JSON.stringify({ videoId, action })
       });
       const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
       if (!response.ok) throw new Error(payload.error ?? 'Unable to update processing status.');
-      await refreshVideo(videoId, payload.video);
       finishOperation(videoId, payload.message ?? 'Processing status updated.');
     } catch (error) {
       failOperation(videoId, error, 'Unable to update processing status.');
@@ -402,9 +433,11 @@ export default function AdminVideoProcessingPanel({
     try {
       const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
       const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
       if (!response.ok) throw new Error(payload.error ?? 'Unable to delete source.');
       if (!payload.video) throw new Error(payload.error ?? 'Source deleted, but the updated movie data was not returned.');
-      await refreshVideo(videoId, payload.video);
       finishOperation(videoId, 'Source deleted. HLS remains as the viewer playback source.');
     } catch (error) {
       failOperation(videoId, error, 'Unable to delete source.');
@@ -422,9 +455,11 @@ export default function AdminVideoProcessingPanel({
         body: JSON.stringify({ videoId, action: 'SYNC_PIPELINE' })
       });
       const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
       if (!response.ok) throw new Error(payload.error ?? 'Unable to sync HLS pipeline.');
       if (!payload.video) throw new Error(payload.error ?? 'Pipeline sync completed, but the updated movie data was not returned.');
-      await refreshVideo(videoId, payload.video);
       finishOperation(videoId, payload.message ?? 'HLS pipeline synced.');
     } catch (error) {
       failOperation(videoId, error, 'Unable to sync HLS pipeline.');
@@ -448,9 +483,11 @@ export default function AdminVideoProcessingPanel({
         body: JSON.stringify({ videoId, sourceUrl })
       });
       const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
       if (!response.ok) throw new Error(payload.error ?? 'Unable to attach Dropbox source.');
       if (!payload.video) throw new Error(payload.error ?? 'Dropbox source attached, but the updated movie data was not returned.');
-      await refreshVideo(videoId, payload.video);
       setSourceDrafts((current) => ({ ...current, [videoId]: '' }));
       finishOperation(videoId, payload.message ?? 'Dropbox source attached.');
     } catch (error) {
@@ -478,9 +515,11 @@ export default function AdminVideoProcessingPanel({
         body: JSON.stringify({ videoId, action: 'START_PIPELINE' })
       });
       const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
       if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
       if (!payload.video) throw new Error(payload.error ?? 'Contabo HLS pipeline started, but the updated movie data was not returned.');
-      await refreshVideo(videoId, payload.video);
       finishOperation(videoId, payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
     } catch (error) {
       failOperation(videoId, error, 'Unable to start HLS pipeline.');
@@ -684,7 +723,7 @@ export default function AdminVideoProcessingPanel({
               (video.masterKey || video.masterSourceUrl) &&
               !busy &&
               !isPipelineWorking(video) &&
-              !(video.hlsManifestKey && video.hlsReadyAt)
+              !isViewerReady(video)
             );
             const canSyncPipeline = Boolean((video.orchestrationJobId || isPipelineWorking(video)) && !busy);
             const canDeleteSource = Boolean((video.masterKey || video.masterSourceUrl) && video.masterDeletionEligible && !busy);
@@ -710,6 +749,8 @@ export default function AdminVideoProcessingPanel({
                 <div className="detail-grid" style={{ margin: '16px 0' }}>
                   <div className="detail-card"><span className="detail-label">Master source</span><strong>{getSourceLabel(video)}</strong></div>
                   <div className="detail-card"><span className="detail-label">Viewer delivery</span><strong>{getDeliveryLabel(video)}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Pipeline phase</span><strong>{getPipelinePhase(video)}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Progress</span><strong>{getProgressPercent(video)}%</strong></div>
                   <div className="detail-card"><span className="detail-label">Next step</span><strong>{getNextStep(video, pipelineHealth)}</strong></div>
                   <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
                   <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
@@ -774,8 +815,8 @@ export default function AdminVideoProcessingPanel({
                 ) : null}
 
                 <div className="detail-grid" style={{ marginTop: 14 }}>
-                  <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsManifestKey ? 'HLS pipeline' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (video.hlsManifestKey ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Playback</span><strong>{isViewerReady(video) ? 'Bunny HLS live' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (isViewerReady(video) ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
                   <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
                 </div>
 
@@ -787,11 +828,11 @@ export default function AdminVideoProcessingPanel({
                 </div>
 
                 <div className="detail-grid" style={{ marginTop: 14 }}>
-                  <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{video.hlsManifestKey ?? 'Not generated yet'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{isViewerReady(video) ? (video.hlsManifestKey ?? 'Missing manifest reference') : 'Not generated yet'}</strong></div>
                   <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? formatDateTime(video.hlsReadyAt) : 'No'}</strong></div>
                   <div className="detail-card"><span className="detail-label">Latest callback</span><strong>{video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback yet'}</strong></div>
                   <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{video.transcodeError ?? 'None recorded'}</strong></div>
+                  <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{getCurrentPipelineIssue(video) ?? 'None recorded'}</strong></div>
                 </div>
 
                 {video.latestPipelineMessage ? (

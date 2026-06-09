@@ -103,7 +103,9 @@ export default async function AdminLiveMoviesPage() {
                 : 'Unknown';
 
             const isPublished = video.status === 'PUBLISHED';
-            const isHlsReady = video.technicalMetadata?.processingStatus === 'READY_TO_STREAM' || !!video.technicalMetadata?.hlsManifestKey;
+            const isHlsReady =
+              video.technicalMetadata?.processingStatus === 'READY_TO_STREAM' ||
+              Boolean(video.technicalMetadata?.hlsReadyAt);
 
             return (
               <div

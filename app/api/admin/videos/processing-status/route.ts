@@ -12,6 +12,9 @@ const STATUS_UPDATES: Record<string, { status: string }> = {
 };
 
 export async function POST(req: NextRequest) {
+  let videoId = '';
+  let action = '';
+
   try {
     const auth = await getAuthFromRequest(req);
     if (!auth || auth.role !== 'ADMIN') {
@@ -19,8 +22,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const videoId = typeof body.videoId === 'string' ? body.videoId.trim() : '';
-    const action = typeof body.action === 'string' ? body.action.trim() : '';
+    videoId = typeof body.videoId === 'string' ? body.videoId.trim() : '';
+    action = typeof body.action === 'string' ? body.action.trim() : '';
     if (!videoId || !action) {
       return NextResponse.json({ error: 'Movie and action are required.' }, { status: 400 });
     }
@@ -124,9 +127,17 @@ export async function POST(req: NextRequest) {
       video: await getProcessingVideo(videoId)
     });
   } catch (error) {
+    const refreshedVideo = videoId ? await getProcessingVideo(videoId).catch(() => null) : null;
+    console.error('[admin/videos/processing-status] failed', {
+      videoId,
+      action,
+      error: error instanceof Error ? error.message : String(error)
+    });
+
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unexpected server error while updating the processing status.'
+        error: error instanceof Error ? error.message : 'Unexpected server error while updating the processing status.',
+        video: refreshedVideo
       },
       { status: 500 }
     );
