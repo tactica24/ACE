@@ -12,6 +12,13 @@ function serializeFileSize(value: bigint | number | null | undefined) {
   return Number(value);
 }
 
+function normalizeProcessingStatus(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim().toUpperCase();
+  if (normalized === 'AKASH_QUEUED') return 'CONTABO_QUEUED';
+  if (normalized === 'AKASH_STARTED') return 'ENCODING_STARTED';
+  return normalized || 'NO_MASTER';
+}
+
 export default async function AdminVideosPage() {
   await requireAdminUser('/admin/videos');
 
@@ -144,7 +151,7 @@ export default async function AdminVideosPage() {
             masterFileName: video.technicalMetadata?.masterFileName ?? null,
             masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
             masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
-            processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+            processingStatus: normalizeProcessingStatus(video.technicalMetadata?.processingStatus),
             playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
             orchestrationProvider: video.technicalMetadata?.orchestrationProvider ?? null,
             orchestrationJobId: video.technicalMetadata?.orchestrationJobId ?? null,

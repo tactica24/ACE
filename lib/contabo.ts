@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { env } from './env';
 import { normalizeMediaKey } from './media';
 
@@ -33,6 +34,10 @@ function getContaboHeaders() {
   };
 }
 
+function getContaboSecretFingerprint() {
+  return createHash('sha256').update(env.CONTABO_PIPELINE_SECRET).digest('hex').slice(0, 12);
+}
+
 async function parseJsonResponse(response: Response, action: string) {
   const payload = await response.json().catch(() => ({}));
   if (response.ok) return payload;
@@ -49,6 +54,7 @@ async function parseJsonResponse(response: Response, action: string) {
     throw new Error(
       `Contabo worker ${action} was rejected by ${baseUrl} (${response.status}). ` +
       `Check that CONTABO_PIPELINE_SECRET in this app matches the worker's x-ace-pipeline-secret expectation. ` +
+      `App secret fingerprint: ${getContaboSecretFingerprint()}. ` +
       `Worker response: ${message}`
     );
   }

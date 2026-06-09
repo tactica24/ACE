@@ -15,7 +15,7 @@ type ReleaseLifecycleVideo = {
   } | null;
 };
 
-const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
+const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED', 'AKASH_QUEUED', 'AKASH_STARTED']);
 export const VIEWER_VISIBLE_STATUSES = ['APPROVED', 'READY', 'PUBLISHED'] as const;
 
 export function isViewerVisibleStatus(status: string | null | undefined) {

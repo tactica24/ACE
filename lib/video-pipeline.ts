@@ -29,7 +29,14 @@ type PipelineVideo = {
   } | null;
 };
 
-const ACTIVE_CONTABO_STATUSES = ['CONTABO_QUEUED', 'ENCODING_STARTED'];
+const ACTIVE_CONTABO_STATUSES = ['CONTABO_QUEUED', 'ENCODING_STARTED', 'AKASH_QUEUED', 'AKASH_STARTED'];
+
+function normalizePipelineProcessingStatus(status: string | null | undefined) {
+  const normalized = String(status ?? '').trim().toUpperCase();
+  if (normalized === 'AKASH_QUEUED') return 'CONTABO_QUEUED';
+  if (normalized === 'AKASH_STARTED') return 'ENCODING_STARTED';
+  return normalized;
+}
 
 function getPipelineCallbackUrl() {
   const baseUrl = env.ACE_APP_BASE_URL?.replace(/\/+$/, '');
@@ -65,7 +72,7 @@ async function getPipelineVideo(videoId: string): Promise<PipelineVideo | null> 
 }
 
 function ensureVideoCanStartPipeline(video: PipelineVideo) {
-  const processingStatus = video.technicalMetadata?.processingStatus ?? null;
+  const processingStatus = normalizePipelineProcessingStatus(video.technicalMetadata?.processingStatus);
   if (processingStatus && ACTIVE_CONTABO_STATUSES.includes(processingStatus)) {
     throw new Error('Contabo is already processing this title. Use sync status to refresh the latest worker state.');
   }
@@ -131,55 +138,13 @@ export async function queueVideoHlsPipeline(videoId: string) {
 
   const source = ensureVideoCanStartPipeline(video);
   const hlsOutputPath = video.technicalMetadata?.hlsOutputPath ?? getDefaultHlsOutputPath(videoId);
-  const jobId = randomUUID();
+  const requestedJobId = randomUUID();
 
   await ensureStorageFolderMarker(hlsOutputPath);
 
-  await prisma.$transaction([
-    prisma.video.update({
-      where: { id: videoId },
-      data: {
-        status: video.status === 'PUBLISHED' ? 'PUBLISHED' : 'PROCESSING'
-      }
-    }),
-    prisma.videoTechnicalMetadata.upsert({
-      where: { videoId },
-      create: {
-        videoId,
-        masterKey: source.masterKey,
-        processingStatus: 'CONTABO_QUEUED',
-        orchestrationProvider: 'CONTABO',
-        orchestrationJobId: jobId,
-        hlsOutputPath,
-        transcodeProvider: 'FFMPEG',
-        transcodeTaskId: jobId,
-        transcodeError: null,
-        transcodeFailedAt: null,
-        hlsReadyAt: null,
-        readyToStreamAt: null,
-        masterDeletionEligible: false
-      },
-      update: {
-        processingStatus: 'CONTABO_QUEUED',
-        orchestrationProvider: 'CONTABO',
-        orchestrationJobId: jobId,
-        hlsOutputPath,
-        hlsManifestKey: null,
-        transcodeProvider: 'FFMPEG',
-        transcodeTaskId: jobId,
-        transcodeError: null,
-        transcodeFailedAt: null,
-        hlsReadyAt: null,
-        readyToStreamAt: null,
-        masterDeletionEligible: false,
-        masterDeletedAt: null
-      }
-    })
-  ]);
-
   try {
-    await createContaboTranscodeJob({
-      jobId,
+    const job = await createContaboTranscodeJob({
+      jobId: requestedJobId,
       callbackUrl: getPipelineCallbackUrl(),
       videoId,
       title: video.title,
@@ -187,19 +152,64 @@ export async function queueVideoHlsPipeline(videoId: string) {
       masterUrl: source.masterSourceUrl,
       hlsOutputPath
     });
+
+    const acceptedJobId = job.id || requestedJobId;
+
+    await prisma.$transaction([
+      prisma.video.update({
+        where: { id: videoId },
+        data: {
+          status: video.status === 'PUBLISHED' ? 'PUBLISHED' : 'PROCESSING'
+        }
+      }),
+      prisma.videoTechnicalMetadata.upsert({
+        where: { videoId },
+        create: {
+          videoId,
+          masterKey: source.masterKey,
+          processingStatus: 'CONTABO_QUEUED',
+          orchestrationProvider: 'CONTABO',
+          orchestrationJobId: acceptedJobId,
+          hlsOutputPath,
+          transcodeProvider: 'FFMPEG',
+          transcodeTaskId: acceptedJobId,
+          transcodeError: null,
+          transcodeFailedAt: null,
+          hlsReadyAt: null,
+          readyToStreamAt: null,
+          masterDeletionEligible: false
+        },
+        update: {
+          processingStatus: 'CONTABO_QUEUED',
+          orchestrationProvider: 'CONTABO',
+          orchestrationJobId: acceptedJobId,
+          hlsOutputPath,
+          hlsManifestKey: null,
+          transcodeProvider: 'FFMPEG',
+          transcodeTaskId: acceptedJobId,
+          transcodeError: null,
+          transcodeFailedAt: null,
+          hlsReadyAt: null,
+          readyToStreamAt: null,
+          masterDeletionEligible: false,
+          masterDeletedAt: null
+        }
+      })
+    ]);
+
+    return {
+      jobId: acceptedJobId,
+      hlsOutputPath
+    };
   } catch (error) {
     await applyPipelineFailure({
       videoId,
-      orchestrationJobId: jobId,
-      fallbackMessage: error instanceof Error ? error.message : 'Unable to create Contabo job.'
+      orchestrationJobId: null,
+      fallbackMessage: error instanceof Error ? error.message : 'Unable to create Contabo job.',
+      clearLinkedJobs: true
     });
     throw error;
   }
-
-  return {
-    jobId,
-    hlsOutputPath
-  };
 }
 
 export async function applyPipelineSubmission(input: {
@@ -247,6 +257,7 @@ export async function applyPipelineFailure(input: {
   taskId?: string | null;
   job?: ContaboTranscodeJob | null;
   fallbackMessage?: string;
+  clearLinkedJobs?: boolean;
 }) {
   const jobId = input.orchestrationJobId ?? input.taskId ?? input.job?.id ?? null;
   const message = getContaboError(input.job ?? { id: jobId ?? '' }, input.fallbackMessage);
@@ -263,10 +274,10 @@ export async function applyPipelineFailure(input: {
       create: {
         videoId: input.videoId,
         processingStatus: 'TRANSCODE_FAILED',
-        orchestrationProvider: 'CONTABO',
-        orchestrationJobId: jobId,
-        transcodeProvider: 'FFMPEG',
-        transcodeTaskId: jobId,
+        orchestrationProvider: input.clearLinkedJobs ? null : 'CONTABO',
+        orchestrationJobId: input.clearLinkedJobs ? null : jobId,
+        transcodeProvider: input.clearLinkedJobs ? null : 'FFMPEG',
+        transcodeTaskId: input.clearLinkedJobs ? null : jobId,
         transcodeFailedAt: new Date(),
         transcodeError: message,
         playbackUrl: null,
@@ -277,10 +288,10 @@ export async function applyPipelineFailure(input: {
       },
       update: {
         processingStatus: 'TRANSCODE_FAILED',
-        orchestrationProvider: 'CONTABO',
-        orchestrationJobId: jobId ?? undefined,
-        transcodeProvider: 'FFMPEG',
-        transcodeTaskId: jobId ?? undefined,
+        orchestrationProvider: input.clearLinkedJobs ? null : 'CONTABO',
+        orchestrationJobId: input.clearLinkedJobs ? null : jobId ?? undefined,
+        transcodeProvider: input.clearLinkedJobs ? null : 'FFMPEG',
+        transcodeTaskId: input.clearLinkedJobs ? null : jobId ?? undefined,
         transcodeFailedAt: new Date(),
         transcodeError: message,
         playbackUrl: null,

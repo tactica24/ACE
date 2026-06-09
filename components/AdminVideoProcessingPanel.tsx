@@ -110,7 +110,7 @@ const STAGES: Array<{ id: PipelineStage; label: string; description: string }> =
   }
 ];
 
-const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED']);
+const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED', 'AKASH_QUEUED', 'AKASH_STARTED']);
 
 function formatBytes(value: number | null) {
   if (!value) return 'No file';
