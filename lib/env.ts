@@ -84,7 +84,15 @@ function normalizeEnvValue(value: string | undefined) {
   if (typeof value !== 'string') return undefined;
 
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  if (trimmed.length === 0) return undefined;
+
+  const hasMatchingQuotes =
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")));
+
+  const unwrapped = hasMatchingQuotes ? trimmed.slice(1, -1).trim() : trimmed;
+  return unwrapped.length > 0 ? unwrapped : undefined;
 }
 
 function loadEnv(): Env {
