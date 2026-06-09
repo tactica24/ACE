@@ -66,6 +66,8 @@ type OperationState = {
   videoId: string | null;
 };
 
+type PipelineStepState = 'done' | 'active' | 'pending' | 'failed';
+
 type PipelineStage =
   | 'overview'
   | 'intake'
@@ -225,6 +227,67 @@ function getProgressPercent(video: ProcessingVideo) {
 function getCurrentPipelineIssue(video: ProcessingVideo) {
   if (video.processingStatus !== 'TRANSCODE_FAILED') return null;
   return video.latestPipelineMessage ?? video.transcodeError ?? 'Transcode failed.';
+}
+
+function getPipelineSteps(video: ProcessingVideo): Array<{ label: string; state: PipelineStepState; note: string }> {
+  const hasSource = Boolean(video.masterKey || video.masterSourceUrl);
+  const isQueued = video.processingStatus === 'CONTABO_QUEUED' || video.processingStatus === 'ENCODING_STARTED' || isViewerReady(video) || video.status === 'PUBLISHED';
+  const isEncoding = video.processingStatus === 'ENCODING_STARTED';
+  const hasFailed = video.processingStatus === 'TRANSCODE_FAILED';
+  const readyForPlayback = isViewerReady(video);
+  const published = video.status === 'PUBLISHED';
+
+  return [
+    {
+      label: 'Source attached',
+      state: hasSource ? 'done' : 'pending',
+      note: hasSource ? getSourceLabel(video) : 'Attach Dropbox or Bunny source.'
+    },
+    {
+      label: 'Queued on Contabo',
+      state: hasFailed ? 'failed' : isQueued ? 'done' : hasSource ? 'active' : 'pending',
+      note:
+        hasFailed
+          ? 'Last queue attempt failed.'
+          : isQueued
+            ? 'Worker job linked and accepted.'
+            : 'Ready to start Contabo HLS.'
+    },
+    {
+      label: 'Transcoding',
+      state: hasFailed ? 'failed' : readyForPlayback ? 'done' : isEncoding ? 'active' : isQueued ? 'pending' : 'pending',
+      note:
+        hasFailed
+          ? getCurrentPipelineIssue(video) ?? 'Pipeline failed during transcode.'
+          : readyForPlayback
+            ? 'Contabo finished encoding.'
+            : isEncoding
+              ? 'Contabo is creating HLS output.'
+              : 'Waiting for worker processing.'
+    },
+    {
+      label: 'Bunny playback ready',
+      state: hasFailed ? 'failed' : readyForPlayback ? 'done' : isQueued ? 'active' : 'pending',
+      note:
+        hasFailed
+          ? 'Viewer delivery was not finalized.'
+          : readyForPlayback
+            ? 'Manifest verified and playback unlocked.'
+            : 'Waiting for verified HLS delivery.'
+    },
+    {
+      label: 'Published',
+      state: published ? 'done' : readyForPlayback ? 'active' : 'pending',
+      note: published ? 'Movie is live for viewers.' : 'Publish after release checks are complete.'
+    }
+  ];
+}
+
+function getPipelineStepTone(step: PipelineStepState) {
+  if (step === 'done') return { color: '#166534', backgroundColor: '#dcfce7', borderColor: '#86efac', label: 'Done' };
+  if (step === 'active') return { color: '#1d4ed8', backgroundColor: '#dbeafe', borderColor: '#93c5fd', label: 'In progress' };
+  if (step === 'failed') return { color: '#b91c1c', backgroundColor: '#fee2e2', borderColor: '#fca5a5', label: 'Needs fix' };
+  return { color: '#6b7280', backgroundColor: '#f3f4f6', borderColor: '#d1d5db', label: 'Pending' };
 }
 
 function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
@@ -729,6 +792,8 @@ export default function AdminVideoProcessingPanel({
             const canDeleteSource = Boolean((video.masterKey || video.masterSourceUrl) && video.masterDeletionEligible && !busy);
             const operationForVideo = operation?.videoId === video.id ? operation : null;
             const operationForVideoStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
+            const currentIssue = getCurrentPipelineIssue(video);
+            const pipelineSteps = getPipelineSteps(video);
 
             return (
               <div key={video.id} className="card">
@@ -758,6 +823,45 @@ export default function AdminVideoProcessingPanel({
                 </div>
 
                 <div className="detail-card" style={{ marginBottom: 16 }}>
+                  <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span className="detail-label">Pipeline progression</span>
+                    <strong>{getProgressPercent(video)}%</strong>
+                  </div>
+                  <div style={{ marginTop: 10, height: 8, borderRadius: 999, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${getProgressPercent(video)}%`,
+                        height: '100%',
+                        backgroundColor: currentIssue ? '#dc2626' : '#2563eb',
+                        transition: 'width 160ms ease'
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                    {pipelineSteps.map((step) => {
+                      const tone = getPipelineStepTone(step.state);
+                      return (
+                        <div
+                          key={step.label}
+                          style={{
+                            border: `1px solid ${tone.borderColor}`,
+                            backgroundColor: tone.backgroundColor,
+                            borderRadius: 8,
+                            padding: '10px 12px'
+                          }}
+                        >
+                          <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <strong style={{ color: tone.color }}>{step.label}</strong>
+                            <span style={{ color: tone.color, fontSize: 12, fontWeight: 700 }}>{tone.label}</span>
+                          </div>
+                          <p style={{ margin: '6px 0 0', color: tone.color, fontSize: 13 }}>{step.note}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="detail-card" style={{ marginBottom: 16 }}>
                   <span className="detail-label">Dropbox master source</span>
                   <div className="stack-row" style={{ alignItems: 'center' }}>
                     <input
@@ -783,6 +887,19 @@ export default function AdminVideoProcessingPanel({
                   <div className={`detail-card ${operationForVideoStyles.cardClassName}`} style={{ marginBottom: 16, backgroundColor: operationForVideoStyles.backgroundColor, borderLeft: `4px solid ${operationForVideoStyles.borderColor}` }}>
                     <span className="detail-label">Latest action</span>
                     <strong>{operationForVideo.text}</strong>
+                  </div>
+                ) : null}
+
+                {currentIssue ? (
+                  <div
+                    className="detail-card status-error"
+                    style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626' }}
+                  >
+                    <span className="detail-label">Current issue</span>
+                    <strong>{currentIssue}</strong>
+                    <p className="muted" style={{ margin: '8px 0 0' }}>
+                      Latest callback: {video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback received yet'}
+                    </p>
                   </div>
                 ) : null}
 
