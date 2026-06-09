@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getBunnyStreamHlsUrl, getBunnyStreamVideo } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { hasVideoMasterSource } from '@/lib/master-source';
-import { syncPipelineTask } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 export async function POST(req: NextRequest) {
@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
           masterKey: true,
           masterSourceUrl: true,
           hlsManifestKey: true,
-          hlsOutputPath: true
+          hlsOutputPath: true,
+          bunnyStreamLibraryId: true,
+          bunnyStreamVideoId: true
         }
       }
     }
@@ -42,8 +44,39 @@ export async function POST(req: NextRequest) {
   }
 
   let synced = false;
-  if (video.technicalMetadata?.hlsManifestKey || video.technicalMetadata?.hlsOutputPath) {
-    await syncPipelineTask(movieId).catch(() => null);
+  if (video.technicalMetadata?.bunnyStreamVideoId) {
+    const stream = await getBunnyStreamVideo(
+      video.technicalMetadata.bunnyStreamVideoId,
+      video.technicalMetadata.bunnyStreamLibraryId ?? undefined
+    ).catch(() => null);
+    if (stream) {
+      const isReady = stream.status === 'ready';
+      const isFailed = stream.status === 'failed';
+      await prisma.$transaction([
+        prisma.video.update({
+          where: { id: movieId },
+          data: {
+            status: isReady ? 'READY' : isFailed ? 'PROCESSING' : 'PROCESSING',
+            ...(stream.length && stream.length > 0 ? { durationSec: stream.length } : {}),
+            ...(stream.availableResolutions.length ? { qualities: stream.availableResolutions } : {})
+          }
+        }),
+        prisma.videoTechnicalMetadata.update({
+          where: { videoId: movieId },
+          data: {
+            processingStatus: isReady ? 'READY_TO_STREAM' : isFailed ? 'TRANSCODE_FAILED' : 'ENCODING_STARTED',
+            bunnyStreamStatus: stream.status,
+            bunnyStreamReadyAt: isReady ? new Date() : null,
+            bunnyStreamError: isFailed ? stream.transcodingMessages[0] ?? 'Bunny Stream processing failed.' : null,
+            hlsReadyAt: isReady ? new Date() : null,
+            readyToStreamAt: isReady ? new Date() : null,
+            playbackUrl: isReady ? getBunnyStreamHlsUrl(stream.videoId) : null
+          }
+        })
+      ]);
+      synced = true;
+    }
+  } else if (video.technicalMetadata?.hlsManifestKey || video.technicalMetadata?.hlsOutputPath) {
     synced = true;
   }
 
@@ -62,7 +95,9 @@ export async function POST(req: NextRequest) {
           hlsManifestKey: true,
           hlsOutputPath: true,
           hlsReadyAt: true,
-          processingStatus: true
+          processingStatus: true,
+          bunnyStreamVideoId: true,
+          bunnyStreamReadyAt: true
         }
       }
     }

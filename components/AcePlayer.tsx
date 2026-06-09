@@ -107,6 +107,10 @@ type AudioTrackLike = {
 
 type PlaybackKind = 'progressive' | 'hls';
 
+function isHlsSource(url: string | null | undefined) {
+  return typeof url === 'string' && /\.m3u8(?:$|\?)/i.test(url);
+}
+
 export default function AcePlayer({
   videoId,
   teaserSec,
@@ -175,7 +179,11 @@ export default function AcePlayer({
     [subtitleTracks]
   );
 
-  const trailerSrc = trailerKey ? getMediaAssetUrl(trailerKey) : null;
+  const trailerSrc = trailerKey
+    ? trailerKey.startsWith('http://') || trailerKey.startsWith('https://')
+      ? trailerKey
+      : getMediaAssetUrl(trailerKey)
+    : null;
   const activeVideoSrc = isPlayingTrailer && trailerSrc ? trailerSrc : streamUrl;
   const isMovieMode = !isPlayingTrailer;
   const hasLockedMoviePreview = teaserSec > 0;
@@ -645,7 +653,7 @@ export default function AcePlayer({
       return;
     }
 
-    if (isPlayingTrailer || streamKind === 'progressive') {
+    if ((isPlayingTrailer && !isHlsSource(activeVideoSrc)) || streamKind === 'progressive') {
       if (video.src !== activeVideoSrc) {
         video.src = activeVideoSrc;
       }

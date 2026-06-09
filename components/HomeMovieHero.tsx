@@ -264,7 +264,7 @@ export default function HomeMovieHero(
         }")`
       : undefined;
 
-  /* â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* Render */
 
   // backdrop info for the first 3 poster slots
   const backCards: Array<{
@@ -285,7 +285,7 @@ export default function HomeMovieHero(
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >
-      {/* â”€â”€ backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Backdrop */}
       <div
         className="home-movie-hero-backdrop"
         style={backdropImage ? { backgroundImage: backdropImage } : undefined}
@@ -362,7 +362,7 @@ export default function HomeMovieHero(
         </div>
       ) : null}
 
-      {/* â”€â”€ hero copy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Hero copy */}
       <div className="home-movie-hero-inner">
         <span className="home-movie-hero-meta-kicker">
           {buildHeroMeta(featured)}
@@ -430,7 +430,7 @@ export default function HomeMovieHero(
       </div>
 
 
-      {/* â”€â”€ carousel controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Carousel controls */}
       <div
         className="home-movie-carousel-controls"
         aria-label="Movie carousel"

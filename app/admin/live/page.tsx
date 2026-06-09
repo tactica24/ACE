@@ -71,7 +71,7 @@ export default async function AdminLiveMoviesPage() {
   return (
     <DashboardShell
       title="Live movies"
-      description="Published titles with live HLS delivery ready for streaming"
+      description="Published titles with Bunny playback ready for streaming"
       sideNav={<SideNav active="/admin/live" items={getAdminNavItems()} />}
     >
       <div className="detail-grid" style={{ marginBottom: 20 }}>
@@ -84,7 +84,7 @@ export default async function AdminLiveMoviesPage() {
           <strong>{publishedCount}</strong>
         </div>
         <div className="detail-card">
-          <span className="detail-label">HLS ready to stream</span>
+          <span className="detail-label">Playback ready</span>
           <strong>{readyCount}</strong>
         </div>
         <div className="detail-card">
@@ -97,13 +97,13 @@ export default async function AdminLiveMoviesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16, marginTop: 20 }}>
           {liveVideos.map((video) => {
             const sourceLabel = video.technicalMetadata?.masterSourceUrl
-              ? 'Dropbox'
+              ? 'Imported source'
               : video.technicalMetadata?.masterKey
-                ? 'Bunny CDN'
+                ? 'Bunny Storage'
                 : 'Unknown';
 
             const isPublished = video.status === 'PUBLISHED';
-            const isHlsReady =
+            const isPlaybackReady =
               video.technicalMetadata?.processingStatus === 'READY_TO_STREAM' ||
               Boolean(video.technicalMetadata?.hlsReadyAt);
 
@@ -141,11 +141,11 @@ export default async function AdminLiveMoviesPage() {
                       fontWeight: 600,
                       padding: '4px 8px',
                       borderRadius: 4,
-                      backgroundColor: isHlsReady ? '#dbeafe' : '#e0e7ff',
-                      color: isHlsReady ? '#0c4a6e' : '#3730a3'
+                      backgroundColor: isPlaybackReady ? '#dbeafe' : '#e0e7ff',
+                      color: isPlaybackReady ? '#0c4a6e' : '#3730a3'
                     }}
                   >
-                    {isHlsReady ? '✓ HLS Ready' : 'HLS Pending'}
+                    {isPlaybackReady ? 'Playback ready' : 'Processing'}
                   </span>
                 </div>
 
@@ -213,21 +213,21 @@ export default async function AdminLiveMoviesPage() {
                   <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Technical details</span>
                   <div style={{ fontSize: 12, margin: '6px 0 0', display: 'grid', gap: 3 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280' }}>HLS Manifest</span>
+                      <span style={{ color: '#6b7280' }}>Stream package</span>
                       <span style={{ color: '#111827', fontWeight: 600 }}>
-                        {video.technicalMetadata?.hlsManifestKey ? '✓ Generated' : '—'}
+                        {video.technicalMetadata?.hlsManifestKey ? 'Generated' : 'Pending'}
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6b7280' }}>Playback URL</span>
                       <span style={{ color: '#111827', fontWeight: 600 }}>
-                        {video.technicalMetadata?.playbackUrl ? '✓ Available' : '—'}
+                        {video.technicalMetadata?.playbackUrl ? 'Available' : 'Pending'}
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280' }}>HLS ready at</span>
+                      <span style={{ color: '#6b7280' }}>Ready at</span>
                       <span style={{ color: '#111827', fontWeight: 600 }}>
-                        {video.technicalMetadata?.hlsReadyAt ? formatDate(video.technicalMetadata.hlsReadyAt?.toISOString()) : '—'}
+                        {video.technicalMetadata?.hlsReadyAt ? formatDate(video.technicalMetadata.hlsReadyAt?.toISOString()) : 'Pending'}
                       </span>
                     </div>
                   </div>
@@ -274,7 +274,7 @@ export default async function AdminLiveMoviesPage() {
                       transition: 'background-color 0.2s'
                     }}
                   >
-                    View movie →
+                    View movie ->
                   </a>
                 </div>
               </div>
@@ -285,7 +285,7 @@ export default async function AdminLiveMoviesPage() {
         <div style={{ padding: 24, textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>No live titles yet</h3>
           <p style={{ margin: '6px 0 0', color: '#6b7280', fontSize: 14 }}>
-            Publish movies from the pipeline to see them here
+            Publish movies from the Bunny upload desk to see them here
           </p>
         </div>
       )}

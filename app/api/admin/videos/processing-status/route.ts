@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getBunnyStreamHlsUrl, getBunnyStreamVideo } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
-import { queueVideoHlsPipeline, syncPipelineTask } from '@/lib/video-pipeline';
 import { getProcessingVideo } from '../helpers';
 
 const STATUS_UPDATES: Record<string, { status: string }> = {
@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
           select: {
             processingStatus: true,
             masterKey: true,
-            masterSourceUrl: true
+            masterSourceUrl: true,
+            bunnyStreamLibraryId: true,
+            bunnyStreamVideoId: true
           }
         }
       }
@@ -62,8 +64,9 @@ export async function POST(req: NextRequest) {
               masterKey: true,
               masterSourceUrl: true,
               hlsManifestKey: true,
-              hlsOutputPath: true,
-              hlsReadyAt: true
+              hlsReadyAt: true,
+              bunnyStreamVideoId: true,
+              bunnyStreamReadyAt: true
             }
           }
         }
@@ -93,20 +96,59 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (action === 'START_PIPELINE') {
-      const result = await queueVideoHlsPipeline(videoId);
+    if (action === 'START_PIPELINE' || action === 'SYNC_PIPELINE') {
       return NextResponse.json({
-        ok: true,
-        message: `Contabo queued the HLS pipeline for this title (${result.jobId}). Bunny stream folders are ready and the admin panel will update after callback.`,
-        video: await getProcessingVideo(videoId)
-      });
+        error: 'The legacy processing pipeline has been retired. Use the Bunny upload desk and Bunny status sync instead.'
+      }, { status: 410 });
     }
 
-    if (action === 'SYNC_PIPELINE') {
-      await syncPipelineTask(videoId);
+    if (action === 'SYNC_STREAM') {
+      const streamVideoId = video.technicalMetadata?.bunnyStreamVideoId?.trim() ?? '';
+      const libraryId = video.technicalMetadata?.bunnyStreamLibraryId?.trim() || undefined;
+
+      if (!streamVideoId) {
+        return NextResponse.json({
+          error: 'This title has not been uploaded to Bunny Stream yet. Use the admin upload desk first.'
+        }, { status: 400 });
+      }
+
+      const stream = await getBunnyStreamVideo(streamVideoId, libraryId);
+      const isReady = stream.status === 'ready';
+      const isFailed = stream.status === 'failed';
+      const statusMessage = stream.transcodingMessages[0] ?? (isFailed ? 'Bunny Stream processing failed.' : null);
+
+      await prisma.$transaction([
+        prisma.video.update({
+          where: { id: videoId },
+          data: {
+            status: isReady ? 'READY' : 'PROCESSING',
+            ...(stream.length && stream.length > 0 ? { durationSec: stream.length } : {}),
+            ...(stream.availableResolutions.length ? { qualities: stream.availableResolutions } : {})
+          }
+        }),
+        prisma.videoTechnicalMetadata.update({
+          where: { videoId },
+          data: {
+            bunnyStreamStatus: stream.status,
+            bunnyStreamReadyAt: isReady ? new Date() : null,
+            bunnyStreamError: isFailed ? statusMessage ?? 'Bunny Stream processing failed.' : null,
+            processingStatus: isReady ? 'READY_TO_STREAM' : isFailed ? 'TRANSCODE_FAILED' : 'ENCODING_STARTED',
+            readyToStreamAt: isReady ? new Date() : null,
+            hlsReadyAt: isReady ? new Date() : null,
+            playbackUrl: isReady ? getBunnyStreamHlsUrl(stream.videoId) : null,
+            transcodeError: isFailed ? statusMessage ?? 'Bunny Stream processing failed.' : null,
+            transcodeFailedAt: isFailed ? new Date() : null
+          }
+        })
+      ]);
+
       return NextResponse.json({
         ok: true,
-        message: 'Pipeline status synced from Contabo.',
+        message: isReady
+          ? 'Bunny Stream is ready for playback.'
+          : isFailed
+            ? statusMessage ?? 'Bunny Stream reported a processing failure.'
+            : `Bunny Stream status synced: ${stream.status}${stream.encodeProgress !== null ? ` (${stream.encodeProgress}%)` : ''}.`,
         video: await getProcessingVideo(videoId)
       });
     }

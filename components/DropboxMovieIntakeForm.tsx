@@ -215,7 +215,7 @@ export default function DropboxMovieIntakeForm({
           onChange={(event) => updateField('masterSourceUrl', event.target.value)}
           placeholder="Paste the Dropbox share link for the movie master"
         />
-        <span className="muted">This source stays in Dropbox. ACE Studio will use Contabo to download it, transcode HLS, and publish the HLS package to Bunny.</span>
+        <span className="muted">This is a legacy intake path. Active delivery now uses Bunny Stream for trailers and movies, with poster and subtitle storage in Bunny Storage.</span>
       </label>
 
       {message ? <div className="card">{message}</div> : null}

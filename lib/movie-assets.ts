@@ -1,4 +1,5 @@
 import { normalizeMediaKey } from './media';
+import { hasReadyBunnyMovieStream } from './bunny-stream';
 import { hasReadyVideoHls } from './hls';
 
 export type MovieAssetVideo = {
@@ -9,6 +10,8 @@ export type MovieAssetVideo = {
   technicalMetadata?: {
     masterKey?: string | null;
     masterSourceUrl?: string | null;
+    bunnyStreamVideoId?: string | null;
+    bunnyStreamReadyAt?: Date | string | null;
     hlsManifestKey?: string | null;
     hlsOutputPath?: string | null;
     hlsReadyAt?: Date | string | null;
@@ -42,7 +45,7 @@ export function hasMovieMp4(video: Pick<MovieAssetVideo, 'primaryStorageKey' | '
 }
 
 export function hasReadyMoviePlayback(video: Pick<MovieAssetVideo, 'primaryStorageKey' | 'fallbackStorageKey' | 'technicalMetadata'>) {
-  return hasReadyVideoHls(video) || hasMovieMp4(video);
+  return hasReadyBunnyMovieStream(video) || hasReadyVideoHls(video) || hasMovieMp4(video);
 }
 
 export function resolveMoviePosterKey(video: Pick<MovieAssetVideo, 'posterKey'>) {

@@ -8,8 +8,8 @@ function serializeFileSize(value: bigint | number | null | undefined) {
 
 function normalizeProcessingStatus(value: string | null | undefined) {
   const normalized = String(value ?? '').trim().toUpperCase();
-  if (normalized === 'AKASH_QUEUED') return 'CONTABO_QUEUED';
-  if (normalized === 'AKASH_STARTED') return 'ENCODING_STARTED';
+  if (normalized.includes('QUEUED')) return 'ENCODING_STARTED';
+  if (normalized.includes('STARTED')) return 'ENCODING_STARTED';
   return normalized || 'NO_MASTER';
 }
 
@@ -48,16 +48,21 @@ export async function getProcessingVideo(videoId: string) {
           processingStatus: true,
           playbackUrl: true,
           trailerKey: true,
-          orchestrationProvider: true,
-          orchestrationJobId: true,
-          hlsOutputPath: true,
-          transcodeProvider: true,
-          transcodeTaskId: true,
           transcodeError: true,
           hlsManifestKey: true,
           hlsReadyAt: true,
           masterDeletionEligible: true,
-          masterDeletedAt: true
+          masterDeletedAt: true,
+          bunnyStreamLibraryId: true,
+          bunnyStreamVideoId: true,
+          bunnyStreamStatus: true,
+          bunnyStreamReadyAt: true,
+          bunnyStreamError: true,
+          trailerStreamLibraryId: true,
+          trailerStreamVideoId: true,
+          trailerStreamStatus: true,
+          trailerStreamReadyAt: true,
+          trailerStreamError: true
         }
       }
     }
@@ -65,27 +70,6 @@ export async function getProcessingVideo(videoId: string) {
 
   if (!video) return null;
 
-  const externalIds = [video.technicalMetadata?.orchestrationJobId, videoId].filter(Boolean) as string[];
-  const latestPipelineEvent = await prisma.webhookEvent.findFirst({
-    where: {
-      endpoint: 'video-pipeline-callback',
-      ...(externalIds.length ? { externalId: { in: externalIds } } : {})
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      eventType: true,
-      createdAt: true,
-      payload: true
-    }
-  });
-
-  const payload = latestPipelineEvent?.payload as Record<string, unknown> | null | undefined;
-  const latestPipelineMessage =
-    typeof payload?.message === 'string'
-      ? payload.message
-      : typeof payload?.error === 'string'
-        ? payload.error
-        : null;
   const bunnyFolderPrefix =
     getMovieUploadFolderPrefixFromKey(video.technicalMetadata?.masterKey) ??
     getMovieUploadFolderPrefixFromKey(video.posterKey) ??
@@ -108,20 +92,22 @@ export async function getProcessingVideo(videoId: string) {
     masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
     processingStatus: normalizeProcessingStatus(video.technicalMetadata?.processingStatus),
     playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
-    orchestrationProvider: video.technicalMetadata?.orchestrationProvider ?? null,
-    orchestrationJobId: video.technicalMetadata?.orchestrationJobId ?? null,
-    transcodeProvider: video.technicalMetadata?.transcodeProvider ?? null,
-    transcodeTaskId: video.technicalMetadata?.transcodeTaskId ?? null,
     transcodeError: video.technicalMetadata?.transcodeError ?? null,
-    hlsOutputPath: video.technicalMetadata?.hlsOutputPath ?? null,
     hlsManifestKey: video.technicalMetadata?.hlsManifestKey ?? null,
     hlsReadyAt: video.technicalMetadata?.hlsReadyAt?.toISOString() ?? null,
     masterDeletionEligible: video.technicalMetadata?.masterDeletionEligible ?? false,
     masterDeletedAt: video.technicalMetadata?.masterDeletedAt?.toISOString() ?? null,
+    bunnyStreamLibraryId: video.technicalMetadata?.bunnyStreamLibraryId ?? null,
+    bunnyStreamVideoId: video.technicalMetadata?.bunnyStreamVideoId ?? null,
+    bunnyStreamStatus: video.technicalMetadata?.bunnyStreamStatus ?? null,
+    bunnyStreamReadyAt: video.technicalMetadata?.bunnyStreamReadyAt?.toISOString() ?? null,
+    bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
+    trailerStreamLibraryId: video.technicalMetadata?.trailerStreamLibraryId ?? null,
+    trailerStreamVideoId: video.technicalMetadata?.trailerStreamVideoId ?? null,
+    trailerStreamStatus: video.technicalMetadata?.trailerStreamStatus ?? null,
+    trailerStreamReadyAt: video.technicalMetadata?.trailerStreamReadyAt?.toISOString() ?? null,
+    trailerStreamError: video.technicalMetadata?.trailerStreamError ?? null,
     bunnyFolderPrefix,
-    latestPipelineEvent: latestPipelineEvent?.eventType ?? null,
-    latestPipelineEventAt: latestPipelineEvent?.createdAt?.toISOString() ?? null,
-    latestPipelineMessage,
     qualities: video.qualities,
     trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
     posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null

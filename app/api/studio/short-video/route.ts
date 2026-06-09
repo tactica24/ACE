@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const pipelineWarnings = Array.from(new Set(pipelineVideoIds)).map((videoId) => `${videoId}: Awaiting admin Contabo processing.`);
+  const pipelineWarnings = Array.from(new Set(pipelineVideoIds)).map((videoId) => `${videoId}: Awaiting Bunny Stream processing from the admin upload desk.`);
 
   return NextResponse.json({
     ok: true,

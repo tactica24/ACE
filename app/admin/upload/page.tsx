@@ -51,7 +51,7 @@ export default async function AdminUploadPage({
   return (
     <DashboardShell
       title="Admin title desk"
-      description="Create titles on behalf of producers from Dropbox source links, attach the correct rights holder, and keep catalog reporting tied to the proper producer record."
+      description="Create titles on behalf of producers with one Bunny-first intake flow: posters and SRT files go to Bunny Storage, while trailers and full movies go directly to Bunny Stream."
       sideNav={
         <SideNav
           active="/admin/upload"
@@ -72,7 +72,7 @@ export default async function AdminUploadPage({
 
       <AdminDisclosureSection
         title="Title workspace"
-        description="Choose a producer and create the movie record from a Dropbox source link. Poster and trailer can be attached later in moderation or admin videos."
+        description="Choose a producer, enter the basic movie details, and upload the poster, trailer, movie, and subtitle files from one page."
         badge="Create"
         defaultOpen
       >

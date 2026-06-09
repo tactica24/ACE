@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
+import { getBunnyStreamHlsUrl, getBunnyTrailerPlaybackUrl, hasReadyBunnyMovieStream } from '@/lib/bunny-stream';
 import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { prisma } from '@/lib/db';
 import { createSignedHlsManifestUrl, resolveVideoHlsManifestKey } from '@/lib/hls';
@@ -34,6 +35,10 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
           masterKey: true,
           availabilityRegion: true,
           trailerKey: true,
+          trailerStreamVideoId: true,
+          trailerStreamReadyAt: true,
+          bunnyStreamVideoId: true,
+          bunnyStreamReadyAt: true,
           hlsManifestKey: true,
           hlsOutputPath: true,
           hlsReadyAt: true
@@ -56,6 +61,11 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
   }
 
   const hlsManifestKey = resolveVideoHlsManifestKey(video);
+  const bunnyMovieReady = hasReadyBunnyMovieStream(video);
+  const bunnyMovieHlsUrl = bunnyMovieReady && video.technicalMetadata?.bunnyStreamVideoId
+    ? getBunnyStreamHlsUrl(video.technicalMetadata.bunnyStreamVideoId)
+    : null;
+  const bunnyTrailerUrl = getBunnyTrailerPlaybackUrl(video);
 
   let fullAccess = false;
   if (auth) {
@@ -93,8 +103,8 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
       : req.nextUrl.searchParams.get('deviceSessionId')?.trim() || undefined;
 
   const shouldCheckProgressive = fullAccess
-    ? !hlsManifestKey || !video.technicalMetadata?.hlsReadyAt
-    : !video.technicalMetadata?.trailerKey;
+    ? !bunnyMovieHlsUrl && (!hlsManifestKey || !video.technicalMetadata?.hlsReadyAt)
+    : !bunnyTrailerUrl && !video.technicalMetadata?.trailerKey;
   const mp4Status = shouldCheckProgressive ? await getMovieMp4StorageStatus(video) : null;
 
   if (shouldCheckProgressive && !mp4Status?.selectedKey) {
@@ -118,7 +128,9 @@ async function getPlaybackPayload(req: NextRequest, videoId: string, requireFull
     streamKey: mp4Status?.selectedKey ?? null,
     fullAccess,
     deviceSessionId,
-    hlsManifestKey: fullAccess && video.technicalMetadata?.hlsReadyAt ? hlsManifestKey : null
+    hlsManifestKey: fullAccess && video.technicalMetadata?.hlsReadyAt ? hlsManifestKey : null,
+    bunnyMovieHlsUrl: fullAccess ? bunnyMovieHlsUrl : null,
+    bunnyTrailerUrl
   };
 }
 
@@ -131,8 +143,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const result = await getPlaybackPayload(req, params.id, requireFullAccess);
   if (result instanceof NextResponse) return result;
 
-  const { auth, video, streamKey, fullAccess, deviceSessionId, hlsManifestKey } = result;
-  const hlsUrl = hlsManifestKey ? createSignedHlsManifestUrl(hlsManifestKey) : null;
+  const { auth, video, streamKey, fullAccess, deviceSessionId, hlsManifestKey, bunnyMovieHlsUrl, bunnyTrailerUrl } = result;
+  const hlsUrl = bunnyMovieHlsUrl ?? (hlsManifestKey ? createSignedHlsManifestUrl(hlsManifestKey) : null);
   const token = streamKey
     ? auth
       ? createStreamToken({
@@ -155,9 +167,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     : null;
 
   const playbackUrl = token ? buildPlaybackUrl(video.id, token) : null;
-  const previewUrl = video.technicalMetadata?.trailerKey
+  const previewUrl = bunnyTrailerUrl ?? (video.technicalMetadata?.trailerKey
     ? createSignedStorageUrl(video.technicalMetadata.trailerKey, { expiresIn: 60 * 60 })
-    : playbackUrl;
+    : playbackUrl);
 
   return NextResponse.json({
     token,
@@ -182,7 +194,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const result = await getPlaybackPayload(req, params.id, true);
   if (result instanceof NextResponse) return result;
-  const { auth, video, streamKey, hlsManifestKey } = result;
+  const { auth, video, streamKey, hlsManifestKey, bunnyMovieHlsUrl } = result;
   if (!auth) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
@@ -208,7 +220,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   });
 
-  const hlsUrl = hlsManifestKey ? createSignedHlsManifestUrl(hlsManifestKey) : null;
+  const hlsUrl = bunnyMovieHlsUrl ?? (hlsManifestKey ? createSignedHlsManifestUrl(hlsManifestKey) : null);
   const token = streamKey
     ? createStreamToken({
         userId: auth.sub,

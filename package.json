@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "npm run db:push && next dev",
+    "postinstall": "node scripts/run-prisma.mjs generate",
     "build": "npm run deploy:prepare:production && npm run prisma:generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -27,7 +28,6 @@
     "cleanup:storage": "tsx scripts/cleanup-storage.ts",
     "storage:backfill:legacy": "tsx scripts/backfill-legacy-media-to-bunny.ts",
     "gateway:upload": "node scripts/bunny-upload-gateway.mjs",
-    "worker:contabo": "node scripts/contabo-hls-worker.mjs",
     "build:android-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-apk.ps1",
     "sync:github-android-secrets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-github-android-secrets.ps1",
     "sync:vercel-android-secrets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-vercel-android-secrets.ps1",
@@ -37,7 +37,7 @@
     "@aws-sdk/client-s3": "^3.821.0",
     "@aws-sdk/s3-request-presigner": "^3.821.0",
     "@firebase/auth": "1.10.8",
-    "@prisma/client": "^5.16.1",
+    "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.6.0",
     "es-abstract": "1.24.2",
@@ -64,7 +64,7 @@
     "artillery": "^2.0.30",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.35",
-    "prisma": "^5.16.1",
+    "prisma": "5.22.0",
     "server-only": "^0.0.1",
     "tsx": "^4.15.6",
     "typescript": "^5.4.5"

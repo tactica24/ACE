@@ -7,6 +7,7 @@ import MovieAccessDetails from '@/components/MovieAccessDetails';
 import PosterAsset from '@/components/PosterAsset';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
+import { getBunnyTrailerPlaybackUrl, hasReadyBunnyMovieStream } from '@/lib/bunny-stream';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
@@ -116,7 +117,8 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     requestedVideo.seriesId &&
-    !hasMovieMp4(requestedVideo)
+    !hasMovieMp4(requestedVideo) &&
+    !hasReadyBunnyMovieStream(requestedVideo)
   ) {
     return notFound();
   }
@@ -125,12 +127,16 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     !isSeriesContainer(requestedVideo) &&
-    !hasMovieMp4(requestedVideo)
+    !hasMovieMp4(requestedVideo) &&
+    !hasReadyBunnyMovieStream(requestedVideo)
   ) {
     return notFound();
   }
 
-  const trailerKey = requestedVideo.technicalMetadata?.trailerKey?.trim() || null;
+  const trailerKey =
+    getBunnyTrailerPlaybackUrl(requestedVideo) ??
+    requestedVideo.technicalMetadata?.trailerKey?.trim() ??
+    null;
 
   if (user && user.role !== 'USER' && isViewerVisibleStatus(requestedVideo.status)) {
     const primaryAppPath = getPrimaryAppPath(user);
@@ -430,8 +436,14 @@ export default async function VideoPage({
       ].filter(Boolean)
     : [];
 
-  const seriesTrailerKey = series.technicalMetadata?.trailerKey?.trim() || null;
-  const episodeTrailerKey = selectedEpisode?.technicalMetadata?.trailerKey?.trim() || null;
+  const seriesTrailerKey =
+    getBunnyTrailerPlaybackUrl(series) ??
+    series.technicalMetadata?.trailerKey?.trim() ??
+    null;
+  const episodeTrailerKey =
+    getBunnyTrailerPlaybackUrl(selectedEpisode ?? null) ??
+    selectedEpisode?.technicalMetadata?.trailerKey?.trim() ??
+    null;
   const activeTrailerKey = episodeTrailerKey || seriesTrailerKey;
 
   const loginHref = `/auth/login?next=${encodeURIComponent(`/v/${series.id}`)}`;

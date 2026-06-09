@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getBunnyTrailerPlaybackUrl } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
@@ -15,6 +16,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       technicalMetadata: {
         select: {
           trailerKey: true,
+          trailerStreamVideoId: true,
+          trailerStreamReadyAt: true,
           vendorId: true,
           studioReleaseTitle: true,
           countriesOfOrigin: true,
@@ -38,7 +41,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         include: {
           technicalMetadata: {
             select: {
-              trailerKey: true
+              trailerKey: true,
+              trailerStreamVideoId: true,
+              trailerStreamReadyAt: true
             }
           },
           subtitleTracks: {
@@ -153,6 +158,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         seasonNumber: title.seasonNumber,
         episodeNumber: title.episodeNumber,
         previewAvailable:
+          Boolean(getBunnyTrailerPlaybackUrl(title)) ||
           Boolean(title.technicalMetadata?.trailerKey?.trim()) ||
           title.teaserSec > 0,
         metadata: {
@@ -165,7 +171,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           crewCredits: title.technicalMetadata?.crewCredits ?? null
         },
         progressSec: historyByVideoId.get(title.id) ?? 0,
-        trailerUrl: getMediaAssetUrl(title.technicalMetadata?.trailerKey),
+        trailerUrl: getBunnyTrailerPlaybackUrl(title) ?? getMediaAssetUrl(title.technicalMetadata?.trailerKey),
         audioLanguages: title.audioLanguages,
         subtitleTracks: title.subtitleTracks.map(mapSubtitleTrack),
         episodes: title.episodes.map((episode) => ({
@@ -179,10 +185,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.episodeNumber,
           previewAvailable:
+            Boolean(getBunnyTrailerPlaybackUrl(episode)) ||
             Boolean(episode.technicalMetadata?.trailerKey?.trim()) ||
             episode.teaserSec > 0,
           progressSec: historyByVideoId.get(episode.id) ?? 0,
-          trailerUrl: getMediaAssetUrl(episode.technicalMetadata?.trailerKey),
+          trailerUrl: getBunnyTrailerPlaybackUrl(episode) ?? getMediaAssetUrl(episode.technicalMetadata?.trailerKey),
           audioLanguages: episode.audioLanguages,
           subtitleTracks: episode.subtitleTracks.map(mapSubtitleTrack),
           access: mapEpisodeAccess(episode.id)

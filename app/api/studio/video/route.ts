@@ -322,7 +322,7 @@ function toTechnicalMetadataInput(metadata: NormalizedDeliveryMetadata | null, m
 }
 
 function getDeferredPipelineWarnings(videoIds: string[]) {
-  return Array.from(new Set(videoIds.filter(Boolean))).map((videoId) => `${videoId}: Awaiting admin Contabo processing.`);
+  return Array.from(new Set(videoIds.filter(Boolean))).map((videoId) => `${videoId}: Awaiting Bunny Stream processing from the admin upload desk.`);
 }
 
 export async function POST(req: NextRequest) {

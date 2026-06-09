@@ -15,3 +15,5 @@ perf/results
 infra/cloudflare-stream-worker/wrangler.toml
 
 .aider*
+.vercel
+.env*

@@ -321,6 +321,16 @@ model VideoTechnicalMetadata {
   hlsManifestKey           String?
   hlsOutputPath            String?
   hlsReadyAt               DateTime?
+  bunnyStreamLibraryId     String?
+  bunnyStreamVideoId       String?
+  bunnyStreamStatus        String?
+  bunnyStreamReadyAt       DateTime?
+  bunnyStreamError         String?
+  trailerStreamLibraryId   String?
+  trailerStreamVideoId     String?
+  trailerStreamStatus      String?
+  trailerStreamReadyAt     DateTime?
+  trailerStreamError       String?
   masterDeletionEligible   Boolean  @default(false)
   masterDeletedAt          DateTime?
   availabilityRegion       String   @default("GLOBAL")

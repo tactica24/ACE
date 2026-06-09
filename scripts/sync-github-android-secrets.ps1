@@ -138,9 +138,11 @@ $optionalSecretMap = @(
   @{ Name = "BUNNY_STORAGE_API_KEY"; Fallbacks = @() },
   @{ Name = "BUNNY_STORAGE_ZONE"; Fallbacks = @() },
   @{ Name = "BUNNY_STORAGE_ENDPOINT"; Fallbacks = @() },
+  @{ Name = "BUNNY_STORAGE_S3_ENDPOINT"; Fallbacks = @() },
   @{ Name = "BUNNY_CDN_HOSTNAME"; Fallbacks = @() },
   @{ Name = "BUNNY_TOKEN_KEY"; Fallbacks = @() },
-  @{ Name = "ACE_ANDROID_APK_STORAGE_KEY"; Fallbacks = @() }
+  @{ Name = "ACE_ANDROID_APK_STORAGE_KEY"; Fallbacks = @() },
+  @{ Name = "ACE_API_BASE_URL"; Fallbacks = @("ACE_APP_BASE_URL") }
 )
 
 foreach ($secret in $optionalSecretMap) {

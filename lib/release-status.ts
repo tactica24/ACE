@@ -1,4 +1,5 @@
 import { hasMovieMp4 } from './movie-assets';
+import { hasReadyBunnyMovieStream } from './bunny-stream';
 import { hasReadyVideoHls } from './hls';
 import { hasVideoMasterSource } from './master-source';
 
@@ -10,12 +11,14 @@ type ReleaseLifecycleVideo = {
     masterKey?: string | null;
     masterSourceUrl?: string | null;
     processingStatus?: string | null;
+    bunnyStreamVideoId?: string | null;
+    bunnyStreamReadyAt?: Date | string | null;
     hlsManifestKey?: string | null;
     hlsReadyAt?: Date | string | null;
   } | null;
 };
 
-const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED', 'AKASH_QUEUED', 'AKASH_STARTED']);
+const ACTIVE_PIPELINE_STATUSES = new Set(['ENCODING_STARTED', 'STREAM_UPLOAD_CREATED', 'STREAM_UPLOAD_UPLOADING']);
 export const VIEWER_VISIBLE_STATUSES = ['APPROVED', 'READY', 'PUBLISHED'] as const;
 
 export function isViewerVisibleStatus(status: string | null | undefined) {
@@ -27,7 +30,7 @@ export function getStatusAfterApproval(video: ReleaseLifecycleVideo) {
     return 'PUBLISHED' as const;
   }
 
-  if (hasReadyVideoHls(video) || hasMovieMp4(video)) {
+  if (hasReadyBunnyMovieStream(video) || hasReadyVideoHls(video) || hasMovieMp4(video)) {
     return 'READY' as const;
   }
 

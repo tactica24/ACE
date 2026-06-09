@@ -29,6 +29,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: 3.38.4
+  ACE_API_BASE_URL: ${{ vars.ACE_API_BASE_URL || secrets.ACE_API_BASE_URL }}
 
 jobs:
   flutter_checks:
@@ -99,8 +100,9 @@ jobs:
           ACE_ANDROID_KEY_ALIAS: ${{ secrets.ACE_ANDROID_KEY_ALIAS }}
           ACE_ANDROID_KEY_PASSWORD: ${{ secrets.ACE_ANDROID_KEY_PASSWORD }}
         run: |
+          API_BASE_URL="${ACE_API_BASE_URL:-https://www.acestudio.ng}"
           flutter build apk --release --android-skip-build-dependency-validation \
-            --dart-define=ACE_API_BASE_URL=https://www.acestudio.ng \
+            --dart-define=ACE_API_BASE_URL=$API_BASE_URL \
             --dart-define=ACE_ENVIRONMENT=production \
             --dart-define=ACE_IOS_BUNDLE_ID=ng.acestudio.mobile
 
@@ -115,8 +117,9 @@ jobs:
           ACE_ANDROID_KEY_ALIAS: ${{ secrets.ACE_ANDROID_KEY_ALIAS }}
           ACE_ANDROID_KEY_PASSWORD: ${{ secrets.ACE_ANDROID_KEY_PASSWORD }}
         run: |
+          API_BASE_URL="${ACE_API_BASE_URL:-https://www.acestudio.ng}"
           flutter build appbundle --release --android-skip-build-dependency-validation \
-            --dart-define=ACE_API_BASE_URL=https://www.acestudio.ng \
+            --dart-define=ACE_API_BASE_URL=$API_BASE_URL \
             --dart-define=ACE_ENVIRONMENT=production \
             --dart-define=ACE_IOS_BUNDLE_ID=ng.acestudio.mobile
 
@@ -126,40 +129,39 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk build/release/ace-studio-android.apk
           cp build/app/outputs/bundle/release/app-release.aab build/release/ace-studio-android.aab
 
-      - name: Detect APK storage configuration
+      - name: Detect Bunny APK storage configuration
         id: storage
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          BUNNY_STORAGE_API_KEY: ${{ secrets.BUNNY_STORAGE_API_KEY }}
+          BUNNY_STORAGE_ZONE: ${{ secrets.BUNNY_STORAGE_ZONE }}
+          BUNNY_STORAGE_S3_ENDPOINT: ${{ secrets.BUNNY_STORAGE_S3_ENDPOINT }}
         run: |
-          if [ -z "$R2_ENDPOINT" ] || [ -z "$R2_BUCKET" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+          if [ -z "$BUNNY_STORAGE_API_KEY" ] || [ -z "$BUNNY_STORAGE_ZONE" ] || [ -z "$BUNNY_STORAGE_S3_ENDPOINT" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "R2 storage secrets are not configured. APK build will continue and GitHub release publishing can still succeed."
+            echo "Bunny storage secrets are not configured. APK build will continue and GitHub release publishing can still succeed."
             exit 0
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK to R2 storage
+      - name: Upload APK to Bunny Storage
         if: steps.storage.outputs.configured == 'true'
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.R2_REGION || 'auto' }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          ACE_ANDROID_APK_R2_KEY: ${{ secrets.ACE_ANDROID_APK_R2_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BUNNY_STORAGE_ZONE }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BUNNY_STORAGE_API_KEY }}
+          AWS_DEFAULT_REGION: auto
+          BUNNY_STORAGE_S3_ENDPOINT: ${{ secrets.BUNNY_STORAGE_S3_ENDPOINT }}
+          BUNNY_STORAGE_ZONE: ${{ secrets.BUNNY_STORAGE_ZONE }}
+          ACE_ANDROID_APK_STORAGE_KEY: ${{ vars.ACE_ANDROID_APK_STORAGE_KEY }}
         run: |
-          if [ -z "$R2_ENDPOINT" ] || [ -z "$R2_BUCKET" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-            echo "R2 upload skipped because storage secrets are not configured."
+          if [ -z "$BUNNY_STORAGE_S3_ENDPOINT" ] || [ -z "$BUNNY_STORAGE_ZONE" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "Bunny upload skipped because storage secrets are not configured."
             exit 0
           fi
 
-          APK_KEY="${ACE_ANDROID_APK_R2_KEY:-downloads/ace-studio-android.apk}"
+          APK_KEY="${ACE_ANDROID_APK_STORAGE_KEY:-downloads/ace-studio-android.apk}"
           python -m pip install --user awscli
-          "$HOME/.local/bin/aws" s3 cp build/release/ace-studio-android.apk "s3://$R2_BUCKET/$APK_KEY" \
-            --endpoint-url "$R2_ENDPOINT" \
+          "$HOME/.local/bin/aws" s3 cp build/release/ace-studio-android.apk "s3://$BUNNY_STORAGE_ZONE/$APK_KEY" \
+            --endpoint-url "$BUNNY_STORAGE_S3_ENDPOINT" \
             --content-type "application/vnd.android.package-archive" \
             --content-disposition 'attachment; filename="ace-studio-android.apk"' \
             --cache-control "public, max-age=300"
@@ -283,9 +285,10 @@ jobs:
         env:
           ACE_IOS_BUNDLE_ID: ng.acestudio.mobile
         run: |
+          API_BASE_URL="${ACE_API_BASE_URL:-https://www.acestudio.ng}"
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
-            --dart-define=ACE_API_BASE_URL=https://www.acestudio.ng \
+            --dart-define=ACE_API_BASE_URL=$API_BASE_URL \
             --dart-define=ACE_ENVIRONMENT=production \
             --dart-define=ACE_IOS_BUNDLE_ID=$ACE_IOS_BUNDLE_ID
 
@@ -294,8 +297,9 @@ jobs:
         env:
           ACE_IOS_BUNDLE_ID: ng.acestudio.mobile
         run: |
+          API_BASE_URL="${ACE_API_BASE_URL:-https://www.acestudio.ng}"
           flutter build ios --release --no-codesign \
-            --dart-define=ACE_API_BASE_URL=https://www.acestudio.ng \
+            --dart-define=ACE_API_BASE_URL=$API_BASE_URL \
             --dart-define=ACE_ENVIRONMENT=production \
             --dart-define=ACE_IOS_BUNDLE_ID=$ACE_IOS_BUNDLE_ID
 

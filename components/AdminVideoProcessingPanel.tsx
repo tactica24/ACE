@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { buildFfmpegCommand } from '@/lib/video-processing';
 
 type ProcessingVideo = {
   id: string;
@@ -13,26 +12,26 @@ type ProcessingVideo = {
   creatorName: string;
   creatorEmail: string;
   masterKey: string | null;
-  masterSourceUrl: string | null;
   masterFileName: string | null;
   masterFileSize: number | null;
   masterUploadedAt: string | null;
   processingStatus: string;
   playbackUrl: string | null;
-  orchestrationProvider?: string | null;
-  orchestrationJobId?: string | null;
-  transcodeProvider?: string | null;
-  transcodeTaskId?: string | null;
   transcodeError?: string | null;
-  hlsOutputPath?: string | null;
   hlsManifestKey?: string | null;
   hlsReadyAt?: string | null;
   masterDeletionEligible?: boolean;
   masterDeletedAt?: string | null;
-  bunnyFolderPrefix?: string | null;
-  latestPipelineEvent?: string | null;
-  latestPipelineEventAt?: string | null;
-  latestPipelineMessage?: string | null;
+  bunnyStreamLibraryId?: string | null;
+  bunnyStreamVideoId?: string | null;
+  bunnyStreamStatus?: string | null;
+  bunnyStreamReadyAt?: string | null;
+  bunnyStreamError?: string | null;
+  trailerStreamLibraryId?: string | null;
+  trailerStreamVideoId?: string | null;
+  trailerStreamStatus?: string | null;
+  trailerStreamReadyAt?: string | null;
+  trailerStreamError?: string | null;
   qualities: string[];
   trailerDownloadHref: string | null;
   posterDownloadHref: string | null;
@@ -54,9 +53,10 @@ type ModerationCounts = {
 };
 
 type PipelineHealth = {
-  contaboReady: boolean;
-  contaboApiUrl: string | null;
-  callbackBaseUrl: string | null;
+  bunnyReady: boolean;
+  libraryId: string | null;
+  pullZone: string | null;
+  webhookUrl: string | null;
   missingConfig: string[];
 };
 
@@ -67,218 +67,133 @@ type OperationState = {
 };
 
 type PipelineStepState = 'done' | 'active' | 'pending' | 'failed';
-
-type PipelineStage =
-  | 'overview'
-  | 'intake'
-  | 'moderation'
-  | 'needs-source'
-  | 'ready'
-  | 'in-progress'
-  | 'live';
-
-const STAGES: Array<{ id: PipelineStage; label: string; description: string }> = [
-  {
-    id: 'overview',
-    label: 'Pipeline overview',
-    description: 'Start-to-finish workflow across intake, moderation, source attachment and HLS processing.'
-  },
-  {
-    id: 'intake',
-    label: 'Intake',
-    description: 'Producer intake and title creation tasks that feed the pipe.'
-  },
-  {
-    id: 'moderation',
-    label: 'Moderation',
-    description: 'Review metadata, poster details and release readiness.'
-  },
-  {
-    id: 'needs-source',
-    label: 'Needs source',
-    description: 'Titles waiting for Dropbox or Bunny masters.'
-  },
-  {
-    id: 'ready',
-    label: 'Ready for processing',
-    description: 'Source attached and ready to queue Contabo.'
-  },
-  {
-    id: 'in-progress',
-    label: 'HLS processing',
-    description: 'Contabo jobs queued and encoding in progress.'
-  }
-];
-
-const ACTIVE_PIPELINE_STATUSES = new Set(['CONTABO_QUEUED', 'ENCODING_STARTED', 'AKASH_QUEUED', 'AKASH_STARTED']);
+type StreamStage = 'needs-upload' | 'uploading' | 'processing' | 'ready' | 'failed' | 'published';
 
 function formatBytes(value: number | null) {
-  if (!value) return 'No file';
+  if (!value) return 'No file recorded';
   if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.round(value / 1024)} KB`;
 }
 
 function formatDate(value: string | null) {
-  return value ? value.slice(0, 10) : 'Not uploaded';
+  return value ? value.slice(0, 10) : 'Not recorded';
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return 'No callback yet';
-  return new Date(value).toLocaleString();
+  return value ? new Date(value).toLocaleString() : 'Not yet';
 }
 
-function isPipelineWorking(video: ProcessingVideo) {
-  return ACTIVE_PIPELINE_STATUSES.has(video.processingStatus);
+function normalizeStreamStatus(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return 'created';
+  if (normalized.includes('upload')) return normalized.includes('fail') ? 'failed' : normalized;
+  if (normalized.includes('queue')) return 'queued';
+  if (normalized.includes('process')) return 'processing';
+  if (normalized.includes('encod')) return 'encoding';
+  if (normalized.includes('finish') || normalized.includes('ready')) return 'ready';
+  if (normalized.includes('fail') || normalized.includes('error')) return 'failed';
+  return normalized;
 }
 
-function isViewerReady(video: ProcessingVideo) {
-  return Boolean(video.hlsReadyAt) && video.processingStatus === 'READY_TO_STREAM';
-}
+function getStreamStage(video: ProcessingVideo): StreamStage {
+  if (video.status === 'PUBLISHED') return 'published';
+  if (video.bunnyStreamReadyAt || video.processingStatus === 'READY_TO_STREAM' || video.status === 'READY') return 'ready';
 
-function isLive(video: ProcessingVideo) {
-  return isViewerReady(video) || ['READY', 'PUBLISHED'].includes(video.status);
-}
-
-function getBucket(video: ProcessingVideo) {
-  if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
-    return 'processed';
+  const streamStatus = normalizeStreamStatus(video.bunnyStreamStatus);
+  if (video.bunnyStreamError || video.transcodeError || streamStatus === 'failed' || video.processingStatus === 'TRANSCODE_FAILED') {
+    return 'failed';
   }
-  if (video.masterKey || video.masterSourceUrl) {
-    return 'uploaded';
-  }
-  return 'needs-master';
-}
-
-function getBucketTone(bucket: 'needs-master' | 'uploaded' | 'processed') {
-  if (bucket === 'processed') return 'status-live';
-  if (bucket === 'uploaded') return 'status-warn';
-  return 'status-review';
-}
-
-function getVideoStage(video: ProcessingVideo): PipelineStage {
-  if (video.processingStatus === 'READY_TO_STREAM' || ['READY', 'PUBLISHED'].includes(video.status)) {
-    return 'live';
-  }
-  if (isPipelineWorking(video)) {
-    return 'in-progress';
-  }
-  if (video.masterKey || video.masterSourceUrl) {
-    return 'ready';
-  }
-  return 'needs-source';
-}
-
-function getPipelineSummary(video: ProcessingVideo) {
-  if (isViewerReady(video)) {
-    return 'HLS uploaded to Bunny and verified.';
-  }
-  if (video.processingStatus === 'CONTABO_QUEUED') {
-    return video.latestPipelineMessage ?? 'Contabo job queued. Waiting for worker pickup.';
-  }
-  if (video.processingStatus === 'ENCODING_STARTED') {
-    return video.latestPipelineMessage ?? 'Contabo is transcoding and preparing Bunny HLS output.';
-  }
-  if (video.processingStatus === 'TRANSCODE_FAILED') {
-    return video.latestPipelineMessage ?? video.transcodeError ?? 'Transcode failed.';
-  }
-  if (video.masterSourceUrl) {
-    return 'Dropbox source is attached and ready for Contabo processing.';
-  }
-  if (video.masterKey) {
-    return 'Master is stored in Bunny and ready for Contabo processing.';
-  }
-  return 'Waiting for a Dropbox or Bunny master source.';
-}
-
-function getSourceLabel(video: ProcessingVideo) {
-  if (video.masterSourceUrl) return 'Dropbox master attached';
-  if (video.masterKey) return 'Bunny master uploaded';
-  return 'No source attached';
-}
-
-function getDeliveryLabel(video: ProcessingVideo) {
-  if (isViewerReady(video)) return 'Bunny HLS ready';
-  if (isPipelineWorking(video) && video.hlsOutputPath) return 'Contabo preparing Bunny HLS';
-  if (video.processingStatus === 'TRANSCODE_FAILED') return 'Viewer delivery failed';
-  if (video.masterSourceUrl || video.masterKey) return 'Waiting for Contabo HLS';
-  return 'Viewer delivery missing';
-}
-
-function getPipelinePhase(video: ProcessingVideo) {
-  if (video.status === 'PUBLISHED') return 'Published to viewers';
-  if (isViewerReady(video)) return 'Viewer playback ready';
-  if (video.processingStatus === 'ENCODING_STARTED') return 'Contabo transcoding in progress';
-  if (video.processingStatus === 'CONTABO_QUEUED') return 'Queued for worker pickup';
-  if (video.processingStatus === 'TRANSCODE_FAILED') return 'Pipeline needs attention';
-  if (video.masterSourceUrl || video.masterKey) return 'Source ready for Contabo';
-  return 'Waiting for source attachment';
+  if (!video.bunnyStreamVideoId) return 'needs-upload';
+  if (['created', 'uploading', 'uploaded'].includes(streamStatus)) return 'uploading';
+  return 'processing';
 }
 
 function getProgressPercent(video: ProcessingVideo) {
-  if (video.status === 'PUBLISHED') return 100;
-  if (isViewerReady(video)) return 85;
-  if (video.processingStatus === 'ENCODING_STARTED') return 60;
-  if (video.processingStatus === 'CONTABO_QUEUED') return 35;
-  if (video.masterSourceUrl || video.masterKey) return 15;
-  return 0;
+  const stage = getStreamStage(video);
+  if (stage === 'published') return 100;
+  if (stage === 'ready') return 88;
+  if (stage === 'processing') return 64;
+  if (stage === 'uploading') return 35;
+  if (stage === 'failed') return 35;
+  return 10;
 }
 
-function getCurrentPipelineIssue(video: ProcessingVideo) {
-  if (video.processingStatus !== 'TRANSCODE_FAILED') return null;
-  return video.latestPipelineMessage ?? video.transcodeError ?? 'Transcode failed.';
+function getPipelineSummary(video: ProcessingVideo) {
+  const stage = getStreamStage(video);
+  if (stage === 'published') return 'Published and available to viewers.';
+  if (stage === 'ready') return 'Bunny Stream finished encoding and playback is ready.';
+  if (stage === 'failed') return video.bunnyStreamError ?? video.transcodeError ?? 'Bunny Stream reported a processing failure.';
+  if (stage === 'processing') {
+    return `Bunny Stream is processing the movie${video.bunnyStreamStatus ? ` (${normalizeStreamStatus(video.bunnyStreamStatus)})` : ''}.`;
+  }
+  if (stage === 'uploading') {
+    return 'Movie upload was created in Bunny Stream and is waiting for upload or encode callbacks.';
+  }
+  return 'This title has not been sent through the Bunny upload desk yet.';
+}
+
+function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
+  const stage = getStreamStage(video);
+  if (!pipelineHealth.bunnyReady) {
+    return 'Finish Bunny Stream and storage configuration first.';
+  }
+  if (stage === 'needs-upload') {
+    return 'Upload poster, trailer, movie, and subtitles from the admin upload page.';
+  }
+  if (stage === 'failed') {
+    return 'Refresh Bunny status and re-upload the movie if Bunny reports a permanent failure.';
+  }
+  if (stage === 'ready') {
+    return video.status === 'PUBLISHED' ? 'Movie is already live.' : 'Publish when release checks are complete.';
+  }
+  return 'Wait for Bunny webhook updates or refresh Bunny status.';
 }
 
 function getPipelineSteps(video: ProcessingVideo): Array<{ label: string; state: PipelineStepState; note: string }> {
-  const hasSource = Boolean(video.masterKey || video.masterSourceUrl);
-  const isQueued = video.processingStatus === 'CONTABO_QUEUED' || video.processingStatus === 'ENCODING_STARTED' || isViewerReady(video) || video.status === 'PUBLISHED';
-  const isEncoding = video.processingStatus === 'ENCODING_STARTED';
-  const hasFailed = video.processingStatus === 'TRANSCODE_FAILED';
-  const readyForPlayback = isViewerReady(video);
-  const published = video.status === 'PUBLISHED';
+  const stage = getStreamStage(video);
+  const streamStatus = normalizeStreamStatus(video.bunnyStreamStatus);
+  const isFailed = stage === 'failed';
+  const isReady = stage === 'ready' || stage === 'published';
+  const isPublished = stage === 'published';
+  const hasTrailer = Boolean(video.trailerStreamVideoId);
+  const trailerReady = Boolean(video.trailerStreamReadyAt);
 
   return [
     {
-      label: 'Source attached',
-      state: hasSource ? 'done' : 'pending',
-      note: hasSource ? getSourceLabel(video) : 'Attach Dropbox or Bunny source.'
+      label: 'Title created',
+      state: 'done',
+      note: `Record created for ${video.creatorName}.`
     },
     {
-      label: 'Queued on Contabo',
-      state: hasFailed ? 'failed' : isQueued ? 'done' : hasSource ? 'active' : 'pending',
-      note:
-        hasFailed
-          ? 'Last queue attempt failed.'
-          : isQueued
-            ? 'Worker job linked and accepted.'
-            : 'Ready to start Contabo HLS.'
+      label: 'Movie sent to Bunny Stream',
+      state: video.bunnyStreamVideoId ? 'done' : 'pending',
+      note: video.bunnyStreamVideoId ? `Video ID ${video.bunnyStreamVideoId}` : 'Use the Bunny upload desk to attach the movie file.'
     },
     {
-      label: 'Transcoding',
-      state: hasFailed ? 'failed' : readyForPlayback ? 'done' : isEncoding ? 'active' : isQueued ? 'pending' : 'pending',
-      note:
-        hasFailed
-          ? getCurrentPipelineIssue(video) ?? 'Pipeline failed during transcode.'
-          : readyForPlayback
-            ? 'Contabo finished encoding.'
-            : isEncoding
-              ? 'Contabo is creating HLS output.'
-              : 'Waiting for worker processing.'
+      label: 'Bunny processing',
+      state: isFailed ? 'failed' : isReady ? 'done' : video.bunnyStreamVideoId ? 'active' : 'pending',
+      note: isFailed
+        ? video.bunnyStreamError ?? video.transcodeError ?? 'Bunny Stream processing failed.'
+        : isReady
+          ? 'Encoding finished and playback files are available.'
+          : video.bunnyStreamVideoId
+            ? `Current state: ${streamStatus}.`
+            : 'Waiting for movie upload to start.'
     },
     {
-      label: 'Bunny playback ready',
-      state: hasFailed ? 'failed' : readyForPlayback ? 'done' : isQueued ? 'active' : 'pending',
-      note:
-        hasFailed
-          ? 'Viewer delivery was not finalized.'
-          : readyForPlayback
-            ? 'Manifest verified and playback unlocked.'
-            : 'Waiting for verified HLS delivery.'
+      label: 'Trailer ready',
+      state: trailerReady ? 'done' : hasTrailer ? 'active' : 'pending',
+      note: trailerReady
+        ? 'Trailer playback is available.'
+        : hasTrailer
+          ? `Trailer state: ${normalizeStreamStatus(video.trailerStreamStatus)}.`
+          : 'Optional trailer not uploaded yet.'
     },
     {
       label: 'Published',
-      state: published ? 'done' : readyForPlayback ? 'active' : 'pending',
-      note: published ? 'Movie is live for viewers.' : 'Publish after release checks are complete.'
+      state: isPublished ? 'done' : isReady ? 'active' : 'pending',
+      note: isPublished ? 'Movie is live for viewers.' : 'Publish after moderation and release checks are complete.'
     }
   ];
 }
@@ -290,32 +205,12 @@ function getPipelineStepTone(step: PipelineStepState) {
   return { color: '#6b7280', backgroundColor: '#f3f4f6', borderColor: '#d1d5db', label: 'Pending' };
 }
 
-function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
-  if (!pipelineHealth.contaboReady) {
-    return 'Complete pipeline configuration before queueing Contabo.';
-  }
-  if (!video.masterKey && !video.masterSourceUrl) {
-    return 'Attach a Dropbox URL or Bunny master first.';
-  }
-  if (video.processingStatus === 'TRANSCODE_FAILED') {
-    return 'Review the worker error, fix the source, then restart Contabo.';
-  }
-  if (isPipelineWorking(video)) {
-    return 'Wait for the worker callback or sync the latest Contabo status.';
-  }
-  if (video.processingStatus === 'READY_TO_STREAM' || video.status === 'READY') {
-    return 'Publish the title when release checks are complete.';
-  }
-  return 'Queue Contabo HLS processing.';
-}
-
 function getOperationStyles(tone: OperationState['tone']) {
   if (tone === 'error') {
     return {
       cardClassName: 'status-error',
       backgroundColor: '#fef2f2',
-      borderColor: '#dc2626',
-      icon: '!'
+      borderColor: '#dc2626'
     };
   }
 
@@ -323,16 +218,14 @@ function getOperationStyles(tone: OperationState['tone']) {
     return {
       cardClassName: 'status-warn',
       backgroundColor: '#fef3c7',
-      borderColor: '#f59e0b',
-      icon: '...'
+      borderColor: '#f59e0b'
     };
   }
 
   return {
     cardClassName: 'status-live',
     backgroundColor: '#f0fdf4',
-    borderColor: '#22c55e',
-    icon: 'OK'
+    borderColor: '#22c55e'
   };
 }
 
@@ -351,8 +244,6 @@ export default function AdminVideoProcessingPanel({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
-  const [selectedStage, setSelectedStage] = useState<PipelineStage>('overview');
-  const [sourceDrafts, setSourceDrafts] = useState<Record<string, string>>({});
 
   const sortedProducers = useMemo(
     () => [...producers].sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name)),
@@ -360,67 +251,57 @@ export default function AdminVideoProcessingPanel({
   );
 
   const allVideos = useMemo(
-    () => producers.flatMap((producer) =>
-      producer.videos.map((video) => ({ ...video, creatorName: producer.name, creatorEmail: producer.email, creatorNumber: producer.creatorNumber }))
-    ),
+    () =>
+      producers.flatMap((producer) =>
+        producer.videos.map((video) => ({
+          ...video,
+          creatorName: producer.name,
+          creatorEmail: producer.email
+        }))
+      ),
     [producers]
   );
 
   const selectedProducer = useMemo(
     () => sortedProducers.find((producer) => producer.id === selectedProducerId) ?? null,
-    [sortedProducers, selectedProducerId]
+    [selectedProducerId, sortedProducers]
   );
 
-  const filteredVideos = useMemo(() => {
-    const source = selectedProducer ? selectedProducer.videos : allVideos;
+  const visibleVideos = useMemo(() => {
+    const source = selectedProducer
+      ? selectedProducer.videos.map((video) => ({ ...video, creatorName: selectedProducer.name, creatorEmail: selectedProducer.email }))
+      : allVideos;
 
-    if (selectedStage === 'needs-source') {
-      return source.filter((video) => !video.masterKey && !video.masterSourceUrl && !isLive(video));
-    }
+    return [...source].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [allVideos, selectedProducer]);
 
-    if (selectedStage === 'ready') {
-      return source.filter(
-        (video) =>
-          (video.masterKey || video.masterSourceUrl) &&
-          !isPipelineWorking(video) &&
-          !isLive(video)
-      );
-    }
-
-    if (selectedStage === 'in-progress') {
-      return source.filter((video) => isPipelineWorking(video) && !isLive(video));
-    }
-
-    return source.filter((video) => !isLive(video));
-  }, [allVideos, selectedProducer, selectedStage]);
-
-  const activeVideos = useMemo(() => allVideos.filter(isPipelineWorking), [allVideos]);
-
-  const stageCounts = useMemo(
-    () => ({
-      needsSource: allVideos.filter((video) => !video.masterKey && !video.masterSourceUrl && !isLive(video)).length,
-      ready: allVideos.filter(
-        (video) =>
-          (video.masterKey || video.masterSourceUrl) &&
-          !isPipelineWorking(video) &&
-          !isLive(video)
-      ).length,
-      inProgress: allVideos.filter((video) => isPipelineWorking(video) && !isLive(video)).length,
-      live: allVideos.filter(isLive).length,
-      total: allVideos.filter((video) => !isLive(video)).length
-    }),
-    [allVideos]
-  );
+  const counts = useMemo(() => {
+    const stages = allVideos.map(getStreamStage);
+    return {
+      needsUpload: stages.filter((stage) => stage === 'needs-upload').length,
+      uploading: stages.filter((stage) => stage === 'uploading').length,
+      processing: stages.filter((stage) => stage === 'processing').length,
+      ready: stages.filter((stage) => stage === 'ready').length,
+      failed: stages.filter((stage) => stage === 'failed').length,
+      published: stages.filter((stage) => stage === 'published').length
+    };
+  }, [allVideos]);
 
   useEffect(() => {
-    if (!activeVideos.length) return;
+    const activeVideoIds = allVideos.filter((video) => {
+      const stage = getStreamStage(video);
+      return stage === 'uploading' || stage === 'processing';
+    });
+
+    if (!activeVideoIds.length) return;
 
     let cancelled = false;
     const run = async () => {
       const results = await Promise.allSettled(
-        activeVideos.map((video) =>
-          fetch(`/api/admin/videos/${video.id}/processing`, { method: 'GET' })
-            .then((response) => response.json().catch(() => ({})).then((payload) => ({ ok: response.ok, payload })))
+        activeVideoIds.map((video) =>
+          fetch(`/api/admin/videos/${video.id}/processing`, { method: 'GET' }).then((response) =>
+            response.json().catch(() => ({})).then((payload) => ({ ok: response.ok, payload }))
+          )
         )
       );
 
@@ -430,19 +311,24 @@ export default function AdminVideoProcessingPanel({
         if (result.status !== 'fulfilled' || !result.value.ok || !result.value.payload?.video) continue;
         const refreshedVideo = result.value.payload.video as Record<string, unknown>;
         const videoId = typeof refreshedVideo.id === 'string' ? refreshedVideo.id : '';
-        if (videoId) {
-          void refreshVideo(videoId, refreshedVideo);
-        }
+        if (!videoId) continue;
+
+        setProducers((current) =>
+          current.map((producer) => ({
+            ...producer,
+            videos: producer.videos.map((video) => (video.id === videoId ? ({ ...video, ...refreshedVideo } as ProcessingVideo) : video))
+          }))
+        );
       }
     };
 
     void run();
-    const interval = window.setInterval(run, 8000);
+    const interval = window.setInterval(run, 10000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [activeVideos]);
+  }, [allVideos]);
 
   async function refreshVideo(videoId: string, payload: Record<string, unknown>) {
     setProducers((current) =>
@@ -470,501 +356,243 @@ export default function AdminVideoProcessingPanel({
     });
   }
 
-  async function updateStatus(videoId: string, action: string) {
-    startOperation(videoId, 'Updating processing status...');
+  async function syncStream(videoId: string) {
+    startOperation(videoId, 'Refreshing Bunny Stream status...');
     try {
       const response = await fetch('/api/admin/videos/processing-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, action })
+        body: JSON.stringify({ videoId, action: 'SYNC_STREAM' })
       });
       const payload = await response.json().catch(() => ({}));
       if (payload.video) {
         await refreshVideo(videoId, payload.video);
       }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to update processing status.');
-      finishOperation(videoId, payload.message ?? 'Processing status updated.');
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to refresh Bunny Stream status.');
+      finishOperation(videoId, payload.message ?? 'Bunny Stream status refreshed.');
     } catch (error) {
-      failOperation(videoId, error, 'Unable to update processing status.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function deleteMaster(videoId: string) {
-    startOperation(videoId, 'Removing source master...');
-    try {
-      const response = await fetch(`/api/admin/videos/${videoId}/master`, { method: 'DELETE' });
-      const payload = await response.json().catch(() => ({}));
-      if (payload.video) {
-        await refreshVideo(videoId, payload.video);
-      }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to delete source.');
-      if (!payload.video) throw new Error(payload.error ?? 'Source deleted, but the updated movie data was not returned.');
-      finishOperation(videoId, 'Source deleted. HLS remains as the viewer playback source.');
-    } catch (error) {
-      failOperation(videoId, error, 'Unable to delete source.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function completeProcessing(videoId: string) {
-    startOperation(videoId, 'Syncing HLS pipeline status...');
-    try {
-      const response = await fetch('/api/admin/videos/processing-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, action: 'SYNC_PIPELINE' })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (payload.video) {
-        await refreshVideo(videoId, payload.video);
-      }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to sync HLS pipeline.');
-      if (!payload.video) throw new Error(payload.error ?? 'Pipeline sync completed, but the updated movie data was not returned.');
-      finishOperation(videoId, payload.message ?? 'HLS pipeline synced.');
-    } catch (error) {
-      failOperation(videoId, error, 'Unable to sync HLS pipeline.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function attachDropboxSource(videoId: string) {
-    const sourceUrl = sourceDrafts[videoId]?.trim() ?? '';
-    if (!sourceUrl) {
-      failOperation(videoId, new Error('Paste a Dropbox share link before attaching the master source.'), 'Paste a Dropbox share link before attaching the master source.');
-      return;
-    }
-
-    startOperation(videoId, 'Attaching Dropbox source...');
-    try {
-      const response = await fetch('/api/admin/videos/master', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, sourceUrl })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (payload.video) {
-        await refreshVideo(videoId, payload.video);
-      }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to attach Dropbox source.');
-      if (!payload.video) throw new Error(payload.error ?? 'Dropbox source attached, but the updated movie data was not returned.');
-      setSourceDrafts((current) => ({ ...current, [videoId]: '' }));
-      finishOperation(videoId, payload.message ?? 'Dropbox source attached.');
-    } catch (error) {
-      failOperation(videoId, error, 'Unable to attach Dropbox source.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function startPipeline(videoId: string) {
-    if (!pipelineHealth.contaboReady) {
-      failOperation(
-        videoId,
-        new Error(`Contabo pipeline is not fully configured. Missing: ${pipelineHealth.missingConfig.join(', ')}`),
-        'Contabo pipeline is not fully configured.'
-      );
-      return;
-    }
-
-    startOperation(videoId, 'Queueing Contabo worker...');
-    try {
-      const response = await fetch('/api/admin/videos/processing-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, action: 'START_PIPELINE' })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (payload.video) {
-        await refreshVideo(videoId, payload.video);
-      }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to start HLS pipeline.');
-      if (!payload.video) throw new Error(payload.error ?? 'Contabo HLS pipeline started, but the updated movie data was not returned.');
-      finishOperation(videoId, payload.message ?? 'Contabo HLS processing started. Waiting for worker callback...');
-    } catch (error) {
-      failOperation(videoId, error, 'Unable to start HLS pipeline.');
+      failOperation(videoId, error, 'Unable to refresh Bunny Stream status.');
     } finally {
       setPendingId(null);
     }
   }
 
   async function publish(videoId: string) {
-    await updateStatus(videoId, 'PUBLISH');
+    startOperation(videoId, 'Publishing title...');
+    try {
+      const response = await fetch('/api/admin/videos/processing-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, action: 'PUBLISH' })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (payload.video) {
+        await refreshVideo(videoId, payload.video);
+      }
+      if (!response.ok) throw new Error(payload.error ?? 'Unable to publish this title.');
+      finishOperation(videoId, payload.message ?? 'Title published.');
+    } catch (error) {
+      failOperation(videoId, error, 'Unable to publish this title.');
+    } finally {
+      setPendingId(null);
+    }
   }
-
-  const selectedStageLabel = STAGES.find((stage) => stage.id === selectedStage)?.label ?? 'Pipeline';
-  const selectedStageDescription = STAGES.find((stage) => stage.id === selectedStage)?.description ?? '';
-  const message = operation?.text ?? null;
-  const bannerTone = operation?.tone ?? 'success';
-  const bannerStyles = getOperationStyles(bannerTone);
 
   return (
     <div className="stack-list">
-      {message ? (
-        <div className={`card ${bannerStyles.cardClassName}`} style={{ padding: 12, borderRadius: 4, backgroundColor: bannerStyles.backgroundColor, borderLeft: `4px solid ${bannerStyles.borderColor}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {pendingId ? (
-              <span style={{ fontSize: 12, display: 'inline-block' }} className="spinner">⏳</span>
-            ) : (
-              <span style={{ fontSize: 12 }}>✓</span>
-            )}
-            <strong>{message}</strong>
-          </div>
-        </div>
-      ) : null}
-
-      <div className={`card ${pipelineHealth.contaboReady ? 'status-live' : 'status-warn'}`}>
+      <div className={`card ${pipelineHealth.bunnyReady ? 'status-live' : 'status-warn'}`}>
         <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <span className="pill">Pipeline health</span>
-            <h3 style={{ margin: '8px 0 0' }}>
-              {pipelineHealth.contaboReady ? 'Contabo and Bunny are configured for admin pipeline work.' : 'Pipeline setup needs attention before Contabo can run cleanly.'}
-            </h3>
-            <p className="muted" style={{ margin: '8px 0 0' }}>
-              Contabo endpoint: {pipelineHealth.contaboApiUrl ?? 'Missing'} | Callback base URL: {pipelineHealth.callbackBaseUrl ?? 'Missing'}
+          <div>
+            <span className="pill">Bunny-only flow</span>
+            <h2 style={{ margin: '10px 0 4px' }}>Admin delivery is now Bunny Stream plus Bunny Storage</h2>
+            <p className="muted" style={{ margin: 0 }}>
+              Posters and subtitle files live in Bunny Storage. Trailers and movies encode in Bunny Stream. Legacy delivery controls are retired.
             </p>
           </div>
-          {!pipelineHealth.contaboReady ? (
-            <div className="detail-card" style={{ minWidth: 280 }}>
-              <span className="detail-label">Missing config</span>
-              <strong>{pipelineHealth.missingConfig.join(', ')}</strong>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <span className="pill">Content pipeline</span>
-          <h2 style={{ margin: '8px 0 0' }}>One dashboard for intake, moderation, processing and delivery.</h2>
-          <p className="muted" style={{ margin: '8px 0 0' }}>
-            Manage the producer intake feed, moderation signals, batch masters and Contabo HLS progress from a unified pipeline view.
-          </p>
-        </div>
-        <div className="action-list" style={{ margin: 0 }}>
-          <a className="btn btn-primary" href="/admin/upload">Create title</a>
-          <a className="btn btn-ghost" href="/admin/moderation">Moderation</a>
-          <a className="btn btn-ghost" href="/admin/intake">Producer intake</a>
-          <a className="btn btn-ghost" href="/admin/live">Live movies</a>
-        </div>
-      </div>
-
-      <div className="detail-grid" style={{ margin: '20px 0' }}>
-        <div className="detail-card">
-          <span className="detail-label">Active producers</span>
-          <strong>{producers.length}</strong>
-        </div>
-        <div className="detail-card">
-          <span className="detail-label">Total titles in pipeline</span>
-          <strong>{stageCounts.total}</strong>
-        </div>
-        <div className="detail-card">
-          <span className="detail-label">Pending intake</span>
-          <strong>{initialPendingIntakeCount}</strong>
-        </div>
-        <div className="detail-card">
-          <span className="detail-label">Moderation pending</span>
-          <strong>{initialModerationCounts.pending}</strong>
-        </div>
-        <div className="detail-card">
-          <span className="detail-label">Live titles</span>
-          <strong>{stageCounts.live}</strong>
-          <p className="muted" style={{ margin: '6px 0 0' }}>
-            Live work is moved out of the workflow into the dedicated live movies desk.
-          </p>
-        </div>
-      </div>
-
-      <div className="stack-row" style={{ flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-        {STAGES.map((stage) => (
-          <button
-            key={stage.id}
-            type="button"
-            onClick={() => setSelectedStage(stage.id)}
-            className={`btn btn-ghost${selectedStage === stage.id ? ' status-live' : ''}`}
-            style={{ minWidth: 160, textAlign: 'left' }}
-          >
-            <strong>{stage.label}</strong>
-            <p className="muted" style={{ margin: '6px 0 0' }}>{stage.description}</p>
-          </button>
-        ))}
-      </div>
-
-      {selectedStage === 'overview' ? (
-        <div className="detail-grid">
-          <div className="detail-card">
-            <span className="detail-label">Need source</span>
-            <strong>{stageCounts.needsSource}</strong>
-          </div>
-          <div className="detail-card">
-            <span className="detail-label">Ready for processing</span>
-            <strong>{stageCounts.ready}</strong>
-          </div>
-          <div className="detail-card">
-            <span className="detail-label">HLS processing</span>
-            <strong>{stageCounts.inProgress}</strong>
-          </div>
-          <div className="detail-card">
-            <span className="detail-label">Live / ready</span>
-            <strong>{stageCounts.live}</strong>
-          </div>
-          <div className="detail-card">
-            <span className="detail-label">Selected stage</span>
-            <strong>{selectedStageLabel}</strong>
-            <p className="muted" style={{ margin: '6px 0 0' }}>{selectedStageDescription}</p>
-          </div>
-        </div>
-      ) : selectedStage === 'intake' ? (
-        <div className="card">
-          <h3>Intake and title creation</h3>
-          <p className="muted" style={{ margin: '8px 0' }}>
-            Use the create title desk to build new content for approved producers and keep the inventory moving into moderation.
-          </p>
           <div className="action-list" style={{ margin: 0 }}>
-            <a className="btn btn-primary" href="/admin/upload">Open create desk</a>
-            <a className="btn btn-ghost" href="/admin/intake">Review producer intake</a>
+            <a className="btn btn-primary" href="/admin/upload">Open upload desk</a>
+            <a className="btn btn-ghost" href="/admin/moderation">Open moderation</a>
           </div>
         </div>
-      ) : selectedStage === 'moderation' ? (
-        <div className="card">
-          <h3>Moderation queue</h3>
-          <div className="detail-grid" style={{ marginTop: 16 }}>
-            <div className="detail-card"><span className="detail-label">Pending review</span><strong>{initialModerationCounts.pending}</strong></div>
-            <div className="detail-card"><span className="detail-label">Approved</span><strong>{initialModerationCounts.approved}</strong></div>
-            <div className="detail-card"><span className="detail-label">Orphan approved</span><strong>{initialModerationCounts.orphanApproved}</strong></div>
+
+        <div className="detail-grid" style={{ marginTop: 18 }}>
+          <div className="detail-card">
+            <span className="detail-label">Bunny library</span>
+            <strong>{pipelineHealth.libraryId ?? 'Missing'}</strong>
           </div>
-          <div className="action-list" style={{ margin: '20px 0 0' }}>
-            <a className="btn btn-primary" href="/admin/moderation">Open moderation queue</a>
-            <a className="btn btn-ghost" href="/admin/settings">Pricing controls</a>
+          <div className="detail-card">
+            <span className="detail-label">Pull zone</span>
+            <strong>{pipelineHealth.pullZone ?? 'Missing'}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">Webhook</span>
+            <strong>{pipelineHealth.webhookUrl ?? 'Missing'}</strong>
+          </div>
+          <div className="detail-card">
+            <span className="detail-label">Config health</span>
+            <strong>{pipelineHealth.bunnyReady ? 'Ready' : 'Needs env updates'}</strong>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <span className="pill">{selectedStageLabel}</span>
-              <h2 style={{ margin: '8px 0 0' }}>{selectedProducer ? `${selectedProducer.name} — ${selectedStageLabel}` : selectedStageLabel}</h2>
-              <p className="muted" style={{ margin: '6px 0 0' }}>{selectedStageDescription}</p>
+
+        {!pipelineHealth.bunnyReady ? (
+          <p className="muted" style={{ marginTop: 12 }}>
+            Missing configuration: {pipelineHealth.missingConfig.join(', ')}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="detail-grid">
+        <div className="detail-card"><span className="detail-label">Active producers</span><strong>{producers.length}</strong></div>
+        <div className="detail-card"><span className="detail-label">Pending intake</span><strong>{initialPendingIntakeCount}</strong></div>
+        <div className="detail-card"><span className="detail-label">Moderation pending</span><strong>{initialModerationCounts.pending}</strong></div>
+        <div className="detail-card"><span className="detail-label">Needs upload</span><strong>{counts.needsUpload}</strong></div>
+        <div className="detail-card"><span className="detail-label">Encoding now</span><strong>{counts.uploading + counts.processing}</strong></div>
+        <div className="detail-card"><span className="detail-label">Ready to publish</span><strong>{counts.ready}</strong></div>
+        <div className="detail-card"><span className="detail-label">Needs fix</span><strong>{counts.failed}</strong></div>
+        <div className="detail-card"><span className="detail-label">Live titles</span><strong>{counts.published}</strong></div>
+      </div>
+
+      <div className="card">
+        <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Pipeline monitor</h3>
+            <p className="muted" style={{ margin: '6px 0 0' }}>
+              Review each title's Bunny Stream state, refresh status from Bunny, and publish once playback is ready.
+            </p>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="muted">Producer</span>
+            <select
+              value={selectedProducerId ?? ''}
+              onChange={(event) => setSelectedProducerId(event.target.value || null)}
+              className="input"
+            >
+              <option value="">All producers</option>
+              {sortedProducers.map((producer) => (
+                <option key={producer.id} value={producer.id}>{producer.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {visibleVideos.map((video) => {
+        const busy = pendingId === video.id;
+        const stage = getStreamStage(video);
+        const canPublish = stage === 'ready' && video.status !== 'PUBLISHED';
+        const operationForVideo = operation?.videoId === video.id ? operation : null;
+        const operationStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
+        const pipelineSteps = getPipelineSteps(video);
+        const currentIssue = video.bunnyStreamError ?? video.transcodeError ?? video.trailerStreamError ?? null;
+
+        return (
+          <div key={video.id} className="card">
+            <div className="stack-row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <span className={`status-chip ${stage === 'failed' ? 'status-error' : stage === 'published' || stage === 'ready' ? 'status-live' : 'status-warn'}`}>
+                  {stage.replace('-', ' ')}
+                </span>
+                <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
+                <p className="muted">{video.creatorName} | {video.creatorEmail}</p>
+                <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
+                <p className="muted" style={{ marginTop: 6 }}>{getPipelineSummary(video)}</p>
+              </div>
+              <div className="action-list" style={{ margin: 0, justifyContent: 'flex-end' }}>
+                {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Poster</a> : null}
+                {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Trailer</a> : null}
+              </div>
             </div>
-            <div className="action-list" style={{ margin: 0 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="muted">Producer</span>
-                <select
-                  value={selectedProducerId ?? ''}
-                  onChange={(event) => setSelectedProducerId(event.target.value || null)}
-                  className="input"
-                >
-                  <option value="">All producers</option>
-                  {sortedProducers.map((producer) => (
-                    <option key={producer.id} value={producer.id}>{producer.name}</option>
-                  ))}
-                </select>
-              </label>
-              {selectedProducer ? (
-                <button className="btn btn-ghost" type="button" onClick={() => setSelectedProducerId(null)}>
-                  Clear producer filter
+
+            <div className="detail-grid" style={{ margin: '16px 0' }}>
+              <div className="detail-card"><span className="detail-label">Movie video ID</span><strong>{video.bunnyStreamVideoId ?? 'Not uploaded yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Trailer video ID</span><strong>{video.trailerStreamVideoId ?? 'Optional / not uploaded'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Movie state</span><strong>{normalizeStreamStatus(video.bunnyStreamStatus)}</strong></div>
+              <div className="detail-card"><span className="detail-label">Trailer state</span><strong>{video.trailerStreamVideoId ? normalizeStreamStatus(video.trailerStreamStatus) : 'Not added'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback</span><strong>{video.hlsReadyAt || video.bunnyStreamReadyAt ? 'Ready from Bunny Stream' : 'Waiting for Bunny Stream'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Next step</span><strong>{getNextStep(video, pipelineHealth)}</strong></div>
+              <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'Not recorded'}</strong></div>
+              <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
+              <div className="detail-card"><span className="detail-label">Uploaded</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
+              <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Not ready yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'Not reported yet'}</strong></div>
+              <div className="detail-card"><span className="detail-label">Ready at</span><strong>{formatDateTime(video.bunnyStreamReadyAt ?? video.hlsReadyAt)}</strong></div>
+            </div>
+
+            <div className="detail-card" style={{ marginBottom: 16 }}>
+              <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span className="detail-label">Pipeline progression</span>
+                <strong>{getProgressPercent(video)}%</strong>
+              </div>
+              <div style={{ marginTop: 10, height: 8, borderRadius: 999, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${getProgressPercent(video)}%`,
+                    height: '100%',
+                    backgroundColor: currentIssue ? '#dc2626' : '#2563eb',
+                    transition: 'width 160ms ease'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                {pipelineSteps.map((step) => {
+                  const tone = getPipelineStepTone(step.state);
+                  return (
+                    <div
+                      key={step.label}
+                      style={{
+                        border: `1px solid ${tone.borderColor}`,
+                        backgroundColor: tone.backgroundColor,
+                        borderRadius: 8,
+                        padding: '10px 12px'
+                      }}
+                    >
+                      <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <strong style={{ color: tone.color }}>{step.label}</strong>
+                        <span style={{ color: tone.color, fontSize: 12, fontWeight: 700 }}>{tone.label}</span>
+                      </div>
+                      <p style={{ margin: '6px 0 0', color: tone.color, fontSize: 13 }}>{step.note}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {operationForVideo && operationStyles ? (
+              <div
+                className={`detail-card ${operationStyles.cardClassName}`}
+                style={{
+                  marginBottom: 16,
+                  backgroundColor: operationStyles.backgroundColor,
+                  borderLeft: `4px solid ${operationStyles.borderColor}`
+                }}
+              >
+                <span className="detail-label">Latest action</span>
+                <strong>{operationForVideo.text}</strong>
+              </div>
+            ) : null}
+
+            {currentIssue ? (
+              <div className="detail-card status-error" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626' }}>
+                <span className="detail-label">Current issue</span>
+                <strong>{currentIssue}</strong>
+              </div>
+            ) : null}
+
+            <div className="action-list">
+              <button className="btn btn-ghost" type="button" disabled={busy || !video.bunnyStreamVideoId} onClick={() => void syncStream(video.id)}>
+                {busy ? 'Refreshing...' : 'Refresh Bunny status'}
+              </button>
+              {canPublish ? (
+                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
+                  {busy ? 'Publishing...' : 'Publish'}
                 </button>
               ) : null}
             </div>
           </div>
+        );
+      })}
 
-          <div className="detail-grid" style={{ margin: '16px 0' }}>
-            <div className="detail-card"><span className="detail-label">Titles in stage</span><strong>{filteredVideos.length}</strong></div>
-            <div className="detail-card"><span className="detail-label">Active processing</span><strong>{activeVideos.length}</strong></div>
-            <div className="detail-card"><span className="detail-label">Selected producer</span><strong>{selectedProducer ? selectedProducer.name : 'All'}</strong></div>
-          </div>
-
-          {filteredVideos.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((video) => {
-            const busy = pendingId === video.id;
-            const command = buildFfmpegCommand(video.id, video.masterFileName ?? 'downloaded-master.mp4');
-            const canPublish = video.status === 'READY';
-            const canStartPipeline = Boolean(
-              pipelineHealth.contaboReady &&
-              (video.masterKey || video.masterSourceUrl) &&
-              !busy &&
-              !isPipelineWorking(video) &&
-              !isViewerReady(video)
-            );
-            const canSyncPipeline = Boolean((video.orchestrationJobId || isPipelineWorking(video)) && !busy);
-            const canDeleteSource = Boolean((video.masterKey || video.masterSourceUrl) && video.masterDeletionEligible && !busy);
-            const operationForVideo = operation?.videoId === video.id ? operation : null;
-            const operationForVideoStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
-            const currentIssue = getCurrentPipelineIssue(video);
-            const pipelineSteps = getPipelineSteps(video);
-
-            return (
-              <div key={video.id} className="card">
-                <div className="stack-row" style={{ alignItems: 'flex-start' }}>
-                  <div>
-                    <span className={`status-chip ${getBucketTone(getBucket(video))}`}>{getBucket(video).replace('-', ' ')}</span>
-                    <h3 style={{ margin: '10px 0 4px' }}>{video.title}</h3>
-                    <p className="muted">{video.creatorName} · {video.creatorEmail}</p>
-                    <p className="muted">Status: {video.status} | Processing: {video.processingStatus}</p>
-                    <p className="muted" style={{ marginTop: 6 }}>{getPipelineSummary(video)}</p>
-                  </div>
-                  <div className="action-list" style={{ justifyContent: 'flex-end', margin: 0 }}>
-                    {video.trailerDownloadHref ? <a className="btn btn-ghost" href={video.trailerDownloadHref}>Trailer</a> : null}
-                    {video.posterDownloadHref ? <a className="btn btn-ghost" href={video.posterDownloadHref}>Poster</a> : null}
-                  </div>
-                </div>
-
-                <div className="detail-grid" style={{ margin: '16px 0' }}>
-                  <div className="detail-card"><span className="detail-label">Master source</span><strong>{getSourceLabel(video)}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Viewer delivery</span><strong>{getDeliveryLabel(video)}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Pipeline phase</span><strong>{getPipelinePhase(video)}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Progress</span><strong>{getProgressPercent(video)}%</strong></div>
-                  <div className="detail-card"><span className="detail-label">Next step</span><strong>{getNextStep(video, pipelineHealth)}</strong></div>
-                  <div className="detail-card"><span className="detail-label">File name</span><strong>{video.masterFileName ?? 'No master source yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">File size</span><strong>{formatBytes(video.masterFileSize)}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Uploaded</span><strong>{formatDate(video.masterUploadedAt)}</strong></div>
-                </div>
-
-                <div className="detail-card" style={{ marginBottom: 16 }}>
-                  <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <span className="detail-label">Pipeline progression</span>
-                    <strong>{getProgressPercent(video)}%</strong>
-                  </div>
-                  <div style={{ marginTop: 10, height: 8, borderRadius: 999, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: `${getProgressPercent(video)}%`,
-                        height: '100%',
-                        backgroundColor: currentIssue ? '#dc2626' : '#2563eb',
-                        transition: 'width 160ms ease'
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-                    {pipelineSteps.map((step) => {
-                      const tone = getPipelineStepTone(step.state);
-                      return (
-                        <div
-                          key={step.label}
-                          style={{
-                            border: `1px solid ${tone.borderColor}`,
-                            backgroundColor: tone.backgroundColor,
-                            borderRadius: 8,
-                            padding: '10px 12px'
-                          }}
-                        >
-                          <div className="stack-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                            <strong style={{ color: tone.color }}>{step.label}</strong>
-                            <span style={{ color: tone.color, fontSize: 12, fontWeight: 700 }}>{tone.label}</span>
-                          </div>
-                          <p style={{ margin: '6px 0 0', color: tone.color, fontSize: 13 }}>{step.note}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="detail-card" style={{ marginBottom: 16 }}>
-                  <span className="detail-label">Dropbox master source</span>
-                  <div className="stack-row" style={{ alignItems: 'center' }}>
-                    <input
-                      type="url"
-                      value={sourceDrafts[video.id] ?? ''}
-                      onChange={(event) => setSourceDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
-                      placeholder="Paste Dropbox share link"
-                      disabled={busy}
-                      style={{ flex: 1, minWidth: 0 }}
-                    />
-                    <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => void attachDropboxSource(video.id)}>
-                      {busy && pendingId === video.id ? '⏳ Attaching...' : 'Attach Dropbox URL'}
-                    </button>
-                    {video.masterSourceUrl ? (
-                      <a className="btn btn-ghost" href={video.masterSourceUrl} target="_blank" rel="noreferrer">
-                        Open source
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-
-                {operationForVideo && operationForVideoStyles ? (
-                  <div className={`detail-card ${operationForVideoStyles.cardClassName}`} style={{ marginBottom: 16, backgroundColor: operationForVideoStyles.backgroundColor, borderLeft: `4px solid ${operationForVideoStyles.borderColor}` }}>
-                    <span className="detail-label">Latest action</span>
-                    <strong>{operationForVideo.text}</strong>
-                  </div>
-                ) : null}
-
-                {currentIssue ? (
-                  <div
-                    className="detail-card status-error"
-                    style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626' }}
-                  >
-                    <span className="detail-label">Current issue</span>
-                    <strong>{currentIssue}</strong>
-                    <p className="muted" style={{ margin: '8px 0 0' }}>
-                      Latest callback: {video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback received yet'}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="action-list">
-                  {video.masterKey ? <a className="btn btn-primary" href={`/api/admin/videos/${video.id}/master`}>Download MP4</a> : null}
-                  <button className="btn btn-ghost" type="button" disabled={!video.masterKey || busy} onClick={() => void navigator.clipboard.writeText(command)}>
-                    {busy && pendingId === video.id ? '⏳ Copying...' : 'Copy master normalize command'}
-                  </button>
-                  <button className="btn btn-primary" type="button" disabled={!canStartPipeline} onClick={() => void startPipeline(video.id)}>
-                    {busy && pendingId === video.id ? '⏳ Starting Contabo...' : 'Start Contabo HLS'}
-                  </button>
-                  <button className="btn btn-ghost" type="button" disabled={!canSyncPipeline} onClick={() => void completeProcessing(video.id)}>
-                    {busy && pendingId === video.id ? '⏳ Syncing...' : 'Sync Contabo status'}
-                  </button>
-                  <button className="btn btn-ghost" type="button" disabled={!canDeleteSource} onClick={() => void deleteMaster(video.id)}>
-                    {busy && pendingId === video.id ? '⏳ Deleting...' : 'Delete source'}
-                  </button>
-                  {canPublish ? (
-                    <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
-                      {busy && pendingId === video.id ? '⏳ Publishing...' : 'Publish'}
-                    </button>
-                  ) : null}
-                </div>
-
-                {video.masterKey ? (
-                  <div className="detail-card" style={{ marginTop: 14 }}>
-                    <span className="detail-label">Master normalize command</span>
-                    <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{command}</code>
-                  </div>
-                ) : null}
-
-                <div className="detail-grid" style={{ marginTop: 14 }}>
-                  <div className="detail-card"><span className="detail-label">Playback</span><strong>{isViewerReady(video) ? 'Bunny HLS live' : video.masterSourceUrl ? 'Dropbox source pending HLS' : video.masterKey ? 'Bunny source pending HLS' : 'No source yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? (isViewerReady(video) ? 'Signed HLS manifest generated on request' : 'Not ready yet')}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'MP4'}</strong></div>
-                </div>
-
-                <div className="detail-grid" style={{ marginTop: 14 }}>
-                  <div className="detail-card"><span className="detail-label">Bunny movie folder</span><strong>{video.bunnyFolderPrefix ?? 'Will be created on first upload'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Contabo</span><strong>{video.orchestrationJobId ? `${video.orchestrationProvider ?? 'CONTABO'} job linked` : 'Not queued yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Transcode</span><strong>{video.transcodeTaskId ? `${video.transcodeProvider ?? 'FFMPEG'} task linked` : 'Not started yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">HLS output</span><strong>{video.hlsOutputPath ?? 'Not assigned yet'}</strong></div>
-                </div>
-
-                <div className="detail-grid" style={{ marginTop: 14 }}>
-                  <div className="detail-card"><span className="detail-label">HLS manifest</span><strong>{isViewerReady(video) ? (video.hlsManifestKey ?? 'Missing manifest reference') : 'Not generated yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">HLS ready</span><strong>{video.hlsReadyAt ? formatDateTime(video.hlsReadyAt) : 'No'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Latest callback</span><strong>{video.latestPipelineEvent ? `${video.latestPipelineEvent} at ${formatDateTime(video.latestPipelineEventAt)}` : 'No callback yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Master deletion</span><strong>{video.masterDeletedAt ? 'Deleted' : video.masterDeletionEligible ? 'Eligible after review' : 'Not eligible yet'}</strong></div>
-                  <div className="detail-card"><span className="detail-label">Transcode error</span><strong>{getCurrentPipelineIssue(video) ?? 'None recorded'}</strong></div>
-                </div>
-
-                {video.latestPipelineMessage ? (
-                  <div className="detail-card" style={{ marginTop: 14 }}>
-                    <span className="detail-label">Callback note</span>
-                    <strong>{video.latestPipelineMessage}</strong>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-
-          {!filteredVideos.length ? <div className="card">No movies in this section yet.</div> : null}
-        </>
-      )}
+      {!visibleVideos.length ? <div className="card">No titles match the current producer filter yet.</div> : null}
     </div>
   );
 }

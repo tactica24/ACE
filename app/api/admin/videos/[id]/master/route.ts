@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { deleteObject, getObjectStream } from '@/lib/bunny-storage';
-import { deleteContaboJobArtifacts } from '@/lib/contabo';
 import { getMasterDownloadFileName } from '@/lib/video-processing';
 import { getProcessingVideo } from '../../helpers';
 import { Readable } from 'stream';
@@ -64,8 +63,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           processingStatus: true,
           masterDeletionEligible: true,
           hlsManifestKey: true,
-          orchestrationProvider: true,
-          orchestrationJobId: true
+          bunnyStreamReadyAt: true
         }
       }
     }
@@ -75,14 +73,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'No attached master source was found.' }, { status: 404 });
   }
 
-  if (!video.technicalMetadata.masterDeletionEligible || !video.technicalMetadata.hlsManifestKey) {
+  if (
+    !video.technicalMetadata.masterDeletionEligible ||
+    (!video.technicalMetadata.hlsManifestKey && !video.technicalMetadata.bunnyStreamReadyAt)
+  ) {
     return NextResponse.json({
       error: 'Keep the source until HLS is verified and marked safe for cleanup.'
     }, { status: 400 });
-  }
-
-  if (video.technicalMetadata.orchestrationProvider === 'CONTABO' && video.technicalMetadata.orchestrationJobId) {
-    await deleteContaboJobArtifacts(video.technicalMetadata.orchestrationJobId);
   }
 
   if (video.technicalMetadata.masterKey) {

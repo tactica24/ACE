@@ -14,8 +14,8 @@ function serializeFileSize(value: bigint | number | null | undefined) {
 
 function normalizeProcessingStatus(value: string | null | undefined) {
   const normalized = String(value ?? '').trim().toUpperCase();
-  if (normalized === 'AKASH_QUEUED') return 'CONTABO_QUEUED';
-  if (normalized === 'AKASH_STARTED') return 'ENCODING_STARTED';
+  if (normalized.includes('QUEUED')) return 'ENCODING_STARTED';
+  if (normalized.includes('STARTED')) return 'ENCODING_STARTED';
   return normalized || 'NO_MASTER';
 }
 
@@ -23,106 +23,113 @@ export default async function AdminVideosPage() {
   await requireAdminUser('/admin/videos');
 
   const missingPipelineConfig: string[] = [];
-  if (!env.CONTABO_TRANSCODE_API_URL) missingPipelineConfig.push('CONTABO_TRANSCODE_API_URL');
-  if (!env.CONTABO_PIPELINE_SECRET) missingPipelineConfig.push('CONTABO_PIPELINE_SECRET');
+  if (!env.BUNNY_STREAM_LIBRARY_ID) missingPipelineConfig.push('BUNNY_STREAM_LIBRARY_ID');
+  if (!env.BUNNY_STREAM_API_KEY) missingPipelineConfig.push('BUNNY_STREAM_API_KEY');
+  if (!env.BUNNY_STREAM_READONLY_API_KEY) missingPipelineConfig.push('BUNNY_STREAM_READONLY_API_KEY');
+  if (!env.BUNNY_STREAM_PULL_ZONE) missingPipelineConfig.push('BUNNY_STREAM_PULL_ZONE');
   if (!env.ACE_APP_BASE_URL) missingPipelineConfig.push('ACE_APP_BASE_URL');
   if (!env.BUNNY_STORAGE_API_KEY) missingPipelineConfig.push('BUNNY_STORAGE_API_KEY');
   if (!env.BUNNY_STORAGE_ZONE) missingPipelineConfig.push('BUNNY_STORAGE_ZONE');
   if (!env.BUNNY_STORAGE_ENDPOINT) missingPipelineConfig.push('BUNNY_STORAGE_ENDPOINT');
 
-  const [pendingIntakeCount, moderationPendingCount, moderationApprovedCount, orphanApprovedCount, producers] = await Promise.all([
-    prisma.user.count({
-      where: {
-        signupIntent: 'CREATOR',
-        creatorAccessStatus: 'SUBMITTED',
-        role: 'USER'
-      }
-    }),
-    prisma.moderationItem.count({
-      where: { status: 'PENDING' }
-    }),
-    prisma.moderationItem.count({
-      where: { status: 'APPROVED' }
-    }),
-    prisma.video.count({
-      where: {
-        status: 'APPROVED',
-        moderation: { is: null }
-      }
-    }),
-    prisma.creatorProfile.findMany({
-      where: {
-        creatorNumber: {
-          not: null
+  const [pendingIntakeCount, moderationPendingCount, moderationApprovedCount, orphanApprovedCount, producers] =
+    await Promise.all([
+      prisma.user.count({
+        where: {
+          signupIntent: 'CREATOR',
+          creatorAccessStatus: 'SUBMITTED',
+          role: 'USER'
         }
-      },
-      orderBy: [
-        { displayName: 'asc' },
-        { id: 'asc' }
-      ],
-      select: {
-        id: true,
-        userId: true,
-        creatorNumber: true,
-        displayName: true,
-        user: {
-          select: {
-            email: true,
-            videos: {
-              where: {
-                seriesId: null
-              },
-              orderBy: { updatedAt: 'desc' },
-              select: {
-                id: true,
-                title: true,
-                status: true,
-                createdAt: true,
-                updatedAt: true,
-                posterKey: true,
-                creatorId: true,
-                technicalMetadata: {
-                  select: {
-                    masterKey: true,
-                    masterSourceUrl: true,
-                    masterFileName: true,
-                    masterFileSize: true,
-                    masterUploadedAt: true,
-                    processingStatus: true,
-                    playbackUrl: true,
-                    trailerKey: true,
-                    orchestrationProvider: true,
-                    orchestrationJobId: true,
-                    transcodeProvider: true,
-                    transcodeTaskId: true,
-                    transcodeError: true,
-                    hlsOutputPath: true,
-                    hlsManifestKey: true,
-                    hlsReadyAt: true,
-                    masterDeletionEligible: true,
-                    masterDeletedAt: true
-                  }
+      }),
+      prisma.moderationItem.count({
+        where: { status: 'PENDING' }
+      }),
+      prisma.moderationItem.count({
+        where: { status: 'APPROVED' }
+      }),
+      prisma.video.count({
+        where: {
+          status: 'APPROVED',
+          moderation: { is: null }
+        }
+      }),
+      prisma.creatorProfile.findMany({
+        where: {
+          creatorNumber: {
+            not: null
+          }
+        },
+        orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          userId: true,
+          creatorNumber: true,
+          displayName: true,
+          user: {
+            select: {
+              email: true,
+              videos: {
+                where: {
+                  seriesId: null
                 },
-                qualities: true
+                orderBy: { updatedAt: 'desc' },
+                select: {
+                  id: true,
+                  title: true,
+                  status: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  posterKey: true,
+                  creatorId: true,
+                  technicalMetadata: {
+                    select: {
+                      masterKey: true,
+                      masterFileName: true,
+                      masterFileSize: true,
+                      masterUploadedAt: true,
+                      processingStatus: true,
+                      playbackUrl: true,
+                      trailerKey: true,
+                      transcodeError: true,
+                      hlsManifestKey: true,
+                      hlsReadyAt: true,
+                      masterDeletionEligible: true,
+                      masterDeletedAt: true,
+                      bunnyStreamLibraryId: true,
+                      bunnyStreamVideoId: true,
+                      bunnyStreamStatus: true,
+                      bunnyStreamReadyAt: true,
+                      bunnyStreamError: true,
+                      trailerStreamLibraryId: true,
+                      trailerStreamVideoId: true,
+                      trailerStreamStatus: true,
+                      trailerStreamReadyAt: true,
+                      trailerStreamError: true
+                    }
+                  },
+                  qualities: true
+                }
               }
             }
           }
         }
-      }
-    })
-  ]);
+      })
+    ]);
+
+  const webhookBaseUrl = env.ACE_APP_BASE_URL?.replace(/\/+$/, '') || null;
 
   return (
     <DashboardShell
       title="Content pipeline"
-      description="Move titles from intake, moderation and master attachment into Contabo HLS processing and live playback validation."
+      description="Track Bunny Stream encoding, playback readiness, moderation, and publishing from one clean admin flow."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel
         pipelineHealth={{
-          contaboReady: missingPipelineConfig.length === 0,
-          contaboApiUrl: env.CONTABO_TRANSCODE_API_URL || null,
-          callbackBaseUrl: env.ACE_APP_BASE_URL || null,
+          bunnyReady: missingPipelineConfig.length === 0,
+          libraryId: env.BUNNY_STREAM_LIBRARY_ID || null,
+          pullZone: env.BUNNY_STREAM_PULL_ZONE || null,
+          webhookUrl: webhookBaseUrl ? `${webhookBaseUrl}/api/webhooks/bunny-stream` : null,
           missingConfig: missingPipelineConfig
         }}
         initialPendingIntakeCount={pendingIntakeCount}
@@ -147,22 +154,26 @@ export default async function AdminVideosPage() {
             creatorName: producer.displayName,
             creatorEmail: producer.user.email,
             masterKey: video.technicalMetadata?.masterKey ?? null,
-            masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
             masterFileName: video.technicalMetadata?.masterFileName ?? null,
             masterFileSize: serializeFileSize(video.technicalMetadata?.masterFileSize),
             masterUploadedAt: video.technicalMetadata?.masterUploadedAt?.toISOString() ?? null,
             processingStatus: normalizeProcessingStatus(video.technicalMetadata?.processingStatus),
             playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
-            orchestrationProvider: video.technicalMetadata?.orchestrationProvider ?? null,
-            orchestrationJobId: video.technicalMetadata?.orchestrationJobId ?? null,
-            transcodeProvider: video.technicalMetadata?.transcodeProvider ?? null,
-            transcodeTaskId: video.technicalMetadata?.transcodeTaskId ?? null,
             transcodeError: video.technicalMetadata?.transcodeError ?? null,
-            hlsOutputPath: video.technicalMetadata?.hlsOutputPath ?? null,
             hlsManifestKey: video.technicalMetadata?.hlsManifestKey ?? null,
             hlsReadyAt: video.technicalMetadata?.hlsReadyAt?.toISOString() ?? null,
             masterDeletionEligible: video.technicalMetadata?.masterDeletionEligible ?? false,
             masterDeletedAt: video.technicalMetadata?.masterDeletedAt?.toISOString() ?? null,
+            bunnyStreamLibraryId: video.technicalMetadata?.bunnyStreamLibraryId ?? null,
+            bunnyStreamVideoId: video.technicalMetadata?.bunnyStreamVideoId ?? null,
+            bunnyStreamStatus: video.technicalMetadata?.bunnyStreamStatus ?? null,
+            bunnyStreamReadyAt: video.technicalMetadata?.bunnyStreamReadyAt?.toISOString() ?? null,
+            bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
+            trailerStreamLibraryId: video.technicalMetadata?.trailerStreamLibraryId ?? null,
+            trailerStreamVideoId: video.technicalMetadata?.trailerStreamVideoId ?? null,
+            trailerStreamStatus: video.technicalMetadata?.trailerStreamStatus ?? null,
+            trailerStreamReadyAt: video.technicalMetadata?.trailerStreamReadyAt?.toISOString() ?? null,
+            trailerStreamError: video.technicalMetadata?.trailerStreamError ?? null,
             qualities: video.qualities,
             trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
             posterDownloadHref: video.posterKey ? `/api/admin/videos/${video.id}/poster` : null
