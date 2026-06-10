@@ -27,7 +27,7 @@ export const SECONDARY_GENRE_OPTIONS = PRIMARY_CATEGORY_OPTIONS.filter(
 );
 
 export function normalizeSelectedGenres(values: string[]) {
-  const allowed = new Set(SECONDARY_GENRE_OPTIONS);
+  const allowed = new Set<string>(SECONDARY_GENRE_OPTIONS);
   const seen = new Set<string>();
 
   return values

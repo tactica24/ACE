@@ -167,7 +167,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     setEditingId(null);
   };
 
-  const updateDraft = (videoId: string, key: keyof VideoDraft, value: string) => {
+  const updateDraft = <K extends keyof VideoDraft>(videoId: string, key: K, value: VideoDraft[K]) => {
     setDrafts((prev) => ({
       ...prev,
       [videoId]: {
