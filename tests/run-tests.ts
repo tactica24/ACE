@@ -300,6 +300,14 @@ const videoCases: Case[] = [
         {
           technicalMetadata: {
             is: {
+              bunnyStreamVideoId: { not: null },
+              bunnyStreamReadyAt: { not: null },
+            },
+          },
+        },
+        {
+          technicalMetadata: {
+            is: {
               hlsManifestKey: { not: null },
               hlsReadyAt: { not: null },
             },
