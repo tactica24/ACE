@@ -78,6 +78,12 @@ type VideoDraft = {
   sourceUrl: string;
 };
 
+type ActivityState = {
+  label: string;
+  progress: number;
+  active: boolean;
+};
+
 const ageLabel: Record<string, string> = {
   ALL: 'All',
   PG13: '13+',
@@ -116,6 +122,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successes, setSuccesses] = useState<Record<string, string>>({});
+  const [activityStates, setActivityStates] = useState<Record<string, ActivityState | undefined>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, VideoDraft>>({});
   const [editAssets, setEditAssets] = useState<Record<string, { trailer: File | null; poster: File | null }>>({});
@@ -167,6 +174,36 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     setEditingId(null);
   };
 
+  const setActivityState = (videoId: string, label: string, progress: number, active = true) => {
+    setActivityStates((prev) => ({
+      ...prev,
+      [videoId]: { label, progress, active }
+    }));
+  };
+
+  const clearActivityState = (videoId: string) => {
+    setActivityStates((prev) => {
+      const next = { ...prev };
+      delete next[videoId];
+      return next;
+    });
+  };
+
+  const clearFeedback = (videoId: string) => {
+    setErrors((prev) => {
+      if (!prev[videoId]) return prev;
+      const next = { ...prev };
+      delete next[videoId];
+      return next;
+    });
+    setSuccesses((prev) => {
+      if (!prev[videoId]) return prev;
+      const next = { ...prev };
+      delete next[videoId];
+      return next;
+    });
+  };
+
   const updateDraft = <K extends keyof VideoDraft>(videoId: string, key: K, value: VideoDraft[K]) => {
     setDrafts((prev) => ({
       ...prev,
@@ -202,80 +239,85 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     let trailerKey: string | undefined;
     let posterKey: string | undefined;
 
+    clearFeedback(item.video.id);
+    setActivityState(item.video.id, 'Preparing your changes...', 8);
+
     try {
       if (assets.trailer) {
+        setActivityState(item.video.id, `Uploading trailer: ${assets.trailer.name}`, 24);
         trailerKey = await prepareAssetUpload(assets.trailer, 'trailer', item.video.id);
       }
       if (assets.poster) {
+        setActivityState(item.video.id, `Uploading poster: ${assets.poster.name}`, assets.trailer ? 52 : 34);
         posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id);
       }
-    } catch (uploadErr: any) {
-      setErrors((prev) => ({ ...prev, [item.video.id]: uploadErr?.message || 'Failed to upload trailer or poster.' }));
-      return;
-    }
 
-    if (draft.sourceUrl.trim() && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '')) {
-      const sourceResponse = await fetch('/api/admin/videos/master', {
+      if (draft.sourceUrl.trim() && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '')) {
+        setActivityState(item.video.id, 'Attaching Dropbox source...', 76);
+        const sourceResponse = await fetch('/api/admin/videos/master', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoId: item.video.id, sourceUrl: draft.sourceUrl.trim() })
+        });
+        const sourcePayload = await sourceResponse.json().catch(() => ({}));
+        if (!sourceResponse.ok) {
+          throw new Error(sourcePayload.error || 'The Dropbox master source could not be attached.');
+        }
+      }
+
+      setActivityState(item.video.id, 'Saving title details...', 90);
+      const res = await fetch('/api/admin/videos/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId: item.video.id, sourceUrl: draft.sourceUrl.trim() })
+        body: JSON.stringify({
+          videoId: item.video.id,
+          ...draft,
+          genres: normalizeSelectedGenres(draft.genres),
+          licensedTerritories: draft.licensedTerritories,
+          ...(trailerKey ? { trailerKey } : {}),
+          ...(posterKey ? { posterKey } : {})
+        })
       });
-      const sourcePayload = await sourceResponse.json().catch(() => ({}));
-      if (!sourceResponse.ok) {
-        setErrors((prev) => ({ ...prev, [item.video.id]: sourcePayload.error || 'The Dropbox master source could not be attached.' }));
-        return;
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.video) {
+        throw new Error(data.error || 'The video details could not be updated right now.');
       }
-    }
 
-    const res = await fetch('/api/admin/videos/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        videoId: item.video.id,
-        ...draft,
-        genres: normalizeSelectedGenres(draft.genres),
-        licensedTerritories: draft.licensedTerritories,
-        ...(trailerKey ? { trailerKey } : {}),
-        ...(posterKey ? { posterKey } : {})
-      })
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.video) {
-      setErrors((prev) => ({ ...prev, [item.video.id]: data.error || 'The video details could not be updated right now.' }));
-      return;
-    }
-
-    setItems((prev) =>
-      prev.map((entry) =>
-        entry.video.id === item.video.id
-          ? {
-              ...entry,
-              video: {
-                ...entry.video,
-                ...data.video,
-                ...(trailerKey ? { trailerDownloadHref: `/api/admin/videos/${item.video.id}/trailer` } : {}),
-                ...(posterKey ? { posterDownloadHref: `/api/admin/videos/${item.video.id}/poster` } : {})
+      setItems((prev) =>
+        prev.map((entry) =>
+          entry.video.id === item.video.id
+            ? {
+                ...entry,
+                video: {
+                  ...entry.video,
+                  ...data.video,
+                  ...(trailerKey ? { trailerDownloadHref: `/api/admin/videos/${item.video.id}/trailer` } : {}),
+                  ...(posterKey ? { posterDownloadHref: `/api/admin/videos/${item.video.id}/poster` } : {})
+                }
               }
-            }
-          : entry
-      )
-    );
-    setEditingId(null);
-    clearEditAssets(item.video.id);
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[item.video.id];
-      return next;
-    });
-    setSuccesses((prev) => ({ ...prev, [item.video.id]: 'Saved successfully!' }));
-    setTimeout(() => {
-      setSuccesses((prev) => {
-        const next = { ...prev };
-        delete next[item.video.id];
-        return next;
-      });
-    }, 2500);
+            : entry
+        )
+      );
+      setEditingId(null);
+      clearEditAssets(item.video.id);
+      setActivityState(item.video.id, 'Saved successfully.', 100, false);
+      setSuccesses((prev) => ({ ...prev, [item.video.id]: 'Saved successfully!' }));
+      setTimeout(() => {
+        clearActivityState(item.video.id);
+        setSuccesses((prev) => {
+          const next = { ...prev };
+          delete next[item.video.id];
+          return next;
+        });
+      }, 2500);
+    } catch (error: any) {
+      clearActivityState(item.video.id);
+      setErrors((prev) => ({
+        ...prev,
+        [item.video.id]: error?.message || 'Failed to save changes for this title.'
+      }));
+    }
   };
 
   const handleAction = async (item: Item, action: 'approve' | 'reject' | 'deactivate' | 'activate') => {
@@ -307,51 +349,63 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       payload = { id: item.id, reason };
     }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const actionLabels: Record<typeof action, string> = {
+      approve: 'Approving title...',
+      reject: 'Rejecting title...',
+      deactivate: 'Hiding title from viewers...',
+      activate: 'Activating title for viewers...'
+    };
 
-    if (res.ok) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[item.video.id];
-        return next;
+    clearFeedback(item.video.id);
+    setActivityState(item.video.id, actionLabels[action], 28);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      if (isVisibilityToggle) {
-        // Flip the status locally so button updates without reload; keep in list for reactivate/deactivate toggle
-        setItems((prev) =>
-          prev.map((entry) =>
-            entry.video.id === item.video.id
-              ? {
-                  ...entry,
-                  video: {
-                    ...entry.video,
-                    status: targetStatus!
-                  }
-                }
-              : entry
-          )
-        );
-        const newStatus = targetStatus === 'DRAFT' ? 'hidden' : 'live';
-        setSuccesses((prev) => ({ ...prev, [item.video.id]: `Title is now ${newStatus} for viewers.` }));
-        setTimeout(() => {
-          setSuccesses((prev) => {
-            const next = { ...prev };
-            delete next[item.video.id];
-            return next;
-          });
-        }, 2500);
-      } else {
-        setItems((prev) => prev.filter((entry) => entry.id !== item.id));
-      }
-      return;
-    }
+      if (res.ok) {
+        setActivityState(item.video.id, 'Finalizing update...', 88);
 
-    const data = await res.json().catch(() => ({}));
-    setErrors((prev) => ({ ...prev, [item.video.id]: data.error || 'This action could not be completed right now.' }));
+        if (isVisibilityToggle) {
+          setItems((prev) =>
+            prev.map((entry) =>
+              entry.video.id === item.video.id
+                ? {
+                    ...entry,
+                    video: {
+                      ...entry.video,
+                      status: targetStatus!
+                    }
+                  }
+                : entry
+            )
+          );
+          const newStatus = targetStatus === 'DRAFT' ? 'hidden' : 'live';
+          setActivityState(item.video.id, 'Viewer availability updated.', 100, false);
+          setSuccesses((prev) => ({ ...prev, [item.video.id]: `Title is now ${newStatus} for viewers.` }));
+          setTimeout(() => {
+            clearActivityState(item.video.id);
+            setSuccesses((prev) => {
+              const next = { ...prev };
+              delete next[item.video.id];
+              return next;
+            });
+          }, 2500);
+        } else {
+          setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+        }
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'This action could not be completed right now.');
+    } catch (error: any) {
+      clearActivityState(item.video.id);
+      setErrors((prev) => ({ ...prev, [item.video.id]: error?.message || 'This action could not be completed right now.' }));
+    }
   };
 
   if (items.length === 0) {
@@ -367,6 +421,8 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     <div className="moderation-grid">
       {items.map((item) => {
         const posterUrl = getMoviePosterUrl(item.video);
+        const activityState = activityStates[item.video.id];
+        const isBusy = activityState?.active ?? false;
 
         return (
           <div key={item.id} className="card moderation-card">
@@ -484,6 +540,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <span className="field-label">Admin note</span>
                 <input
                   className="input"
+                  disabled={isBusy}
                   value={reasons[item.video.id] ?? ''}
                   onChange={(event) => {
                     const value = event.target.value;
@@ -497,6 +554,23 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   }}
                 />
               </label>
+              {activityState ? (
+                <div className="upload-progress" aria-live="polite">
+                  <div className="upload-progress-meta">
+                    <strong>{activityState.label}</strong>
+                    <span className="muted">{activityState.progress}%</span>
+                  </div>
+                  <div
+                    className="upload-progress-track"
+                    role="progressbar"
+                    aria-valuenow={activityState.progress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <span className="upload-progress-fill" style={{ width: `${activityState.progress}%` }} />
+                  </div>
+                </div>
+              ) : null}
               {errors[item.video.id] ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
               {successes[item.video.id] ? <p className="muted form-message" style={{ color: '#22c55e' }}>{successes[item.video.id]}</p> : null}
 
@@ -504,11 +578,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <div className="detail-grid" style={{ marginTop: 12 }}>
                   <label className="field">
                     <span className="field-label">Title</span>
-                    <input className="input" value={getDraft(item).title} onChange={(event) => updateDraft(item.video.id, 'title', event.target.value)} />
+                    <input className="input" disabled={isBusy} value={getDraft(item).title} onChange={(event) => updateDraft(item.video.id, 'title', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Category</span>
-                    <select className="input" value={getDraft(item).category} onChange={(event) => updateDraft(item.video.id, 'category', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).category} onChange={(event) => updateDraft(item.video.id, 'category', event.target.value)}>
                       {PRIMARY_CATEGORY_OPTIONS.map((category) => (
                         <option key={category} value={category}>{category}</option>
                       ))}
@@ -516,7 +590,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                   <label className="field">
                     <span className="field-label">Type</span>
-                    <select className="input" value={getDraft(item).videoType} onChange={(event) => updateDraft(item.video.id, 'videoType', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).videoType} onChange={(event) => updateDraft(item.video.id, 'videoType', event.target.value)}>
                       <option value="FEATURE">Feature</option>
                       <option value="SERIES">Series</option>
                       <option value="SHORT">Short</option>
@@ -527,7 +601,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                   <label className="field">
                     <span className="field-label">Age rating</span>
-                    <select className="input" value={getDraft(item).ageRating} onChange={(event) => updateDraft(item.video.id, 'ageRating', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).ageRating} onChange={(event) => updateDraft(item.video.id, 'ageRating', event.target.value)}>
                       <option value="ALL">All</option>
                       <option value="PG13">13+</option>
                       <option value="PG16">16+</option>
@@ -536,7 +610,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                   <label className="field">
                     <span className="field-label">Price tier</span>
-                    <select className="input" value={getDraft(item).priceTier} onChange={(event) => updateDraft(item.video.id, 'priceTier', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).priceTier} onChange={(event) => updateDraft(item.video.id, 'priceTier', event.target.value)}>
                       <option value="SNACK">Snack</option>
                       <option value="STANDARD">Standard</option>
                       <option value="PREMIERE">Premiere</option>
@@ -544,41 +618,41 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                   <label className="field">
                     <span className="field-label">Unlock price (NGN)</span>
-                    <input className="input" type="number" min={0} value={getDraft(item).unlockPrice} onChange={(event) => updateDraft(item.video.id, 'unlockPrice', event.target.value)} placeholder="Use tier default" />
+                    <input className="input" disabled={isBusy} type="number" min={0} value={getDraft(item).unlockPrice} onChange={(event) => updateDraft(item.video.id, 'unlockPrice', event.target.value)} placeholder="Use tier default" />
                   </label>
                   <label className="field">
                     <span className="field-label">Producer share %</span>
-                    <input className="input" type="number" min={0} max={100} step="0.1" value={getDraft(item).producerRevenueShare} onChange={(event) => updateDraft(item.video.id, 'producerRevenueShare', event.target.value)} />
+                    <input className="input" disabled={isBusy} type="number" min={0} max={100} step="0.1" value={getDraft(item).producerRevenueShare} onChange={(event) => updateDraft(item.video.id, 'producerRevenueShare', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">ACE share %</span>
-                    <input className="input" type="number" min={0} max={100} step="0.1" value={getDraft(item).platformRevenueShare} onChange={(event) => updateDraft(item.video.id, 'platformRevenueShare', event.target.value)} />
+                    <input className="input" disabled={isBusy} type="number" min={0} max={100} step="0.1" value={getDraft(item).platformRevenueShare} onChange={(event) => updateDraft(item.video.id, 'platformRevenueShare', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Withholding / reserve %</span>
-                    <input className="input" type="number" min={0} max={100} step="0.1" value={getDraft(item).taxRevenueShare} onChange={(event) => updateDraft(item.video.id, 'taxRevenueShare', event.target.value)} />
+                    <input className="input" disabled={isBusy} type="number" min={0} max={100} step="0.1" value={getDraft(item).taxRevenueShare} onChange={(event) => updateDraft(item.video.id, 'taxRevenueShare', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Viewing availability</span>
-                    <select className="input" value={getDraft(item).availabilityRegion} onChange={(event) => updateDraft(item.video.id, 'availabilityRegion', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).availabilityRegion} onChange={(event) => updateDraft(item.video.id, 'availabilityRegion', event.target.value)}>
                       <option value="GLOBAL">Global</option>
                       <option value="AFRICA">Africa only</option>
                     </select>
                   </label>
                   <label className="field">
                     <span className="field-label">Rights</span>
-                    <select className="input" value={getDraft(item).rightsTier} onChange={(event) => updateDraft(item.video.id, 'rightsTier', event.target.value)}>
+                    <select className="input" disabled={isBusy} value={getDraft(item).rightsTier} onChange={(event) => updateDraft(item.video.id, 'rightsTier', event.target.value)}>
                       <option value="SHARED">Shared</option>
                       <option value="EXCLUSIVE">Exclusive</option>
                     </select>
                   </label>
                   <label className="field">
                     <span className="field-label">Production year</span>
-                    <input className="input" type="number" min={1900} max={new Date().getFullYear() + 2} value={getDraft(item).releaseYear} onChange={(event) => updateDraft(item.video.id, 'releaseYear', event.target.value)} />
+                    <input className="input" disabled={isBusy} type="number" min={1900} max={new Date().getFullYear() + 2} value={getDraft(item).releaseYear} onChange={(event) => updateDraft(item.video.id, 'releaseYear', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Original language</span>
-                    <input className="input" value={getDraft(item).originalLanguage} onChange={(event) => updateDraft(item.video.id, 'originalLanguage', event.target.value)} />
+                    <input className="input" disabled={isBusy} value={getDraft(item).originalLanguage} onChange={(event) => updateDraft(item.video.id, 'originalLanguage', event.target.value)} />
                   </label>
                   <div className="field" style={{ gridColumn: '1/-1' }}>
                     <span className="field-label">Genres</span>
@@ -591,7 +665,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                             key={genre}
                             type="button"
                             className="btn btn-ghost"
-                            disabled={disabled}
+                            disabled={disabled || isBusy}
                             onClick={() =>
                               updateDraft(
                                 item.video.id,
@@ -613,17 +687,18 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </div>
                   <label className="field">
                     <span className="field-label">Warnings</span>
-                    <input className="input" value={getDraft(item).contentWarnings} onChange={(event) => updateDraft(item.video.id, 'contentWarnings', event.target.value)} />
+                    <input className="input" disabled={isBusy} value={getDraft(item).contentWarnings} onChange={(event) => updateDraft(item.video.id, 'contentWarnings', event.target.value)} />
                   </label>
                   <label className="field">
                     <span className="field-label">Licensed territories</span>
-                    <input className="input" value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
+                    <input className="input" disabled={isBusy} value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
                   </label>
                   <label className="field" style={{ gridColumn: '1/-1' }}>
                     <span className="field-label">Dropbox master source URL</span>
                     <input
                       className="input"
                       type="url"
+                      disabled={isBusy}
                       value={getDraft(item).sourceUrl}
                       onChange={(event) => updateDraft(item.video.id, 'sourceUrl', event.target.value)}
                       placeholder="Paste Dropbox share link"
@@ -631,7 +706,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </label>
                    <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Description</span>
-                     <textarea className="input" rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)}></textarea>
+                     <textarea className="input" disabled={isBusy} rows={4} value={getDraft(item).description} onChange={(event) => updateDraft(item.video.id, 'description', event.target.value)}></textarea>
                    </label>
 
                    <label className="field" style={{ gridColumn: '1/-1' }}>
@@ -639,6 +714,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                      <input
                        type="file"
                        accept="video/mp4"
+                       disabled={isBusy}
                        onChange={(event) => setEditAsset(item.video.id, 'trailer', event.target.files?.[0] ?? null)}
                      />
                      {getEditAssets(item.video.id).trailer ? (
@@ -655,6 +731,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                      <input
                        type="file"
                        accept="image/jpeg,image/png,image/webp"
+                       disabled={isBusy}
                        onChange={(event) => setEditAsset(item.video.id, 'poster', event.target.files?.[0] ?? null)}
                      />
                      {getEditAssets(item.video.id).poster ? (
@@ -667,8 +744,8 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                    </label>
 
                    <div className="moderation-actions" style={{ gridColumn: '1/-1' }}>
-                    <button className="btn btn-primary" onClick={() => saveEdit(item)}>Save changes</button>
-                     <button className="btn btn-ghost" onClick={() => closeEdit(item.video.id)}>Cancel</button>
+                    <button className="btn btn-primary" disabled={isBusy} onClick={() => saveEdit(item)}>{isBusy ? 'Saving...' : 'Save changes'}</button>
+                     <button className="btn btn-ghost" disabled={isBusy} onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
                 </div>
               ) : null}
@@ -676,6 +753,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
               <div className="moderation-actions">
                 <button
                   className="btn btn-ghost"
+                  disabled={isBusy}
                   onClick={() => {
                     if (editingId === item.video.id) {
                       closeEdit(item.video.id);
@@ -697,20 +775,21 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   </a>
                 ) : null}
                 {item.status === 'PENDING' ? (
-                  <button className="btn btn-primary" onClick={() => handleAction(item, 'approve')}>
-                    Approve title
+                  <button className="btn btn-primary" disabled={isBusy} onClick={() => handleAction(item, 'approve')}>
+                    {isBusy ? 'Working...' : 'Approve title'}
                   </button>
                 ) : null}
                 {item.hasModerationRecord ? (
-                  <button className="btn btn-ghost" onClick={() => handleAction(item, 'reject')}>
-                    Reject title
+                  <button className="btn btn-ghost" disabled={isBusy} onClick={() => handleAction(item, 'reject')}>
+                    {isBusy ? 'Working...' : 'Reject title'}
                   </button>
                 ) : null}
                 <button
                   className="btn btn-ghost"
+                  disabled={isBusy}
                   onClick={() => handleAction(item, item.video.status === 'DRAFT' ? 'activate' : 'deactivate')}
                 >
-                  {item.video.status === 'DRAFT' ? 'Activate for users' : 'Deactivate for viewers'}
+                  {isBusy ? 'Working...' : item.video.status === 'DRAFT' ? 'Activate for users' : 'Deactivate for viewers'}
                 </button>
               </div>
 
