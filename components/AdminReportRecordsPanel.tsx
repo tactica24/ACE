@@ -113,7 +113,7 @@ export default function AdminReportRecordsPanel({
           type="button"
           className="btn btn-primary"
           disabled={isPending || selectedVideoIds.length === 0}
-          onClick={() => startTransition(() => saveStatement())}
+          onClick={() => startTransition(() => { void saveStatement(); })}
         >
           {isPending ? 'Saving...' : 'Save as statement'}
         </button>
@@ -151,9 +151,9 @@ export default function AdminReportRecordsPanel({
                   defaultValue={statement.status}
                   disabled={isPending}
                   onChange={(event) =>
-                    startTransition(() =>
-                      updateStatus(statement.id, event.target.value as (typeof STATUS_FLOW)[number])
-                    )
+                    startTransition(() => {
+                      void updateStatus(statement.id, event.target.value as (typeof STATUS_FLOW)[number]);
+                    })
                   }
                 >
                   <option value={statement.status} disabled>

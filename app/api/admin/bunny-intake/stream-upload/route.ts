@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
-import { createBunnyStreamVideo, createBunnyTusUploadSignature, getBunnyStreamLibraryId } from '@/lib/bunny-stream';
+import {
+  createBunnyStreamVideo,
+  createBunnyTusUploadSignature,
+  fetchBunnyStreamVideoFromUrl,
+  getBunnyStreamLibraryId
+} from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
+import { normalizeDropboxSourceUrl } from '@/lib/master-source';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -14,9 +20,16 @@ export async function POST(req: NextRequest) {
   const assetType = body.assetType === 'trailer' ? 'trailer' : body.assetType === 'movie' ? 'movie' : '';
   const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
   const fileSize = Number(body.fileSize ?? 0);
+  const rawSourceUrl = typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '';
+  const sourceUrl = rawSourceUrl ? normalizeDropboxSourceUrl(rawSourceUrl) : null;
+  const uploadMode = sourceUrl ? 'dropbox' : 'local';
 
-  if (!videoId || !assetType || !filename) {
-    return NextResponse.json({ error: 'videoId, assetType, and filename are required.' }, { status: 400 });
+  if (!videoId || !assetType || (!filename && !sourceUrl)) {
+    return NextResponse.json({ error: 'videoId, assetType, and either filename or sourceUrl are required.' }, { status: 400 });
+  }
+
+  if (rawSourceUrl && !sourceUrl) {
+    return NextResponse.json({ error: 'Provide a valid Dropbox share URL.' }, { status: 400 });
   }
 
   const video = await prisma.video.findUnique({
@@ -40,16 +53,22 @@ export async function POST(req: NextRequest) {
   const existingVideoId =
     assetType === 'movie' ? video.technicalMetadata?.bunnyStreamVideoId : video.technicalMetadata?.trailerStreamVideoId;
 
-  const streamVideo = existingVideoId
-    ? {
-        libraryId: getBunnyStreamLibraryId(),
-        videoId: existingVideoId
-      }
-    : await createBunnyStreamVideo({
-        title: assetType === 'movie' ? video.title : `${video.title} Trailer`
-      });
+  const remoteAssetTitle = `ACE ${video.id} ${assetType} ${video.title}`;
+  const streamVideo = sourceUrl
+    ? await fetchBunnyStreamVideoFromUrl({
+        sourceUrl,
+        title: remoteAssetTitle
+      })
+    : existingVideoId
+      ? {
+          libraryId: getBunnyStreamLibraryId(),
+          videoId: existingVideoId
+        }
+      : await createBunnyStreamVideo({
+          title: assetType === 'movie' ? video.title : `${video.title} Trailer`
+        });
 
-  const tusUpload = createBunnyTusUploadSignature(streamVideo.videoId);
+  const tusUpload = sourceUrl ? null : createBunnyTusUploadSignature(streamVideo.videoId);
 
   await prisma.$transaction([
     prisma.video.update({
@@ -68,8 +87,9 @@ export async function POST(req: NextRequest) {
               bunnyStreamStatus: 'created',
               bunnyStreamReadyAt: null,
               bunnyStreamError: null,
-              masterFileName: filename,
+              masterFileName: filename || null,
               masterFileSize: Number.isFinite(fileSize) ? BigInt(Math.max(0, Math.trunc(fileSize))) : null,
+              masterSourceUrl: sourceUrl,
               masterUploadedAt: new Date(),
               transcodeRequestedAt: new Date()
             }
@@ -89,8 +109,9 @@ export async function POST(req: NextRequest) {
             bunnyStreamStatus: 'created',
             bunnyStreamReadyAt: null,
             bunnyStreamError: null,
-            masterFileName: filename,
+            masterFileName: filename || null,
             masterFileSize: Number.isFinite(fileSize) ? BigInt(Math.max(0, Math.trunc(fileSize))) : undefined,
+            masterSourceUrl: sourceUrl,
             masterUploadedAt: new Date(),
             transcodeRequestedAt: new Date()
           }
@@ -106,10 +127,17 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    upload: {
-      ...tusUpload,
-      assetType
-    },
+    upload: tusUpload
+      ? {
+          ...tusUpload,
+          assetType,
+          mode: uploadMode
+        }
+      : {
+          assetType,
+          mode: uploadMode,
+          sourceUrl
+        },
     playback: {
       embedUrl: `https://player.mediadelivery.net/embed/${encodeURIComponent(streamVideo.libraryId)}/${encodeURIComponent(streamVideo.videoId)}`
     }

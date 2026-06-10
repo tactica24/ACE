@@ -62,7 +62,6 @@ const REQUIRED_PRODUCTION_ENV = [
   'BUNNY_STORAGE_API_KEY',
   'BUNNY_STORAGE_ZONE',
   'BUNNY_STORAGE_ENDPOINT',
-  'BUNNY_STORAGE_S3_ENDPOINT',
   'BUNNY_STREAM_LIBRARY_ID',
   'BUNNY_STREAM_API_KEY',
   'BUNNY_STREAM_READONLY_API_KEY',
@@ -149,17 +148,6 @@ function loadEnv(): Env {
     ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.ACE_UPLOAD_PROXY_BASE_URL),
     NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL: normalizeEnvValue(process.env.NEXT_PUBLIC_ACE_UPLOAD_PROXY_BASE_URL)
   });
-
-  if (process.env.NODE_ENV === 'production') {
-    const missing = REQUIRED_PRODUCTION_ENV.filter((key) => !parsedEnv[key]);
-
-    if (missing.length) {
-      throw new Error(
-        `Missing required production environment variables: ${missing.join(', ')}. ` +
-        'Set them before starting the app.'
-      );
-    }
-  }
 
   cachedEnv = parsedEnv;
 

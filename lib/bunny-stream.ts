@@ -25,6 +25,12 @@ export type BunnyStreamVideoDetails = {
   transcodingMessages: string[];
 };
 
+type BunnyStreamListItem = {
+  guid: string;
+  title: string;
+  dateUploaded: string | null;
+};
+
 function trimSlashes(value: string) {
   return value.replace(/^\/+/, '').replace(/\/+$/, '');
 }
@@ -99,6 +105,104 @@ export async function createBunnyStreamVideo(input: { title: string; collectionI
     libraryId,
     videoId: payload.guid as string
   };
+}
+
+export async function listBunnyStreamVideos(input: {
+  libraryId?: string;
+  search?: string;
+  page?: number;
+  itemsPerPage?: number;
+} = {}) {
+  const libraryId = input.libraryId ?? getBunnyStreamLibraryId();
+  const params = new URLSearchParams({
+    page: String(input.page ?? 1),
+    itemsPerPage: String(input.itemsPerPage ?? 100),
+    orderBy: 'date'
+  });
+
+  if (input.search?.trim()) {
+    params.set('search', input.search.trim());
+  }
+
+  const response = await fetch(
+    `${BUNNY_STREAM_API_BASE_URL}/library/${encodeURIComponent(libraryId)}/videos?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        AccessKey: getApiKey()
+      },
+      cache: 'no-store'
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `Bunny Stream video list failed (${response.status}): ${
+        typeof payload?.message === 'string' ? payload.message : response.statusText
+      }`
+    );
+  }
+
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+
+  return items
+    .map((item) => ({
+      guid: typeof item?.guid === 'string' ? item.guid : '',
+      title: typeof item?.title === 'string' ? item.title : '',
+      dateUploaded: typeof item?.dateUploaded === 'string' ? item.dateUploaded : null
+    }))
+    .filter((item): item is BunnyStreamListItem => Boolean(item.guid && item.title));
+}
+
+export async function fetchBunnyStreamVideoFromUrl(input: {
+  sourceUrl: string;
+  title: string;
+  libraryId?: string;
+  headers?: Record<string, string>;
+}) {
+  const libraryId = input.libraryId ?? getBunnyStreamLibraryId();
+  const response = await fetch(`${BUNNY_STREAM_API_BASE_URL}/library/${encodeURIComponent(libraryId)}/videos/fetch`, {
+    method: 'POST',
+    headers: {
+      AccessKey: getApiKey(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      url: input.sourceUrl,
+      headers: input.headers ?? {},
+      title: input.title
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(
+      `Bunny Stream remote fetch failed (${response.status}): ${
+        typeof payload?.message === 'string' ? payload.message : response.statusText
+      }`
+    );
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const items = await listBunnyStreamVideos({
+      libraryId,
+      search: input.title,
+      page: 1,
+      itemsPerPage: 100
+    });
+    const match = items.find((item) => item.title === input.title);
+    if (match) {
+      return {
+        libraryId,
+        videoId: match.guid
+      };
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+  }
+
+  throw new Error('Bunny Stream accepted the Dropbox import, but the new video could not be matched back to this title yet.');
 }
 
 export async function getBunnyStreamVideo(videoId: string, libraryId = getBunnyStreamLibraryId()): Promise<BunnyStreamVideoDetails> {

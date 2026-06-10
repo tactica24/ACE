@@ -175,7 +175,7 @@ export default async function AdminPage() {
     >
       {/* Infrastructure snapshot - quick health check */}
       <div className="grid" style={{ marginBottom: 24 }}>
-        <InfrastructureReadiness />
+        {await InfrastructureReadiness()}
       </div>
 
       {/* Workspace panels - primary navigation and task areas */}

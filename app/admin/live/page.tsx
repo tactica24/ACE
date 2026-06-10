@@ -274,7 +274,7 @@ export default async function AdminLiveMoviesPage() {
                       transition: 'background-color 0.2s'
                     }}
                   >
-                    View movie ->
+                    View movie {'->'}
                   </a>
                 </div>
               </div>

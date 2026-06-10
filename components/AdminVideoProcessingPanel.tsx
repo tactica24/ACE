@@ -457,7 +457,7 @@ export default function AdminVideoProcessingPanel({
           <div>
             <h3 style={{ margin: 0 }}>Pipeline monitor</h3>
             <p className="muted" style={{ margin: '6px 0 0' }}>
-              Review each title's Bunny Stream state, refresh status from Bunny, and publish once playback is ready.
+              Review each title&apos;s Bunny Stream state, refresh status from Bunny, and publish once playback is ready.
             </p>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
