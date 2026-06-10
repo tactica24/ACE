@@ -297,7 +297,7 @@ export default async function AdminPage() {
             <Link className="btn btn-ghost" href="/admin/users">User accounts</Link>
             <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Moderation queue</Link>
-            <Link className="btn btn-ghost" href="/admin/videos">Video pipeline</Link>
+            <Link className="btn btn-ghost" href="/admin/videos">Video delivery</Link>
             <Link className="btn btn-ghost" href="/admin/payments">Payout operations</Link>
             <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
             <Link className="btn btn-ghost" href="/admin/reports">Producer reports</Link>

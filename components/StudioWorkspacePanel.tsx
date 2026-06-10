@@ -36,8 +36,8 @@ export default function StudioWorkspacePanel({
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Releases</span>
-          <h3>Release pipeline</h3>
-          <p className="muted">Create titles from Dropbox sources, review contracts, monitor moderation, and manage the release process from one place.</p>
+          <h3>Release workflow</h3>
+          <p className="muted">Create titles, review contracts, monitor moderation, and manage Bunny delivery from one place.</p>
         </div>
         <div className="workspace-links">
           <Link className="btn btn-primary" href="/studio/upload">Create title</Link>

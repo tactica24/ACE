@@ -2,6 +2,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  PRIMARY_CATEGORY_OPTIONS,
+  SECONDARY_GENRE_OPTIONS,
+  normalizeSelectedGenres,
+  toggleGenreSelection
+} from '@/lib/video-taxonomy';
 
 type DropboxMovieIntakeFormProps = {
   extraPayload?: Record<string, unknown>;
@@ -22,7 +28,7 @@ type FormState = {
   releaseYear: string;
   durationSec: string;
   originalLanguage: string;
-  genres: string;
+  genres: string[];
   contentWarnings: string;
   masterSourceUrl: string;
 };
@@ -38,7 +44,7 @@ const initialState: FormState = {
   releaseYear: String(new Date().getFullYear()),
   durationSec: '',
   originalLanguage: 'en',
-  genres: '',
+  genres: [],
   contentWarnings: '',
   masterSourceUrl: ''
 };
@@ -94,7 +100,7 @@ export default function DropboxMovieIntakeForm({
           releaseYear: Number(form.releaseYear || 0),
           durationSec: Number(form.durationSec || 0),
           originalLanguage: form.originalLanguage.trim().toLowerCase() || 'en',
-          genres: normalizeList(form.genres),
+          genres: normalizeSelectedGenres(form.genres),
           contentWarnings: normalizeList(form.contentWarnings),
           masterSourceUrl: form.masterSourceUrl.trim(),
           ...(extraPayload ?? {})
@@ -130,19 +136,11 @@ export default function DropboxMovieIntakeForm({
         <label className="field">
           <span className="field-label">Category</span>
           <select className="input" value={form.category} onChange={(event) => updateField('category', event.target.value)}>
-            <option value="General">General</option>
-            <option value="Love">Love</option>
-            <option value="Action">Action</option>
-            <option value="Thriller">Thriller</option>
-            <option value="Comedy">Comedy</option>
-            <option value="Drama">Drama</option>
-            <option value="Romance">Romance</option>
-            <option value="Sci-Fi">Sci-Fi</option>
-            <option value="Horror">Horror</option>
-            <option value="Documentary">Documentary</option>
-            <option value="Family">Family</option>
-            <option value="Faith">Faith</option>
-            <option value="Animation">Animation</option>
+            {PRIMARY_CATEGORY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </label>
         <label className="field">
@@ -192,13 +190,35 @@ export default function DropboxMovieIntakeForm({
           <input className="input" value={form.originalLanguage} onChange={(event) => updateField('originalLanguage', event.target.value)} />
         </label>
         <label className="field">
-          <span className="field-label">Genres</span>
-          <input className="input" value={form.genres} onChange={(event) => updateField('genres', event.target.value)} placeholder="Drama, Thriller" />
-        </label>
-        <label className="field">
           <span className="field-label">Content warnings</span>
           <input className="input" value={form.contentWarnings} onChange={(event) => updateField('contentWarnings', event.target.value)} placeholder="Violence, Language" />
         </label>
+      </div>
+
+      <div className="field">
+        <span className="field-label">Genres</span>
+        <div className="action-list" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {SECONDARY_GENRE_OPTIONS.map((genre) => {
+            const selected = form.genres.includes(genre);
+            const disabled = !selected && form.genres.length >= 3;
+            return (
+              <button
+                key={genre}
+                type="button"
+                className="btn btn-ghost"
+                disabled={disabled}
+                onClick={() => updateField('genres', normalizeSelectedGenres(toggleGenreSelection(form.genres, genre)))}
+                style={{
+                  borderColor: selected ? '#2563eb' : undefined,
+                  backgroundColor: selected ? '#dbeafe' : undefined,
+                  color: selected ? '#1d4ed8' : undefined
+                }}
+              >
+                {selected ? `Selected: ${genre}` : genre}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <label className="field">

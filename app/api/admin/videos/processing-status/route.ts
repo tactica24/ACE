@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         !videoForPublish ||
         !hasReadyMoviePlayback(videoForPublish)
       ) {
-        return NextResponse.json({ error: 'Wait for HLS readiness before publishing this title.' }, { status: 400 });
+        return NextResponse.json({ error: 'Wait for Bunny playback readiness before publishing this title.' }, { status: 400 });
       }
 
       await prisma.video.update({

@@ -69,6 +69,18 @@ type OperationState = {
 type PipelineStepState = 'done' | 'active' | 'pending' | 'failed';
 type StreamStage = 'needs-upload' | 'uploading' | 'processing' | 'ready' | 'failed' | 'published';
 
+function sanitizeLegacyAdminText(value: string | null | undefined) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+
+  return text
+    .replace(/contabo/gi, 'Bunny migration')
+    .replace(/akash/gi, 'legacy delivery')
+    .replace(/start contabo hls/gi, 'start Bunny upload')
+    .replace(/sync contabo status/gi, 'refresh Bunny status')
+    .replace(/hls pipeline/gi, 'Bunny playback flow');
+}
+
 function formatBytes(value: number | null) {
   if (!value) return 'No file recorded';
   if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
@@ -123,7 +135,12 @@ function getPipelineSummary(video: ProcessingVideo) {
   const stage = getStreamStage(video);
   if (stage === 'published') return 'Published and available to viewers.';
   if (stage === 'ready') return 'Bunny Stream finished encoding and playback is ready.';
-  if (stage === 'failed') return video.bunnyStreamError ?? video.transcodeError ?? 'Bunny Stream reported a processing failure.';
+  if (stage === 'failed') {
+    return (
+      sanitizeLegacyAdminText(video.bunnyStreamError ?? video.transcodeError) ??
+      'Bunny Stream reported a processing failure.'
+    );
+  }
   if (stage === 'processing') {
     return `Bunny Stream is processing the movie${video.bunnyStreamStatus ? ` (${normalizeStreamStatus(video.bunnyStreamStatus)})` : ''}.`;
   }
@@ -131,6 +148,16 @@ function getPipelineSummary(video: ProcessingVideo) {
     return 'Movie upload was created in Bunny Stream and is waiting for upload or encode callbacks.';
   }
   return 'This title has not been sent through the Bunny upload desk yet.';
+}
+
+function getOutstandingItems(video: ProcessingVideo) {
+  return [
+    !video.posterDownloadHref ? 'Poster artwork is missing.' : null,
+    !video.bunnyStreamVideoId ? 'Main movie has not been uploaded to Bunny Stream.' : null,
+    video.bunnyStreamVideoId && !video.bunnyStreamReadyAt ? 'Bunny Stream encoding is not finished yet.' : null,
+    !video.playbackUrl && video.bunnyStreamReadyAt ? 'Playback URL has not been synced back yet.' : null,
+    !video.masterKey && !video.masterFileName ? 'No stored master file record is attached yet.' : null
+  ].filter((item): item is string => Boolean(item));
 }
 
 function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
@@ -408,6 +435,9 @@ export default function AdminVideoProcessingPanel({
             <p className="muted" style={{ margin: 0 }}>
               Posters and subtitle files live in Bunny Storage. Trailers and movies encode in Bunny Stream. Legacy delivery controls are retired.
             </p>
+            <p className="muted" style={{ margin: '8px 0 0' }}>
+              Older titles do not need to be recreated from scratch. Keep the title record, then backfill poster and source assets into Bunny or re-upload only the missing assets.
+            </p>
           </div>
           <div className="action-list" style={{ margin: 0 }}>
             <a className="btn btn-primary" href="/admin/upload">Open upload desk</a>
@@ -483,7 +513,9 @@ export default function AdminVideoProcessingPanel({
         const operationForVideo = operation?.videoId === video.id ? operation : null;
         const operationStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
         const pipelineSteps = getPipelineSteps(video);
-        const currentIssue = video.bunnyStreamError ?? video.transcodeError ?? video.trailerStreamError ?? null;
+        const currentIssue =
+          sanitizeLegacyAdminText(video.bunnyStreamError ?? video.transcodeError ?? video.trailerStreamError) ?? null;
+        const outstandingItems = getOutstandingItems(video);
 
         return (
           <div key={video.id} className="card">
@@ -516,6 +548,13 @@ export default function AdminVideoProcessingPanel({
               <div className="detail-card"><span className="detail-label">Playback URL</span><strong>{video.playbackUrl ?? 'Not ready yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">Qualities</span><strong>{video.qualities.join(', ') || 'Not reported yet'}</strong></div>
               <div className="detail-card"><span className="detail-label">Ready at</span><strong>{formatDateTime(video.bunnyStreamReadyAt ?? video.hlsReadyAt)}</strong></div>
+            </div>
+
+            <div className="detail-card" style={{ marginBottom: 16 }}>
+              <span className="detail-label">Fix checklist</span>
+              <strong>
+                {outstandingItems.length ? outstandingItems.join(' ') : 'This title matches the Bunny-only flow and does not show any obvious admin gaps.'}
+              </strong>
             </div>
 
             <div className="detail-card" style={{ marginBottom: 16 }}>

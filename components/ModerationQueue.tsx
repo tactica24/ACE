@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import { getMoviePosterUrl } from '@/lib/movie-assets';
 import PosterAsset from '@/components/PosterAsset';
+import {
+  PRIMARY_CATEGORY_OPTIONS,
+  SECONDARY_GENRE_OPTIONS,
+  normalizeSelectedGenres,
+  toggleGenreSelection
+} from '@/lib/video-taxonomy';
 
 type Item = {
   id: string;
@@ -65,28 +71,12 @@ type VideoDraft = {
   rightsTier: string;
   releaseYear: string;
   originalLanguage: string;
-  genres: string;
+  genres: string[];
   contentWarnings: string;
   licensedTerritories: string;
   availabilityRegion: string;
   sourceUrl: string;
 };
-
-const categoryOptions = [
-  'General',
-  'Love',
-  'Action',
-  'Thriller',
-  'Comedy',
-  'Drama',
-  'Romance',
-  'Sci-Fi',
-  'Horror',
-  'Documentary',
-  'Family',
-  'Faith',
-  'Animation',
-];
 
 const ageLabel: Record<string, string> = {
   ALL: 'All',
@@ -145,7 +135,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       rightsTier: item.video.rightsTier ?? 'SHARED',
       releaseYear: item.video.releaseYear ? String(item.video.releaseYear) : '',
       originalLanguage: item.video.originalLanguage ?? 'en',
-      genres: (item.video.genres ?? []).join(', '),
+      genres: normalizeSelectedGenres(item.video.genres ?? []),
       contentWarnings: (item.video.contentWarnings ?? []).join(', '),
       licensedTerritories: (item.video.licensedTerritories ?? []).join(', '),
       availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL',
@@ -195,7 +185,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
           rightsTier: 'SHARED',
           releaseYear: '',
           originalLanguage: 'en',
-          genres: '',
+          genres: [],
           contentWarnings: '',
           licensedTerritories: '',
           availabilityRegion: 'GLOBAL',
@@ -243,6 +233,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       body: JSON.stringify({
         videoId: item.video.id,
         ...draft,
+        genres: normalizeSelectedGenres(draft.genres),
         licensedTerritories: draft.licensedTerritories,
         ...(trailerKey ? { trailerKey } : {}),
         ...(posterKey ? { posterKey } : {})
@@ -412,6 +403,10 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   <strong>{item.video.category ?? 'General'}</strong>
                 </div>
                 <div className="detail-card">
+                  <span className="detail-label">Genres</span>
+                  <strong>{item.video.genres?.length ? item.video.genres.join(', ') : 'Not set yet'}</strong>
+                </div>
+                <div className="detail-card">
                   <span className="detail-label">Type</span>
                   <strong>{labelize(item.video.videoType)}</strong>
                 </div>
@@ -449,7 +444,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Viewer package</span>
-                  <strong>{item.video.packageLabel ?? 'HLS package'}</strong>
+                  <strong>{item.video.packageLabel ?? 'Bunny playback package'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Package status</span>
@@ -457,20 +452,32 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Delivery format</span>
-                  <strong>{item.video.deliveryFormat ?? 'HLS viewer package'}</strong>
+                  <strong>{item.video.deliveryFormat ?? 'Bunny viewer package'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Master source</span>
-                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : item.video.masterKey ? 'Legacy Bunny source' : 'Source missing'}</strong>
+                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : item.video.masterKey ? 'Legacy source attached' : 'Source missing'}</strong>
                 </div>
                 <div className="detail-card">
-                  <span className="detail-label">Stream package</span>
-                  <strong>{item.video.hlsManifestReady ? 'HLS ready in Bunny' : item.video.processingStatus ?? 'Awaiting source'}</strong>
+                  <span className="detail-label">Bunny playback</span>
+                  <strong>{item.video.hlsManifestReady ? 'Ready in Bunny' : item.video.processingStatus ?? 'Awaiting source'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Subtitles</span>
                   <strong>{item.video.subtitleStatus ?? 'No subtitles uploaded'}</strong>
                 </div>
+              </div>
+
+              <div className="detail-card" style={{ marginTop: 12 }}>
+                <span className="detail-label">What still needs fixing</span>
+                <strong>
+                  {[
+                    !item.video.posterKey ? 'poster' : null,
+                    !item.video.masterSourceUrl && !item.video.masterKey ? 'movie source' : null,
+                    !item.video.hlsManifestReady ? 'Bunny playback sync' : null,
+                    !(item.video.genres?.length) ? 'genres' : null
+                  ].filter(Boolean).join(', ') || 'No obvious gaps detected'}
+                </strong>
               </div>
 
               <label className="field">
@@ -502,7 +509,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   <label className="field">
                     <span className="field-label">Category</span>
                     <select className="input" value={getDraft(item).category} onChange={(event) => updateDraft(item.video.id, 'category', event.target.value)}>
-                      {categoryOptions.map((category) => (
+                      {PRIMARY_CATEGORY_OPTIONS.map((category) => (
                         <option key={category} value={category}>{category}</option>
                       ))}
                     </select>
@@ -573,10 +580,37 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     <span className="field-label">Original language</span>
                     <input className="input" value={getDraft(item).originalLanguage} onChange={(event) => updateDraft(item.video.id, 'originalLanguage', event.target.value)} />
                   </label>
-                  <label className="field">
+                  <div className="field" style={{ gridColumn: '1/-1' }}>
                     <span className="field-label">Genres</span>
-                    <input className="input" value={getDraft(item).genres} onChange={(event) => updateDraft(item.video.id, 'genres', event.target.value)} />
-                  </label>
+                    <div className="action-list" style={{ gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {SECONDARY_GENRE_OPTIONS.map((genre) => {
+                        const selected = getDraft(item).genres.includes(genre);
+                        const disabled = !selected && getDraft(item).genres.length >= 3;
+                        return (
+                          <button
+                            key={genre}
+                            type="button"
+                            className="btn btn-ghost"
+                            disabled={disabled}
+                            onClick={() =>
+                              updateDraft(
+                                item.video.id,
+                                'genres',
+                                normalizeSelectedGenres(toggleGenreSelection(getDraft(item).genres, genre))
+                              )
+                            }
+                            style={{
+                              borderColor: selected ? '#2563eb' : undefined,
+                              backgroundColor: selected ? '#dbeafe' : undefined,
+                              color: selected ? '#1d4ed8' : undefined
+                            }}
+                          >
+                            {selected ? `Selected: ${genre}` : genre}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <label className="field">
                     <span className="field-label">Warnings</span>
                     <input className="input" value={getDraft(item).contentWarnings} onChange={(event) => updateDraft(item.video.id, 'contentWarnings', event.target.value)} />

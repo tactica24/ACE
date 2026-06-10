@@ -3,6 +3,12 @@
 import { useMemo, useState } from 'react';
 import { uploadFileToBunnyTus } from '@/lib/client-bunny-stream-upload';
 import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
+import {
+  PRIMARY_CATEGORY_OPTIONS,
+  SECONDARY_GENRE_OPTIONS,
+  normalizeSelectedGenres,
+  toggleGenreSelection
+} from '@/lib/video-taxonomy';
 
 type ProducerOption = {
   id: string;
@@ -97,7 +103,7 @@ export default function AdminUploadWorkspace({
   const [releaseYear, setReleaseYear] = useState('');
   const [synopsis, setSynopsis] = useState('');
   const [category, setCategory] = useState('General');
-  const [genres, setGenres] = useState('');
+  const [genres, setGenres] = useState<string[]>([]);
   const [tags, setTags] = useState('');
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -152,7 +158,7 @@ export default function AdminUploadWorkspace({
     setReleaseYear('');
     setSynopsis('');
     setCategory('General');
-    setGenres('');
+    setGenres([]);
     setTags('');
     setPosterFile(null);
     setTrailerFile(null);
@@ -196,7 +202,7 @@ export default function AdminUploadWorkspace({
           description: synopsis.trim(),
           releaseYear: releaseYear ? Number(releaseYear) : null,
           category: category.trim() || 'General',
-          genres: genres.split(',').map((value) => value.trim()).filter(Boolean),
+          genres: normalizeSelectedGenres(genres),
           tags: tags.split(',').map((value) => value.trim()).filter(Boolean)
         })
       });
@@ -346,16 +352,48 @@ export default function AdminUploadWorkspace({
           </label>
           <label className="field">
             <span className="field-label">Category</span>
-            <input className="input" value={category} onChange={(event) => setCategory(event.target.value)} disabled={busy} />
-          </label>
-          <label className="field">
-            <span className="field-label">Genres</span>
-            <input className="input" value={genres} onChange={(event) => setGenres(event.target.value)} disabled={busy} placeholder="Drama, Thriller" />
+            <select className="input" value={category} onChange={(event) => setCategory(event.target.value)} disabled={busy}>
+              {PRIMARY_CATEGORY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field" style={{ gridColumn: '1 / -1' }}>
             <span className="field-label">Tags</span>
             <input className="input" value={tags} onChange={(event) => setTags(event.target.value)} disabled={busy} placeholder="festival, exclusive, 2026" />
           </label>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <span className="field-label">Genres</span>
+          <p className="muted" style={{ margin: '6px 0 10px' }}>
+            Choose up to 3 genres so the title can sit naturally across discovery rails.
+          </p>
+          <div className="action-list" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {SECONDARY_GENRE_OPTIONS.map((option) => {
+              const selected = genres.includes(option);
+              const disabled = busy || (!selected && genres.length >= 3);
+              return (
+                <button
+                  key={option}
+                  className="btn btn-ghost"
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    setGenres((current) => normalizeSelectedGenres(toggleGenreSelection(current, option)))
+                  }
+                  style={{
+                    borderColor: selected ? '#2563eb' : undefined,
+                    backgroundColor: selected ? '#dbeafe' : undefined,
+                    color: selected ? '#1d4ed8' : undefined
+                  }}
+                >
+                  {selected ? `Selected: ${option}` : option}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { PRIMARY_CATEGORY_OPTIONS, normalizeSelectedGenres } from '@/lib/video-taxonomy';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -16,10 +17,16 @@ export async function POST(req: NextRequest) {
   const releaseYear = Number(body.releaseYear ?? 0);
   const teaserSec = Math.max(0, Number(body.teaserSec ?? 0) || 0);
   const tags = Array.isArray(body.tags) ? body.tags.map((value) => String(value).trim()).filter(Boolean) : [];
-  const genres = Array.isArray(body.genres) ? body.genres.map((value) => String(value).trim()).filter(Boolean) : [];
+  const genres = normalizeSelectedGenres(
+    Array.isArray(body.genres) ? body.genres.map((value) => String(value).trim()).filter(Boolean) : []
+  );
 
   if (!producerId || !title || !description) {
     return NextResponse.json({ error: 'Producer, title, and synopsis are required.' }, { status: 400 });
+  }
+
+  if (!PRIMARY_CATEGORY_OPTIONS.includes(category as (typeof PRIMARY_CATEGORY_OPTIONS)[number])) {
+    return NextResponse.json({ error: 'Choose a valid primary category.' }, { status: 400 });
   }
 
   const producer = await prisma.user.findUnique({

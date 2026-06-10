@@ -22,8 +22,8 @@ export function isSeriesContainerDelivery(input: Pick<DeliveryPackageInput, 'vid
 
 export function getViewerPackageLabel(input: Pick<DeliveryPackageInput, 'videoType' | 'seriesId'>) {
   return isSeriesContainerDelivery(input)
-    ? 'Per-episode HLS package'
-    : 'HLS package';
+    ? 'Per-episode Bunny playback package'
+    : 'Bunny playback package';
 }
 
 export function getViewerPackageStatus(input: DeliveryPackageInput) {
@@ -43,11 +43,11 @@ export function getViewerPackageStatus(input: DeliveryPackageInput) {
   }
 
   if (input.hlsReady) {
-    return 'Bunny HLS ready';
+    return 'Bunny playback ready';
   }
 
   if (input.masterReady) {
-    return 'Master source attached; HLS pending';
+    return 'Master source attached; Bunny playback pending';
   }
 
   if (input.primaryReady) {

@@ -3,6 +3,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import { revalidateApprovedCatalog } from '@/lib/catalog';
 import { prisma } from '@/lib/db';
 import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
+import { PRIMARY_CATEGORY_OPTIONS, normalizeSelectedGenres } from '@/lib/video-taxonomy';
 
 const PRICE_TIERS = ['SNACK', 'STANDARD', 'PREMIERE'] as const;
 const RIGHTS_TIERS = ['SHARED', 'EXCLUSIVE'] as const;
@@ -10,7 +11,11 @@ const VIDEO_TYPES = ['FEATURE', 'SERIES', 'SHORT', 'SKIT', 'DOCUMENTARY', 'ADVER
 const AGE_RATINGS = ['ALL', 'PG13', 'PG16', 'PG18'] as const;
 const AVAILABILITY_REGIONS = ['GLOBAL', 'AFRICA'] as const;
 
-function normalizeList(value: string | undefined) {
+function normalizeList(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
+  }
+
   return (value ?? '')
     .split(',')
     .map((entry) => entry.trim())
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
   const rightsTier = typeof body.rightsTier === 'string' ? body.rightsTier.trim() : 'SHARED';
   const releaseYear = Math.floor(Number(body.releaseYear ?? 0));
   const originalLanguage = typeof body.originalLanguage === 'string' ? body.originalLanguage.trim().toLowerCase() : 'en';
-  const genres = normalizeList(body.genres);
+  const genres = normalizeSelectedGenres(normalizeList(body.genres));
   const contentWarnings = normalizeList(body.contentWarnings);
   const licensedTerritories = normalizeList(body.licensedTerritories);
   const availabilityRegion = typeof body.availabilityRegion === 'string' ? body.availabilityRegion.trim() : 'GLOBAL';
@@ -51,6 +56,10 @@ export async function POST(req: NextRequest) {
 
   if (!videoId) {
     return NextResponse.json({ error: 'Video id is required.' }, { status: 400 });
+  }
+
+  if (!PRIMARY_CATEGORY_OPTIONS.includes(category as (typeof PRIMARY_CATEGORY_OPTIONS)[number])) {
+    return NextResponse.json({ error: 'Choose a valid primary category.' }, { status: 400 });
   }
 
   if (!PRICE_TIERS.includes(priceTier as (typeof PRICE_TIERS)[number])) {

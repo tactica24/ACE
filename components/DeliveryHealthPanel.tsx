@@ -70,7 +70,7 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
                 <strong>{video.masterSourceUrl ? 'Dropbox attached' : video.masterKey || 'Not set'}</strong>
               </div>
               <div className="detail-card">
-                <span className="detail-label">HLS ready</span>
+                <span className="detail-label">Bunny playback ready</span>
                 <strong>{video.hlsManifestReady ? 'Yes' : 'No'}</strong>
               </div>
               <div className="detail-card">
@@ -87,7 +87,7 @@ export default function DeliveryHealthPanel({ videos }: { videos: DeliveryHealth
       ) : (
         <div className="card">
           <h3>No delivery items yet</h3>
-          <p className="muted">Titles with attached sources or verified HLS playback will appear here after admin processing.</p>
+          <p className="muted">Titles with attached sources or verified Bunny playback will appear here after admin processing.</p>
         </div>
       )}
     </div>

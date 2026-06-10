@@ -120,8 +120,8 @@ export default async function AdminVideosPage() {
 
   return (
     <DashboardShell
-      title="Content pipeline"
-      description="Track Bunny Stream encoding, playback readiness, moderation, and publishing from one clean admin flow."
+      title="Content delivery"
+      description="Track Bunny Stream encoding, playback readiness, moderation, and publishing from one clean admin workflow."
       sideNav={<SideNav active="/admin/videos" items={getAdminNavItems()} />}
     >
       <AdminVideoProcessingPanel

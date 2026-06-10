@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const hlsManifestKey = resolveVideoHlsManifestKey(video);
   if (!hlsManifestKey || !video.technicalMetadata?.hlsReadyAt) {
-    return NextResponse.json({ error: 'The HLS pipeline is not ready for this title yet.' }, { status: 400 });
+    return NextResponse.json({ error: 'Bunny playback is not ready for this title yet.' }, { status: 400 });
   }
 
   await prisma.videoTechnicalMetadata.upsert({

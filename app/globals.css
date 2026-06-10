@@ -846,6 +846,15 @@ button {
   margin: 0;
 }
 
+.form-message,
+.muted,
+.detail-card strong,
+.detail-card span,
+.detail-card p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -1082,6 +1091,7 @@ button {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(88, 217, 255, 0.12);
+  min-width: 0;
 }
 
 .admin-producer-list {
@@ -1452,6 +1462,11 @@ button {
   gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.stack-row > * {
+  min-width: 0;
 }
 
 .admin-control-danger {
