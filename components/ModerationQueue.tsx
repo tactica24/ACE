@@ -110,9 +110,22 @@ const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster', fol
     method: 'POST',
     body: formData
   });
-  const payload = await response.json().catch(() => ({}));
+  const rawBody = await response.text().catch(() => '');
+  const payload = rawBody
+    ? (() => {
+        try {
+          return JSON.parse(rawBody);
+        } catch {
+          return {};
+        }
+      })()
+    : {};
   if (!response.ok || !payload.key) {
-    throw new Error(payload.error || 'Could not prepare upload.');
+    throw new Error(
+      (typeof payload?.error === 'string' && payload.error.trim()) ||
+        rawBody ||
+        'Could not prepare upload.'
+    );
   }
   return payload.key as string;
 };
@@ -554,23 +567,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   }}
                 />
               </label>
-              {activityState ? (
-                <div className="upload-progress" aria-live="polite">
-                  <div className="upload-progress-meta">
-                    <strong>{activityState.label}</strong>
-                    <span className="muted">{activityState.progress}%</span>
-                  </div>
-                  <div
-                    className="upload-progress-track"
-                    role="progressbar"
-                    aria-valuenow={activityState.progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <span className="upload-progress-fill" style={{ width: `${activityState.progress}%` }} />
-                  </div>
-                </div>
-              ) : null}
               {errors[item.video.id] ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
               {successes[item.video.id] ? <p className="muted form-message" style={{ color: '#22c55e' }}>{successes[item.video.id]}</p> : null}
 
@@ -744,7 +740,29 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                    </label>
 
                    <div className="moderation-actions" style={{ gridColumn: '1/-1' }}>
-                    <button className="btn btn-primary" disabled={isBusy} onClick={() => saveEdit(item)}>{isBusy ? 'Saving...' : 'Save changes'}</button>
+                    {activityState ? (
+                      <div
+                        className="upload-progress"
+                        aria-live="polite"
+                        style={{ flex: '1 1 280px', minWidth: 240, padding: '12px 14px' }}
+                      >
+                        <div className="upload-progress-meta">
+                          <strong style={{ fontSize: '0.9rem' }}>{activityState.label}</strong>
+                          <span className="muted">{activityState.progress}%</span>
+                        </div>
+                        <div
+                          className="upload-progress-track"
+                          role="progressbar"
+                          aria-valuenow={activityState.progress}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <span className="upload-progress-fill" style={{ width: `${activityState.progress}%` }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="btn btn-primary" disabled={isBusy} onClick={() => saveEdit(item)}>Save changes</button>
+                    )}
                      <button className="btn btn-ghost" disabled={isBusy} onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
                 </div>

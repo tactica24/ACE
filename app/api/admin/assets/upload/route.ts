@@ -7,51 +7,60 @@ import { buildOwnedUploadKey, sanitizeUploadFolderId, validateUploadRequest } fr
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthFromRequest(req);
-  if (!auth || auth.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const auth = await getAuthFromRequest(req);
+    if (!auth || auth.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const formData = await req.formData().catch(() => null);
+    const file = formData?.get('file');
+    const purposeValue = formData?.get('purpose');
+    const folderIdValue = formData?.get('folderId');
+    const purpose = typeof purposeValue === 'string' ? purposeValue.trim() : '';
+    const folderId = typeof folderIdValue === 'string' ? sanitizeUploadFolderId(folderIdValue.trim()) : '';
+
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: 'Upload file is required.' }, { status: 400 });
+    }
+
+    if (purpose !== 'poster' && purpose !== 'trailer') {
+      return NextResponse.json({ error: 'Only poster and trailer uploads are supported here.' }, { status: 400 });
+    }
+
+    const validation = validateUploadRequest({
+      purpose,
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      fileSize: file.size
+    });
+
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    if (folderId) {
+      await ensureMovieUploadFolders(auth.sub, folderId);
+    }
+
+    const key = buildOwnedUploadKey({
+      userId: auth.sub,
+      purpose,
+      filename: file.name,
+      assetId: uuid(),
+      folderId: folderId || null
+    });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await putObject(key, buffer, file.type || 'application/octet-stream');
+
+    return NextResponse.json({ ok: true, key });
+  } catch (error: any) {
+    const message =
+      typeof error?.message === 'string' && error.message.trim().length > 0
+        ? error.message.trim()
+        : 'The asset upload failed before Bunny Storage could accept the file.';
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const formData = await req.formData().catch(() => null);
-  const file = formData?.get('file');
-  const purposeValue = formData?.get('purpose');
-  const folderIdValue = formData?.get('folderId');
-  const purpose = typeof purposeValue === 'string' ? purposeValue.trim() : '';
-  const folderId = typeof folderIdValue === 'string' ? sanitizeUploadFolderId(folderIdValue.trim()) : '';
-
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'Upload file is required.' }, { status: 400 });
-  }
-
-  if (purpose !== 'poster' && purpose !== 'trailer') {
-    return NextResponse.json({ error: 'Only poster and trailer uploads are supported here.' }, { status: 400 });
-  }
-
-  const validation = validateUploadRequest({
-    purpose,
-    filename: file.name,
-    contentType: file.type || 'application/octet-stream',
-    fileSize: file.size
-  });
-
-  if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
-  }
-
-  if (folderId) {
-    await ensureMovieUploadFolders(auth.sub, folderId);
-  }
-
-  const key = buildOwnedUploadKey({
-    userId: auth.sub,
-    purpose,
-    filename: file.name,
-    assetId: uuid(),
-    folderId: folderId || null
-  });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await putObject(key, buffer, file.type || 'application/octet-stream');
-
-  return NextResponse.json({ ok: true, key });
 }
