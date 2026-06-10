@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { getMoviePosterUrl } from '@/lib/movie-assets';
 import PosterAsset from '@/components/PosterAsset';
+import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
+import type { PreparedStorageUpload } from '@/lib/storage-upload';
 import {
   PRIMARY_CATEGORY_OPTIONS,
   SECONDARY_GENRE_OPTIONS,
@@ -100,15 +102,34 @@ const labelize = (value?: string) =>
         .join(' ')
     : 'Not set';
 
-const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster', folderId: string) => {
-  const formData = new FormData();
-  formData.set('file', file);
-  formData.set('purpose', purpose);
-  formData.set('folderId', folderId);
+const toStorageUploadError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : 'Upload failed.';
+  const normalizedMessage = message.toLowerCase();
+  if (normalizedMessage.includes('status 413') || normalizedMessage.includes('payload_too_large')) {
+    return 'This file is too large for proxy upload. Direct Bunny upload should be used for this asset.';
+  }
+  if (normalizedMessage.includes('network error') || normalizedMessage.includes('failed to fetch')) {
+    return 'Direct Bunny upload failed. Check Bunny storage credentials, endpoint, and browser connectivity.';
+  }
+  return message;
+};
 
-  const response = await fetch('/api/admin/assets/upload', {
+const prepareAssetUpload = async (
+  file: File,
+  purpose: 'trailer' | 'poster',
+  folderId: string,
+  onProgress: (loaded: number, total: number) => void
+) => {
+  const response = await fetch('/api/uploads/sign', {
     method: 'POST',
-    body: formData
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      purpose,
+      folderId,
+      fileSize: file.size
+    })
   });
   const rawBody = await response.text().catch(() => '');
   const payload = rawBody
@@ -120,13 +141,20 @@ const prepareAssetUpload = async (file: File, purpose: 'trailer' | 'poster', fol
         }
       })()
     : {};
-  if (!response.ok || !payload.key) {
+  if (!response.ok || !payload.key || !payload.strategy) {
     throw new Error(
       (typeof payload?.error === 'string' && payload.error.trim()) ||
         rawBody ||
         'Could not prepare upload.'
     );
   }
+
+  try {
+    await uploadPreparedStorageAsset(payload as PreparedStorageUpload, file, onProgress);
+  } catch (error) {
+    throw new Error(toStorageUploadError(error));
+  }
+
   return payload.key as string;
 };
 
@@ -251,22 +279,44 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     const assets = getEditAssets(item.video.id);
     let trailerKey: string | undefined;
     let posterKey: string | undefined;
+    const hasTrailerUpload = Boolean(assets.trailer);
+    const hasPosterUpload = Boolean(assets.poster);
+    const hasSourceUpdate =
+      Boolean(draft.sourceUrl.trim()) && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '');
+
+    const uploadProgressRange = hasTrailerUpload && hasPosterUpload ? 32 : hasTrailerUpload || hasPosterUpload ? 48 : 0;
+    const beforeUploadsProgress = 8;
+    const afterUploadsProgress = beforeUploadsProgress + uploadProgressRange;
+    const sourceProgress = hasSourceUpdate ? 12 : 0;
+    const saveStartProgress = hasTrailerUpload || hasPosterUpload || hasSourceUpdate ? 88 : 72;
 
     clearFeedback(item.video.id);
     setActivityState(item.video.id, 'Preparing your changes...', 8);
 
     try {
       if (assets.trailer) {
-        setActivityState(item.video.id, `Uploading trailer: ${assets.trailer.name}`, 24);
-        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer', item.video.id);
+        const trailerStart = beforeUploadsProgress;
+        const trailerEnd = beforeUploadsProgress + (hasPosterUpload ? 16 : uploadProgressRange || 48);
+        setActivityState(item.video.id, `Uploading trailer: ${assets.trailer.name}`, trailerStart);
+        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer', item.video.id, (loaded, total) => {
+          const ratio = total > 0 ? loaded / total : 0;
+          const progress = Math.round(trailerStart + (trailerEnd - trailerStart) * ratio);
+          setActivityState(item.video.id, `Uploading trailer: ${assets.trailer?.name ?? 'Trailer'}`, progress);
+        });
       }
       if (assets.poster) {
-        setActivityState(item.video.id, `Uploading poster: ${assets.poster.name}`, assets.trailer ? 52 : 34);
-        posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id);
+        const posterStart = hasTrailerUpload ? beforeUploadsProgress + 16 : beforeUploadsProgress;
+        const posterEnd = hasTrailerUpload ? afterUploadsProgress : beforeUploadsProgress + (uploadProgressRange || 48);
+        setActivityState(item.video.id, `Uploading poster: ${assets.poster.name}`, posterStart);
+        posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id, (loaded, total) => {
+          const ratio = total > 0 ? loaded / total : 0;
+          const progress = Math.round(posterStart + (posterEnd - posterStart) * ratio);
+          setActivityState(item.video.id, `Uploading poster: ${assets.poster?.name ?? 'Poster'}`, progress);
+        });
       }
 
-      if (draft.sourceUrl.trim() && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '')) {
-        setActivityState(item.video.id, 'Attaching Dropbox source...', 76);
+      if (hasSourceUpdate) {
+        setActivityState(item.video.id, 'Attaching Dropbox source...', afterUploadsProgress + sourceProgress);
         const sourceResponse = await fetch('/api/admin/videos/master', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -278,7 +328,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
         }
       }
 
-      setActivityState(item.video.id, 'Saving title details...', 90);
+      setActivityState(item.video.id, 'Saving title details...', saveStartProgress);
       const res = await fetch('/api/admin/videos/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
