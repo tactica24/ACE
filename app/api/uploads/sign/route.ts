@@ -91,9 +91,16 @@ export async function POST(req: NextRequest) {
       folderId
     });
 
+    const forceSinglePartUpload =
+      purpose === 'poster' || purpose === 'trailer' || purpose === 'subtitle';
+
     let upload;
     try {
-      upload = await createPreparedStorageUpload(key, contentType, fileSize);
+      upload = await createPreparedStorageUpload(
+        key,
+        contentType,
+        forceSinglePartUpload ? 0 : fileSize
+      );
     } catch (error) {
       console.error('[upload-sign] direct upload preparation failed', error);
       return NextResponse.json(
@@ -111,7 +118,8 @@ export async function POST(req: NextRequest) {
       purpose,
       diagnostics: {
         directUploadConfigured: hasConfiguredBunnyStorageS3(),
-        hasProxyFallback: Boolean('fallbackUrl' in upload && upload.fallbackUrl)
+        hasProxyFallback: Boolean('fallbackUrl' in upload && upload.fallbackUrl),
+        forceSinglePartUpload
       }
     });
   } catch (error) {
