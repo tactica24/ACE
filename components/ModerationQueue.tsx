@@ -105,12 +105,23 @@ const labelize = (value?: string) =>
 const toStorageUploadError = (error: unknown) => {
   const message = error instanceof Error ? error.message : 'Upload failed.';
   const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes('direct bunny upload failed') ||
+    normalizedMessage.includes('proxy fallback also failed') ||
+    normalizedMessage.includes('folder preparation failed')
+  ) {
+    return message;
+  }
+
   if (normalizedMessage.includes('status 413') || normalizedMessage.includes('payload_too_large')) {
-    return 'This file is too large for proxy upload. Direct Bunny upload should be used for this asset.';
+    return 'Proxy fallback was used and hit the request size limit. Direct Bunny browser upload is still not completing for this asset.';
   }
-  if (normalizedMessage.includes('network error') || normalizedMessage.includes('failed to fetch')) {
-    return 'Direct Bunny upload failed. Check Bunny storage credentials, endpoint, and browser connectivity.';
+
+  if (normalizedMessage.includes('browser could not reach the bunny upload endpoint')) {
+    return `${message} Check the Bunny S3 endpoint, browser CORS/preflight behavior, and the storage zone credentials.`;
   }
+
   return message;
 };
 
@@ -142,6 +153,28 @@ const prepareAssetUpload = async (
       })()
     : {};
   if (!response.ok || !payload.key || !payload.strategy) {
+    if (payload?.stage === 'storage-folder-prep') {
+      throw new Error(
+        `Bunny Storage folder preparation failed: ${
+          (typeof payload?.error === 'string' && payload.error.trim()) || 'Unknown storage error.'
+        }`
+      );
+    }
+
+    if (payload?.stage === 'direct-upload-preparation') {
+      if (payload?.directUploadConfigured) {
+        throw new Error(
+          `Direct Bunny upload could not be prepared: ${
+            (typeof payload?.error === 'string' && payload.error.trim()) || 'Unknown direct upload error.'
+          }`
+        );
+      }
+
+      throw new Error(
+        'Direct Bunny upload is not configured in this environment. Add BUNNY_STORAGE_S3_ENDPOINT, BUNNY_STORAGE_ZONE, and the Bunny Storage Zone password as BUNNY_STORAGE_API_KEY.'
+      );
+    }
+
     throw new Error(
       (typeof payload?.error === 'string' && payload.error.trim()) ||
         rawBody ||
@@ -869,3 +902,4 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     </div>
   );
 }
+

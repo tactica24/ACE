@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
-import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { createPreparedStorageUpload, ensureMovieUploadFolders } from '@/lib/bunny-storage';
+import { hasConfiguredBunnyStorageS3 } from '@/lib/bunny-storage-s3';
+import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
 import { buildOwnedUploadKey, isUploadPurpose, sanitizeUploadFolderId, validateUploadRequest } from '@/lib/upload-security';
 
 async function getUploadAuth(req: NextRequest) {
@@ -24,7 +25,9 @@ async function getUploadAuth(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getUploadAuth(req);
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const rateLimit = await consumeRateLimit({
       key: `upload-sign:${getRateLimitIdentity(req, auth.sub)}`,
@@ -32,7 +35,10 @@ export async function POST(req: NextRequest) {
       windowMs: 1000 * 60 * 10
     });
     if (!rateLimit.allowed) {
-      return NextResponse.json({ error: 'Too many upload preparations right now. Please wait a moment and try again.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Too many upload preparations right now. Please wait a moment and try again.' },
+        { status: 429 }
+      );
     }
 
     const body = await req.json().catch(() => null);
@@ -43,7 +49,10 @@ export async function POST(req: NextRequest) {
     const fileSize = Number(body?.fileSize ?? 0);
 
     if (!filename || !contentType || !purpose) {
-      return NextResponse.json({ error: 'Missing required file information: filename, contentType, and purpose are required.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing required file information: filename, contentType, and purpose are required.' },
+        { status: 400 }
+      );
     }
 
     if (!isUploadPurpose(purpose)) {
@@ -56,13 +65,55 @@ export async function POST(req: NextRequest) {
     }
 
     if (folderId) {
-      await ensureMovieUploadFolders(auth.sub, folderId);
+      try {
+        await ensureMovieUploadFolders(auth.sub, folderId);
+      } catch (error) {
+        console.error('[upload-sign] folder preparation failed', error);
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Bunny Storage folder preparation failed before upload could start.',
+            stage: 'storage-folder-prep',
+            directUploadConfigured: hasConfiguredBunnyStorageS3()
+          },
+          { status: 500 }
+        );
+      }
     }
 
-    const key = buildOwnedUploadKey({ userId: auth.sub, purpose, filename, assetId: uuid(), folderId });
-    const upload = await createPreparedStorageUpload(key, contentType, fileSize);
+    const key = buildOwnedUploadKey({
+      userId: auth.sub,
+      purpose,
+      filename,
+      assetId: uuid(),
+      folderId
+    });
 
-    return NextResponse.json({ ...upload, purpose });
+    let upload;
+    try {
+      upload = await createPreparedStorageUpload(key, contentType, fileSize);
+    } catch (error) {
+      console.error('[upload-sign] direct upload preparation failed', error);
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : 'Unable to prepare direct Bunny upload.',
+          stage: 'direct-upload-preparation',
+          directUploadConfigured: hasConfiguredBunnyStorageS3()
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      ...upload,
+      purpose,
+      diagnostics: {
+        directUploadConfigured: hasConfiguredBunnyStorageS3(),
+        hasProxyFallback: Boolean('fallbackUrl' in upload && upload.fallbackUrl)
+      }
+    });
   } catch (error) {
     console.error('[upload-sign] failed', error);
     return NextResponse.json(

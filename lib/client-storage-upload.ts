@@ -5,6 +5,10 @@ type UploadPreparedStorageAssetOptions = {
   completeHeaders?: HeadersInit;
 };
 
+function toErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Upload failed.';
+}
+
 async function uploadBlobWithXhr(
   url: string,
   blob: Blob,
@@ -35,7 +39,13 @@ async function uploadBlobWithXhr(
         );
       }
     };
-    xhr.onerror = () => reject(new Error('Storage upload failed due to a network error.'));
+    xhr.onerror = () => {
+      reject(
+        new Error(
+          `Browser could not reach the Bunny upload endpoint at ${url}. This usually means a CORS, connectivity, or endpoint issue before Bunny accepted the file.`
+        )
+      );
+    };
     xhr.ontimeout = () => reject(new Error('Storage upload timed out before Bunny Storage accepted the file.'));
     xhr.onabort = () => reject(new Error('Storage upload was cancelled before it completed.'));
     xhr.send(blob);
@@ -66,11 +76,18 @@ export async function uploadPreparedStorageAsset(
     try {
       await uploadBlobWithXhr(upload.url, file, upload.contentType || file.type || 'application/octet-stream', onProgress);
       return upload.key;
-    } catch (error) {
+    } catch (directError) {
       if (!upload.fallbackUrl) {
-        throw error;
+        throw new Error(`Direct Bunny upload failed: ${toErrorMessage(directError)}`);
       }
-      return uploadViaFallback();
+
+      try {
+        return await uploadViaFallback();
+      } catch (fallbackError) {
+        throw new Error(
+          `Direct Bunny upload failed: ${toErrorMessage(directError)} Proxy fallback also failed: ${toErrorMessage(fallbackError)}`
+        );
+      }
     }
   }
 
@@ -114,11 +131,18 @@ export async function uploadPreparedStorageAsset(
     if (!response.ok) {
       throw new Error(payload.error ?? 'Unable to finalize multipart upload.');
     }
-  } catch (error) {
+  } catch (completeError) {
     if (!upload.fallbackUrl) {
-      throw error;
+      throw new Error(`Direct Bunny multipart upload failed during completion: ${toErrorMessage(completeError)}`);
     }
-    return uploadViaFallback();
+
+    try {
+      return await uploadViaFallback();
+    } catch (fallbackError) {
+      throw new Error(
+        `Direct Bunny multipart upload completion failed: ${toErrorMessage(completeError)} Proxy fallback also failed: ${toErrorMessage(fallbackError)}`
+      );
+    }
   }
 
   return upload.key;
