@@ -198,11 +198,11 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
           <div className="nmhp-hero-copy-block">
             <span className="pill" style={{ marginBottom: 18, display: 'inline-flex' }}>From NGN 50 per title</span>
             <h1 className="nmhp-hero-title nmhp-hero-title-aesthetic" style={{ marginBottom: 18 }}>
-              <span className="nmhp-hero-title-main">Nollywood and global films</span>{' '}
-              <span className="nmhp-hero-title-accent">ready when you are.</span>
+              <span className="nmhp-hero-title-main">Great films,</span>{' '}
+              <span className="nmhp-hero-title-accent">beautifully delivered.</span>
             </h1>
             <p className="nmhp-hero-subtitle nmhp-hero-subtitle-centered" style={{ marginBottom: 18 }}>
-              Unlock only what you want to watch from NGN 50. No monthly subscription, no adverts, and a clean cinema-style experience across web, TV, and mobile.
+              Stream Nollywood and global cinema from NGN 50 per title. No monthly subscription. No adverts. Just a clean, premium watch experience across web, TV, and mobile.
             </p>
             {featured ? (
               <div className="nmhp-hero-meta-line" style={{ marginBottom: 18 }}>
@@ -221,13 +221,10 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             <p className="nmhp-hero-disclaimer nmhp-hero-disclaimer-centered">
               Watch on web, tablet, TV, and the ACE mobile app. Pay only for the films you unlock.
             </p>
-          </div>
-
-          <div className="nmhp-hero-feature-wrap">
             {featured ? (
               <Link
                 href={`/v/${featured.id}`}
-                className="detail-card nmhp-feature-card"
+                className="detail-card nmhp-feature-card nmhp-feature-card-inline"
               >
                 {featuredPosterUrl ? (
                   <Image

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
 import { CREDIT_VALUE_NAIRA, getCreditUnitsForNaira, getCreditsForNaira } from '@/lib/credits';
+import { hasReadyBunnyMovieStream } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { calculateUnlockSplit, getFinanceConfig } from '@/lib/finance';
 import { hasReadyVideoHls } from '@/lib/hls';
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         select: {
           availabilityRegion: true,
           masterKey: true,
+          bunnyStreamVideoId: true,
+          bunnyStreamReadyAt: true,
           hlsManifestKey: true,
           hlsOutputPath: true,
           hlsReadyAt: true
@@ -61,9 +64,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (isSeriesContainer(video)) {
     return NextResponse.json({ error: 'Select an episode to unlock and watch.' }, { status: 400 });
   }
+  const bunnyReady = hasReadyBunnyMovieStream(video);
   const hlsReady = hasReadyVideoHls(video);
-  const mp4Status = hlsReady ? null : await getMovieMp4StorageStatus(video);
-  if (!hlsReady && !mp4Status?.selectedKey) {
+  const mp4Status = bunnyReady || hlsReady ? null : await getMovieMp4StorageStatus(video);
+  if (!bunnyReady && !hlsReady && !mp4Status?.selectedKey) {
     const storageStatus = mp4Status ?? {
       bunnyStorageConfigured: false,
       candidates: [] as string[],

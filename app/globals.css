@@ -1683,9 +1683,11 @@ button {
   width: min(1200px, calc(100% - 40px));
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-  gap: 32px;
+  grid-template-columns: 1fr;
+  gap: 24px;
   align-items: center;
+  justify-items: center;
+  min-height: min(72vh, 780px);
 }
 
 .nmhp-hero-content-centered {
@@ -1693,7 +1695,7 @@ button {
 }
 
 .nmhp-hero-copy-block {
-  max-width: 620px;
+  max-width: 720px;
   justify-self: center;
   text-align: center;
 }
@@ -1706,7 +1708,7 @@ button {
 }
 
 .nmhp-hero-title-aesthetic {
-  font-size: clamp(2.3rem, 4.6vw, 4.4rem);
+  font-size: clamp(2.4rem, 4.8vw, 4.9rem);
 }
 
 .nmhp-hero-title-main {
@@ -1721,16 +1723,16 @@ button {
 }
 
 .nmhp-hero-subtitle {
-  max-width: 560px;
+  max-width: 620px;
   margin-inline: auto;
   color: rgba(226, 232, 240, 0.88);
-  font-size: clamp(0.98rem, 1.2vw, 1.06rem);
-  line-height: 1.7;
+  font-size: clamp(1rem, 1.28vw, 1.08rem);
+  line-height: 1.72;
 }
 
 .nmhp-hero-subtitle-centered,
 .nmhp-hero-disclaimer-centered {
-  max-width: 560px;
+  max-width: 620px;
 }
 
 .nmhp-hero-meta-line {
@@ -1801,6 +1803,13 @@ button {
   text-decoration: none;
 }
 
+.nmhp-feature-card-inline {
+  margin: 24px auto 0;
+  width: min(100%, 420px);
+  text-align: left;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
 .nmhp-feature-card-image {
   width: 100%;
   height: auto;
@@ -1868,12 +1877,8 @@ button {
   }
 
   .nmhp-hero-content {
-    grid-template-columns: 1fr;
     gap: 24px;
-  }
-
-  .nmhp-hero-feature-wrap {
-    justify-content: flex-start;
+    min-height: auto;
   }
 
   .nmhp-hero-poster {
