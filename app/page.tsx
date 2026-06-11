@@ -194,32 +194,21 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
 
         <div className="nmhp-hero-overlay-strong" />
 
-        <div
-          className="nmhp-hero-content"
-          style={{
-            maxWidth: 1160,
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 28,
-            alignItems: 'end',
-            textAlign: 'left'
-          }}
-        >
-          <div>
+        <div className="nmhp-hero-content nmhp-hero-content-centered">
+          <div className="nmhp-hero-copy-block">
             <span className="pill" style={{ marginBottom: 18, display: 'inline-flex' }}>From NGN 50 per title</span>
-            <h1 className="nmhp-hero-title" style={{ maxWidth: 720, marginBottom: 18 }}>
-              Nollywood and global films,
+            <h1 className="nmhp-hero-title nmhp-hero-title-aesthetic" style={{ marginBottom: 18 }}>
+              <span className="nmhp-hero-title-main">Nollywood and global films,</span>
               <br />
-              ready when you are.
+              <span className="nmhp-hero-title-accent">ready when you are.</span>
               <br />
-              No monthly subscription.
+              <span className="nmhp-hero-title-main">No monthly subscription.</span>
             </h1>
-            <p className="nmhp-hero-subtitle" style={{ maxWidth: 640, marginBottom: 18 }}>
+            <p className="nmhp-hero-subtitle nmhp-hero-subtitle-centered" style={{ marginBottom: 18 }}>
               Unlock only what you want to watch, starting from NGN 50. No adverts. No subscription pressure. Just great films, bigger posters, and a clean cinema-style experience.
             </p>
             {featured ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18, color: 'rgba(255,255,255,0.86)', fontSize: '0.95rem' }}>
+              <div className="nmhp-hero-meta-line" style={{ marginBottom: 18 }}>
                 <strong style={{ color: '#fff' }}>{featured.title}</strong>
                 <span>{featured.releaseYear ?? 'New release'}</span>
                 <span>{formatRuntime(featured.durationSec)}</span>
@@ -227,30 +216,21 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                 <span style={{ color: '#f87171' }}>From {formatNaira(featuredPrice)}</span>
               </div>
             ) : null}
-            <div className="nmhp-hero-cta" style={{ justifyContent: 'flex-start' }}>
+            <div className="nmhp-hero-cta">
               <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">Start from NGN 50</Link>
               <Link href="/browse" className="nmhp-cta-btn nmhp-cta-secondary">Browse movies</Link>
               <Link href="/auth/login" className="nmhp-cta-btn nmhp-cta-secondary">Sign in</Link>
             </div>
-            <p className="nmhp-hero-disclaimer" style={{ textAlign: 'left' }}>
+            <p className="nmhp-hero-disclaimer nmhp-hero-disclaimer-centered">
               Watch on web, tablet, TV, and Flutter mobile. No monthly subscription. No adverts. Pay only for the films you unlock.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gap: 16 }}>
+          <div className="nmhp-hero-feature-wrap">
             {featured ? (
               <Link
                 href={`/v/${featured.id}`}
-                className="detail-card"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(128px, 160px) minmax(0, 1fr)',
-                  gap: 16,
-                  padding: 16,
-                  background: 'linear-gradient(180deg, rgba(12,14,24,0.96), rgba(7,9,18,0.92))',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: '0 26px 60px rgba(0,0,0,0.35)'
-                }}
+                className="detail-card nmhp-feature-card"
               >
                 {featuredPosterUrl ? (
                   <Image
@@ -259,12 +239,12 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                     width={240}
                     height={360}
                     unoptimized
-                    style={{ width: '100%', height: '100%', aspectRatio: '2 / 3', objectFit: 'cover', borderRadius: 12 }}
+                    className="nmhp-feature-card-image"
                   />
                 ) : (
-                  <div style={{ aspectRatio: '2 / 3', borderRadius: 12, background: 'rgba(255,255,255,0.08)' }} />
+                  <div className="nmhp-feature-card-image" style={{ background: 'rgba(255,255,255,0.08)' }} />
                 )}
-                <div style={{ display: 'grid', gap: 10, alignContent: 'center' }}>
+                <div className="nmhp-feature-card-copy">
                   <span className="detail-label">Featured now</span>
                   <strong style={{ fontSize: '1.25rem', color: '#fff' }}>{featured.title}</strong>
                   <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>{featured.description}</p>
