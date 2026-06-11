@@ -85,7 +85,6 @@ type VideoDraft = {
   contentWarnings: string;
   licensedTerritories: string;
   availabilityRegion: string;
-  sourceUrl: string;
 };
 
 type ActivityState = {
@@ -289,8 +288,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       genres: normalizeSelectedGenres(item.video.genres ?? []),
       contentWarnings: (item.video.contentWarnings ?? []).join(', '),
       licensedTerritories: (item.video.licensedTerritories ?? []).join(', '),
-      availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL',
-      sourceUrl: item.video.masterSourceUrl ?? ''
+      availabilityRegion: item.video.availabilityRegion ?? 'GLOBAL'
     };
 
   const getEditAssets = (videoId: string) => editAssets[videoId] ?? { trailer: null, poster: null };
@@ -369,8 +367,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
           genres: [],
           contentWarnings: '',
           licensedTerritories: '',
-          availabilityRegion: 'GLOBAL',
-          sourceUrl: ''
+          availabilityRegion: 'GLOBAL'
         }),
         [key]: value
       }
@@ -384,14 +381,10 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
     let posterKey: string | undefined;
     const hasTrailerUpload = Boolean(assets.trailer);
     const hasPosterUpload = Boolean(assets.poster);
-    const hasSourceUpdate =
-      Boolean(draft.sourceUrl.trim()) && draft.sourceUrl.trim() !== (item.video.masterSourceUrl ?? '');
 
     const uploadProgressRange = hasTrailerUpload && hasPosterUpload ? 32 : hasTrailerUpload || hasPosterUpload ? 48 : 0;
     const beforeUploadsProgress = 8;
-    const afterUploadsProgress = beforeUploadsProgress + uploadProgressRange;
-    const sourceProgress = hasSourceUpdate ? 12 : 0;
-    const saveStartProgress = hasTrailerUpload || hasPosterUpload || hasSourceUpdate ? 88 : 72;
+    const saveStartProgress = hasTrailerUpload || hasPosterUpload ? 88 : 72;
 
     clearFeedback(item.video.id);
     setActivityState(item.video.id, 'Preparing your changes...', 8);
@@ -416,23 +409,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
           const progress = Math.round(posterStart + (posterEnd - posterStart) * ratio);
           setActivityState(item.video.id, `Uploading poster: ${assets.poster?.name ?? 'Poster'}`, progress);
         });
-      }
-
-      if (hasSourceUpdate) {
-        setActivityState(item.video.id, 'Importing movie from Dropbox into Bunny Stream...', afterUploadsProgress + sourceProgress);
-        const sourceResponse = await fetch('/api/admin/bunny-intake/stream-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            videoId: item.video.id,
-            assetType: 'movie',
-            sourceUrl: draft.sourceUrl.trim()
-          })
-        });
-        const sourcePayload = await sourceResponse.json().catch(() => ({}));
-        if (!sourceResponse.ok) {
-          throw new Error(sourcePayload.error || 'The Dropbox movie could not be sent to Bunny Stream.');
-        }
       }
 
       setActivityState(item.video.id, 'Saving title details...', saveStartProgress);
@@ -682,7 +658,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Master source</span>
-                  <strong>{item.video.masterSourceUrl ? 'Dropbox attached' : item.video.masterKey ? 'Legacy source attached' : 'Source missing'}</strong>
+                  <strong>{item.video.bunnyStreamVideoId ? 'Movie upload created' : item.video.masterSourceUrl || item.video.masterKey ? 'Legacy source attached' : 'Source missing'}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Bunny playback</span>
@@ -849,17 +825,6 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   <label className="field">
                     <span className="field-label">Licensed territories</span>
                     <input className="input" disabled={isBusy} value={getDraft(item).licensedTerritories} onChange={(event) => updateDraft(item.video.id, 'licensedTerritories', event.target.value)} />
-                  </label>
-                  <label className="field" style={{ gridColumn: '1/-1' }}>
-                    <span className="field-label">Dropbox master source URL</span>
-                    <input
-                      className="input"
-                      type="url"
-                      disabled={isBusy}
-                      value={getDraft(item).sourceUrl}
-                      onChange={(event) => updateDraft(item.video.id, 'sourceUrl', event.target.value)}
-                      placeholder="Paste Dropbox share link"
-                    />
                   </label>
                    <label className="field" style={{ gridColumn: '1/-1' }}>
                      <span className="field-label">Description</span>

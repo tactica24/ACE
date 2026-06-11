@@ -62,10 +62,9 @@ async function prepareStorageUpload(file: File, purpose: 'poster' | 'subtitle', 
 async function prepareStreamUpload(
   videoId: string,
   assetType: 'movie' | 'trailer',
-  input: { file?: File | null; sourceUrl?: string | null }
+  input: { file?: File | null }
 ) {
   const file = input.file ?? null;
-  const sourceUrl = input.sourceUrl?.trim() ?? '';
   const response = await fetch('/api/admin/bunny-intake/stream-upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -73,8 +72,7 @@ async function prepareStreamUpload(
       videoId,
       assetType,
       filename: file?.name ?? null,
-      fileSize: file?.size ?? null,
-      sourceUrl: sourceUrl || null
+      fileSize: file?.size ?? null
     })
   });
 
@@ -107,9 +105,7 @@ export default function AdminUploadWorkspace({
   const [tags, setTags] = useState('');
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
-  const [trailerDropboxUrl, setTrailerDropboxUrl] = useState('');
   const [movieFile, setMovieFile] = useState<File | null>(null);
-  const [movieDropboxUrl, setMovieDropboxUrl] = useState('');
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleDraft[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,29 +158,14 @@ export default function AdminUploadWorkspace({
     setTags('');
     setPosterFile(null);
     setTrailerFile(null);
-    setTrailerDropboxUrl('');
     setMovieFile(null);
-    setMovieDropboxUrl('');
     setSubtitleTracks([]);
     setProgress({});
   };
 
   const handleSubmit = async () => {
-    const trimmedTrailerDropboxUrl = trailerDropboxUrl.trim();
-    const trimmedMovieDropboxUrl = movieDropboxUrl.trim();
-
-    if (!selectedProducerId || !title.trim() || !synopsis.trim() || (!movieFile && !trimmedMovieDropboxUrl)) {
-      setError('Producer, title, synopsis, and either a movie file or Dropbox link are required.');
-      return;
-    }
-
-    if (movieFile && trimmedMovieDropboxUrl) {
-      setError('Choose one movie source: local file upload or Dropbox link.');
-      return;
-    }
-
-    if (trailerFile && trimmedTrailerDropboxUrl) {
-      setError('Choose one trailer source: local file upload or Dropbox link.');
+    if (!selectedProducerId || !title.trim() || !synopsis.trim() || !movieFile) {
+      setError('Producer, title, synopsis, and a movie file are required.');
       return;
     }
 
@@ -254,23 +235,13 @@ export default function AdminUploadWorkspace({
         await uploadFileToBunnyTus(prepared.upload, trailerFile, (loaded, total) => {
           setAssetProgress('trailer', loaded, total);
         });
-      } else if (trimmedTrailerDropboxUrl) {
-        setStatus('Importing trailer from Dropbox into Bunny Stream...');
-        await prepareStreamUpload(videoId, 'trailer', { sourceUrl: trimmedTrailerDropboxUrl });
-        setProgress((current) => ({ ...current, trailer: 100 }));
       }
 
-      if (movieFile) {
-        setStatus('Uploading full movie to Bunny Stream...');
-        const preparedMovie = await prepareStreamUpload(videoId, 'movie', { file: movieFile });
-        await uploadFileToBunnyTus(preparedMovie.upload, movieFile, (loaded, total) => {
-          setAssetProgress('movie', loaded, total);
-        });
-      } else {
-        setStatus('Importing full movie from Dropbox into Bunny Stream...');
-        await prepareStreamUpload(videoId, 'movie', { sourceUrl: trimmedMovieDropboxUrl });
-        setProgress((current) => ({ ...current, movie: 100 }));
-      }
+      setStatus('Uploading full movie to Bunny Stream...');
+      const preparedMovie = await prepareStreamUpload(videoId, 'movie', { file: movieFile });
+      await uploadFileToBunnyTus(preparedMovie.upload, movieFile, (loaded, total) => {
+        setAssetProgress('movie', loaded, total);
+      });
 
       setStatus('Saving poster and subtitle details...');
       const assetsResponse = await fetch('/api/admin/bunny-intake/assets', {
@@ -327,7 +298,7 @@ export default function AdminUploadWorkspace({
           <div className="detail-card">
             <span className="detail-label">Delivery path</span>
             <strong>Bunny-first intake</strong>
-            <span className="muted">Posters and SRT files go to Bunny Storage. Trailer and movie go directly to Bunny Stream.</span>
+            <span className="muted">Poster and SRT files go to Bunny Storage. Trailer and movie go directly to Bunny Stream.</span>
           </div>
           <div className="detail-card">
             <span className="detail-label">Latest created title</span>
@@ -407,34 +378,11 @@ export default function AdminUploadWorkspace({
             <span className="field-label">Trailer video</span>
             <input className="input" type="file" accept="video/*,.mp4,.mov,.m4v" disabled={busy} onChange={(event) => setTrailerFile(event.target.files?.[0] ?? null)} />
           </label>
-          <label className="field">
-            <span className="field-label">Trailer Dropbox URL</span>
-            <input
-              className="input"
-              value={trailerDropboxUrl}
-              onChange={(event) => setTrailerDropboxUrl(event.target.value)}
-              disabled={busy}
-              placeholder="Optional: paste Dropbox share link instead of trailer file upload"
-            />
-          </label>
           <label className="field" style={{ gridColumn: '1 / -1' }}>
             <span className="field-label">Full movie file</span>
             <input className="input" type="file" accept="video/*,.mp4,.mov,.m4v" disabled={busy} onChange={(event) => setMovieFile(event.target.files?.[0] ?? null)} />
           </label>
-          <label className="field" style={{ gridColumn: '1 / -1' }}>
-            <span className="field-label">Movie Dropbox URL</span>
-            <input
-              className="input"
-              value={movieDropboxUrl}
-              onChange={(event) => setMovieDropboxUrl(event.target.value)}
-              disabled={busy}
-              placeholder="Paste Dropbox share link when the movie is already hosted there"
-            />
-          </label>
         </div>
-        <p className="muted" style={{ margin: '12px 0 0' }}>
-          For trailer and movie, use either local upload or Dropbox import for each asset, not both at the same time.
-        </p>
       </div>
 
       <div className="card">
