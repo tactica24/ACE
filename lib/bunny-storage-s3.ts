@@ -2,6 +2,7 @@ import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   UploadPartCommand
@@ -197,6 +198,18 @@ export async function abortMultipartStorageUpload(input: { key: string; uploadId
       Bucket: bucket,
       Key: getNormalizedS3Key(input.key),
       UploadId: input.uploadId
+    })
+  );
+}
+
+export async function assertStorageObjectExistsViaS3(key: string) {
+  const client = getBunnyStorageS3Client();
+  const bucket = getBunnyStorageBucket();
+
+  await client.send(
+    new HeadObjectCommand({
+      Bucket: bucket,
+      Key: getNormalizedS3Key(key)
     })
   );
 }
