@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getAuthFromRequest } from '@/lib/auth';
 import { ensureMovieUploadFolders, putObject } from '@/lib/bunny-storage';
+import { hasConfiguredBunnyStorageS3 } from '@/lib/bunny-storage-s3';
 import { buildOwnedUploadKey, sanitizeUploadFolderId, validateUploadRequest } from '@/lib/upload-security';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    if (folderId) {
+    if (folderId && !hasConfiguredBunnyStorageS3()) {
       await ensureMovieUploadFolders(auth.sub, folderId);
     }
 

@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    if (folderId) {
+    if (folderId && !hasConfiguredBunnyStorageS3()) {
       try {
         await ensureMovieUploadFolders(auth.sub, folderId);
       } catch (error) {
