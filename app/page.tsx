@@ -118,14 +118,14 @@ function buildGuestRows(videos: HomeVideo[]) {
   return [
     {
       id: 'licensed-spotlight',
-      title: 'Licensed Spotlight',
-      description: 'Priority titles with approved artwork and premium front-door placement.',
+      title: 'Featured Films',
+      description: 'Big-screen stories ready to unlock and watch instantly.',
       items: ranked.slice(0, 12)
     },
     {
       id: 'fresh-on-ace',
-      title: 'Fresh on ACE',
-      description: 'New approved titles ready for instant playback.',
+      title: 'New on ACE',
+      description: 'Fresh releases, new discoveries, and recent approvals.',
       items: recent.slice(0, 12)
     }
   ].filter((row) => row.items.length > 0);
@@ -207,16 +207,16 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
           }}
         >
           <div>
-            <span className="pill" style={{ marginBottom: 18, display: 'inline-flex' }}>Premium movie access</span>
+            <span className="pill" style={{ marginBottom: 18, display: 'inline-flex' }}>From NGN 50 per title</span>
             <h1 className="nmhp-hero-title" style={{ maxWidth: 720, marginBottom: 18 }}>
-              Bigger posters.
+              Nollywood and global films,
               <br />
-              Cleaner shelves.
+              ready when you are.
               <br />
-              Premium films without subscription pressure.
+              No monthly subscription.
             </h1>
             <p className="nmhp-hero-subtitle" style={{ maxWidth: 640, marginBottom: 18 }}>
-              ACE Studio gives approved titles a stronger cinema-style front page and lets viewers pay only when they are ready to watch.
+              Unlock only what you want to watch, starting from NGN 50. No adverts. No subscription pressure. Just great films, bigger posters, and a clean cinema-style experience.
             </p>
             {featured ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18, color: 'rgba(255,255,255,0.86)', fontSize: '0.95rem' }}>
@@ -228,12 +228,12 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
               </div>
             ) : null}
             <div className="nmhp-hero-cta" style={{ justifyContent: 'flex-start' }}>
-              <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">Start watching</Link>
-              <Link href="/browse" className="nmhp-cta-btn nmhp-cta-secondary">Browse catalog</Link>
+              <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">Start from NGN 50</Link>
+              <Link href="/browse" className="nmhp-cta-btn nmhp-cta-secondary">Browse movies</Link>
               <Link href="/auth/login" className="nmhp-cta-btn nmhp-cta-secondary">Sign in</Link>
             </div>
             <p className="nmhp-hero-disclaimer" style={{ textAlign: 'left' }}>
-              Watch instantly on web, tablet, TV, and Flutter mobile. No monthly subscription required.
+              Watch on web, tablet, TV, and Flutter mobile. No monthly subscription. No adverts. Pay only for the films you unlock.
             </p>
           </div>
 
@@ -265,7 +265,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                   <div style={{ aspectRatio: '2 / 3', borderRadius: 12, background: 'rgba(255,255,255,0.08)' }} />
                 )}
                 <div style={{ display: 'grid', gap: 10, alignContent: 'center' }}>
-                  <span className="detail-label">Featured tonight</span>
+                  <span className="detail-label">Featured now</span>
                   <strong style={{ fontSize: '1.25rem', color: '#fff' }}>{featured.title}</strong>
                   <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>{featured.description}</p>
                 </div>
@@ -282,10 +282,10 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
               <section className="home-shelf" style={{ marginBottom: 28 }}>
                 <div className="home-shelf-header">
                   <div>
-                    <span className="home-row-kicker">Editorial picks</span>
-                    <h2>Front and center</h2>
+                    <span className="home-row-kicker">Start here</span>
+                    <h2>Popular right now</h2>
                     <p className="muted" style={{ marginBottom: 0 }}>
-                      Bigger poster treatment for the titles we want visitors to feel immediately.
+                      A strong first watch, with premium titles starting from NGN 50.
                     </p>
                   </div>
                 </div>
@@ -323,7 +323,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                         <div style={{ display: 'grid', gap: 6 }}>
                           <strong style={{ color: '#fff', fontSize: '1rem' }}>{video.title}</strong>
                           <span className="muted" style={{ fontSize: '0.82rem' }}>
-                            {video.releaseYear ?? 'New'} | {video.category} | ₦{amount}
+                            {video.releaseYear ?? 'New'} | {video.category} | {formatNaira(amount)}
                           </span>
                         </div>
                       </Link>
