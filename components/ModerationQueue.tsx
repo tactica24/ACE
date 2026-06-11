@@ -402,7 +402,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       }
       if (assets.poster) {
         const posterStart = hasTrailerUpload ? beforeUploadsProgress + 16 : beforeUploadsProgress;
-        const posterEnd = hasTrailerUpload ? afterUploadsProgress : beforeUploadsProgress + (uploadProgressRange || 48);
+        const posterEnd = hasTrailerUpload ? beforeUploadsProgress + uploadProgressRange : beforeUploadsProgress + (uploadProgressRange || 48);
         setActivityState(item.video.id, `Uploading poster: ${assets.poster.name}`, posterStart);
         posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id, (loaded, total) => {
           const ratio = total > 0 ? loaded / total : 0;
