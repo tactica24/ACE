@@ -25,8 +25,8 @@ export function isSeriesContainerDelivery(input: Pick<DeliveryPackageInput, 'vid
 
 export function getViewerPackageLabel(input: Pick<DeliveryPackageInput, 'videoType' | 'seriesId'>) {
   return isSeriesContainerDelivery(input)
-    ? 'Per-episode Bunny Stream package'
-    : 'Bunny Stream package';
+    ? 'Per-episode Bunny playback package'
+    : 'Bunny playback package';
 }
 
 export function getViewerPackageStatus(input: DeliveryPackageInput) {
