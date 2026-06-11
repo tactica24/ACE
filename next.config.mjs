@@ -61,7 +61,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://api.stripe.com https://api.paystack.co",
+              "connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://api.stripe.com https://api.paystack.co https://storage.bunnycdn.com https://*.storage.bunnycdn.com",
               "frame-ancestors 'none'",
             ].join('; '),
           },
