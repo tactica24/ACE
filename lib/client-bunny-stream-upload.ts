@@ -8,6 +8,9 @@ type BunnyTusUpload = {
 
 type ProgressHandler = (loaded: number, total: number) => void;
 
+const BUNNY_TUS_CHUNK_SIZE = 16 * 1024 * 1024;
+const BUNNY_TUS_CHUNK_RETRIES = 3;
+
 function toUploadMetadata(filename: string, contentType: string) {
   const encode = (value: string) => window.btoa(unescape(encodeURIComponent(value)));
 
@@ -15,16 +18,17 @@ function toUploadMetadata(filename: string, contentType: string) {
 }
 
 function sendXhr(request: {
-  method: 'POST' | 'PATCH';
+  method: 'POST' | 'PATCH' | 'HEAD';
   url: string;
   headers: Record<string, string>;
   body?: Blob;
   onProgress?: ProgressHandler;
+  timeoutMs?: number;
 }) {
   return new Promise<XMLHttpRequest>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(request.method, request.url);
-    xhr.timeout = 1000 * 60 * 20;
+    xhr.timeout = request.timeoutMs ?? 0;
     for (const [name, value] of Object.entries(request.headers)) {
       xhr.setRequestHeader(name, value);
     }
@@ -57,6 +61,19 @@ function sendXhr(request: {
   });
 }
 
+async function getTusUploadOffset(uploadUrl: string, headers: Record<string, string>) {
+  const response = await sendXhr({
+    method: 'HEAD',
+    url: uploadUrl,
+    headers,
+    timeoutMs: 1000 * 30
+  });
+
+  const rawOffset = response.getResponseHeader('Upload-Offset');
+  const parsedOffset = Number(rawOffset ?? '0');
+  return Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+}
+
 export async function uploadFileToBunnyTus(
   upload: BunnyTusUpload,
   file: File,
@@ -77,7 +94,8 @@ export async function uploadFileToBunnyTus(
       ...commonHeaders,
       'Upload-Length': String(file.size),
       'Upload-Metadata': toUploadMetadata(file.name, file.type || 'application/octet-stream')
-    }
+    },
+    timeoutMs: 1000 * 60
   });
 
   const locationHeader = createResponse.getResponseHeader('Location');
@@ -86,18 +104,55 @@ export async function uploadFileToBunnyTus(
   }
 
   const uploadUrl = new URL(locationHeader, upload.endpoint).toString();
+  let uploadedBytes = await getTusUploadOffset(uploadUrl, commonHeaders);
 
-  await sendXhr({
-    method: 'PATCH',
-    url: uploadUrl,
-    headers: {
-      ...commonHeaders,
-      'Upload-Offset': '0',
-      'Content-Type': 'application/offset+octet-stream'
-    },
-    body: file,
-    onProgress
-  });
+  onProgress(uploadedBytes, file.size);
+
+  while (uploadedBytes < file.size) {
+    const nextChunkEnd = Math.min(uploadedBytes + BUNNY_TUS_CHUNK_SIZE, file.size);
+    const chunk = file.slice(uploadedBytes, nextChunkEnd);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < BUNNY_TUS_CHUNK_RETRIES; attempt += 1) {
+      try {
+        const patchResponse = await sendXhr({
+          method: 'PATCH',
+          url: uploadUrl,
+          headers: {
+            ...commonHeaders,
+            'Upload-Offset': String(uploadedBytes),
+            'Content-Type': 'application/offset+octet-stream'
+          },
+          body: chunk,
+          onProgress: (loaded, total) => {
+            onProgress(uploadedBytes + loaded, file.size || total);
+          }
+        });
+
+        const rawNextOffset = patchResponse.getResponseHeader('Upload-Offset');
+        const resolvedOffset = Number(rawNextOffset ?? String(nextChunkEnd));
+        uploadedBytes =
+          Number.isFinite(resolvedOffset) && resolvedOffset > uploadedBytes ? resolvedOffset : nextChunkEnd;
+        onProgress(uploadedBytes, file.size);
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Bunny Stream upload failed.');
+        uploadedBytes = await getTusUploadOffset(uploadUrl, commonHeaders).catch(() => uploadedBytes);
+
+        if (uploadedBytes >= file.size) {
+          onProgress(file.size, file.size);
+          return;
+        }
+      }
+    }
+
+    if (lastError) {
+      throw new Error(
+        `${lastError.message} Large movie uploads are now sent in chunks, but this chunk could not be completed after multiple retries.`
+      );
+    }
+  }
 
   onProgress(file.size, file.size);
 }
