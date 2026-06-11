@@ -24,6 +24,7 @@ function sendXhr(request: {
   return new Promise<XMLHttpRequest>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(request.method, request.url);
+    xhr.timeout = 1000 * 60 * 20;
     for (const [name, value] of Object.entries(request.headers)) {
       xhr.setRequestHeader(name, value);
     }
@@ -43,8 +44,14 @@ function sendXhr(request: {
         reject(new Error(`Bunny Stream upload failed with status ${xhr.status}${xhr.responseText ? `: ${xhr.responseText}` : ''}`));
       }
     };
-    xhr.onerror = () => reject(new Error('Bunny Stream upload failed because of a network error.'));
-    xhr.ontimeout = () => reject(new Error('Bunny Stream upload timed out before completion.'));
+    xhr.onerror = () =>
+      reject(
+        new Error(
+          `Bunny Stream upload failed because the browser could not reach ${request.url}. Check CSP connect-src, browser networking, Bunny availability, and cross-origin upload permissions.`
+        )
+      );
+    xhr.ontimeout = () =>
+      reject(new Error(`Bunny Stream upload timed out before completion while uploading to ${request.url}.`));
     xhr.onabort = () => reject(new Error('Bunny Stream upload was cancelled.'));
     xhr.send(request.body);
   });
