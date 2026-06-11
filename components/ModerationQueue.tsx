@@ -266,6 +266,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [drafts, setDrafts] = useState<Record<string, VideoDraft>>({});
   const [editAssets, setEditAssets] = useState<Record<string, { trailer: File | null; poster: File | null }>>({});
 
+  const openAssetLink = (href: string) => {
+    if (typeof window === 'undefined') return;
+    window.open(href, '_blank', 'noopener,noreferrer');
+  };
+
   const getDraft = (item: Item) =>
     drafts[item.video.id] ?? {
       title: item.video.title,
@@ -917,9 +922,9 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                         </div>
                       </div>
                     ) : (
-                      <button className="btn btn-primary" disabled={isBusy} onClick={() => saveEdit(item)}>Save changes</button>
+                      <button className="btn btn-primary" type="button" disabled={isBusy} onClick={() => saveEdit(item)}>Save changes</button>
                     )}
-                     <button className="btn btn-ghost" disabled={isBusy} onClick={() => closeEdit(item.video.id)}>Cancel</button>
+                     <button className="btn btn-ghost" type="button" disabled={isBusy} onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
                   {editingId === item.video.id && errors[item.video.id] ? (
                     <p className="muted form-message" style={{ gridColumn: '1/-1', marginTop: 0 }}>
@@ -937,6 +942,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
               <div className="moderation-actions">
                 <button
                   className="btn btn-ghost"
+                  type="button"
                   disabled={isBusy}
                   onClick={() => {
                     if (editingId === item.video.id) {
@@ -949,27 +955,36 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   {editingId === item.video.id ? 'Close editor' : 'Edit details'}
                 </button>
                 {item.video.posterDownloadHref ? (
-                  <a className="btn btn-ghost" href={item.video.posterDownloadHref}>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => openAssetLink(item.video.posterDownloadHref!)}
+                  >
                     Download artwork
-                  </a>
+                  </button>
                 ) : null}
                 {item.video.trailerDownloadHref ? (
-                  <a className="btn btn-ghost" href={item.video.trailerDownloadHref}>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => openAssetLink(item.video.trailerDownloadHref!)}
+                  >
                     Download trailer
-                  </a>
+                  </button>
                 ) : null}
                 {item.status === 'PENDING' ? (
-                  <button className="btn btn-primary" disabled={isBusy} onClick={() => handleAction(item, 'approve')}>
+                  <button className="btn btn-primary" type="button" disabled={isBusy} onClick={() => handleAction(item, 'approve')}>
                     {isBusy ? 'Working...' : 'Approve title'}
                   </button>
                 ) : null}
                 {item.hasModerationRecord ? (
-                  <button className="btn btn-ghost" disabled={isBusy} onClick={() => handleAction(item, 'reject')}>
+                  <button className="btn btn-ghost" type="button" disabled={isBusy} onClick={() => handleAction(item, 'reject')}>
                     {isBusy ? 'Working...' : 'Reject title'}
                   </button>
                 ) : null}
                 <button
                   className="btn btn-ghost"
+                  type="button"
                   disabled={isBusy}
                   onClick={() => handleAction(item, item.video.status === 'DRAFT' ? 'activate' : 'deactivate')}
                 >
