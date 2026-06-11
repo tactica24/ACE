@@ -5,6 +5,7 @@ import { getMoviePosterUrl } from '@/lib/movie-assets';
 import PosterAsset from '@/components/PosterAsset';
 import { uploadPreparedStorageAsset } from '@/lib/client-storage-upload';
 import type { PreparedStorageUpload } from '@/lib/storage-upload';
+import { getDeliveryFormatLabel, getSubtitlePackageStatus, getViewerPackageLabel, getViewerPackageStatus } from '@/lib/delivery-package';
 import {
   PRIMARY_CATEGORY_OPTIONS,
   SECONDARY_GENRE_OPTIONS,
@@ -51,7 +52,14 @@ type Item = {
     masterKey?: string | null;
     masterSourceUrl?: string | null;
     processingStatus?: string | null;
+    bunnyStreamVideoId?: string | null;
+    bunnyStreamReadyAt?: string | null;
+    bunnyStreamError?: string | null;
     hlsManifestReady?: boolean;
+    subtitleTrackCount?: number;
+    englishSubtitlesProvided?: boolean;
+    episodeCount?: number;
+    readyEpisodeCount?: number;
   };
   status: string;
   notes?: string | null;
@@ -101,6 +109,63 @@ const labelize = (value?: string) =>
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ')
     : 'Not set';
+
+const normalizeProcessingStatusLabel = (value?: string | null) => {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return 'Awaiting source';
+
+  const labels: Record<string, string> = {
+    NO_MASTER: 'Source missing',
+    MASTER_UPLOADED: 'Source attached',
+    STREAM_UPLOAD_CREATED: 'Queued for Bunny Stream import',
+    STREAM_UPLOAD_UPLOADING: 'Uploading to Bunny Stream',
+    ENCODING_STARTED: 'Bunny Stream is processing',
+    READY_TO_STREAM: 'Bunny Stream playback ready',
+    TRANSCODE_FAILED: 'Bunny Stream needs attention'
+  };
+
+  return labels[normalized] ?? labelize(normalized);
+};
+
+const hasReadyBunnyPlayback = (video: Item['video']) =>
+  Boolean(video.bunnyStreamReadyAt || video.processingStatus === 'READY_TO_STREAM' || video.hlsManifestReady);
+
+const hasFailedBunnyPlayback = (video: Item['video']) =>
+  Boolean(video.processingStatus === 'TRANSCODE_FAILED' || video.bunnyStreamError);
+
+const isBunnyPlaybackInProgress = (video: Item['video']) =>
+  Boolean(
+    video.bunnyStreamVideoId &&
+      !hasReadyBunnyPlayback(video) &&
+      !hasFailedBunnyPlayback(video)
+  );
+
+const getModerationPackageStatus = (video: Item['video']) =>
+  getViewerPackageStatus({
+    videoType: video.videoType,
+    seriesId: video.seriesId,
+    masterReady: Boolean(video.masterSourceUrl || video.masterKey),
+    bunnyReady: hasReadyBunnyPlayback(video),
+    bunnyFailed: hasFailedBunnyPlayback(video),
+    bunnyProcessing: isBunnyPlaybackInProgress(video),
+    hlsReady: video.hlsManifestReady,
+    episodeCount: video.episodeCount,
+    readyEpisodeCount: video.readyEpisodeCount
+  });
+
+const getModerationSubtitleStatus = (video: Item['video']) =>
+  getSubtitlePackageStatus({
+    subtitleTrackCount: video.subtitleTrackCount,
+    englishSubtitlesProvided: video.englishSubtitlesProvided
+  });
+
+const getModerationPlaybackStatus = (video: Item['video']) => {
+  if (hasReadyBunnyPlayback(video)) return 'Ready in Bunny Stream';
+  if (hasFailedBunnyPlayback(video)) return video.bunnyStreamError?.trim() || 'Bunny Stream processing failed';
+  if (isBunnyPlaybackInProgress(video)) return 'Bunny Stream import is in progress';
+  if (video.masterSourceUrl || video.masterKey) return normalizeProcessingStatusLabel(video.processingStatus);
+  return normalizeProcessingStatusLabel(video.processingStatus);
+};
 
 const toStorageUploadError = (error: unknown) => {
   const message = error instanceof Error ? error.message : 'Upload failed.';
@@ -349,15 +414,19 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
       }
 
       if (hasSourceUpdate) {
-        setActivityState(item.video.id, 'Attaching Dropbox source...', afterUploadsProgress + sourceProgress);
-        const sourceResponse = await fetch('/api/admin/videos/master', {
+        setActivityState(item.video.id, 'Importing movie from Dropbox into Bunny Stream...', afterUploadsProgress + sourceProgress);
+        const sourceResponse = await fetch('/api/admin/bunny-intake/stream-upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoId: item.video.id, sourceUrl: draft.sourceUrl.trim() })
+          body: JSON.stringify({
+            videoId: item.video.id,
+            assetType: 'movie',
+            sourceUrl: draft.sourceUrl.trim()
+          })
         });
         const sourcePayload = await sourceResponse.json().catch(() => ({}));
         if (!sourceResponse.ok) {
-          throw new Error(sourcePayload.error || 'The Dropbox master source could not be attached.');
+          throw new Error(sourcePayload.error || 'The Dropbox movie could not be sent to Bunny Stream.');
         }
       }
 
@@ -596,15 +665,15 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Viewer package</span>
-                  <strong>{item.video.packageLabel ?? 'Bunny playback package'}</strong>
+                  <strong>{item.video.packageLabel ?? getViewerPackageLabel(item.video)}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Package status</span>
-                  <strong>{item.video.packageStatus ?? 'Pending package review'}</strong>
+                  <strong>{getModerationPackageStatus(item.video)}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Delivery format</span>
-                  <strong>{item.video.deliveryFormat ?? 'Bunny viewer package'}</strong>
+                  <strong>{getDeliveryFormatLabel({ deliveryFormat: item.video.deliveryFormat ?? null })}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Master source</span>
@@ -612,11 +681,11 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Bunny playback</span>
-                  <strong>{item.video.hlsManifestReady ? 'Ready in Bunny' : item.video.processingStatus ?? 'Awaiting source'}</strong>
+                  <strong>{getModerationPlaybackStatus(item.video)}</strong>
                 </div>
                 <div className="detail-card">
                   <span className="detail-label">Subtitles</span>
-                  <strong>{item.video.subtitleStatus ?? 'No subtitles uploaded'}</strong>
+                  <strong>{getModerationSubtitleStatus(item.video)}</strong>
                 </div>
               </div>
 
@@ -625,8 +694,12 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 <strong>
                   {[
                     !item.video.posterKey ? 'poster' : null,
-                    !item.video.masterSourceUrl && !item.video.masterKey ? 'movie source' : null,
-                    !item.video.hlsManifestReady ? 'Bunny playback sync' : null,
+                    !item.video.masterSourceUrl && !item.video.masterKey && !item.video.bunnyStreamVideoId ? 'movie source' : null,
+                    hasFailedBunnyPlayback(item.video)
+                      ? 'Bunny Stream failure'
+                      : !hasReadyBunnyPlayback(item.video)
+                        ? 'Bunny playback sync'
+                        : null,
                     !(item.video.genres?.length) ? 'genres' : null
                   ].filter(Boolean).join(', ') || 'No obvious gaps detected'}
                 </strong>

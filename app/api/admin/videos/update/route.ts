@@ -154,6 +154,9 @@ export async function POST(req: NextRequest) {
             trailerKey: true,
             masterSourceUrl: true,
             processingStatus: true,
+            bunnyStreamVideoId: true,
+            bunnyStreamReadyAt: true,
+            bunnyStreamError: true,
             hlsManifestKey: true,
             hlsReadyAt: true
           }
@@ -173,6 +176,9 @@ export async function POST(req: NextRequest) {
         posterKey: video.posterKey ?? null,
         masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
         processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+        bunnyStreamVideoId: video.technicalMetadata?.bunnyStreamVideoId ?? null,
+        bunnyStreamReadyAt: video.technicalMetadata?.bunnyStreamReadyAt ?? null,
+        bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
         hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt)
       }
     });

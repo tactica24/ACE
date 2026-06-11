@@ -68,6 +68,9 @@ export default async function ModerationPage() {
                   masterKey: true,
                   masterSourceUrl: true,
                   processingStatus: true,
+                  bunnyStreamVideoId: true,
+                  bunnyStreamReadyAt: true,
+                  bunnyStreamError: true,
                   hlsManifestKey: true,
                   hlsReadyAt: true,
                   deliveryFormat: true,
@@ -154,6 +157,9 @@ export default async function ModerationPage() {
               masterKey: true,
               masterSourceUrl: true,
               processingStatus: true,
+              bunnyStreamVideoId: true,
+              bunnyStreamReadyAt: true,
+              bunnyStreamError: true,
               hlsManifestKey: true,
               hlsReadyAt: true,
               deliveryFormat: true,
@@ -218,6 +224,9 @@ export default async function ModerationPage() {
         posterKey: video.posterKey ?? video.series?.posterKey ?? null,
         masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
         processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
+        bunnyStreamVideoId: video.technicalMetadata?.bunnyStreamVideoId ?? null,
+        bunnyStreamReadyAt: video.technicalMetadata?.bunnyStreamReadyAt?.toISOString() ?? null,
+        bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
         hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
         trailerDownloadHref: video.technicalMetadata?.trailerKey
           ? `/api/admin/videos/${video.id}/trailer`
@@ -225,6 +234,10 @@ export default async function ModerationPage() {
         posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null,
         createdAt: video.createdAt.toISOString(),
         creatorName: video.creator.creator?.displayName ?? video.creator.email,
+        subtitleTrackCount: video._count.subtitleTracks,
+        englishSubtitlesProvided: video.technicalMetadata?.englishSubtitlesProvided ?? false,
+        episodeCount: video._count.episodes,
+        readyEpisodeCount,
         packageLabel: getViewerPackageLabel(video),
         packageStatus: getViewerPackageStatus({
           videoType: video.videoType,
@@ -232,6 +245,13 @@ export default async function ModerationPage() {
           primaryReady: Boolean(video.primaryStorageKey),
           fallbackReady: Boolean(video.fallbackStorageKey),
           masterReady: hasVideoMasterSource(video),
+          bunnyReady: Boolean(video.technicalMetadata?.bunnyStreamVideoId && video.technicalMetadata?.bunnyStreamReadyAt),
+          bunnyFailed: Boolean(video.technicalMetadata?.bunnyStreamError || video.technicalMetadata?.processingStatus === 'TRANSCODE_FAILED'),
+          bunnyProcessing: Boolean(
+            video.technicalMetadata?.bunnyStreamVideoId &&
+              !video.technicalMetadata?.bunnyStreamReadyAt &&
+              video.technicalMetadata?.processingStatus !== 'TRANSCODE_FAILED'
+          ),
           hlsReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
           episodeCount: video._count.episodes,
           readyEpisodeCount

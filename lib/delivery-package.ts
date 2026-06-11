@@ -4,6 +4,9 @@ type DeliveryPackageInput = {
   primaryReady?: boolean;
   fallbackReady?: boolean;
   masterReady?: boolean;
+  bunnyReady?: boolean;
+  bunnyFailed?: boolean;
+  bunnyProcessing?: boolean;
   hlsReady?: boolean;
   episodeCount?: number;
   readyEpisodeCount?: number;
@@ -22,8 +25,8 @@ export function isSeriesContainerDelivery(input: Pick<DeliveryPackageInput, 'vid
 
 export function getViewerPackageLabel(input: Pick<DeliveryPackageInput, 'videoType' | 'seriesId'>) {
   return isSeriesContainerDelivery(input)
-    ? 'Per-episode Bunny playback package'
-    : 'Bunny playback package';
+    ? 'Per-episode Bunny Stream package'
+    : 'Bunny Stream package';
 }
 
 export function getViewerPackageStatus(input: DeliveryPackageInput) {
@@ -40,6 +43,18 @@ export function getViewerPackageStatus(input: DeliveryPackageInput) {
 
   if (input.primaryReady && input.fallbackReady) {
     return '1080p and 720p ready';
+  }
+
+  if (input.bunnyReady) {
+    return 'Bunny Stream playback ready';
+  }
+
+  if (input.bunnyFailed) {
+    return 'Bunny Stream needs attention';
+  }
+
+  if (input.bunnyProcessing) {
+    return 'Bunny Stream import is in progress';
   }
 
   if (input.hlsReady) {
@@ -75,5 +90,5 @@ export function getSubtitlePackageStatus(input: Pick<DeliveryPackageInput, 'subt
 }
 
 export function getDeliveryFormatLabel(input: Pick<DeliveryPackageInput, 'deliveryFormat'>) {
-  return input.deliveryFormat?.trim() || 'MP4 viewer package';
+  return input.deliveryFormat?.trim() || 'Bunny Stream adaptive playback';
 }
