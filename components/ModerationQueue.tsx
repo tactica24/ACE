@@ -650,7 +650,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                   }}
                 />
               </label>
-              {errors[item.video.id] ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
+              {errors[item.video.id] && editingId !== item.video.id ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
               {successes[item.video.id] ? <p className="muted form-message" style={{ color: '#22c55e' }}>{successes[item.video.id]}</p> : null}
 
               {editingId === item.video.id ? (
@@ -848,6 +848,16 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     )}
                      <button className="btn btn-ghost" disabled={isBusy} onClick={() => closeEdit(item.video.id)}>Cancel</button>
                   </div>
+                  {editingId === item.video.id && errors[item.video.id] ? (
+                    <p className="muted form-message" style={{ gridColumn: '1/-1', marginTop: 0 }}>
+                      {errors[item.video.id]}
+                    </p>
+                  ) : null}
+                  {editingId === item.video.id && successes[item.video.id] ? (
+                    <p className="muted form-message" style={{ gridColumn: '1/-1', marginTop: 0, color: '#22c55e' }}>
+                      {successes[item.video.id]}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 
