@@ -98,7 +98,7 @@ button {
   justify-content: space-between;
   padding: 14px 0;
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -639,8 +639,8 @@ button {
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
 }
 
 .video-card {
@@ -668,8 +668,8 @@ button {
 
 .video-thumb {
   background: radial-gradient(circle at 36% 28%, rgba(106, 182, 255, 0.18), transparent 30%), linear-gradient(135deg, #162030, #0c111b 62%, #070a11);
-  aspect-ratio: 2 / 3;
-  min-height: 220px;
+  aspect-ratio: 16 / 9;
+  min-height: 142px;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -1679,148 +1679,89 @@ button {
 
 .nmhp-hero-content {
   position: relative;
-  z-index: 1;
-  width: min(1200px, calc(100% - 40px));
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  align-items: center;
-  justify-items: center;
-  min-height: min(72vh, 780px);
-}
-
-.nmhp-hero-content-centered {
-  align-items: center;
-}
-
-.nmhp-hero-copy-block {
-  max-width: 720px;
-  justify-self: center;
+  z-index: 3;
   text-align: center;
+  max-width: 52rem;
+  padding: 0 24px;
 }
 
 .nmhp-hero-title {
-  margin: 0;
-  color: #fff;
-  letter-spacing: -0.04em;
-  line-height: 1.02;
-}
-
-.nmhp-hero-title-aesthetic {
-  font-size: clamp(2.4rem, 4.8vw, 4.9rem);
-}
-
-.nmhp-hero-title-main {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.nmhp-hero-title-accent {
-  background: linear-gradient(135deg, #ffffff 0%, #fca5a5 52%, #ef4444 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
 }
 
 .nmhp-hero-subtitle {
-  max-width: 620px;
-  margin-inline: auto;
-  color: rgba(226, 232, 240, 0.88);
-  font-size: clamp(1rem, 1.28vw, 1.08rem);
-  line-height: 1.72;
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  opacity: 0.95;
 }
 
-.nmhp-hero-subtitle-centered,
-.nmhp-hero-disclaimer-centered {
-  max-width: 620px;
-}
-
-.nmhp-hero-meta-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  justify-content: center;
-  color: rgba(226, 232, 240, 0.8);
-  font-size: 0.9rem;
+.nmhp-hero-subtitle strong {
+  color: #e50914;
 }
 
 .nmhp-hero-cta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 1rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .nmhp-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-weight: 700;
+  padding: 1rem 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-radius: 4px;
   text-decoration: none;
-  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.nmhp-cta-btn:hover {
-  transform: translateY(-1px);
+  transition: all 0.2s;
 }
 
 .nmhp-cta-primary {
-  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  background: #e50914;
   color: #fff;
-  box-shadow: 0 18px 40px rgba(185, 28, 28, 0.28);
 }
 
 .nmhp-cta-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(109, 109, 110, 0.7);
   color: #fff;
 }
 
 .nmhp-hero-disclaimer {
-  margin-top: 16px;
-  color: rgba(148, 163, 184, 0.88);
-  margin-inline: auto;
-  font-size: 0.86rem;
-  line-height: 1.65;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  opacity: 0.7;
 }
 
-.nmhp-hero-feature-wrap {
-  display: flex;
-  justify-content: flex-end;
+.nmhp-features {
+  background: #111;
+  padding: 4rem 2rem;
+}
+
+.nmhp-features-grid {
+  max-width: 120rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
 }
 
 .nmhp-feature-card {
-  width: min(100%, 360px);
-  display: grid;
-  gap: 16px;
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(8, 11, 20, 0.94));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-decoration: none;
+  background: #222;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
 }
 
-.nmhp-feature-card-inline {
-  margin: 24px auto 0;
-  width: min(100%, 420px);
-  text-align: left;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+.nmhp-feature-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
 }
 
-.nmhp-feature-card-image {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 18px;
-}
-
-.nmhp-feature-card-copy {
-  display: grid;
-  gap: 10px;
+.nmhp-feature-card p {
+  font-size: 1rem;
+  color: #ccc;
 }
 
 @media (max-width: 1100px) {
@@ -1871,16 +1812,6 @@ button {
     flex-direction: column;
   }
 
-  .nmhp-hero {
-    min-height: auto;
-    padding-top: 92px;
-  }
-
-  .nmhp-hero-content {
-    gap: 24px;
-    min-height: auto;
-  }
-
   .nmhp-hero-poster {
     display: none;
   }
@@ -1895,31 +1826,16 @@ button {
     padding: 84px 0 36px;
   }
 
-  .nmhp-hero-content {
-    width: min(100% - 24px, 1200px);
-  }
-
-  .nmhp-hero-title-aesthetic {
-    font-size: clamp(2.5rem, 11vw, 3.8rem);
-    line-height: 0.98;
-  }
-
   .nmhp-hero-subtitle {
-    font-size: 0.98rem;
-    line-height: 1.65;
+    font-size: 1.125rem;
   }
 
-  .nmhp-hero-meta-line {
-    gap: 8px 12px;
-    font-size: 0.88rem;
-  }
-
-  .nmhp-hero-cta {
-    display: grid;
-    grid-template-columns: 1fr;
+  .nmhp-hero-title {
+    font-size: 2.25rem;
   }
 
   .nmhp-cta-btn {
-    width: 100%;
+    padding: 0.875rem 2rem;
+    font-size: 1.125rem;
   }
 }
