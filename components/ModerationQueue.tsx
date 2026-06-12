@@ -57,6 +57,14 @@ type Item = {
     bunnyStreamError?: string | null;
     hlsManifestReady?: boolean;
     subtitleTrackCount?: number;
+    subtitleTracks?: Array<{
+      id: string;
+      label: string;
+      languageCode: string;
+      kind: string;
+      fileKey: string;
+      isDefault: boolean;
+    }>;
     englishSubtitlesProvided?: boolean;
     episodeCount?: number;
     readyEpisodeCount?: number;
@@ -93,12 +101,36 @@ type ActivityState = {
   active: boolean;
 };
 
+type SubtitleEditorTrack = {
+  id: string;
+  label: string;
+  languageCode: string;
+  kind: string;
+  fileKey: string;
+  file: File | null;
+  isDefault: boolean;
+};
+
 const ageLabel: Record<string, string> = {
   ALL: 'All',
   PG13: '13+',
   PG16: '16+',
   PG18: '18+'
 };
+
+const createSubtitleEditorTrack = (overrides: Partial<SubtitleEditorTrack> = {}): SubtitleEditorTrack => ({
+  id:
+    overrides.id ??
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `subtitle-${Math.random().toString(36).slice(2)}`),
+  label: overrides.label ?? 'English',
+  languageCode: overrides.languageCode ?? 'en',
+  kind: overrides.kind ?? 'subtitles',
+  fileKey: overrides.fileKey ?? '',
+  file: overrides.file ?? null,
+  isDefault: overrides.isDefault ?? false
+});
 
 const labelize = (value?: string) =>
   value
@@ -191,7 +223,7 @@ const toStorageUploadError = (error: unknown) => {
 
 const prepareAssetUpload = async (
   file: File,
-  purpose: 'trailer' | 'poster',
+  purpose: 'trailer' | 'poster' | 'subtitle',
   folderId: string,
   onProgress: (loaded: number, total: number) => void
 ) => {
@@ -260,7 +292,7 @@ export default function ModerationQueue({
   mode = 'edit'
 }: {
   initial: Item[];
-  mode?: 'edit' | 'review';
+  mode?: 'edit' | 'review' | 'deleted';
 }) {
   const [items, setItems] = useState(initial);
   const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -270,7 +302,9 @@ export default function ModerationQueue({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, VideoDraft>>({});
   const [editAssets, setEditAssets] = useState<Record<string, { trailer: File | null; poster: File | null }>>({});
+  const [subtitleEdits, setSubtitleEdits] = useState<Record<string, SubtitleEditorTrack[]>>({});
   const showWorkflowActions = mode === 'review';
+  const showDeletedActions = mode === 'deleted';
 
   const openAssetLink = (href: string) => {
     if (typeof window === 'undefined') return;
@@ -318,8 +352,84 @@ export default function ModerationQueue({
     });
   };
 
+  const getSubtitleEdits = (item: Item) =>
+    subtitleEdits[item.video.id] ??
+    (item.video.subtitleTracks?.length
+      ? item.video.subtitleTracks.map((track) =>
+          createSubtitleEditorTrack({
+            id: track.id,
+            label: track.label,
+            languageCode: track.languageCode,
+            kind: track.kind,
+            fileKey: track.fileKey,
+            isDefault: track.isDefault
+          })
+        )
+      : []);
+
+  const setSubtitleTrackValue = <K extends keyof SubtitleEditorTrack>(
+    item: Item,
+    trackId: string,
+    key: K,
+    value: SubtitleEditorTrack[K]
+  ) => {
+    const current = getSubtitleEdits(item);
+    setSubtitleEdits((prev) => ({
+      ...prev,
+      [item.video.id]: current.map((track) =>
+        track.id === trackId
+          ? {
+              ...track,
+              [key]: value
+            }
+          : track
+      )
+    }));
+  };
+
+  const setSubtitleDefault = (item: Item, trackId: string) => {
+    const current = getSubtitleEdits(item);
+    setSubtitleEdits((prev) => ({
+      ...prev,
+      [item.video.id]: current.map((track) => ({
+        ...track,
+        isDefault: track.id === trackId
+      }))
+    }));
+  };
+
+  const addSubtitleTrack = (item: Item) => {
+    const current = getSubtitleEdits(item);
+    setSubtitleEdits((prev) => ({
+      ...prev,
+      [item.video.id]: [
+        ...current,
+        createSubtitleEditorTrack({
+          isDefault: current.length === 0
+        })
+      ]
+    }));
+  };
+
+  const removeSubtitleTrack = (item: Item, trackId: string) => {
+    const current = getSubtitleEdits(item);
+    const filtered = current.filter((track) => track.id !== trackId);
+    setSubtitleEdits((prev) => ({
+      ...prev,
+      [item.video.id]: filtered.map((track, index) => ({
+        ...track,
+        isDefault: filtered.some((entry) => entry.isDefault) ? track.isDefault : index === 0
+      }))
+    }));
+  };
+
   const closeEdit = (videoId: string) => {
     clearEditAssets(videoId);
+    setSubtitleEdits((prev) => {
+      const next = { ...prev };
+      delete next[videoId];
+      return next;
+    });
     setEditingId(null);
   };
 
@@ -384,39 +494,71 @@ export default function ModerationQueue({
   const saveEdit = async (item: Item) => {
     const draft = getDraft(item);
     const assets = getEditAssets(item.video.id);
+    const subtitleTracks = getSubtitleEdits(item);
     let trailerKey: string | undefined;
     let posterKey: string | undefined;
-    const hasTrailerUpload = Boolean(assets.trailer);
-    const hasPosterUpload = Boolean(assets.poster);
-
-    const uploadProgressRange = hasTrailerUpload && hasPosterUpload ? 32 : hasTrailerUpload || hasPosterUpload ? 48 : 0;
-    const beforeUploadsProgress = 8;
-    const saveStartProgress = hasTrailerUpload || hasPosterUpload ? 88 : 72;
+    const subtitleUploads = subtitleTracks.filter((track) => track.file);
+    const uploadSteps = [
+      ...(assets.trailer ? [{ kind: 'trailer' as const, file: assets.trailer }] : []),
+      ...(assets.poster ? [{ kind: 'poster' as const, file: assets.poster }] : []),
+      ...subtitleUploads.map((track) => ({ kind: 'subtitle' as const, file: track.file!, track }))
+    ];
+    const uploadRangeStart = 8;
+    const uploadRangeEnd = uploadSteps.length ? 84 : 60;
+    const saveStartProgress = uploadSteps.length ? 88 : 72;
 
     clearFeedback(item.video.id);
     setActivityState(item.video.id, 'Preparing your changes...', 8);
 
     try {
-      if (assets.trailer) {
-        const trailerStart = beforeUploadsProgress;
-        const trailerEnd = beforeUploadsProgress + (hasPosterUpload ? 16 : uploadProgressRange || 48);
-        setActivityState(item.video.id, `Uploading trailer: ${assets.trailer.name}`, trailerStart);
-        trailerKey = await prepareAssetUpload(assets.trailer, 'trailer', item.video.id, (loaded, total) => {
-          const ratio = total > 0 ? loaded / total : 0;
-          const progress = Math.round(trailerStart + (trailerEnd - trailerStart) * ratio);
-          setActivityState(item.video.id, `Uploading trailer: ${assets.trailer?.name ?? 'Trailer'}`, progress);
-        });
+      const uploadedSubtitleKeyByTrackId = new Map<string, string>();
+
+      if (subtitleTracks.some((track) => !track.file && !track.fileKey.trim())) {
+        throw new Error('Each subtitle row needs a subtitle file before saving.');
       }
-      if (assets.poster) {
-        const posterStart = hasTrailerUpload ? beforeUploadsProgress + 16 : beforeUploadsProgress;
-        const posterEnd = hasTrailerUpload ? beforeUploadsProgress + uploadProgressRange : beforeUploadsProgress + (uploadProgressRange || 48);
-        setActivityState(item.video.id, `Uploading poster: ${assets.poster.name}`, posterStart);
-        posterKey = await prepareAssetUpload(assets.poster, 'poster', item.video.id, (loaded, total) => {
+
+      for (const [index, uploadStep] of uploadSteps.entries()) {
+        const stepStart =
+          uploadRangeStart + Math.round(((uploadRangeEnd - uploadRangeStart) * index) / uploadSteps.length);
+        const stepEnd =
+          uploadRangeStart + Math.round(((uploadRangeEnd - uploadRangeStart) * (index + 1)) / uploadSteps.length);
+
+        if (uploadStep.kind === 'trailer') {
+          setActivityState(item.video.id, `Uploading trailer: ${uploadStep.file.name}`, stepStart);
+          trailerKey = await prepareAssetUpload(uploadStep.file, 'trailer', item.video.id, (loaded, total) => {
+            const ratio = total > 0 ? loaded / total : 0;
+            const progress = Math.round(stepStart + (stepEnd - stepStart) * ratio);
+            setActivityState(item.video.id, `Uploading trailer: ${uploadStep.file.name}`, progress);
+          });
+          continue;
+        }
+
+        if (uploadStep.kind === 'poster') {
+          setActivityState(item.video.id, `Uploading poster: ${uploadStep.file.name}`, stepStart);
+          posterKey = await prepareAssetUpload(uploadStep.file, 'poster', item.video.id, (loaded, total) => {
+            const ratio = total > 0 ? loaded / total : 0;
+            const progress = Math.round(stepStart + (stepEnd - stepStart) * ratio);
+            setActivityState(item.video.id, `Uploading poster: ${uploadStep.file.name}`, progress);
+          });
+          continue;
+        }
+
+        setActivityState(item.video.id, `Uploading subtitle: ${uploadStep.file.name}`, stepStart);
+        const fileKey = await prepareAssetUpload(uploadStep.file, 'subtitle', item.video.id, (loaded, total) => {
           const ratio = total > 0 ? loaded / total : 0;
-          const progress = Math.round(posterStart + (posterEnd - posterStart) * ratio);
-          setActivityState(item.video.id, `Uploading poster: ${assets.poster?.name ?? 'Poster'}`, progress);
+          const progress = Math.round(stepStart + (stepEnd - stepStart) * ratio);
+          setActivityState(item.video.id, `Uploading subtitle: ${uploadStep.file.name}`, progress);
         });
+        uploadedSubtitleKeyByTrackId.set(uploadStep.track.id, fileKey);
       }
+
+      const subtitlePayload = subtitleTracks.map((track, index) => ({
+        label: track.label.trim() || `Subtitle ${index + 1}`,
+        languageCode: track.languageCode.trim().toLowerCase() || 'und',
+        kind: track.kind.trim() || 'subtitles',
+        fileKey: uploadedSubtitleKeyByTrackId.get(track.id) ?? track.fileKey.trim(),
+        isDefault: subtitleTracks.some((entry) => entry.isDefault) ? track.isDefault : index === 0
+      }));
 
       setActivityState(item.video.id, 'Saving title details...', saveStartProgress);
       const res = await fetch('/api/admin/videos/update', {
@@ -427,6 +569,7 @@ export default function ModerationQueue({
           ...draft,
           genres: normalizeSelectedGenres(draft.genres),
           licensedTerritories: draft.licensedTerritories,
+          subtitleTracks: subtitlePayload,
           ...(trailerKey ? { trailerKey } : {}),
           ...(posterKey ? { posterKey } : {})
         })
@@ -445,6 +588,7 @@ export default function ModerationQueue({
                 video: {
                   ...entry.video,
                   ...data.video,
+                  subtitleTrackCount: data.video.subtitleTrackCount ?? data.video.subtitleTracks?.length ?? entry.video.subtitleTrackCount,
                   ...(trailerKey ? { trailerDownloadHref: `/api/admin/videos/${item.video.id}/trailer` } : {}),
                   ...(posterKey ? { posterDownloadHref: `/api/admin/videos/${item.video.id}/poster` } : {})
                 }
@@ -454,6 +598,11 @@ export default function ModerationQueue({
       );
       setEditingId(null);
       clearEditAssets(item.video.id);
+      setSubtitleEdits((prev) => {
+        const next = { ...prev };
+        delete next[item.video.id];
+        return next;
+      });
       setActivityState(item.video.id, 'Saved successfully.', 100, false);
       setSuccesses((prev) => ({ ...prev, [item.video.id]: 'Saved successfully!' }));
       setTimeout(() => {
@@ -561,11 +710,57 @@ export default function ModerationQueue({
     }
   };
 
+  const handleDeleteState = async (item: Item, action: 'archive' | 'restore') => {
+    clearFeedback(item.video.id);
+    setActivityState(
+      item.video.id,
+      action === 'archive' ? 'Moving title to deleted...' : 'Restoring title to edits...',
+      24
+    );
+
+    try {
+      const res = await fetch('/api/admin/videos/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: item.video.id,
+          action,
+          reason:
+            action === 'archive'
+              ? 'Removed from edit queue by admin.'
+              : undefined
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'This title could not be updated right now.');
+      }
+
+      setActivityState(item.video.id, action === 'archive' ? 'Title archived.' : 'Title restored.', 100, false);
+      if (action === 'archive') {
+        setItems((prev) => prev.filter((entry) => entry.video.id !== item.video.id));
+      } else {
+        setItems((prev) => prev.filter((entry) => entry.video.id !== item.video.id));
+      }
+    } catch (error: any) {
+      clearActivityState(item.video.id);
+      setErrors((prev) => ({
+        ...prev,
+        [item.video.id]: error?.message || 'This title could not be updated right now.'
+      }));
+    }
+  };
+
   if (items.length === 0) {
     return (
       <div className="card empty-state">
-        <h3>No titles are waiting for review</h3>
-        <p className="muted">New producer submissions will appear here automatically.</p>
+        <h3>{showDeletedActions ? 'No deleted titles right now' : 'No titles are waiting for review'}</h3>
+        <p className="muted">
+          {showDeletedActions
+            ? 'Archived titles will appear here and can be restored when needed.'
+            : 'New producer submissions will appear here automatically.'}
+        </p>
       </div>
     );
   }
@@ -874,6 +1069,88 @@ export default function ModerationQueue({
                      )}
                    </label>
 
+                   <div className="field" style={{ gridColumn: '1/-1' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                       <span className="field-label">Subtitle tracks</span>
+                       <button className="btn btn-ghost" type="button" disabled={isBusy} onClick={() => addSubtitleTrack(item)}>
+                         Add subtitle
+                       </button>
+                     </div>
+                     <div className="stack-list" style={{ marginTop: 10 }}>
+                       {getSubtitleEdits(item).length ? (
+                         getSubtitleEdits(item).map((track, index) => (
+                           <div key={track.id} className="detail-card" style={{ display: 'grid', gap: 12 }}>
+                             <div className="field-grid field-grid-3">
+                               <label className="field">
+                                 <span className="field-label">Label</span>
+                                 <input
+                                   className="input"
+                                   disabled={isBusy}
+                                   value={track.label}
+                                   onChange={(event) => setSubtitleTrackValue(item, track.id, 'label', event.target.value)}
+                                 />
+                               </label>
+                               <label className="field">
+                                 <span className="field-label">Language</span>
+                                 <input
+                                   className="input"
+                                   disabled={isBusy}
+                                   value={track.languageCode}
+                                   onChange={(event) => setSubtitleTrackValue(item, track.id, 'languageCode', event.target.value)}
+                                 />
+                               </label>
+                               <label className="field">
+                                 <span className="field-label">Kind</span>
+                                 <input
+                                   className="input"
+                                   disabled={isBusy}
+                                   value={track.kind}
+                                   onChange={(event) => setSubtitleTrackValue(item, track.id, 'kind', event.target.value)}
+                                 />
+                               </label>
+                             </div>
+                             <label className="field">
+                               <span className="field-label">Subtitle file (VTT or SRT)</span>
+                               <input
+                                 type="file"
+                                 accept=".vtt,.srt,text/vtt,application/x-subrip"
+                                 disabled={isBusy}
+                                 onChange={(event) => setSubtitleTrackValue(item, track.id, 'file', event.target.files?.[0] ?? null)}
+                               />
+                               {track.file ? (
+                                 <span className="muted">Selected: {track.file.name}</span>
+                               ) : track.fileKey ? (
+                                 <span className="muted">Current subtitle attached - pick file above to replace</span>
+                               ) : (
+                                 <span className="muted">No subtitle file yet - choose one before saving</span>
+                               )}
+                             </label>
+                             <div className="action-list" style={{ gap: 8 }}>
+                               <button
+                                 className="btn btn-ghost"
+                                 type="button"
+                                 disabled={isBusy}
+                                 onClick={() => setSubtitleDefault(item, track.id)}
+                               >
+                                 {track.isDefault ? 'Default subtitle' : `Make default ${index + 1}`}
+                               </button>
+                               <button
+                                 className="btn btn-ghost"
+                                 type="button"
+                                 disabled={isBusy}
+                                 onClick={() => removeSubtitleTrack(item, track.id)}
+                               >
+                                 Remove subtitle
+                               </button>
+                             </div>
+                           </div>
+                         ))
+                       ) : (
+                         <p className="muted" style={{ margin: 0 }}>No subtitles attached yet.</p>
+                       )}
+                     </div>
+                   </div>
+
                    <div className="moderation-actions" style={{ gridColumn: '1/-1' }}>
                     {activityState ? (
                       <div
@@ -944,6 +1221,26 @@ export default function ModerationQueue({
                     onClick={() => openAssetLink(item.video.trailerDownloadHref!)}
                   >
                     Download trailer
+                  </button>
+                ) : null}
+                {!showWorkflowActions && !showDeletedActions ? (
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => handleDeleteState(item, 'archive')}
+                  >
+                    {isBusy ? 'Working...' : 'Delete title'}
+                  </button>
+                ) : null}
+                {showDeletedActions ? (
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => handleDeleteState(item, 'restore')}
+                  >
+                    {isBusy ? 'Working...' : 'Restore to edits'}
                   </button>
                 ) : null}
                 {showWorkflowActions && item.status === 'PENDING' ? (

@@ -21,7 +21,10 @@ export default async function ModerationPage() {
   try {
     const videos = await prisma.video.findMany({
       where: {
-        seriesId: null
+        seriesId: null,
+        status: {
+          not: 'ARCHIVED'
+        }
       },
       orderBy: { updatedAt: 'desc' },
       take: 120,
@@ -86,6 +89,17 @@ export default async function ModerationPage() {
             subtitleTracks: true
           }
         },
+        subtitleTracks: {
+          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            label: true,
+            languageCode: true,
+            kind: true,
+            fileKey: true,
+            isDefault: true
+          }
+        },
         episodes: {
           select: {
             id: true,
@@ -147,6 +161,7 @@ export default async function ModerationPage() {
           createdAt: video.createdAt.toISOString(),
           creatorName: video.creator.creator?.displayName ?? video.creator.email,
           subtitleTrackCount: video._count.subtitleTracks,
+          subtitleTracks: video.subtitleTracks,
           englishSubtitlesProvided: video.technicalMetadata?.englishSubtitlesProvided ?? false,
           episodeCount: video._count.episodes,
           readyEpisodeCount,
@@ -188,6 +203,12 @@ export default async function ModerationPage() {
   const readyForPublishCount = queueItems.filter(
     (item) => item.video.status !== 'PUBLISHED' && item.video.packageStatus?.toLowerCase().includes('ready')
   ).length;
+  const deletedCount = await prisma.video.count({
+    where: {
+      seriesId: null,
+      status: 'ARCHIVED'
+    }
+  });
 
   return (
     <DashboardShell
@@ -196,13 +217,14 @@ export default async function ModerationPage() {
       sideNav={
         <SideNav
           active="/admin/moderation"
-          items={getAdminNavItems({ pendingModeration: queueItems.length })}
+          items={getAdminNavItems({ pendingModeration: queueItems.length, deletedTitles: deletedCount })}
         />
       }
       actions={
         <div className="action-list">
           <a className="btn btn-primary" href="/admin/upload">Create title</a>
           <a className="btn btn-ghost" href="/admin/publish">Open publish queue</a>
+          <a className="btn btn-ghost" href="/admin/deleted">Deleted titles</a>
           <a className="btn btn-ghost" href="/admin/live">View live titles</a>
         </div>
       }

@@ -103,7 +103,12 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
       return NextResponse.json({ error: 'Asset not available' }, { status: 404 });
     }
 
-    const match = matches.find(({ video }) => isViewerVisibleStatus(video.status) || canPreviewVideo(video, auth));
+    const match = matches.find(
+      ({ video }) =>
+        isViewerVisibleStatus(video.status) ||
+        canPreviewVideo(video, auth) ||
+        Boolean(auth && (auth.role === 'ADMIN' || auth.sub === video.creatorId))
+    );
     if (!match) {
       return NextResponse.json({ error: 'Asset not available' }, { status: 403 });
     }

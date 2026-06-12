@@ -11,6 +11,14 @@ const VIDEO_TYPES = ['FEATURE', 'SERIES', 'SHORT', 'SKIT', 'DOCUMENTARY', 'ADVER
 const AGE_RATINGS = ['ALL', 'PG13', 'PG16', 'PG18'] as const;
 const AVAILABILITY_REGIONS = ['GLOBAL', 'AFRICA'] as const;
 
+type SubmittedSubtitleTrack = {
+  label?: string;
+  languageCode?: string;
+  kind?: string;
+  fileKey?: string;
+  isDefault?: boolean;
+};
+
 function normalizeList(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value.map((entry) => String(entry).trim()).filter(Boolean);
@@ -46,6 +54,8 @@ export async function POST(req: NextRequest) {
     const availabilityRegion = typeof body.availabilityRegion === 'string' ? body.availabilityRegion.trim() : 'GLOBAL';
     const trailerKey = typeof body.trailerKey === 'string' ? body.trailerKey.trim() || null : null;
     const posterKey = typeof body.posterKey === 'string' ? body.posterKey.trim() || null : null;
+    const subtitleTracks = Array.isArray(body.subtitleTracks) ? (body.subtitleTracks as SubmittedSubtitleTrack[]) : [];
+    const hasSubtitleTracksPayload = Array.isArray(body.subtitleTracks);
     const unlockPrice = Math.round(Number(body.unlockPrice ?? 0));
     const producerRevenueShare = Number(body.producerRevenueShare ?? 70);
     const platformRevenueShare = Number(body.platformRevenueShare ?? 30);
@@ -94,9 +104,28 @@ export async function POST(req: NextRequest) {
 
     await assertUploadedObjectExists(trailerKey, 'Trailer MP4');
     await assertUploadedObjectExists(posterKey, 'Poster artwork');
+    for (const track of subtitleTracks) {
+      await assertUploadedObjectExists(track.fileKey ?? null, 'Subtitle file');
+    }
+
+    const normalizedSubtitleTracks = subtitleTracks
+      .map((track, index) => ({
+        label: typeof track.label === 'string' && track.label.trim() ? track.label.trim() : `Subtitle ${index + 1}`,
+        languageCode:
+          typeof track.languageCode === 'string' && track.languageCode.trim()
+            ? track.languageCode.trim().toLowerCase()
+            : 'und',
+        kind: typeof track.kind === 'string' && track.kind.trim() ? track.kind.trim() : 'subtitles',
+        fileKey: typeof track.fileKey === 'string' ? track.fileKey.trim() : '',
+        isDefault: Boolean(track.isDefault)
+      }))
+      .filter((track) => track.fileKey);
+    const hasExplicitSubtitleDefault = normalizedSubtitleTracks.some((track) => track.isDefault);
+    const englishSubtitlesProvided = normalizedSubtitleTracks.some((track) => track.languageCode === 'en');
 
     const techData: Record<string, unknown> = { licensedTerritories, availabilityRegion };
     if (trailerKey) techData.trailerKey = trailerKey;
+    if (hasSubtitleTracksPayload) techData.englishSubtitlesProvided = englishSubtitlesProvided;
 
     const videoData: Record<string, unknown> = {
       title,
@@ -121,6 +150,24 @@ export async function POST(req: NextRequest) {
       where: { id: videoId },
       data: {
         ...videoData,
+        ...(hasSubtitleTracksPayload
+          ? {
+              subtitleTracks: {
+                deleteMany: {},
+                ...(normalizedSubtitleTracks.length
+                  ? {
+                      create: normalizedSubtitleTracks.map((track, index) => ({
+                        label: track.label,
+                        languageCode: track.languageCode,
+                        kind: track.kind,
+                        fileKey: track.fileKey,
+                        isDefault: hasExplicitSubtitleDefault ? track.isDefault : index === 0
+                      }))
+                    }
+                  : {})
+              }
+            }
+          : {}),
         technicalMetadata: {
           upsert: {
             where: { videoId },
@@ -147,6 +194,17 @@ export async function POST(req: NextRequest) {
         genres: true,
         contentWarnings: true,
         posterKey: true,
+        subtitleTracks: {
+          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            label: true,
+            languageCode: true,
+            kind: true,
+            fileKey: true,
+            isDefault: true
+          }
+        },
         technicalMetadata: {
           select: {
             licensedTerritories: true,
@@ -157,6 +215,7 @@ export async function POST(req: NextRequest) {
             bunnyStreamVideoId: true,
             bunnyStreamReadyAt: true,
             bunnyStreamError: true,
+            englishSubtitlesProvided: true,
             hlsManifestKey: true,
             hlsReadyAt: true
           }
@@ -174,6 +233,9 @@ export async function POST(req: NextRequest) {
         availabilityRegion: video.technicalMetadata?.availabilityRegion ?? 'GLOBAL',
         trailerKey: video.technicalMetadata?.trailerKey ?? null,
         posterKey: video.posterKey ?? null,
+        subtitleTracks: video.subtitleTracks,
+        subtitleTrackCount: video.subtitleTracks.length,
+        englishSubtitlesProvided: video.technicalMetadata?.englishSubtitlesProvided ?? false,
         masterSourceUrl: video.technicalMetadata?.masterSourceUrl ?? null,
         processingStatus: video.technicalMetadata?.processingStatus ?? 'NO_MASTER',
         bunnyStreamVideoId: video.technicalMetadata?.bunnyStreamVideoId ?? null,
