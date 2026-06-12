@@ -12,30 +12,20 @@ import { type PriceTierValue } from '@/lib/media-types';
 import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
-import poster005093 from '@/posters/LK_005093_GB_poster.jpg';
-import poster005974 from '@/posters/LK_005974_eng_WW_poster.png';
-import poster006130 from '@/posters/LK_006130_eng_WW_poster.png';
-import poster006237 from '@/posters/LK_006237_WW_poster.png';
-import poster009016 from '@/posters/LK_009016_eng_WW_poster.png';
-import poster009476 from '@/posters/LK_009476_world_WW_poster.jpg';
-import poster009787 from '@/posters/LK_009787_world_WW_poster.jpg';
-import poster010611 from '@/posters/LK_010611_eng_WW_poster.jpg';
-import poster011779 from '@/posters/LK_011779_ww_WW_poster.jpg';
-import poster012046 from '@/posters/LK_012046_eng_WW_poster.jpg';
 
 export const dynamic = 'force-dynamic';
 
 const VISITOR_HERO_POSTERS = [
-  { src: poster005093, title: 'Featured title 1' },
-  { src: poster005974, title: 'Featured title 2' },
-  { src: poster006130, title: 'Featured title 3' },
-  { src: poster006237, title: 'Featured title 4' },
-  { src: poster009016, title: 'Featured title 5' },
-  { src: poster009476, title: 'Featured title 6' },
-  { src: poster009787, title: 'Featured title 7' },
-  { src: poster010611, title: 'Featured title 8' },
-  { src: poster011779, title: 'Featured title 9' },
-  { src: poster012046, title: 'Featured title 10' }
+  { src: '/visitor-posters/LK_005093_GB_poster.jpg', title: 'Featured title 1' },
+  { src: '/visitor-posters/LK_005974_eng_WW_poster.png', title: 'Featured title 2' },
+  { src: '/visitor-posters/LK_006130_eng_WW_poster.png', title: 'Featured title 3' },
+  { src: '/visitor-posters/LK_006237_WW_poster.png', title: 'Featured title 4' },
+  { src: '/visitor-posters/LK_009016_eng_WW_poster.png', title: 'Featured title 5' },
+  { src: '/visitor-posters/LK_009476_world_WW_poster.jpg', title: 'Featured title 6' },
+  { src: '/visitor-posters/LK_009787_world_WW_poster.jpg', title: 'Featured title 7' },
+  { src: '/visitor-posters/LK_010611_eng_WW_poster.jpg', title: 'Featured title 8' },
+  { src: '/visitor-posters/LK_011779_ww_WW_poster.jpg', title: 'Featured title 9' },
+  { src: '/visitor-posters/LK_012046_eng_WW_poster.jpg', title: 'Featured title 10' }
 ] as const;
 
 type HomeVideo = {
