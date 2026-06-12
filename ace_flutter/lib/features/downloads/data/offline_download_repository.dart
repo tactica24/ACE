@@ -71,7 +71,8 @@ class OfflineDownloadRepository {
     );
     final streamUrl = urls.progressiveUrl;
     if (streamUrl == null) {
-      throw Exception('No downloadable stream available for this title.');
+      throw Exception(
+          'No downloadable MP4 is available for this title yet. Playback may be ready before offline download is prepared.');
     }
 
     final request = http.Request('GET', Uri.parse(streamUrl));

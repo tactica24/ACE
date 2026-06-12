@@ -118,8 +118,8 @@ const videoCases: Case[] = [
   {
     name: 'viewer-visible videos are accessible to signed-out viewers',
     run: () => {
-      assert.equal(canAccessVideo(creatorVideo, null), true);
-      assert.equal(canAccessVideo({ ...creatorVideo, status: 'READY' }, null), true);
+      assert.equal(canAccessVideo(creatorVideo, null), false);
+      assert.equal(canAccessVideo({ ...creatorVideo, status: 'READY' }, null), false);
       assert.equal(canAccessVideo({ ...creatorVideo, status: 'PUBLISHED' }, null), true);
       assert.equal(canPreviewVideo(creatorVideo, null), false);
     },
@@ -293,7 +293,7 @@ const videoCases: Case[] = [
       assert.deepEqual(catalogWhere, {
         AND: [{ seriesId: null }, anyVideoWhere],
       });
-      assert.deepEqual(anyVideoWhere.status, { in: ['APPROVED', 'READY', 'PUBLISHED'] });
+      assert.deepEqual(anyVideoWhere.status, { in: ['PUBLISHED'] });
       assert.equal(Array.isArray(anyVideoWhere.OR), true);
       assert.equal(anyVideoWhere.OR?.length, 3);
       assert.deepEqual(getPlayableAssetWhere().OR, [
@@ -343,7 +343,7 @@ const videoCases: Case[] = [
       );
       assert.equal(
         getMoviePosterUrl({ id: 'movie-1', posterKey: 'uploads/admin/poster/movie one.webp' }),
-        '/api/movies/movie-1/poster',
+        '/api/media/uploads/admin/poster/movie%20one.webp',
       );
       assert.equal(
         getMoviePosterUrl({ id: 'movie-2', posterKey: 'uploads/admin/poster/ace-studio-placeholder.webp' }),
@@ -362,7 +362,7 @@ const videoCases: Case[] = [
           { posterKey: null },
           { posterKey: 'uploads/admin/poster/series.webp' },
         ),
-        '/api/movies/episode-1/poster',
+        '/api/media/uploads/admin/poster/series.webp',
       );
       assert.equal(
         getMediaAssetUrl(' subtitles\\movie one.vtt '),

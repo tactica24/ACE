@@ -18,6 +18,7 @@ import { getMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
+import { isViewerVisibleStatus } from '@/lib/release-status';
 import { canPreviewVideo, isEpisodeVideo, isSeriesContainer } from '@/lib/video-access';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 import { getRegionalPriceForVideo, getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
@@ -35,10 +36,6 @@ const labelize = (value: string) =>
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-
-function isViewerVisibleStatus(status: string) {
-  return status === 'APPROVED' || status === 'PUBLISHED';
-}
 
 function formatRuntime(_durationSec: number) {
   return '90m';

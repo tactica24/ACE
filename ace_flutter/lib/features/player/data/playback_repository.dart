@@ -32,7 +32,9 @@ class PlaybackRepository {
   }) async {
     final trimmedTrailerUrl = trailerUrl?.trim();
     if (teaserOnly && trimmedTrailerUrl != null && trimmedTrailerUrl.isNotEmpty) {
-      return PlaybackStreamUrls(progressiveUrl: apiClient.resolve(trimmedTrailerUrl).toString());
+      return PlaybackStreamUrls(
+        previewUrl: apiClient.resolve(trimmedTrailerUrl).toString(),
+      );
     }
 
     final endpoint = '/api/movies/$titleId/playback';
@@ -47,24 +49,32 @@ class PlaybackRepository {
             body: {'deviceSessionId': deviceSessionId},
           ) as Map<String, dynamic>;
 
-    String? progressive;
+    String? playbackUrl;
     final directPlaybackUrl = payload['playbackUrl'];
     if (directPlaybackUrl is String && directPlaybackUrl.isNotEmpty) {
-      progressive = apiClient.resolve(directPlaybackUrl).toString();
+      playbackUrl = apiClient.resolve(directPlaybackUrl).toString();
     }
 
     final playback = payload['playback'] as Map<String, dynamic>?;
+    String? hlsUrl;
     final nestedHlsUrl = playback?['hlsUrl'];
-    if (progressive == null && nestedHlsUrl is String && nestedHlsUrl.isNotEmpty) {
-      progressive = apiClient.resolve(nestedHlsUrl).toString();
+    if (nestedHlsUrl is String && nestedHlsUrl.isNotEmpty) {
+      hlsUrl = apiClient.resolve(nestedHlsUrl).toString();
     }
 
+    String? progressiveUrl;
     final nestedPlaybackUrl = playback?['progressiveUrl'];
-    if (progressive == null && nestedPlaybackUrl is String && nestedPlaybackUrl.isNotEmpty) {
-      progressive = apiClient.resolve(nestedPlaybackUrl).toString();
+    if (nestedPlaybackUrl is String && nestedPlaybackUrl.isNotEmpty) {
+      progressiveUrl = apiClient.resolve(nestedPlaybackUrl).toString();
     }
 
-    if (progressive == null) {
+    final nestedPreviewUrl = playback?['previewUrl'];
+    final previewUrl = nestedPreviewUrl is String && nestedPreviewUrl.isNotEmpty
+        ? apiClient.resolve(nestedPreviewUrl).toString()
+        : null;
+    final preferred = playback?['preferred'] is String ? playback?['preferred'] as String : null;
+
+    if (playbackUrl == null && hlsUrl == null && progressiveUrl == null && previewUrl == null) {
       throw ApiException(
         'No playback stream is ready for this title right now.',
         statusCode: 503,
@@ -72,15 +82,53 @@ class PlaybackRepository {
     }
 
     return PlaybackStreamUrls(
-      progressiveUrl: progressive,
+      playbackUrl: playbackUrl,
+      hlsUrl: hlsUrl,
+      progressiveUrl: progressiveUrl,
+      previewUrl: previewUrl,
+      preferred: preferred,
     );
   }
 }
 
 class PlaybackStreamUrls {
   const PlaybackStreamUrls({
+    this.playbackUrl,
+    this.hlsUrl,
     this.progressiveUrl,
+    this.previewUrl,
+    this.preferred,
   });
 
+  final String? playbackUrl;
+  final String? hlsUrl;
   final String? progressiveUrl;
+  final String? previewUrl;
+  final String? preferred;
+
+  List<String> get playbackCandidates {
+    final ordered = <String?>[];
+    if (preferred == 'preview') {
+      ordered.add(previewUrl);
+      ordered.add(hlsUrl);
+      ordered.add(playbackUrl);
+      ordered.add(progressiveUrl);
+    } else if (preferred == 'progressive') {
+      ordered.add(progressiveUrl);
+      ordered.add(playbackUrl);
+      ordered.add(hlsUrl);
+      ordered.add(previewUrl);
+    } else {
+      ordered.add(hlsUrl);
+      ordered.add(playbackUrl);
+      ordered.add(progressiveUrl);
+      ordered.add(previewUrl);
+    }
+
+    final seen = <String>{};
+    return ordered
+        .whereType<String>()
+        .where((url) => url.isNotEmpty && seen.add(url))
+        .toList(growable: false);
+  }
 }

@@ -1,5 +1,4 @@
 import './globals.css';
-import './premium-upgrades.css';
 import type { Metadata, Viewport } from 'next';
 import AppChrome from '@/components/AppChrome';
 

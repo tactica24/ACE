@@ -19,7 +19,7 @@ type ReleaseLifecycleVideo = {
 };
 
 const ACTIVE_PIPELINE_STATUSES = new Set(['ENCODING_STARTED', 'STREAM_UPLOAD_CREATED', 'STREAM_UPLOAD_UPLOADING']);
-export const VIEWER_VISIBLE_STATUSES = ['APPROVED', 'READY', 'PUBLISHED'] as const;
+export const VIEWER_VISIBLE_STATUSES = ['PUBLISHED'] as const;
 
 export function isViewerVisibleStatus(status: string | null | undefined) {
   return VIEWER_VISIBLE_STATUSES.includes((status ?? '') as (typeof VIEWER_VISIBLE_STATUSES)[number]);

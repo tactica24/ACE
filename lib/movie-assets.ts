@@ -1,4 +1,5 @@
 import { normalizeMediaKey } from './media';
+import { getMediaAssetUrl } from './media';
 import { hasReadyBunnyMovieStream } from './bunny-stream';
 import { hasReadyVideoHls } from './hls';
 
@@ -69,16 +70,14 @@ export function resolveMoviePosterKeyFromCandidates(
 }
 
 export function getMoviePosterUrl(video: Pick<MovieAssetVideo, 'id' | 'posterKey'>) {
-  return resolveMoviePosterKey(video) ? `/api/movies/${encodeURIComponent(video.id)}/poster` : null;
+  return getMediaAssetUrl(resolveMoviePosterKey(video));
 }
 
 export function getMoviePosterUrlFromCandidates(
-  video: Pick<MovieAssetVideo, 'id'>,
+  _video: Pick<MovieAssetVideo, 'id'>,
   ...posterCandidates: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>
 ) {
-  return resolveMoviePosterKeyFromCandidates(...posterCandidates)
-    ? `/api/movies/${encodeURIComponent(video.id)}/poster`
-    : null;
+  return getMediaAssetUrl(resolveMoviePosterKeyFromCandidates(...posterCandidates));
 }
 
 export function hasMoviePoster(video: Pick<MovieAssetVideo, 'posterKey'>) {
