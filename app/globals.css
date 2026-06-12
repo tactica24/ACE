@@ -11281,26 +11281,52 @@ body::before {
     linear-gradient(180deg, #05070d 0%, #070910 58%, #000 100%);
   background-size: cover;
   background-position: center;
-  padding: 8rem 2rem 4rem;
+  padding: 7rem 1.5rem 4rem;
 }
 
 .nmhp-hero-content {
   text-align: center;
-  max-width: 48rem;
+  max-width: 42rem;
   z-index: 10;
+}
+
+.nmhp-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.1rem;
+  padding: 0.42rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.56);
+  backdrop-filter: blur(10px);
+  color: #f3d18b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .nmhp-hero-title {
   font-size: 3.5rem;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.04;
   margin-bottom: 1.5rem;
+  letter-spacing: -0.04em;
+  display: grid;
+  gap: 0.25rem;
+  text-wrap: balance;
 }
 
 .nmhp-hero-subtitle {
-  font-size: 1.5rem;
+  font-size: 1.28rem;
   margin-bottom: 2rem;
   opacity: 0.95;
+  max-width: 37rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.55;
+  text-wrap: balance;
 }
 
 .nmhp-hero-subtitle strong {
@@ -11343,8 +11369,8 @@ body::before {
 
 .nmhp-hero-disclaimer {
   margin-top: 1.5rem;
-  font-size: 0.875rem;
-  opacity: 0.7;
+  font-size: 0.92rem;
+  opacity: 0.78;
 }
 
 .nmhp-hero-overlay {
@@ -11396,13 +11422,30 @@ body::before {
     padding: 0.875rem 2rem;
     font-size: 1.125rem;
   }
+  .nmhp-hero-bg {
+    padding: 8vh 1rem 0;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+  .nmhp-poster-wall {
+    flex: 0 0 auto;
+    grid-template-columns: repeat(1, minmax(110px, 140px));
+    gap: 0.75rem;
+  }
+  .nmhp-poster-wall .nmhp-poster-slot:nth-child(n + 4) {
+    display: none;
+  }
+  .nmhp-hero-content {
+    max-width: 24rem;
+    padding: 1.4rem 1rem 1rem;
+  }
 }
 
 /* === Premium Cinematic Hero Backdrop === */
 .nmhp-hero {
   position: relative;
   overflow: hidden;
-  min-height: 82vh;
+  min-height: 90vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11414,21 +11457,71 @@ body::before {
   inset: 0;
   z-index: 1;
   overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 4vh 3vw 0;
+}
+
+.nmhp-poster-wall {
+  flex: 0 0 31%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  align-content: start;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.nmhp-poster-wall-left {
+  justify-items: end;
+}
+
+.nmhp-poster-wall-right {
+  justify-items: start;
+}
+
+.nmhp-poster-slot {
+  width: min(100%, 240px);
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 0.9;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transform-origin: center;
+}
+
+.nmhp-poster-slot-1,
+.nmhp-poster-slot-6 {
+  transform: translateY(18px) rotate(-6deg);
+}
+
+.nmhp-poster-slot-2,
+.nmhp-poster-slot-7 {
+  transform: translateY(68px) rotate(5deg);
+}
+
+.nmhp-poster-slot-3,
+.nmhp-poster-slot-8 {
+  transform: translateY(-10px) rotate(4deg);
+}
+
+.nmhp-poster-slot-4,
+.nmhp-poster-slot-9 {
+  transform: translateY(42px) rotate(-4deg);
+}
+
+.nmhp-poster-slot-5,
+.nmhp-poster-slot-10 {
+  transform: translateY(-18px) rotate(6deg);
 }
 
 .nmhp-hero-poster {
-  position: absolute;
-  width: 22%;
-  max-width: 260px;
+  display: block;
+  width: 100%;
+  height: auto;
   aspect-ratio: 2 / 3;
   object-fit: cover;
   object-position: center;
-  border-radius: 8px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65),
-              0 0 0 1px rgba(255, 255, 255, 0.04);
-  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  will-change: transform;
-  opacity: 0.85;
 }
 
 /* Very strong, multi-layered cinematic overlay so text feels designed with the background */
@@ -11437,6 +11530,8 @@ body::before {
   inset: 0;
   z-index: 2;
   background: 
+    radial-gradient(circle at center, rgba(4, 7, 13, 0.12) 0%, rgba(4, 7, 13, 0.18) 24%, rgba(4, 7, 13, 0.72) 48%, rgba(0, 0, 0, 0.92) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.42) 23%, rgba(0, 0, 0, 0.16) 38%, rgba(0, 0, 0, 0.16) 62%, rgba(0, 0, 0, 0.42) 77%, rgba(0, 0, 0, 0.88) 100%),
     linear-gradient(180deg, 
       rgba(0,0,0,0.82) 0%, 
       rgba(0,0,0,0.76) 18%, 
@@ -11454,13 +11549,16 @@ body::before {
   position: relative;
   z-index: 3;
   text-align: center;
-  max-width: 52rem;
-  padding: 0 24px;
+  max-width: 44rem;
+  padding: 2rem 2rem 1.5rem;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(7, 10, 16, 0.36), rgba(7, 10, 16, 0.14));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(5px);
 }
 
-/* Subtle breathing on hover for premium feel (optional) */
-.nmhp-hero-bg:hover .nmhp-hero-poster {
-  transform: scale(1.015);
+.nmhp-hero-bg:hover .nmhp-poster-slot {
+  transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
 /* Restructured Movie Details/Player Page */
@@ -11959,14 +12057,11 @@ body::before {
 }
 
 .nmhp-hero-bg {
-  opacity: 0.26;
+  opacity: 0.44;
 }
 
 .nmhp-hero-poster {
   transform: none !important;
-  border-radius: 8px;
-  background-position: center center;
-  background-size: cover;
 }
 
 .nmhp-features {

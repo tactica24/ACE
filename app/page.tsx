@@ -12,8 +12,31 @@ import { type PriceTierValue } from '@/lib/media-types';
 import { getMoviePosterUrl } from '@/lib/movie-assets';
 import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
+import poster005093 from '@/posters/LK_005093_GB_poster.jpg';
+import poster005974 from '@/posters/LK_005974_eng_WW_poster.png';
+import poster006130 from '@/posters/LK_006130_eng_WW_poster.png';
+import poster006237 from '@/posters/LK_006237_WW_poster.png';
+import poster009016 from '@/posters/LK_009016_eng_WW_poster.png';
+import poster009476 from '@/posters/LK_009476_world_WW_poster.jpg';
+import poster009787 from '@/posters/LK_009787_world_WW_poster.jpg';
+import poster010611 from '@/posters/LK_010611_eng_WW_poster.jpg';
+import poster011779 from '@/posters/LK_011779_ww_WW_poster.jpg';
+import poster012046 from '@/posters/LK_012046_eng_WW_poster.jpg';
 
 export const dynamic = 'force-dynamic';
+
+const VISITOR_HERO_POSTERS = [
+  { src: poster005093, title: 'Featured title 1' },
+  { src: poster005974, title: 'Featured title 2' },
+  { src: poster006130, title: 'Featured title 3' },
+  { src: poster006237, title: 'Featured title 4' },
+  { src: poster009016, title: 'Featured title 5' },
+  { src: poster009476, title: 'Featured title 6' },
+  { src: poster009787, title: 'Featured title 7' },
+  { src: poster010611, title: 'Featured title 8' },
+  { src: poster011779, title: 'Featured title 9' },
+  { src: poster012046, title: 'Featured title 10' }
+] as const;
 
 type HomeVideo = {
   id: string;
@@ -80,6 +103,8 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
 
 function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
   const guestHeroVideos = videos.slice(0, 5);
+  const leftPosterWall = VISITOR_HERO_POSTERS.slice(0, 5);
+  const rightPosterWall = VISITOR_HERO_POSTERS.slice(5);
   const featuredRows = guestHeroVideos.length
     ? [
         {
@@ -95,47 +120,40 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
     <div className="nmhp-landing">
       <section className="nmhp-hero">
         <div className="nmhp-hero-bg" aria-hidden="true">
-          {guestHeroVideos.map((video, index) => {
-            const posterUrl = getMoviePosterUrl(video);
-            if (!posterUrl) return null;
-
-            const positions = [
-              { left: '9%', top: '15%', scale: 1.02, rot: -5 },
-              { left: '31%', top: '10%', scale: 0.96, rot: 4 },
-              { left: '56%', top: '16%', scale: 1.04, rot: -3 },
-              { left: '72%', top: '11%', scale: 0.92, rot: 6 },
-              { left: '84%', top: '18%', scale: 0.86, rot: -4 }
-            ];
-            const pos = positions[index % positions.length];
-
-            return (
-              <Image
-                key={video.id}
-                className="nmhp-hero-poster"
-                src={posterUrl}
-                alt=""
-                width={320}
-                height={480}
-                sizes="(max-width: 768px) 34vw, 260px"
-                unoptimized
-                loading={index === 0 ? 'eager' : 'lazy'}
-                style={{
-                  left: pos.left,
-                  top: pos.top,
-                  transform: `scale(${pos.scale}) rotate(${pos.rot}deg)`
-                }}
-              />
-            );
-          })}
+          <div className="nmhp-poster-wall nmhp-poster-wall-left">
+            {leftPosterWall.map((poster, index) => (
+              <div key={poster.title} className={`nmhp-poster-slot nmhp-poster-slot-${index + 1}`}>
+                <Image
+                  className="nmhp-hero-poster"
+                  src={poster.src}
+                  alt=""
+                  sizes="(max-width: 768px) 28vw, 240px"
+                  priority={index < 2}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="nmhp-poster-wall nmhp-poster-wall-right">
+            {rightPosterWall.map((poster, index) => (
+              <div key={poster.title} className={`nmhp-poster-slot nmhp-poster-slot-${index + 6}`}>
+                <Image
+                  className="nmhp-hero-poster"
+                  src={poster.src}
+                  alt=""
+                  sizes="(max-width: 768px) 28vw, 240px"
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="nmhp-hero-overlay-strong" />
 
         <div className="nmhp-hero-content">
+          <span className="nmhp-hero-kicker">ACE Studio</span>
           <h1 className="nmhp-hero-title">
-            Watch Premium Movies.
-            <br />
-            Pay only for what you watch.
+            <span>Watch Premium Movies.</span>
+            <span>Pay only for what you watch.</span>
           </h1>
           <p className="nmhp-hero-subtitle">
             From just <strong>₦50 per movie</strong>. No subscriptions, no commitments, and no ads.
