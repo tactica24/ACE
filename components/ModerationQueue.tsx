@@ -255,7 +255,13 @@ const prepareAssetUpload = async (
   return payload.key as string;
 };
 
-export default function ModerationQueue({ initial }: { initial: Item[] }) {
+export default function ModerationQueue({
+  initial,
+  mode = 'edit'
+}: {
+  initial: Item[];
+  mode?: 'edit' | 'review';
+}) {
   const [items, setItems] = useState(initial);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -264,6 +270,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, VideoDraft>>({});
   const [editAssets, setEditAssets] = useState<Record<string, { trailer: File | null; poster: File | null }>>({});
+  const showWorkflowActions = mode === 'review';
 
   const openAssetLink = (href: string) => {
     if (typeof window === 'undefined') return;
@@ -686,24 +693,26 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                 </strong>
               </div>
 
-              <label className="field">
-                <span className="field-label">Admin note</span>
-                <input
-                  className="input"
-                  disabled={isBusy}
-                  value={reasons[item.video.id] ?? ''}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setReasons((prev) => ({ ...prev, [item.video.id]: value }));
-                    setErrors((prev) => {
-                      if (!prev[item.video.id]) return prev;
-                      const next = { ...prev };
-                      delete next[item.video.id];
-                      return next;
-                    });
-                  }}
-                />
-              </label>
+              {showWorkflowActions ? (
+                <label className="field">
+                  <span className="field-label">Admin note</span>
+                  <input
+                    className="input"
+                    disabled={isBusy}
+                    value={reasons[item.video.id] ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setReasons((prev) => ({ ...prev, [item.video.id]: value }));
+                      setErrors((prev) => {
+                        if (!prev[item.video.id]) return prev;
+                        const next = { ...prev };
+                        delete next[item.video.id];
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+              ) : null}
               {errors[item.video.id] && editingId !== item.video.id ? <p className="muted form-message">{errors[item.video.id]}</p> : null}
               {successes[item.video.id] ? <p className="muted form-message" style={{ color: '#22c55e' }}>{successes[item.video.id]}</p> : null}
 
@@ -917,7 +926,7 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     }
                   }}
                 >
-                  {editingId === item.video.id ? 'Close editor' : 'Edit details'}
+                  {editingId === item.video.id ? 'Close editor' : 'Edit title'}
                 </button>
                 {item.video.posterDownloadHref ? (
                   <button
@@ -937,24 +946,26 @@ export default function ModerationQueue({ initial }: { initial: Item[] }) {
                     Download trailer
                   </button>
                 ) : null}
-                {item.status === 'PENDING' ? (
+                {showWorkflowActions && item.status === 'PENDING' ? (
                   <button className="btn btn-primary" type="button" disabled={isBusy} onClick={() => handleAction(item, 'approve')}>
                     {isBusy ? 'Working...' : 'Approve title'}
                   </button>
                 ) : null}
-                {item.hasModerationRecord ? (
+                {showWorkflowActions && item.hasModerationRecord ? (
                   <button className="btn btn-ghost" type="button" disabled={isBusy} onClick={() => handleAction(item, 'reject')}>
                     {isBusy ? 'Working...' : 'Reject title'}
                   </button>
                 ) : null}
-                <button
-                  className="btn btn-ghost"
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => handleAction(item, item.video.status === 'DRAFT' ? 'activate' : 'deactivate')}
-                >
-                  {isBusy ? 'Working...' : item.video.status === 'DRAFT' ? 'Activate for users' : 'Deactivate for viewers'}
-                </button>
+                {showWorkflowActions ? (
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => handleAction(item, item.video.status === 'DRAFT' ? 'activate' : 'deactivate')}
+                  >
+                    {isBusy ? 'Working...' : item.video.status === 'DRAFT' ? 'Activate for users' : 'Deactivate for viewers'}
+                  </button>
+                ) : null}
               </div>
 
               {item.notes ? <p className="muted form-message">{item.notes}</p> : null}

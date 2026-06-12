@@ -110,13 +110,13 @@ export default function AdminPremiumWorkspacePanel({
       description: 'Advanced content management, moderation workflows, quality control, and catalog optimization.',
       icon: <Film className="w-6 h-6" />,
       primaryAction: {
-        label: 'Moderation Queue',
+        label: 'Edit Titles',
         href: '/admin/moderation',
         variant: 'primary'
       },
       secondaryAction: {
-        label: 'Content Settings',
-        href: '/admin/settings',
+        label: 'Publish Queue',
+        href: '/admin/publish',
         variant: 'ghost'
       },
       kpis: [

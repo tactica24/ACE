@@ -34,15 +34,15 @@ export default function AdminWorkspacePanel({
       <div className="card workspace-card">
         <div className="stack-list" style={{ gap: 8 }}>
           <span className="badge">Catalog</span>
-          <h3>Titles and moderation</h3>
-          <p className="muted">Review uploads, correct metadata, manage visibility, and keep the public catalog in order.</p>
+          <h3>Titles and publishing</h3>
+          <p className="muted">Create titles, edit metadata, move ready titles into publication, and keep the live catalog clean.</p>
         </div>
         <div className="workspace-links">
-          <Link className="btn btn-primary" href="/admin/moderation">Moderation queue</Link>
-          <Link className="btn btn-ghost" href="/admin/settings">Pricing controls</Link>
+          <Link className="btn btn-primary" href="/admin/moderation">Edit titles</Link>
+          <Link className="btn btn-ghost" href="/admin/publish">Publish queue</Link>
         </div>
         <div className="workspace-kpis">
-          <span className="muted">Titles waiting now</span>
+          <span className="muted">Titles needing admin work</span>
           <strong>{pendingModeration}</strong>
         </div>
       </div>

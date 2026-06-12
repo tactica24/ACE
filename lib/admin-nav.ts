@@ -1,6 +1,7 @@
 export type AdminNavCounts = {
   creatorRequests?: number;
   pendingModeration?: number;
+  pendingPublish?: number;
   openSupport?: number;
   pendingPayouts?: number;
 };
@@ -21,8 +22,13 @@ export function getAdminNavItems(counts: AdminNavCounts = {}) {
     },
     {
       href: '/admin/moderation',
-      label: 'Moderation',
+      label: 'Edit titles',
       count: typeof counts.pendingModeration === 'number' ? `${counts.pendingModeration}` : undefined
+    },
+    {
+      href: '/admin/publish',
+      label: 'Publish',
+      count: typeof counts.pendingPublish === 'number' ? `${counts.pendingPublish}` : undefined
     },
     {
       href: '/admin/payments',
@@ -30,8 +36,8 @@ export function getAdminNavItems(counts: AdminNavCounts = {}) {
       count: typeof counts.pendingPayouts === 'number' ? `${counts.pendingPayouts}` : undefined
     },
     { href: '/admin/upload', label: 'Create titles' },
-    { href: '/admin/videos', label: 'Delivery' },
-    { href: '/admin/live', label: 'Live movies' },
+    { href: '/admin/videos', label: 'Pipeline' },
+    { href: '/admin/live', label: 'Live' },
     { href: '/admin/delivery-health', label: 'Delivery Health' },
     { href: '/admin/finance', label: 'Finance' },
     { href: '/admin/reports', label: 'Reports' },

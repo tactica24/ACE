@@ -167,7 +167,7 @@ export default async function AdminPage() {
       }
       actions={
         <>
-          <Link className="btn btn-primary" href="/admin/moderation">Review titles</Link>
+          <Link className="btn btn-primary" href="/admin/moderation">Edit titles</Link>
           <Link className="btn btn-ghost" href="/admin/payments">Payouts</Link>
           <Link className="btn btn-ghost" href="/admin/finance">Finance</Link>
         </>
@@ -240,7 +240,7 @@ export default async function AdminPage() {
             <p className="muted">No uploads yet. Producers will appear here when they submit.</p>
           )}
           <div style={{ marginTop: 12 }}>
-            <Link className="btn btn-ghost" href="/admin/videos">View all titles</Link>
+            <Link className="btn btn-ghost" href="/admin/publish">Publish queue</Link>
           </div>
         </AdminDisclosureSection>
 
@@ -296,8 +296,8 @@ export default async function AdminPage() {
           <div className="action-list" style={{ flexWrap: 'wrap' }}>
             <Link className="btn btn-ghost" href="/admin/users">User accounts</Link>
             <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
-            <Link className="btn btn-ghost" href="/admin/moderation">Moderation queue</Link>
-            <Link className="btn btn-ghost" href="/admin/videos">Video delivery</Link>
+            <Link className="btn btn-ghost" href="/admin/moderation">Edit titles</Link>
+            <Link className="btn btn-ghost" href="/admin/publish">Publish queue</Link>
             <Link className="btn btn-ghost" href="/admin/payments">Payout operations</Link>
             <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
             <Link className="btn btn-ghost" href="/admin/reports">Producer reports</Link>

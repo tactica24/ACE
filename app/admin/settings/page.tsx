@@ -36,7 +36,7 @@ export default async function AdminSettingsPage() {
         <div className="action-list">
           <a className="btn btn-primary" href="#site-controls">Launch and contract controls</a>
           <a className="btn btn-ghost" href="#pricing-controls">Pricing controls</a>
-          <a className="btn btn-ghost" href="/admin/moderation">Moderation</a>
+          <a className="btn btn-ghost" href="/admin/moderation">Edit titles</a>
         </div>
       }
     >

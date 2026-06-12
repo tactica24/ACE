@@ -172,7 +172,7 @@ function getNextStep(video: ProcessingVideo, pipelineHealth: PipelineHealth) {
     return 'Refresh Bunny status and re-upload the movie if Bunny reports a permanent failure.';
   }
   if (stage === 'ready') {
-    return video.status === 'PUBLISHED' ? 'Movie is already live.' : 'Publish when release checks are complete.';
+    return video.status === 'PUBLISHED' ? 'Movie is already live.' : 'Open the publish queue when release checks are complete.';
   }
   return 'Wait for Bunny webhook updates or refresh Bunny status.';
 }
@@ -218,9 +218,9 @@ function getPipelineSteps(video: ProcessingVideo): Array<{ label: string; state:
           : 'Optional trailer not uploaded yet.'
     },
     {
-      label: 'Published',
+      label: 'Queued for publish',
       state: isPublished ? 'done' : isReady ? 'active' : 'pending',
-      note: isPublished ? 'Movie is live for viewers.' : 'Publish after moderation and release checks are complete.'
+      note: isPublished ? 'Movie is live for viewers.' : 'When this title is ready, move to the Publish queue and send it live there.'
     }
   ];
 }
@@ -404,27 +404,6 @@ export default function AdminVideoProcessingPanel({
     }
   }
 
-  async function publish(videoId: string) {
-    startOperation(videoId, 'Publishing title...');
-    try {
-      const response = await fetch('/api/admin/videos/processing-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId, action: 'PUBLISH' })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (payload.video) {
-        await refreshVideo(videoId, payload.video);
-      }
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to publish this title.');
-      finishOperation(videoId, payload.message ?? 'Title published.');
-    } catch (error) {
-      failOperation(videoId, error, 'Unable to publish this title.');
-    } finally {
-      setPendingId(null);
-    }
-  }
-
   return (
     <div className="stack-list">
       <div className={`card ${pipelineHealth.bunnyReady ? 'status-live' : 'status-warn'}`}>
@@ -436,12 +415,13 @@ export default function AdminVideoProcessingPanel({
               Posters and subtitle files live in Bunny Storage. Trailers and movies encode in Bunny Stream. Legacy delivery controls are retired.
             </p>
             <p className="muted" style={{ margin: '8px 0 0' }}>
-              Older titles do not need to be recreated from scratch. Keep the title record, then backfill poster and source assets into Bunny or re-upload only the missing assets.
+              Older titles do not need to be recreated from scratch. Keep the title record, then backfill poster and source assets into Bunny or re-upload only the missing assets. When playback is ready, publish from the dedicated publish queue.
             </p>
           </div>
           <div className="action-list" style={{ margin: 0 }}>
             <a className="btn btn-primary" href="/admin/upload">Open upload desk</a>
-            <a className="btn btn-ghost" href="/admin/moderation">Open moderation</a>
+            <a className="btn btn-ghost" href="/admin/moderation">Edit titles</a>
+            <a className="btn btn-ghost" href="/admin/publish">Publish queue</a>
           </div>
         </div>
 
@@ -487,7 +467,7 @@ export default function AdminVideoProcessingPanel({
           <div>
             <h3 style={{ margin: 0 }}>Pipeline monitor</h3>
             <p className="muted" style={{ margin: '6px 0 0' }}>
-              Review each title&apos;s Bunny Stream state, refresh status from Bunny, and publish once playback is ready.
+              Review each title&apos;s Bunny Stream state, refresh status from Bunny, and move ready titles into the publish queue when playback is complete.
             </p>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -509,7 +489,6 @@ export default function AdminVideoProcessingPanel({
       {visibleVideos.map((video) => {
         const busy = pendingId === video.id;
         const stage = getStreamStage(video);
-        const canPublish = stage === 'ready' && video.status !== 'PUBLISHED';
         const operationForVideo = operation?.videoId === video.id ? operation : null;
         const operationStyles = operationForVideo ? getOperationStyles(operationForVideo.tone) : null;
         const pipelineSteps = getPipelineSteps(video);
@@ -621,11 +600,7 @@ export default function AdminVideoProcessingPanel({
               <button className="btn btn-ghost" type="button" disabled={busy || !video.bunnyStreamVideoId} onClick={() => void syncStream(video.id)}>
                 {busy ? 'Refreshing...' : 'Refresh Bunny status'}
               </button>
-              {canPublish ? (
-                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void publish(video.id)}>
-                  {busy ? 'Publishing...' : 'Publish'}
-                </button>
-              ) : null}
+              {stage === 'ready' && video.status !== 'PUBLISHED' ? <a className="btn btn-primary" href="/admin/publish">Open publish queue</a> : null}
             </div>
           </div>
         );
