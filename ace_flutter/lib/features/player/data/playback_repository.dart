@@ -72,7 +72,8 @@ class PlaybackRepository {
     final previewUrl = nestedPreviewUrl is String && nestedPreviewUrl.isNotEmpty
         ? apiClient.resolve(nestedPreviewUrl).toString()
         : null;
-    final preferred = playback?['preferred'] is String ? playback?['preferred'] as String : null;
+    final preferredValue = playback?['preferred'];
+    final preferred = preferredValue is String ? preferredValue : null;
 
     if (playbackUrl == null && hlsUrl == null && progressiveUrl == null && previewUrl == null) {
       throw ApiException(

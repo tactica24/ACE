@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import HomeMovieHero from '@/components/HomeMovieHero';
@@ -78,9 +78,9 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   return rows.slice(0, 2);
 }
 
-function buildGuestRows(videos: HomeVideo[]) {
+function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
   const guestHeroVideos = videos.slice(0, 5);
-  return guestHeroVideos.length
+  const featuredRows = guestHeroVideos.length
     ? [
         {
           id: 'trending',
@@ -90,11 +90,6 @@ function buildGuestRows(videos: HomeVideo[]) {
         }
       ]
     : [];
-}
-
-function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
-  const guestHeroVideos = videos.slice(0, 5);
-  const featuredRows = buildGuestRows(videos);
 
   return (
     <div className="nmhp-landing">
@@ -231,6 +226,7 @@ export default async function HomePage() {
      videos = [];
    }
 
+   // Filter to only videos with posters for consistent display (like visitor homepage)
    const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
 
    let pricingConfig: any;
@@ -281,53 +277,57 @@ export default async function HomePage() {
      }
    }
 
+   // Use only videos with posters for consistent display
    const rows = buildRows(posterBackedVideos, unlockedVideos);
-  const spotlightVideos = posterBackedVideos.slice(0, 5).map((video) => ({
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    category: video.category,
-    durationSec: video.durationSec,
-    videoType: video.videoType,
-    posterKey: video.posterKey,
-    releaseYear: video.releaseYear
-  }));
+   const spotlightVideos = posterBackedVideos.slice(0, 5).map((video) => ({
+     id: video.id,
+     title: video.title,
+     description: video.description,
+     category: video.category,
+     durationSec: video.durationSec,
+     videoType: video.videoType,
+     posterKey: video.posterKey,
+     releaseYear: video.releaseYear,
+   }));
 
   return (
     <div className="viewer-home">
       <PublicPageAutoRedirect allowedPath="/browse" />
+
       <HomeMovieHero videos={spotlightVideos} />
 
       <section className="home-shelves" id="categories">
         <div className="container">
-          {rows.length ? rows.map((row) => (
-            <section key={row.id} id={row.id} className="home-shelf">
-              <div className="home-shelf-header">
-                <div>
-                  <span className="home-row-kicker">ACE selection</span>
-                  <h2>{row.title}</h2>
-                  <p className="muted" style={{ marginBottom: 0 }}>{row.description}</p>
-                </div>
-                <Link className="btn btn-ghost btn-compact" href="/browse">Browse more</Link>
-              </div>
-              <div className="home-carousel">
-                {row.items.map((video) => (
-                  <div key={`${row.id}-${video.id}`} className="home-carousel-item">
-                    <VideoCard
-                      video={{
-                        ...video,
-                        price: {
-                          currency: 'NGN',
-                          amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
-                          amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
-                        }
-                      }}
-                    />
+          {rows.length ? (
+            rows.map((row) => (
+              <section key={row.id} id={row.id} className="home-shelf">
+                <div className="home-shelf-header">
+                  <div>
+                    <span className="home-row-kicker">ACE selection</span>
+                    <h2>{row.title}</h2>
+                    <p className="muted" style={{ marginBottom: 0 }}>{row.description}</p>
                   </div>
-                ))}
-              </div>
-            </section>
-          )) : (
+                  <Link className="btn btn-ghost btn-compact" href="/browse">Browse more</Link>
+                </div>
+                <div className="home-carousel">
+                  {row.items.map((video) => (
+                    <div key={`${row.id}-${video.id}`} className="home-carousel-item">
+                      <VideoCard
+                        video={{
+                          ...video,
+                          price: {
+                            currency: 'NGN',
+                            amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
+                            amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))
+          ) : (
             <div className="home-empty">
               <h2>Fresh releases are loading in</h2>
               <p className="muted">New titles will appear here as soon as they are available.</p>
