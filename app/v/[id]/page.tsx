@@ -220,15 +220,6 @@ export default async function VideoPage({
           
           <div className="movie-split-top">
             <div className="movie-info-panel">
-              <div className="detail-poster card-soft">
-                <div
-                  className="detail-poster-image"
-                  style={posterUrl ? { backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                >
-                  <PosterAsset src={posterUrl} loading="eager" />
-                </div>
-              </div>
-
               <div className="detail-copy movie-info-copy">
                 <MovieAccessDetails
                   videoId={requestedVideo.id}
@@ -455,15 +446,6 @@ export default async function VideoPage({
         
         <div className="movie-split-top">
           <div className="movie-info-panel">
-            <div className="detail-poster card-soft">
-              <div
-                className="detail-poster-image"
-                style={seriesPosterUrl ? { backgroundImage: `url(${seriesPosterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-              >
-                <PosterAsset src={seriesPosterUrl} loading="eager" />
-              </div>
-            </div>
-
             <div className="detail-copy movie-info-copy">
               <MovieAccessDetails
                 videoId={selectedEpisode?.id ?? series.id}

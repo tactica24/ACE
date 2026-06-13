@@ -11661,6 +11661,7 @@ body::before {
 }
 
 .movie-info-copy {
+  grid-column: 1 / -1;
   align-content: center;
   min-width: 0;
 }
