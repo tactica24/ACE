@@ -140,6 +140,14 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
         <div className="nmhp-hero-overlay-strong" />
 
         <div className="nmhp-hero-content nmhp-hero-content-plain">
+          <span className="nmhp-hero-kicker">ACE Studio</span>
+          <h1 className="nmhp-hero-title">
+            <span>Watch Premium Movies.</span>
+            <span>Pay only for what you watch.</span>
+          </h1>
+          <p className="nmhp-hero-subtitle">
+            From just <strong>₦50 per movie</strong>. No subscriptions, no commitments, and no ads.
+          </p>
           <div className="nmhp-hero-cta">
             <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">
               Register now
@@ -148,6 +156,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
               Sign In
             </Link>
           </div>
+          <p className="nmhp-hero-disclaimer">Cancel anytime. Watch instantly on any device.</p>
         </div>
       </section>
 
