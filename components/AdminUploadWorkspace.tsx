@@ -27,6 +27,14 @@ type SubtitleDraft = {
   isDefault: boolean;
 };
 
+type UploadRetryState = {
+  videoId: string;
+  producerId: string;
+  title: string;
+  posterKey: string | null;
+  posterSignature: string | null;
+};
+
 function createSubtitleDraft() {
   return {
     id: crypto.randomUUID(),
@@ -84,6 +92,15 @@ async function prepareStreamUpload(
   return payload;
 }
 
+function normalizeTitleKey(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getFileSignature(file: File | null) {
+  if (!file) return null;
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
 export default function AdminUploadWorkspace({
   producers,
   initialProducerId
@@ -112,11 +129,17 @@ export default function AdminUploadWorkspace({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [createdVideoId, setCreatedVideoId] = useState<string | null>(null);
+  const [uploadRetryState, setUploadRetryState] = useState<UploadRetryState | null>(null);
 
   const selectedProducer = useMemo(
     () => producers.find((producer) => producer.id === selectedProducerId) ?? null,
     [producers, selectedProducerId]
   );
+  const currentTitleKey = normalizeTitleKey(title);
+  const canReuseCreatedVideo =
+    Boolean(uploadRetryState) &&
+    uploadRetryState?.producerId === selectedProducerId &&
+    uploadRetryState?.title === currentTitleKey;
 
   if (!producers.length) {
     return (
@@ -171,38 +194,68 @@ export default function AdminUploadWorkspace({
 
     setBusy(true);
     setError(null);
-    setStatus('Creating movie record...');
+    setStatus(canReuseCreatedVideo ? 'Retrying upload for the existing movie record...' : 'Creating movie record...');
 
     try {
-      const createResponse = await fetch('/api/admin/bunny-intake', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          producerId: selectedProducerId,
-          title: title.trim(),
-          description: synopsis.trim(),
-          releaseYear: releaseYear ? Number(releaseYear) : null,
-          category: category.trim() || 'General',
-          genres: normalizeSelectedGenres(genres),
-          tags: tags.split(',').map((value) => value.trim()).filter(Boolean)
-        })
-      });
+      let videoId = uploadRetryState?.videoId ?? '';
 
-      const createdPayload = await createResponse.json().catch(() => ({}));
-      if (!createResponse.ok || !createdPayload.video?.id) {
-        throw new Error(createdPayload.error ?? 'Unable to create the movie record.');
+      if (!canReuseCreatedVideo) {
+        const createResponse = await fetch('/api/admin/bunny-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            producerId: selectedProducerId,
+            existingVideoId: uploadRetryState?.producerId === selectedProducerId ? uploadRetryState?.videoId ?? null : null,
+            title: title.trim(),
+            description: synopsis.trim(),
+            releaseYear: releaseYear ? Number(releaseYear) : null,
+            category: category.trim() || 'General',
+            genres: normalizeSelectedGenres(genres),
+            tags: tags.split(',').map((value) => value.trim()).filter(Boolean)
+          })
+        });
+
+        const createdPayload = await createResponse.json().catch(() => ({}));
+        if (!createResponse.ok || !createdPayload.video?.id) {
+          throw new Error(createdPayload.error ?? 'Unable to create the movie record.');
+        }
+
+        videoId = createdPayload.video.id as string;
       }
 
-      const videoId = createdPayload.video.id as string;
       setCreatedVideoId(videoId);
+      setUploadRetryState((current) => ({
+        videoId,
+        producerId: selectedProducerId,
+        title: currentTitleKey,
+        posterKey: current?.videoId === videoId ? current.posterKey : null,
+        posterSignature: current?.videoId === videoId ? current.posterSignature : null
+      }));
 
-      let storedPosterKey: string | null = null;
+      let storedPosterKey: string | null =
+        canReuseCreatedVideo && uploadRetryState?.posterSignature === getFileSignature(posterFile)
+          ? uploadRetryState.posterKey
+          : null;
+
       if (posterFile) {
-        setStatus('Uploading poster to Bunny Storage...');
-        const upload = await prepareStorageUpload(posterFile, 'poster', videoId);
-        storedPosterKey = await uploadPreparedStorageAsset(upload, posterFile, (loaded, total) => {
-          setAssetProgress('poster', loaded, total);
-        });
+        if (storedPosterKey) {
+          setAssetProgress('poster', 100, 100);
+        } else {
+          setStatus('Uploading poster to Bunny Storage...');
+          const upload = await prepareStorageUpload(posterFile, 'poster', videoId);
+          storedPosterKey = await uploadPreparedStorageAsset(upload, posterFile, (loaded, total) => {
+            setAssetProgress('poster', loaded, total);
+          });
+          setUploadRetryState((current) =>
+            current && current.videoId === videoId
+              ? {
+                  ...current,
+                  posterKey: storedPosterKey,
+                  posterSignature: getFileSignature(posterFile)
+                }
+              : current
+          );
+        }
       }
 
       const uploadedSubtitleTracks: Array<{
@@ -260,6 +313,8 @@ export default function AdminUploadWorkspace({
 
       setStatus('Upload complete. Bunny Stream is now processing the movie and trailer.');
       resetForm();
+      setUploadRetryState(null);
+      setCreatedVideoId(videoId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Upload failed.');
       setStatus(null);
@@ -303,6 +358,11 @@ export default function AdminUploadWorkspace({
           <div className="detail-card">
             <span className="detail-label">Latest created title</span>
             <strong>{createdVideoId ?? 'Nothing created yet'}</strong>
+            <span className="muted">
+              {canReuseCreatedVideo
+                ? 'Retry will continue using this draft title instead of creating a duplicate.'
+                : 'A failed upload can retry against the same draft title.'}
+            </span>
           </div>
         </div>
       </div>

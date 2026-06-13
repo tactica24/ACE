@@ -1,5 +1,6 @@
 ﻿import Link from 'next/link';
 import Image from 'next/image';
+import { headers } from 'next/headers';
 import PublicPageAutoRedirect from '@/components/PublicPageAutoRedirect';
 import HomeMovieHero from '@/components/HomeMovieHero';
 import VideoCard from '@/components/VideoCard';
@@ -10,7 +11,8 @@ import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { type PriceTierValue } from '@/lib/media-types';
 import { getMoviePosterUrl } from '@/lib/movie-assets';
-import { getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
+import { getRegionalMoneyDisplay } from '@/lib/pricing';
+import { getRegionalPriceForVideo, getUnlockAmountNairaForVideo } from '@/lib/video-pricing';
 import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
 
 export const dynamic = 'force-dynamic';
@@ -91,10 +93,28 @@ function buildRows(videos: HomeVideo[], unlockedVideos: HomeVideo[] = []) {
   return rows.slice(0, 2);
 }
 
-function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[]; pricingConfig: any }) {
+function GuestProfessionalHome({
+  videos,
+  pricingConfig,
+  requestHeaders
+}: {
+  videos: HomeVideo[];
+  pricingConfig: any;
+  requestHeaders: Headers;
+}) {
   const guestHeroVideos = videos.slice(0, 5);
   const leftPosterWall = VISITOR_HERO_POSTERS.slice(0, 5);
   const rightPosterWall = VISITOR_HERO_POSTERS.slice(5);
+  const heroPriceLabel = getRegionalMoneyDisplay(
+    requestHeaders,
+    getUnlockAmountNairaForVideo(
+      {
+        priceTier: 'STANDARD',
+        videoType: 'FEATURE'
+      },
+      pricingConfig
+    )
+  ).label;
   const featuredRows = guestHeroVideos.length
     ? [
         {
@@ -146,7 +166,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
             <span>Pay only for what you watch.</span>
           </h1>
           <p className="nmhp-hero-subtitle">
-            From just <strong>₦50 per movie</strong>. No subscriptions, no commitments, and no ads.
+            From just <strong>{heroPriceLabel} per movie</strong>. No subscriptions, no commitments, and no ads.
           </p>
           <div className="nmhp-hero-cta">
             <Link href="/auth/register" className="nmhp-cta-btn nmhp-cta-primary">
@@ -164,7 +184,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
         <div className="nmhp-features-grid">
           <div className="nmhp-feature-card">
             <h3>Pay as you go</h3>
-            <p>Only pay for the movies you want to watch. Starting at just ₦50.</p>
+            <p>Only pay for the movies you want to watch. Starting at just {heroPriceLabel}.</p>
           </div>
           <div className="nmhp-feature-card">
             <h3>Watch anywhere</h3>
@@ -195,11 +215,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
                       <VideoCard
                         video={{
                           ...video,
-                          price: {
-                            currency: 'NGN',
-                            amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
-                            amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
-                          }
+                          price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig)
                         }}
                       />
                     </div>
@@ -225,6 +241,7 @@ function GuestProfessionalHome({ videos, pricingConfig }: { videos: HomeVideo[];
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  const requestHeaders = headers();
 
    let videos: HomeVideo[] = [];
    try {
@@ -249,7 +266,7 @@ export default async function HomePage() {
    }
 
    if (!user) {
-     return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} />;
+     return <GuestProfessionalHome videos={posterBackedVideos} pricingConfig={pricingConfig} requestHeaders={requestHeaders} />;
    }
 
    let unlockedVideos: HomeVideo[] = [];
@@ -323,11 +340,7 @@ export default async function HomePage() {
                       <VideoCard
                         video={{
                           ...video,
-                          price: {
-                            currency: 'NGN',
-                            amountNaira: getUnlockAmountNairaForVideo(video, pricingConfig),
-                            amountMinor: getUnlockAmountNairaForVideo(video, pricingConfig) * 100
-                          }
+                          price: getRegionalPriceForVideo(requestHeaders, video, pricingConfig)
                         }}
                       />
                     </div>

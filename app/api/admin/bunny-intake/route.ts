@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const producerId = typeof body.producerId === 'string' ? body.producerId.trim() : '';
+  const existingVideoId = typeof body.existingVideoId === 'string' ? body.existingVideoId.trim() : '';
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const description = typeof body.description === 'string' ? body.description.trim() : '';
   const category = typeof body.category === 'string' && body.category.trim() ? body.category.trim() : 'General';
@@ -38,37 +39,82 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Selected producer account was not found.' }, { status: 404 });
   }
 
-  const video = await prisma.video.create({
-    data: {
-      creatorId: producer.id,
-      title,
-      description,
-      category,
-      releaseYear: Number.isFinite(releaseYear) && releaseYear > 1800 ? Math.trunc(releaseYear) : null,
-      videoType: 'FEATURE',
-      priceTier: 'STANDARD',
-      rightsTier: 'SHARED',
-      durationSec: 0,
-      teaserSec,
-      status: 'DRAFT',
-      genres,
-      tags,
-      technicalMetadata: {
-        create: {
-          processingStatus: 'NO_MASTER'
+  const safeReleaseYear = Number.isFinite(releaseYear) && releaseYear > 1800 ? Math.trunc(releaseYear) : null;
+
+  const existingVideo =
+    (existingVideoId
+      ? await prisma.video.findFirst({
+          where: {
+            id: existingVideoId,
+            creatorId: producer.id,
+            status: { in: ['DRAFT', 'PROCESSING', 'READY'] }
+          },
+          select: { id: true }
+        })
+      : null) ??
+    (await prisma.video.findFirst({
+      where: {
+        creatorId: producer.id,
+        title,
+        status: { in: ['DRAFT', 'PROCESSING', 'READY'] },
+        videoType: 'FEATURE',
+        seriesId: null
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true }
+    }));
+
+  const video = existingVideo
+    ? await prisma.video.update({
+        where: { id: existingVideo.id },
+        data: {
+          title,
+          description,
+          category,
+          releaseYear: safeReleaseYear,
+          teaserSec,
+          genres,
+          tags
+        },
+        select: {
+          id: true,
+          title: true,
+          creatorId: true,
+          status: true
         }
-      }
-    },
-    select: {
-      id: true,
-      title: true,
-      creatorId: true,
-      status: true
-    }
-  });
+      })
+    : await prisma.video.create({
+        data: {
+          creatorId: producer.id,
+          title,
+          description,
+          category,
+          releaseYear: safeReleaseYear,
+          videoType: 'FEATURE',
+          priceTier: 'STANDARD',
+          rightsTier: 'SHARED',
+          durationSec: 0,
+          teaserSec,
+          status: 'DRAFT',
+          genres,
+          tags,
+          technicalMetadata: {
+            create: {
+              processingStatus: 'NO_MASTER'
+            }
+          }
+        },
+        select: {
+          id: true,
+          title: true,
+          creatorId: true,
+          status: true
+        }
+      });
 
   return NextResponse.json({
     ok: true,
+    reusedExisting: Boolean(existingVideo),
     video
   });
 }
