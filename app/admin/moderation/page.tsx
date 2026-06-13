@@ -1,6 +1,7 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import ModerationQueue, { type ModerationQueueItem } from '@/components/ModerationQueue';
 import { getAdminNavItems } from '@/lib/admin-nav';
+import { getAdminPosterAssetHref, getAdminTrailerAssetHref } from '@/lib/admin-video-assets';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import {
@@ -156,8 +157,8 @@ export default async function ModerationPage() {
           bunnyStreamReadyAt: video.technicalMetadata?.bunnyStreamReadyAt?.toISOString() ?? null,
           bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
           hlsManifestReady: Boolean(video.technicalMetadata?.hlsManifestKey && video.technicalMetadata?.hlsReadyAt),
-          trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
-          posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null,
+          trailerDownloadHref: getAdminTrailerAssetHref(video),
+          posterDownloadHref: getAdminPosterAssetHref(video),
           createdAt: video.createdAt.toISOString(),
           creatorName: video.creator.creator?.displayName ?? video.creator.email,
           subtitleTrackCount: video._count.subtitleTracks,

@@ -42,7 +42,6 @@ export function getAdminNavItems(counts: AdminNavCounts = {}) {
       count: typeof counts.pendingPayouts === 'number' ? `${counts.pendingPayouts}` : undefined
     },
     { href: '/admin/upload', label: 'Create titles' },
-    { href: '/admin/videos', label: 'Pipeline' },
     { href: '/admin/live', label: 'Live' },
     { href: '/admin/delivery-health', label: 'Delivery Health' },
     { href: '/admin/finance', label: 'Finance' },

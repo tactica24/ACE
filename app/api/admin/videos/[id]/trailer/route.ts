@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getBunnyTrailerPlaybackUrl } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { normalizeMediaKey } from '@/lib/media';
@@ -16,11 +17,18 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       id: true,
       technicalMetadata: {
         select: {
-          trailerKey: true
+          trailerKey: true,
+          trailerStreamVideoId: true,
+          trailerStreamReadyAt: true
         }
       }
     }
   });
+
+  const trailerPlaybackUrl = getBunnyTrailerPlaybackUrl(video);
+  if (trailerPlaybackUrl) {
+    return NextResponse.redirect(trailerPlaybackUrl);
+  }
 
   const trailerKey = normalizeMediaKey(video?.technicalMetadata?.trailerKey) ?? '';
   if (!trailerKey) {

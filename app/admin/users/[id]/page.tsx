@@ -11,6 +11,7 @@ import ApproveCreatorButton from '@/components/ApproveCreatorButton';
 import PromoteAdminButton from '@/components/PromoteAdminButton';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import { getAdminNavItems } from '@/lib/admin-nav';
+import { getAdminPosterAssetHref, getAdminTrailerAssetHref } from '@/lib/admin-video-assets';
 import { requireAdminUser } from '@/lib/auth-page';
 import { formatContractDate } from '@/lib/contracts';
 import { formatCredits, getCreditsForNaira, storedUnitsToCredits } from '@/lib/credits';
@@ -345,10 +346,8 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     seriesTitle: video.series?.title ?? null,
                     seasonNumber: video.seasonNumber,
                     episodeNumber: video.episodeNumber,
-                    trailerDownloadHref: video.technicalMetadata?.trailerKey
-                      ? `/api/admin/videos/${video.id}/trailer`
-                      : null,
-                    posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null
+                    trailerDownloadHref: getAdminTrailerAssetHref(video),
+                    posterDownloadHref: getAdminPosterAssetHref(video)
                   }))}
                 />
               </div>

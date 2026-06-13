@@ -19,6 +19,7 @@ type PublishItem = {
   bunnyStreamError: string | null;
   playbackUrl: string | null;
   posterKey: string | null;
+  posterAssetHref: string | null;
   playbackReady: boolean;
 };
 
@@ -73,9 +74,9 @@ export default function PublishQueuePanel({ initial }: { initial: PublishItem[] 
   }
 
   return (
-    <div className="stack-list">
+      <div className="stack-list">
       {items.map((item) => {
-        const posterUrl = getMoviePosterUrl({ id: item.id, posterKey: item.posterKey });
+        const posterUrl = item.posterAssetHref ?? getMoviePosterUrl({ id: item.id, posterKey: item.posterKey });
         const busy = pendingId === item.id;
         const issueLabel = getIssueLabel(item);
 

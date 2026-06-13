@@ -768,7 +768,7 @@ export default function ModerationQueue({
   return (
     <div className="moderation-grid">
       {items.map((item) => {
-        const posterUrl = getMoviePosterUrl(item.video);
+        const posterUrl = item.video.posterDownloadHref ?? getMoviePosterUrl(item.video);
         const activityState = activityStates[item.video.id];
         const isBusy = activityState?.active ?? false;
 

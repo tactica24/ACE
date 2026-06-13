@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { getAdminPosterAssetHref, getAdminTrailerAssetHref } from '@/lib/admin-video-assets';
 import { getMovieUploadFolderPrefixFromKey } from '@/lib/upload-security';
 
 function serializeFileSize(value: bigint | number | null | undefined) {
@@ -109,7 +110,7 @@ export async function getProcessingVideo(videoId: string) {
     trailerStreamError: video.technicalMetadata?.trailerStreamError ?? null,
     bunnyFolderPrefix,
     qualities: video.qualities,
-    trailerDownloadHref: video.technicalMetadata?.trailerKey ? `/api/admin/videos/${video.id}/trailer` : null,
-    posterDownloadHref: video.posterKey || video.series?.posterKey ? `/api/admin/videos/${video.id}/poster` : null
+    trailerDownloadHref: getAdminTrailerAssetHref(video),
+    posterDownloadHref: getAdminPosterAssetHref(video)
   };
 }

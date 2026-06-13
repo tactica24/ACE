@@ -31,13 +31,19 @@ export async function POST(req: NextRequest) {
 
   await prisma.video.update({
     where: { id: videoId },
-    data: { status: nextStatus }
+    data: {
+      status: nextStatus,
+      isPublished: false
+    }
   });
 
   if (video.videoType === 'SERIES' && !video.seriesId) {
     await prisma.video.updateMany({
       where: { seriesId: videoId },
-      data: { status: nextStatus }
+      data: {
+        status: nextStatus,
+        isPublished: false
+      }
     });
   }
 

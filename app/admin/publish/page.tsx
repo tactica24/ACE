@@ -1,6 +1,7 @@
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import PublishQueuePanel from '@/components/PublishQueuePanel';
 import { getAdminNavItems } from '@/lib/admin-nav';
+import { getAdminPosterAssetHref } from '@/lib/admin-video-assets';
 import { requireAdminUser } from '@/lib/auth-page';
 import { prisma } from '@/lib/db';
 import { hasReadyMoviePlayback } from '@/lib/movie-assets';
@@ -13,7 +14,7 @@ export default async function AdminPublishPage() {
   const videos = await prisma.video.findMany({
     where: {
       seriesId: null,
-      status: { not: 'PUBLISHED' }
+      status: { notIn: ['PUBLISHED', 'ARCHIVED'] }
     },
     orderBy: { updatedAt: 'desc' },
     select: {
@@ -65,6 +66,7 @@ export default async function AdminPublishPage() {
     bunnyStreamError: video.technicalMetadata?.bunnyStreamError ?? null,
     playbackUrl: video.technicalMetadata?.playbackUrl ?? null,
     posterKey: video.posterKey ?? null,
+    posterAssetHref: getAdminPosterAssetHref(video),
     playbackReady: hasReadyMoviePlayback(video)
   }));
 
@@ -80,7 +82,7 @@ export default async function AdminPublishPage() {
         <div className="action-list">
           <a className="btn btn-primary" href="/admin/moderation">Edit titles</a>
           <a className="btn btn-ghost" href="/admin/live">Live titles</a>
-          <a className="btn btn-ghost" href="/admin/videos">Pipeline monitor</a>
+          <a className="btn btn-ghost" href="/admin/delivery-health">Delivery health</a>
         </div>
       }
     >

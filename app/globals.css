@@ -1081,6 +1081,38 @@ button {
   border: 1px solid rgba(88, 217, 255, 0.12);
 }
 
+.dashboard-main .card,
+.dashboard-main .detail-card,
+.dashboard-main .metric-card,
+.dashboard-main .workspace-card,
+.dashboard-main .moderation-content,
+.dashboard-main .moderation-header,
+.dashboard-main .stack-row > *,
+.dashboard-main .workspace-links,
+.dashboard-main .dashboard-links,
+.dashboard-main .action-list {
+  min-width: 0;
+}
+
+.dashboard-main .card p,
+.dashboard-main .card strong,
+.dashboard-main .card span,
+.dashboard-main .detail-card p,
+.dashboard-main .detail-card strong,
+.dashboard-main .detail-card span,
+.dashboard-main .metric-card p,
+.dashboard-main .metric-card strong,
+.dashboard-main .metric-card span,
+.dashboard-main .workspace-card p,
+.dashboard-main .workspace-card strong,
+.dashboard-main .workspace-card span,
+.dashboard-main .moderation-content p,
+.dashboard-main .moderation-content strong,
+.dashboard-main .moderation-content span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .admin-producer-list {
   display: grid;
   overflow: hidden;
@@ -11511,7 +11543,7 @@ body::before {
    border: 1px solid rgba(255, 255, 255, 0.1);
    transform-origin: center;
    background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(10, 10, 10, 0.3));
-   filter: brightness(1.06) saturate(1.03);
+   filter: brightness(1.2) saturate(1.08);
 }
 
 .nmhp-poster-slot-1,
@@ -11554,18 +11586,17 @@ body::before {
    inset: 0;
    z-index: 2;
    background: 
-     radial-gradient(circle at center, rgba(4, 7, 13, 0.05) 0%, rgba(4, 7, 13, 0.1) 15%, rgba(4, 7, 13, 0.4) 30%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.8) 100%),
-     linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 25%, rgba(0, 0, 0, 0.05) 40%, rgba(0, 0, 0, 0.05) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.6) 100%),
+     radial-gradient(circle at center, rgba(4, 7, 13, 0.01) 0%, rgba(4, 7, 13, 0.05) 18%, rgba(4, 7, 13, 0.2) 36%, rgba(0, 0, 0, 0.42) 62%, rgba(0, 0, 0, 0.62) 100%),
+     linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.1) 24%, rgba(0, 0, 0, 0.02) 42%, rgba(0, 0, 0, 0.02) 58%, rgba(0, 0, 0, 0.1) 76%, rgba(0, 0, 0, 0.32) 100%),
      linear-gradient(180deg, 
-       rgba(0,0,0,0.5) 0%, 
-       rgba(0,0,0,0.4) 15%, 
-       rgba(3,4,10,0.3) 35%, 
-       rgba(3,4,10,0.4) 65%, 
-       rgba(0,0,0,0.5) 100%);
-   /* Extra side vignette for depth */
+       rgba(0,0,0,0.28) 0%, 
+       rgba(0,0,0,0.18) 18%, 
+       rgba(3,4,10,0.1) 40%, 
+       rgba(3,4,10,0.18) 68%, 
+       rgba(0,0,0,0.32) 100%);
    box-shadow: 
-     inset 0 0 120px rgba(0,0,0,0.6),
-     inset 0 0 80px rgba(0,0,0,0.4);
+     inset 0 0 72px rgba(0,0,0,0.34),
+     inset 0 0 42px rgba(0,0,0,0.18);
 }
 
 /* Make the whole hero feel like one cohesive cinematic frame */
@@ -11582,6 +11613,19 @@ body::before {
    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.nmhp-hero-content-plain {
+   max-width: none;
+   padding: 0;
+   background: transparent;
+   box-shadow: none;
+   backdrop-filter: none;
+   border: 0;
+}
+
+.nmhp-hero-content-plain .nmhp-hero-cta {
+   justify-content: center;
+}
+
 .nmhp-hero-bg:hover .nmhp-poster-slot {
    transition: transform 300ms ease, box-shadow 300ms ease, filter 300ms ease;
    transform: translateY(-12px) scale(1.05);
@@ -11589,7 +11633,7 @@ body::before {
      0 32px 80px rgba(0, 0, 0, 0.5),
      0 0 0 4px rgba(255, 255, 255, 0.1),
      inset 0 0 0 2px rgba(255, 255, 255, 0.15);
-   filter: brightness(1.15) saturate(1.12);
+   filter: brightness(1.26) saturate(1.14);
 }
 
 /* Restructured Movie Details/Player Page */
