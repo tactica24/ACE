@@ -33,6 +33,7 @@ import {
 } from '../lib/movie-assets';
 import { getSignedStoredMediaUrl } from '../lib/media-delivery';
 import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
+import { isHlsSource } from '../lib/playback-source';
 import { type PricingConfigValues } from '../lib/pricing';
 import {
   canAccessVideo,
@@ -366,7 +367,7 @@ const videoCases: Case[] = [
           { posterKey: null },
           { posterKey: 'uploads/admin/poster/series.webp' },
         ),
-        '/api/media/uploads/admin/poster/series.webp',
+        '/api/movies/episode-1/poster',
       );
       assert.equal(
         getMediaAssetUrl(' subtitles\\movie one.vtt '),
@@ -391,6 +392,9 @@ const videoCases: Case[] = [
         }),
         'uploads/admin/video/movie.mp4',
       );
+      assert.equal(isHlsSource('https://stream.example.com/video/playlist.m3u8'), true);
+      assert.equal(isHlsSource('https://stream.example.com/video/playlist.m3u8?token=abc'), true);
+      assert.equal(isHlsSource('/api/movies/movie-1/stream?token=abc'), false);
     },
   },
   {

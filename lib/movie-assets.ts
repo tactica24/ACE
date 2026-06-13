@@ -78,10 +78,12 @@ export function getViewerMoviePosterUrl(video: Pick<MovieAssetVideo, 'id'>) {
 }
 
 export function getMoviePosterUrlFromCandidates(
-  _video: Pick<MovieAssetVideo, 'id'>,
+  video: Pick<MovieAssetVideo, 'id'>,
   ...posterCandidates: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>
 ) {
-  return getMediaAssetUrl(resolveMoviePosterKeyFromCandidates(...posterCandidates));
+  return resolveMoviePosterKeyFromCandidates(...posterCandidates)
+    ? getViewerMoviePosterUrl(video)
+    : null;
 }
 
 export function hasMoviePoster(video: Pick<MovieAssetVideo, 'posterKey'>) {

@@ -12048,6 +12048,118 @@ body::before {
   overflow-wrap: anywhere;
 }
 
+/* Keep movie-card details compact and horizontal beneath each poster. */
+.video-card > .video-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  padding: 10px 2px 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.video-card-heading {
+  min-width: 0;
+}
+
+.video-card > .video-meta .video-card-title {
+  display: block;
+  overflow: hidden;
+  color: #f7f8fb;
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  color: rgba(237, 240, 247, 0.68);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.video-card-facts {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.video-card-facts span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.video-card-facts span + span::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  margin: 0 7px;
+  border-radius: 50%;
+  background: rgba(237, 240, 247, 0.38);
+}
+
+.video-card > .video-meta .video-card-price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  max-width: none;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  border: 1px solid rgba(242, 191, 110, 0.26);
+  border-radius: 999px;
+  background: rgba(242, 191, 110, 0.09);
+  color: #f7d79a;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.viewer-home .home-carousel-item .video-card > .video-meta {
+  padding: 8px 1px 3px;
+}
+
+.viewer-home .home-carousel-item .video-card > .video-meta .video-card-title {
+  font-size: 0.86rem;
+}
+
+@media (max-width: 640px) {
+  .video-card > .video-meta {
+    gap: 6px;
+    padding-top: 8px;
+  }
+
+  .video-card > .video-meta .video-card-title {
+    font-size: 0.84rem;
+  }
+
+  .video-card-footer {
+    gap: 7px;
+    font-size: 0.66rem;
+  }
+
+  .video-card-facts span + span::before {
+    margin: 0 5px;
+  }
+
+  .video-card > .video-meta .video-card-price {
+    min-height: 20px;
+    padding: 0 6px;
+    font-size: 0.62rem;
+  }
+}
+
 .home-movie-hero {
   min-height: min(76vh, 760px);
   background: #05070d;

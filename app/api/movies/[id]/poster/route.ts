@@ -1,10 +1,11 @@
+import { Readable } from 'stream';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { getBunnyStreamThumbnailUrl } from '@/lib/bunny-stream';
-import { headObject, createSignedStorageUrl } from '@/lib/bunny-storage';
 import { prisma } from '@/lib/db';
 import { resolveMoviePosterKeyFromCandidates } from '@/lib/movie-assets';
 import { isViewerVisibleStatus } from '@/lib/release-status';
+import { streamStoredObject } from '@/lib/stream';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const dynamic = 'force-dynamic';
@@ -60,11 +61,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const posterKey = resolveMoviePosterKeyFromCandidates(video, video.series);
   if (posterKey) {
     try {
-      await headObject(posterKey);
-      const url = await createSignedStorageUrl(posterKey, {
-        expiresIn: 7200
+      const result = await streamStoredObject(posterKey, req.headers.get('range'));
+      return new Response(Readable.toWeb(result.stream) as never, {
+        status: result.status,
+        headers: {
+          ...result.headers,
+          'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
+          Vary: 'Range'
+        }
       });
-      return NextResponse.redirect(url);
     } catch {
       // Fall through to Bunny Stream thumbnail when the stored poster record points to a missing object.
     }

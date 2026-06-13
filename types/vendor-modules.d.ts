@@ -1,12 +1,19 @@
 declare module 'hls.js' {
   export type HlsErrorData = {
     fatal?: boolean;
+    type?: string;
     [key: string]: unknown;
   };
 
   export default class Hls {
     static Events: {
       ERROR: string;
+      MANIFEST_PARSED: string;
+    };
+
+    static ErrorTypes: {
+      NETWORK_ERROR: string;
+      MEDIA_ERROR: string;
     };
 
     static isSupported(): boolean;
@@ -14,6 +21,8 @@ declare module 'hls.js' {
     constructor(config?: Record<string, unknown>);
     loadSource(url: string): void;
     attachMedia(media: HTMLMediaElement): void;
+    startLoad(): void;
+    recoverMediaError(): void;
     on(event: string, handler: (event: string, data: HlsErrorData) => void): void;
     destroy(): void;
   }

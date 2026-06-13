@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLanguageLabel } from '@/lib/media-types';
 import { getMediaAssetUrl } from '@/lib/media';
+import { isHlsSource } from '@/lib/playback-source';
 import { getUiCopy, type UILanguage } from '@/lib/ui-language';
 
 const HISTORY_SYNC_SECONDS = 5;
@@ -107,10 +108,6 @@ type AudioTrackLike = {
 
 type PlaybackKind = 'progressive' | 'hls';
 
-function isHlsSource(url: string | null | undefined) {
-  return typeof url === 'string' && /\.m3u8(?:$|\?)/i.test(url);
-}
-
 export default function AcePlayer({
   videoId,
   teaserSec,
@@ -186,10 +183,8 @@ export default function AcePlayer({
       : getMediaAssetUrl(trailerKey)
     : null;
   const activeVideoSrc = isPlayingTrailer && trailerSrc ? trailerSrc : streamUrl;
-  const bindDirectVideoSrc = Boolean(
-    activeVideoSrc &&
-      (((isPlayingTrailer && !isHlsSource(activeVideoSrc)) || streamKind === 'progressive'))
-  );
+  const activePlaybackKind: PlaybackKind = isHlsSource(activeVideoSrc) ? 'hls' : 'progressive';
+  const bindDirectVideoSrc = Boolean(activeVideoSrc && activePlaybackKind === 'progressive');
   const isMovieMode = !isPlayingTrailer;
   const hasLockedMoviePreview = teaserSec > 0;
 
@@ -661,7 +656,7 @@ export default function AcePlayer({
       return;
     }
 
-    if ((isPlayingTrailer && !isHlsSource(activeVideoSrc)) || streamKind === 'progressive') {
+    if (activePlaybackKind === 'progressive') {
       if (video.src !== activeVideoSrc) {
         video.src = activeVideoSrc;
       }
@@ -687,10 +682,22 @@ export default function AcePlayer({
         const hls = new Hls({
           enableWorker: true
         });
+        let networkRecoveryAttempts = 0;
+        let mediaRecoveryAttempts = 0;
         hls.loadSource(activeVideoSrc);
         hls.attachMedia(video);
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data?.fatal) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRecoveryAttempts < 1) {
+              networkRecoveryAttempts += 1;
+              hls.startLoad();
+              return;
+            }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveryAttempts < 1) {
+              mediaRecoveryAttempts += 1;
+              hls.recoverMediaError();
+              return;
+            }
             hls.destroy();
             if (fallbackProgressiveUrl) {
               setFeedback('HLS playback failed. Falling back to MP4.');
@@ -711,7 +718,7 @@ export default function AcePlayer({
       disposed = true;
       cleanup?.();
     };
-  }, [activeVideoSrc, fallbackProgressiveUrl, isPlayingTrailer, streamKind]);
+  }, [activePlaybackKind, activeVideoSrc, fallbackProgressiveUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -833,7 +840,13 @@ export default function AcePlayer({
     };
 
     const handleError = () => {
-      setFeedback('This video could not be played right now. Use a playable MP4 upload for playback.');
+      if (isMovieMode && activePlaybackKind === 'hls' && fallbackProgressiveUrl) {
+        setFeedback('HLS playback failed. Falling back to MP4.');
+        setStreamKind('progressive');
+        setStreamUrl(fallbackProgressiveUrl);
+        return;
+      }
+      setFeedback('This video could not be played right now.');
     };
 
     const handleSeeking = () => {
@@ -887,7 +900,9 @@ export default function AcePlayer({
     unlocked,
     videoId,
     isMovieMode,
-    isPlayingTrailer
+    isPlayingTrailer,
+    activePlaybackKind,
+    fallbackProgressiveUrl
   ]);
 
   useEffect(() => {

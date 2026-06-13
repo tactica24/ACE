@@ -7,6 +7,7 @@ import { getDefaultTierPriceNaira } from '@/lib/commerce';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getViewerMoviePosterUrl } from '@/lib/movie-assets';
 import { type PriceTierValue } from '@/lib/media-types';
+import { isHlsSource } from '@/lib/playback-source';
 
 const labelize = (value: string) =>
   value
@@ -158,12 +159,54 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
       return;
     }
 
-    const playPromise = videoElement.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    const playPreview = () => {
+      if (disposed) return;
+      videoElement.play().catch(() => {
         // Silent fallback to poster only.
       });
+    };
+
+    if (!isHlsSource(previewSource)) {
+      if (videoElement.src !== previewSource) {
+        videoElement.src = previewSource;
+      }
+      playPreview();
+      return;
     }
+
+    if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+      videoElement.src = previewSource;
+      playPreview();
+      return;
+    }
+
+    void import('hls.js')
+      .then(({ default: Hls }) => {
+        if (disposed || !Hls.isSupported()) {
+          setPreviewReady(false);
+          return;
+        }
+
+        const hls = new Hls({ enableWorker: true });
+        hls.loadSource(previewSource);
+        hls.attachMedia(videoElement);
+        hls.on(Hls.Events.MANIFEST_PARSED, playPreview);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data?.fatal) {
+            hls.destroy();
+            setPreviewReady(false);
+          }
+        });
+        cleanup = () => hls.destroy();
+      })
+      .catch(() => setPreviewReady(false));
+
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
   }, [canHoverPreview, isInteractive, previewReady, previewSource]);
 
   useEffect(() => {
@@ -212,7 +255,7 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
           <video
             ref={previewRef}
             className="video-thumb-preview"
-            src={previewSource}
+            src={!isHlsSource(previewSource) ? previewSource : undefined}
             muted
             playsInline
             preload="metadata"
@@ -231,12 +274,14 @@ export default function VideoCard({ video }: { video: VideoCardData }) {
         ) : null}
       </div>
       <div className="video-meta">
-        <div className="video-meta-top">
+        <div className="video-card-heading">
           <strong className="video-card-title">{video.title}</strong>
         </div>
-        <div className="video-card-line">
-          <span>{releaseLabel ?? labelize(video.videoType)}</span>
-          <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
+        <div className="video-card-footer">
+          <div className="video-card-facts">
+            <span>{releaseLabel ?? labelize(video.videoType)}</span>
+            <span>{ageLabel[video.ageRating] ?? labelize(video.ageRating)}</span>
+          </div>
           <strong className="video-card-price">{accessLabel}</strong>
         </div>
         <div className="video-card-reveal">

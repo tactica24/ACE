@@ -100,6 +100,71 @@ async function expectAndroidApk(name, path) {
   addResult(name, 'DONE', `${url} -> ${initial.status} redirect -> ${redirected.status}`);
 }
 
+async function getCatalogVideos(limit = 3) {
+  const url = new URL(`/api/videos?limit=${limit}`, baseUrl).toString();
+  const res = await fetch(url, {
+    headers: {
+      'x-ace-smoke': '1',
+      accept: 'application/json'
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !Array.isArray(data?.videos) || data.videos.length === 0) {
+    throw new Error(`catalog did not return smoke-testable videos (${res.status})`);
+  }
+  return data.videos;
+}
+
+async function expectCatalogPosters() {
+  const videos = await getCatalogVideos();
+  for (const video of videos) {
+    const url = new URL(`/api/movies/${encodeURIComponent(video.id)}/poster`, baseUrl).toString();
+    const res = await fetch(url, {
+      headers: {
+        'x-ace-smoke': '1',
+        accept: 'image/avif,image/webp,image/png,image/jpeg,image/svg+xml'
+      }
+    });
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (!res.ok || !contentType.startsWith('image/')) {
+      throw new Error(`${video.title}: ${res.status} ${contentType || 'missing content-type'} at ${res.url}`);
+    }
+  }
+  addResult('Catalog posters', 'DONE', `${videos.length} poster routes returned image responses`);
+}
+
+async function expectCatalogTrailers() {
+  const videos = await getCatalogVideos();
+  let checked = 0;
+  for (const video of videos) {
+    const playbackUrl = new URL(
+      `/api/movies/${encodeURIComponent(video.id)}/playback?teaser=1`,
+      baseUrl
+    ).toString();
+    const playbackRes = await fetch(playbackUrl, {
+      headers: {
+        'x-ace-smoke': '1',
+        accept: 'application/json'
+      }
+    });
+    const playback = await playbackRes.json().catch(() => ({}));
+    const previewUrl = playback?.playback?.previewUrl;
+    if (!playbackRes.ok || typeof previewUrl !== 'string' || !previewUrl) {
+      throw new Error(`${video.title}: preview source unavailable (${playbackRes.status})`);
+    }
+
+    if (/\.m3u8(?:$|[?#])/i.test(previewUrl)) {
+      const manifestRes = await fetch(previewUrl);
+      const manifest = await manifestRes.text();
+      if (!manifestRes.ok || !manifest.includes('#EXTM3U')) {
+        throw new Error(`${video.title}: invalid HLS trailer manifest (${manifestRes.status})`);
+      }
+    }
+    checked += 1;
+  }
+  addResult('Catalog trailers', 'DONE', `${checked} preview sources returned playable manifests or media URLs`);
+}
+
 async function main() {
   let failed = false;
 
@@ -138,6 +203,14 @@ async function main() {
         throw new Error('videos response did not contain a videos array');
       }
       }),
+    },
+    {
+      name: 'Catalog posters',
+      run: expectCatalogPosters,
+    },
+    {
+      name: 'Catalog trailers',
+      run: expectCatalogTrailers,
     },
     {
       name: 'Android APK delivery',

@@ -1,9 +1,10 @@
+import { Readable } from 'stream';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { normalizeMediaKey } from '@/lib/media';
 import { isViewerVisibleStatus } from '@/lib/release-status';
+import { streamStoredObject } from '@/lib/stream';
 import { canPreviewVideo } from '@/lib/video-access';
 
 export const runtime = 'nodejs';
@@ -115,9 +116,23 @@ export async function GET(req: NextRequest, { params }: { params: { key?: string
 
     const { video, storedKey } = match;
     const objectKey = normalizeMediaKey(storedKey) ?? storedKey;
-    const url = createSignedStorageUrl(objectKey, { expiresIn: 60 * 60 });
-    return NextResponse.redirect(url);
-  } catch {
+    const result = await streamStoredObject(objectKey, req.headers.get('range'));
+    const publiclyCacheable = isViewerVisibleStatus(video.status);
+    return new Response(Readable.toWeb(result.stream) as never, {
+      status: result.status,
+      headers: {
+        ...result.headers,
+        'Cache-Control': publiclyCacheable
+          ? 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400'
+          : 'private, max-age=0, no-store',
+        Vary: 'Range'
+      }
+    });
+  } catch (error) {
+    console.error('[media-asset] delivery failed', {
+      key: normalizedKey,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json({ error: 'Asset not available' }, { status: 404 });
   }
 }

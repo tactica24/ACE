@@ -71,12 +71,27 @@ function parseRange(rangeHeader: string | null, fileSize: number) {
   return { start, end };
 }
 
-function getVideoContentType(filePath: string) {
+function getStoredContentType(filePath: string, reportedContentType?: string) {
+  const normalizedReportedType = reportedContentType?.trim().toLowerCase();
+  if (normalizedReportedType && normalizedReportedType !== 'application/octet-stream') {
+    return normalizedReportedType;
+  }
+
   const normalizedPath = filePath.toLowerCase();
+  if (normalizedPath.endsWith('.jpg') || normalizedPath.endsWith('.jpeg')) return 'image/jpeg';
+  if (normalizedPath.endsWith('.png')) return 'image/png';
+  if (normalizedPath.endsWith('.webp')) return 'image/webp';
+  if (normalizedPath.endsWith('.avif')) return 'image/avif';
+  if (normalizedPath.endsWith('.svg')) return 'image/svg+xml';
+  if (normalizedPath.endsWith('.vtt')) return 'text/vtt';
+  if (normalizedPath.endsWith('.m3u8')) return 'application/vnd.apple.mpegurl';
+  if (normalizedPath.endsWith('.ts') || normalizedPath.endsWith('.dts')) return 'video/mp2t';
+  if (normalizedPath.endsWith('.m4s')) return 'video/iso.segment';
   if (normalizedPath.endsWith('.webm')) return 'video/webm';
   if (normalizedPath.endsWith('.mkv')) return 'video/x-matroska';
   if (normalizedPath.endsWith('.avi')) return 'video/x-msvideo';
-  return 'video/mp4';
+  if (normalizedPath.endsWith('.mp4')) return 'video/mp4';
+  return normalizedReportedType || 'application/octet-stream';
 }
 
 function getSafeObjectSize(size: number | undefined) {
@@ -91,7 +106,7 @@ export async function streamStoredObject(
   const objectHead = await headObject(key);
   const totalSize = getSafeObjectSize(objectHead.ContentLength);
   const effectiveSize = maxBytes ? Math.min(maxBytes, totalSize) : totalSize;
-  const contentType = objectHead.ContentType?.trim() || getVideoContentType(key);
+  const contentType = getStoredContentType(key, objectHead.ContentType);
   const range = parseRange(rangeHeader, effectiveSize);
 
   if (range && range.start >= effectiveSize) {
@@ -148,7 +163,7 @@ export async function streamFile(
   const stat = await fsPromises.stat(filePath);
   const effectiveSize = maxBytes ? Math.min(maxBytes, stat.size) : stat.size;
   const range = parseRange(rangeHeader, effectiveSize);
-  const contentType = getVideoContentType(filePath);
+  const contentType = getStoredContentType(filePath);
 
   if (range && range.start >= effectiveSize) {
     return {

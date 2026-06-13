@@ -7,14 +7,14 @@ import MovieAccessDetails from '@/components/MovieAccessDetails';
 import PosterAsset from '@/components/PosterAsset';
 import VideoCard from '@/components/VideoCard';
 import { getCurrentUser } from '@/lib/auth';
-import { getBunnyTrailerPlaybackUrl, hasReadyBunnyMovieStream } from '@/lib/bunny-stream';
+import { getBunnyTrailerPlaybackUrl } from '@/lib/bunny-stream';
 import { getPrimaryAppPath } from '@/lib/account-routing';
 import { prisma } from '@/lib/db';
 import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getLanguageLabel } from '@/lib/media-types';
-import { getViewerMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
+import { getViewerMoviePosterUrl, hasReadyMoviePlayback } from '@/lib/movie-assets';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -114,8 +114,7 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     requestedVideo.seriesId &&
-    !hasMovieMp4(requestedVideo) &&
-    !hasReadyBunnyMovieStream(requestedVideo)
+    !hasReadyMoviePlayback(requestedVideo)
   ) {
     return notFound();
   }
@@ -124,8 +123,7 @@ export default async function VideoPage({
     !canPreviewRequested &&
     isViewerVisibleStatus(requestedVideo.status) &&
     !isSeriesContainer(requestedVideo) &&
-    !hasMovieMp4(requestedVideo) &&
-    !hasReadyBunnyMovieStream(requestedVideo)
+    !hasReadyMoviePlayback(requestedVideo)
   ) {
     return notFound();
   }
@@ -341,7 +339,7 @@ export default async function VideoPage({
   const visibleEpisodes = series.episodes.filter((episode) => isViewerVisibleStatus(episode.status) || canPreviewSeries);
   const viewerReadyEpisodes = canPreviewSeries
     ? visibleEpisodes
-    : visibleEpisodes.filter(hasMovieMp4);
+    : visibleEpisodes.filter(hasReadyMoviePlayback);
   const requestedEpisodeId = typeof searchParams?.episode === 'string'
     ? searchParams.episode.trim()
     : isEpisodeVideo(requestedVideo)
