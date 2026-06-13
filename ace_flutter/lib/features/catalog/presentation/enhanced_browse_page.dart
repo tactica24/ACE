@@ -304,7 +304,7 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
       padding: const EdgeInsets.all(4),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.7,
+        childAspectRatio: 0.54,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
@@ -313,7 +313,11 @@ class _EnhancedBrowsePageState extends ConsumerState<EnhancedBrowsePage> {
         final title = titles[index];
         return TitleCard(
           title: title,
-          posterUrl: resolvePosterUrl(title.posterUrl, title.posterKey),
+          posterUrl: resolveTitlePosterUrl(
+            titleId: title.id,
+            posterUrl: title.posterUrl,
+            posterKey: title.posterKey,
+          ),
           onTap: () => context.push('/title/${title.id}'),
         );
       },

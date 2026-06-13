@@ -59,7 +59,7 @@ class TitleCard extends StatelessWidget {
                 children: [
                   Text(
                     title.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: (compact
                             ? Theme.of(context).textTheme.titleSmall
@@ -68,17 +68,57 @@ class TitleCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (!compact) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '${title.category} / ${title.videoType}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textMuted,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          [
+                            if (title.releaseYear != null)
+                              title.releaseYear.toString(),
+                            title.videoType,
+                            title.ageRating,
+                          ].join('  |  '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                      if (title.formattedPrice?.trim().isNotEmpty == true) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                    ),
-                  ],
+                          decoration: BoxDecoration(
+                            color: const Color(0x1FF7C873),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(0x55F7C873),
+                            ),
+                          ),
+                          child: Text(
+                            title.formattedPrice!.trim(),
+                            maxLines: 1,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: AppTheme.gold,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   if (progress != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
                       child: LinearProgressIndicator(

@@ -211,7 +211,7 @@ class _CarouselSection extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: compactCards ? 220 : 265,
+          height: compactCards ? 350 : 420,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: titles.length,
@@ -222,9 +222,10 @@ class _CarouselSection extends StatelessWidget {
                 width: compactCards ? 178 : 220,
                 child: TitleCard(
                   title: titleItem,
-                  posterUrl: resolvePosterUrl(
-                    titleItem.posterUrl,
-                    titleItem.posterKey,
+                  posterUrl: resolveTitlePosterUrl(
+                    titleId: titleItem.id,
+                    posterUrl: titleItem.posterUrl,
+                    posterKey: titleItem.posterKey,
                   ),
                   compact: compactCards,
                   onTap: () => context.push('/title/${titleItem.id}'),

@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/app_theme.dart';
+import '../../../core/network/media_url.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../catalog/data/catalog_repository.dart';
@@ -32,6 +34,7 @@ class PlaybackPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<PlaybackPage> createState() => _PlaybackPageState();
 }
+
 class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   VideoPlayerController? _controller;
   String? _error;
@@ -58,7 +61,8 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   List<VideoAudioTrack> get _visibleAudioTracks => _audioTracks.where((track) {
         final label = track.label?.trim().toLowerCase() ?? '';
         final language = track.language?.trim().toLowerCase() ?? '';
-        final hasUsefulLabel = label.isNotEmpty && label != 'audio' && label != 'und';
+        final hasUsefulLabel =
+            label.isNotEmpty && label != 'audio' && label != 'und';
         final hasUsefulLanguage = language.isNotEmpty && language != 'und';
         return hasUsefulLabel || hasUsefulLanguage;
       }).toList();
@@ -96,6 +100,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         title: 'Playback',
         description: '',
         posterKey: null,
+        posterUrl: null,
         teaserOnly: widget.teaserOnly,
         hasAccess: !widget.teaserOnly,
         previewAvailable: !widget.teaserOnly,
@@ -207,14 +212,14 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   }) async {
     final UserPreferences preferences =
         _preferences ?? await ref.read(userPreferencesProvider.future);
-    final urls =
-        await ref.read(playbackRepositoryProvider).createPlaybackUrls(
-              titleId: entry.id,
-              teaserOnly: entry.teaserOnly,
-              isSignedIn: _isSignedIn,
-              trailerUrl: entry.trailerUrl,
-            );
-    final playbackCandidates = urls.playbackCandidates;
+    final urls = await ref.read(playbackRepositoryProvider).createPlaybackUrls(
+          titleId: entry.id,
+          teaserOnly: entry.teaserOnly,
+          isSignedIn: _isSignedIn,
+          trailerUrl: entry.trailerUrl,
+        );
+    final playbackCandidates =
+        urls.playbackCandidates(teaserOnly: entry.teaserOnly);
     if (playbackCandidates.isEmpty) {
       throw Exception('No playback stream available for this title.');
     }
@@ -605,6 +610,25 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     setState(() {
       _position = Duration(seconds: bounded);
     });
+    _resetControlsTimer();
+  }
+
+  Future<void> _seekRelative(int seconds) async {
+    await _seekToSeconds(_position.inSeconds + seconds);
+  }
+
+  Future<void> _setVolume(double value) async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    final nextVolume = value.clamp(0.0, 1.0);
+    await controller.setVolume(nextVolume);
+    if (mounted) {
+      setState(() => _volume = nextVolume);
+    }
+    _resetControlsTimer();
   }
 
   Future<void> _toggleFullscreen() async {
@@ -730,6 +754,11 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     final sliderValue =
         _position.inSeconds.clamp(0, sliderMax.toInt()).toDouble();
     final visibleAudioTracks = _visibleAudioTracks;
+    final playbackPosterUrl = _currentEntry.posterUrl ??
+        resolveTitlePosterUrl(
+          titleId: _currentEntry.id,
+          posterKey: _currentEntry.posterKey,
+        );
     final videoAspectRatio = controller != null &&
             controller.value.isInitialized &&
             controller.value.aspectRatio > 0
@@ -741,8 +770,21 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
         child: AspectRatio(
           aspectRatio: videoAspectRatio,
           child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppTheme.gold),
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (playbackPosterUrl != null)
+                      CachedNetworkImage(
+                        imageUrl: playbackPosterUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) =>
+                            const ColoredBox(color: Colors.black),
+                      ),
+                    const ColoredBox(color: Color(0x99000000)),
+                    const Center(
+                      child: CircularProgressIndicator(color: AppTheme.gold),
+                    ),
+                  ],
                 )
               : controller != null && controller.value.isInitialized
                   ? Stack(
@@ -812,22 +854,28 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                               children: [
                                                 Expanded(
                                                   child: Text(
-                                                    playbackTitle,
+                                                    _currentEntry.teaserOnly
+                                                        ? '$playbackTitle  |  Preview'
+                                                        : playbackTitle,
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 14,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 IconButton(
                                                   onPressed: _toggleFullscreen,
                                                   icon: Icon(
                                                     _fullscreen
-                                                        ? Icons.fullscreen_exit_rounded
-                                                        : Icons.fullscreen_rounded,
+                                                        ? Icons
+                                                            .fullscreen_exit_rounded
+                                                        : Icons
+                                                            .fullscreen_rounded,
                                                     color: Colors.white,
                                                   ),
                                                 ),
@@ -835,36 +883,18 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                             ),
                                           ),
                                           Center(
-                                            child: (_currentEntry.teaserOnly ||
-                                                    !_currentEntry.hasAccess)
-                                                ? ElevatedButton.icon(
-                                                    onPressed: _unlockingNext
-                                                        ? null
-                                                        : _unlockCurrentAndReload,
-                                                    icon: const Icon(
-                                                      Icons.lock_open_rounded,
-                                                    ),
-                                                    label: Text(
-                                                      _unlockingNext
-                                                          ? 'Unlocking...'
-                                                          : 'Unlock full movie',
-                                                    ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: AppTheme.gold,
-                                                      foregroundColor:
-                                                          AppTheme.background,
-                                                    ),
-                                                  )
-                                                : IconButton(
-                                                    onPressed: _togglePlayPause,
-                                                    iconSize: 72,
-                                                    icon: Icon(
-                                                      isPlaying
-                                                          ? Icons.pause_circle_filled_rounded
-                                                          : Icons.play_circle_filled_rounded,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
+                                            child: IconButton(
+                                              onPressed: _togglePlayPause,
+                                              iconSize: 72,
+                                              icon: Icon(
+                                                isPlaying
+                                                    ? Icons
+                                                        .pause_circle_filled_rounded
+                                                    : Icons
+                                                        .play_circle_filled_rounded,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                           ),
                                           Positioned(
                                             left: 12,
@@ -895,63 +925,131 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                                                     value: sliderValue,
                                                     max: sliderMax,
                                                     onChanged: (v) =>
-                                                        _seekToSeconds(v.toInt()),
+                                                        _seekToSeconds(
+                                                            v.toInt()),
                                                   ),
                                                 ),
-                                                Row(
-                                                  children: [
-                                                    IconButton(
-                                                      onPressed: _togglePlayPause,
-                                                      icon: Icon(
-                                                        isPlaying
-                                                            ? Icons.pause_circle_filled_rounded
-                                                            : Icons.play_circle_filled_rounded,
-                                                        color: Colors.white,
-                                                        size: 34,
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      child: SliderTheme(
-                                                        data: SliderTheme.of(context)
-                                                            .copyWith(
-                                                          trackHeight: 3,
-                                                          thumbShape:
-                                                              const RoundSliderThumbShape(
-                                                            enabledThumbRadius: 6,
+                                                LayoutBuilder(
+                                                  builder:
+                                                      (context, constraints) {
+                                                    final showVolumeSlider =
+                                                        constraints.maxWidth >=
+                                                            430;
+                                                    return Row(
+                                                      children: [
+                                                        IconButton(
+                                                          tooltip:
+                                                              'Back 10 seconds',
+                                                          onPressed: () =>
+                                                              _seekRelative(
+                                                                  -10),
+                                                          icon: const Icon(
+                                                            Icons
+                                                                .replay_10_rounded,
+                                                            color: Colors.white,
                                                           ),
-                                                          activeTrackColor:
-                                                              Colors.white,
-                                                          inactiveTrackColor:
-                                                              Colors.white24,
-                                                          thumbColor: Colors.white,
                                                         ),
-                                                        child: Slider(
-                                                          value: _volume.clamp(0, 1),
-                                                          max: 1,
-                                                          onChanged: (value) async {
-                                                            await controller.setVolume(
-                                                              value,
-                                                            );
-                                                          },
+                                                        IconButton(
+                                                          onPressed:
+                                                              _togglePlayPause,
+                                                          icon: Icon(
+                                                            isPlaying
+                                                                ? Icons
+                                                                    .pause_circle_filled_rounded
+                                                                : Icons
+                                                                    .play_circle_filled_rounded,
+                                                            color: Colors.white,
+                                                            size: 34,
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      _formatDuration(_position),
-                                                      style: const TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                    const Spacer(),
-                                                    Text(
-                                                      _formatDuration(_duration),
-                                                      style: const TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                        IconButton(
+                                                          tooltip:
+                                                              'Forward 10 seconds',
+                                                          onPressed: () =>
+                                                              _seekRelative(10),
+                                                          icon: const Icon(
+                                                            Icons
+                                                                .forward_10_rounded,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                        IconButton(
+                                                          tooltip: _volume == 0
+                                                              ? 'Unmute'
+                                                              : 'Mute',
+                                                          onPressed: () =>
+                                                              _setVolume(
+                                                            _volume == 0
+                                                                ? 1
+                                                                : 0,
+                                                          ),
+                                                          icon: Icon(
+                                                            _volume == 0
+                                                                ? Icons
+                                                                    .volume_off_rounded
+                                                                : Icons
+                                                                    .volume_up_rounded,
+                                                            color:
+                                                                Colors.white70,
+                                                            size: 20,
+                                                          ),
+                                                        ),
+                                                        if (showVolumeSlider)
+                                                          SizedBox(
+                                                            width: 72,
+                                                            child: SliderTheme(
+                                                              data: SliderTheme
+                                                                      .of(context)
+                                                                  .copyWith(
+                                                                trackHeight: 3,
+                                                                thumbShape:
+                                                                    const RoundSliderThumbShape(
+                                                                  enabledThumbRadius:
+                                                                      6,
+                                                                ),
+                                                                activeTrackColor:
+                                                                    Colors
+                                                                        .white,
+                                                                inactiveTrackColor:
+                                                                    Colors
+                                                                        .white24,
+                                                                thumbColor:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
+                                                              child: Slider(
+                                                                value: _volume
+                                                                    .clamp(
+                                                                        0, 1),
+                                                                max: 1,
+                                                                onChanged:
+                                                                    _setVolume,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        const SizedBox(
+                                                            width: 4),
+                                                        Expanded(
+                                                          child: Text(
+                                                            '${_formatDuration(_position)} / '
+                                                            '${_formatDuration(_duration)}',
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            textAlign:
+                                                                TextAlign.end,
+                                                            style:
+                                                                const TextStyle(
+                                                              color: Colors
+                                                                  .white70,
+                                                              fontSize: 11,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
                                                 ),
                                               ],
                                             ),
@@ -966,12 +1064,12 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                       ],
                     )
                   : _PlayerErrorState(
-                      message:
-                          _error ?? 'Playback is not available right now.',
+                      message: _error ?? 'Playback is not available right now.',
                     ),
         ),
       );
     }
+
     if (_fullscreen) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -1022,6 +1120,16 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
                   height: 1.5,
                 ),
           ),
+          if (_currentEntry.teaserOnly || !_currentEntry.hasAccess) ...[
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _unlockingNext ? null : _unlockCurrentAndReload,
+              icon: const Icon(Icons.lock_open_rounded),
+              label: Text(
+                _unlockingNext ? 'Unlocking...' : 'Unlock full movie',
+              ),
+            ),
+          ],
           if (_notice != null) ...[
             const SizedBox(height: 10),
             Text(

@@ -6,6 +6,7 @@ class PlaybackQueueEntry {
     required this.title,
     required this.description,
     required this.posterKey,
+    this.posterUrl,
     required this.teaserOnly,
     required this.hasAccess,
     required this.previewAvailable,
@@ -21,6 +22,7 @@ class PlaybackQueueEntry {
   final String title;
   final String description;
   final String? posterKey;
+  final String? posterUrl;
   final bool teaserOnly;
   final bool hasAccess;
   final bool previewAvailable;
@@ -36,6 +38,7 @@ class PlaybackQueueEntry {
     String? title,
     String? description,
     String? posterKey,
+    String? posterUrl,
     bool? teaserOnly,
     bool? hasAccess,
     bool? previewAvailable,
@@ -51,6 +54,7 @@ class PlaybackQueueEntry {
       title: title ?? this.title,
       description: description ?? this.description,
       posterKey: posterKey ?? this.posterKey,
+      posterUrl: posterUrl ?? this.posterUrl,
       teaserOnly: teaserOnly ?? this.teaserOnly,
       hasAccess: hasAccess ?? this.hasAccess,
       previewAvailable: previewAvailable ?? this.previewAvailable,

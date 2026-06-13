@@ -57,6 +57,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $flutterRoot = Join-Path $repoRoot "ace_flutter"
 
 Read-DotEnvFile (Join-Path $repoRoot ".env.local")
+Read-DotEnvFile (Join-Path $repoRoot ".env.production.local")
 Read-DotEnvFile (Join-Path $repoRoot ".env.production")
 Read-DotEnvFile (Join-Path $repoRoot ".env")
 

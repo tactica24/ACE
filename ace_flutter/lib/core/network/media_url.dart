@@ -45,3 +45,20 @@ String? resolveMediaUrl(String? key) {
 String? resolvePosterUrl(String? posterUrl, String? posterKey) {
   return resolveApiUrl(posterUrl) ?? resolveMediaUrl(posterKey);
 }
+
+String? resolveTitlePosterUrl({
+  required String titleId,
+  String? posterUrl,
+  String? posterKey,
+}) {
+  final resolvedPosterUrl = resolveApiUrl(posterUrl);
+  if (resolvedPosterUrl != null) {
+    return resolvedPosterUrl;
+  }
+
+  if (titleId.trim().isNotEmpty) {
+    return resolveApiUrl('/api/movies/${Uri.encodeComponent(titleId)}/poster');
+  }
+
+  return resolveMediaUrl(posterKey);
+}

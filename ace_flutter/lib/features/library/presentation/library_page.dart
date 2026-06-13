@@ -100,15 +100,16 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
-                    childAspectRatio: 0.72,
+                    childAspectRatio: 0.54,
                   ),
                   itemBuilder: (context, index) {
                     final title = titles[index];
                     return TitleCard(
                       title: title,
-                      posterUrl: resolvePosterUrl(
-                        title.posterUrl,
-                        title.posterKey,
+                      posterUrl: resolveTitlePosterUrl(
+                        titleId: title.id,
+                        posterUrl: title.posterUrl,
+                        posterKey: title.posterKey,
                       ),
                       onTap: () => context.push('/title/${title.id}'),
                     );

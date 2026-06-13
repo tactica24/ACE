@@ -31,64 +31,75 @@ class PlaybackRepository {
     String? trailerUrl,
   }) async {
     final trimmedTrailerUrl = trailerUrl?.trim();
-    if (teaserOnly && trimmedTrailerUrl != null && trimmedTrailerUrl.isNotEmpty) {
+    try {
+      final endpoint = '/api/movies/$titleId/playback';
+      final deviceSessionId =
+          isSignedIn ? await deviceSessionStore.getOrCreate() : null;
+      final payload = teaserOnly
+          ? await apiClient.getJson(endpoint, query: {
+              'teaser': '1',
+              if (deviceSessionId != null) 'deviceSessionId': deviceSessionId,
+            }) as Map<String, dynamic>
+          : await apiClient.postJson(
+              endpoint,
+              body: {'deviceSessionId': deviceSessionId},
+            ) as Map<String, dynamic>;
+
+      String? playbackUrl;
+      final directPlaybackUrl = payload['playbackUrl'];
+      if (directPlaybackUrl is String && directPlaybackUrl.isNotEmpty) {
+        playbackUrl = apiClient.resolve(directPlaybackUrl).toString();
+      }
+
+      final playback = payload['playback'] as Map<String, dynamic>?;
+      String? hlsUrl;
+      final nestedHlsUrl = playback?['hlsUrl'];
+      if (nestedHlsUrl is String && nestedHlsUrl.isNotEmpty) {
+        hlsUrl = apiClient.resolve(nestedHlsUrl).toString();
+      }
+
+      String? progressiveUrl;
+      final nestedPlaybackUrl = playback?['progressiveUrl'];
+      if (nestedPlaybackUrl is String && nestedPlaybackUrl.isNotEmpty) {
+        progressiveUrl = apiClient.resolve(nestedPlaybackUrl).toString();
+      }
+
+      final nestedPreviewUrl = playback?['previewUrl'];
+      final previewUrl =
+          nestedPreviewUrl is String && nestedPreviewUrl.isNotEmpty
+              ? apiClient.resolve(nestedPreviewUrl).toString()
+              : null;
+      final preferredValue = playback?['preferred'];
+      final preferred = preferredValue is String ? preferredValue : null;
+
+      if (playbackUrl == null &&
+          hlsUrl == null &&
+          progressiveUrl == null &&
+          previewUrl == null) {
+        throw ApiException(
+          'No playback stream is ready for this title right now.',
+          statusCode: 503,
+        );
+      }
+
       return PlaybackStreamUrls(
-        previewUrl: apiClient.resolve(trimmedTrailerUrl).toString(),
+        playbackUrl: playbackUrl,
+        hlsUrl: hlsUrl,
+        progressiveUrl: progressiveUrl,
+        previewUrl: previewUrl,
+        preferred: preferred,
       );
+    } catch (_) {
+      if (teaserOnly &&
+          trimmedTrailerUrl != null &&
+          trimmedTrailerUrl.isNotEmpty) {
+        return PlaybackStreamUrls(
+          previewUrl: apiClient.resolve(trimmedTrailerUrl).toString(),
+          preferred: 'preview',
+        );
+      }
+      rethrow;
     }
-
-    final endpoint = '/api/movies/$titleId/playback';
-    final deviceSessionId = isSignedIn ? await deviceSessionStore.getOrCreate() : null;
-    final payload = teaserOnly
-        ? await apiClient.getJson(endpoint, query: {
-            'teaser': '1',
-            if (deviceSessionId != null) 'deviceSessionId': deviceSessionId,
-          }) as Map<String, dynamic>
-        : await apiClient.postJson(
-            endpoint,
-            body: {'deviceSessionId': deviceSessionId},
-          ) as Map<String, dynamic>;
-
-    String? playbackUrl;
-    final directPlaybackUrl = payload['playbackUrl'];
-    if (directPlaybackUrl is String && directPlaybackUrl.isNotEmpty) {
-      playbackUrl = apiClient.resolve(directPlaybackUrl).toString();
-    }
-
-    final playback = payload['playback'] as Map<String, dynamic>?;
-    String? hlsUrl;
-    final nestedHlsUrl = playback?['hlsUrl'];
-    if (nestedHlsUrl is String && nestedHlsUrl.isNotEmpty) {
-      hlsUrl = apiClient.resolve(nestedHlsUrl).toString();
-    }
-
-    String? progressiveUrl;
-    final nestedPlaybackUrl = playback?['progressiveUrl'];
-    if (nestedPlaybackUrl is String && nestedPlaybackUrl.isNotEmpty) {
-      progressiveUrl = apiClient.resolve(nestedPlaybackUrl).toString();
-    }
-
-    final nestedPreviewUrl = playback?['previewUrl'];
-    final previewUrl = nestedPreviewUrl is String && nestedPreviewUrl.isNotEmpty
-        ? apiClient.resolve(nestedPreviewUrl).toString()
-        : null;
-    final preferredValue = playback?['preferred'];
-    final preferred = preferredValue is String ? preferredValue : null;
-
-    if (playbackUrl == null && hlsUrl == null && progressiveUrl == null && previewUrl == null) {
-      throw ApiException(
-        'No playback stream is ready for this title right now.',
-        statusCode: 503,
-      );
-    }
-
-    return PlaybackStreamUrls(
-      playbackUrl: playbackUrl,
-      hlsUrl: hlsUrl,
-      progressiveUrl: progressiveUrl,
-      previewUrl: previewUrl,
-      preferred: preferred,
-    );
   }
 }
 
@@ -107,9 +118,9 @@ class PlaybackStreamUrls {
   final String? previewUrl;
   final String? preferred;
 
-  List<String> get playbackCandidates {
+  List<String> playbackCandidates({required bool teaserOnly}) {
     final ordered = <String?>[];
-    if (preferred == 'preview') {
+    if (teaserOnly && preferred == 'preview') {
       ordered.add(previewUrl);
       ordered.add(hlsUrl);
       ordered.add(playbackUrl);
@@ -118,11 +129,12 @@ class PlaybackStreamUrls {
       ordered.add(progressiveUrl);
       ordered.add(playbackUrl);
       ordered.add(hlsUrl);
-      ordered.add(previewUrl);
     } else {
       ordered.add(hlsUrl);
       ordered.add(playbackUrl);
       ordered.add(progressiveUrl);
+    }
+    if (teaserOnly) {
       ordered.add(previewUrl);
     }
 

@@ -87,15 +87,16 @@ class _BrowsePageState extends ConsumerState<BrowsePage> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
-                    childAspectRatio: compactCards ? 0.88 : 0.72,
+                    childAspectRatio: compactCards ? 0.52 : 0.54,
                   ),
                   itemBuilder: (context, index) {
                     final title = titles[index];
                     return TitleCard(
                       title: title,
-                      posterUrl: resolvePosterUrl(
-                        title.posterUrl,
-                        title.posterKey,
+                      posterUrl: resolveTitlePosterUrl(
+                        titleId: title.id,
+                        posterUrl: title.posterUrl,
+                        posterKey: title.posterKey,
                       ),
                       compact: compactCards,
                       onTap: () => context.push('/title/${title.id}'),

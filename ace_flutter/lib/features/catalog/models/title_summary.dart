@@ -14,6 +14,7 @@ class TitleSummary {
     this.audioLanguages = const [],
     this.seriesId,
     this.releaseYear,
+    this.formattedPrice,
     this.highlightSeconds = const [],
   });
 
@@ -31,6 +32,7 @@ class TitleSummary {
   final List<String> audioLanguages;
   final String? seriesId;
   final int? releaseYear;
+  final String? formattedPrice;
   final List<int> highlightSeconds;
 
   factory TitleSummary.fromJson(Map<String, dynamic> json) => TitleSummary(
@@ -40,7 +42,9 @@ class TitleSummary {
         videoType: json['videoType'] as String? ?? 'MOVIE',
         category: json['category'] as String? ?? 'Featured',
         ageRating: json['ageRating'] as String? ?? 'PG',
-        genres: (json['genres'] as List<dynamic>? ?? const []).map((item) => item.toString()).toList(),
+        genres: (json['genres'] as List<dynamic>? ?? const [])
+            .map((item) => item.toString())
+            .toList(),
         teaserSec: (json['teaserSec'] as num?)?.toInt() ?? 0,
         durationSec: (json['durationSec'] as num?)?.toInt() ?? 0,
         posterKey: json['posterKey'] as String?,
@@ -50,9 +54,12 @@ class TitleSummary {
             .toList(),
         seriesId: json['seriesId'] as String?,
         releaseYear: (json['releaseYear'] as num?)?.toInt(),
-        highlightSeconds: (json['highlightSeconds'] as List<dynamic>? ?? const [])
-            .map((item) => (item as num).toInt())
-            .toList(),
+        formattedPrice:
+            (json['price'] as Map<String, dynamic>?)?['formatted'] as String?,
+        highlightSeconds:
+            (json['highlightSeconds'] as List<dynamic>? ?? const [])
+                .map((item) => (item as num).toInt())
+                .toList(),
       );
 
   String get heroLabel => genres.isNotEmpty ? genres.first : category;
