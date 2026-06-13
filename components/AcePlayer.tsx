@@ -377,9 +377,11 @@ export default function AcePlayer({
     }
 
     const previewUrl =
-      typeof data.playback?.progressiveUrl === 'string'
-        ? data.playback.progressiveUrl
-        : '';
+      typeof data.playback?.previewUrl === 'string'
+        ? data.playback.previewUrl
+        : typeof data.playback?.progressiveUrl === 'string'
+          ? data.playback.progressiveUrl
+          : '';
 
     if (!previewUrl) {
       setFeedback('Preview is not available for this title yet.');
@@ -388,7 +390,7 @@ export default function AcePlayer({
 
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
-    setStreamKind('progressive');
+    setStreamKind(isHlsSource(previewUrl) ? 'hls' : 'progressive');
     setStreamUrl(previewUrl);
     return true;
   }, [isAuthenticated, videoId]);

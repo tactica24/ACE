@@ -32,6 +32,10 @@ function getTouchMap() {
   return global.__aceStreamTouchMap;
 }
 
+function isRetryableStreamSessionError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+}
+
 async function cleanupInactiveStreamSessions() {
   const now = Date.now();
   if (now - getCleanupThreshold() < 1000 * 60 * 10) {
@@ -60,74 +64,86 @@ export async function ensureStreamSession({
   videoId: string;
 }) {
   void cleanupInactiveStreamSessions();
-  return prisma.$transaction(
-    async (tx) => {
-      const cutoff = getActiveCutoff();
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`stream-session:${userId}`}))`;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const cutoff = getActiveCutoff();
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`stream-session:${userId}`}))`;
 
-      const existingSession = await tx.streamSession.findUnique({
-        where: {
-          userId_deviceSessionId: {
-            userId,
-            deviceSessionId
+          const existingSession = await tx.streamSession.findUnique({
+            where: {
+              userId_deviceSessionId: {
+                userId,
+                deviceSessionId
+              }
+            },
+            select: {
+              id: true,
+              lastSeenAt: true,
+              revokedAt: true
+            }
+          });
+
+          const existingIsActive = Boolean(
+            existingSession &&
+            existingSession.revokedAt === null &&
+            existingSession.lastSeenAt >= cutoff
+          );
+
+          const activeOtherSessions = await tx.streamSession.count({
+            where: {
+              userId,
+              revokedAt: null,
+              lastSeenAt: { gte: cutoff },
+              NOT: { deviceSessionId }
+            }
+          });
+
+          if (!existingIsActive && activeOtherSessions >= MAX_CONCURRENT_STREAMS) {
+            return {
+              allowed: false,
+              activeCount: activeOtherSessions
+            };
           }
+
+          const session = await tx.streamSession.upsert({
+            where: {
+              userId_deviceSessionId: {
+                userId,
+                deviceSessionId
+              }
+            },
+            update: {
+              videoId,
+              lastSeenAt: new Date(),
+              revokedAt: null
+            },
+            create: {
+              userId,
+              deviceSessionId,
+              videoId
+            }
+          });
+
+          return {
+            allowed: true,
+            activeCount: activeOtherSessions + 1,
+            session
+          };
         },
-        select: {
-          id: true,
-          lastSeenAt: true,
-          revokedAt: true
-        }
-      });
-
-      const existingIsActive = Boolean(
-        existingSession &&
-        existingSession.revokedAt === null &&
-        existingSession.lastSeenAt >= cutoff
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
-
-      const activeOtherSessions = await tx.streamSession.count({
-        where: {
-          userId,
-          revokedAt: null,
-          lastSeenAt: { gte: cutoff },
-          NOT: { deviceSessionId }
-        }
-      });
-
-      if (!existingIsActive && activeOtherSessions >= MAX_CONCURRENT_STREAMS) {
-        return {
-          allowed: false,
-          activeCount: activeOtherSessions
-        };
+    } catch (error) {
+      if (!isRetryableStreamSessionError(error) || attempt === 3) {
+        throw error;
       }
 
-      const session = await tx.streamSession.upsert({
-        where: {
-          userId_deviceSessionId: {
-            userId,
-            deviceSessionId
-          }
-        },
-        update: {
-          videoId,
-          lastSeenAt: new Date(),
-          revokedAt: null
-        },
-        create: {
-          userId,
-          deviceSessionId,
-          videoId
-        }
-      });
+      await new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)));
+    }
+  }
 
-      return {
-        allowed: true,
-        activeCount: activeOtherSessions + 1,
-        session
-      };
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
+  throw new Error('Unable to establish a playback session.');
 }
 
 export async function touchStreamSession({

@@ -18,6 +18,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       posterKey: true,
       technicalMetadata: {
         select: {
+          trailerStreamVideoId: true,
+          trailerStreamReadyAt: true,
           bunnyStreamVideoId: true,
           bunnyStreamReadyAt: true
         }
@@ -27,6 +29,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           posterKey: true,
           technicalMetadata: {
             select: {
+              trailerStreamVideoId: true,
+              trailerStreamReadyAt: true,
               bunnyStreamVideoId: true,
               bunnyStreamReadyAt: true
             }
@@ -70,8 +74,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     (video.technicalMetadata?.bunnyStreamVideoId && video.technicalMetadata?.bunnyStreamReadyAt
       ? video.technicalMetadata.bunnyStreamVideoId
       : null) ??
+    (video.technicalMetadata?.trailerStreamVideoId && video.technicalMetadata?.trailerStreamReadyAt
+      ? video.technicalMetadata.trailerStreamVideoId
+      : null) ??
     (video.series?.technicalMetadata?.bunnyStreamVideoId && video.series.technicalMetadata?.bunnyStreamReadyAt
       ? video.series.technicalMetadata.bunnyStreamVideoId
+      : null) ??
+    (video.series?.technicalMetadata?.trailerStreamVideoId && video.series.technicalMetadata?.trailerStreamReadyAt
+      ? video.series.technicalMetadata.trailerStreamVideoId
       : null);
 
   if (thumbnailVideoId) {
