@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { createGuestPreviewStreamToken, createStreamToken, getAuthFromRequest } from '@/lib/auth';
 import { getBunnyStreamHlsUrl, getBunnyTrailerPlaybackUrl, hasReadyBunnyMovieStream } from '@/lib/bunny-stream';
 import { createSignedStorageUrl } from '@/lib/bunny-storage';
@@ -11,6 +12,10 @@ import { canPreviewVideo, isSeriesContainer } from '@/lib/video-access';
 import { getVideoAvailabilityDecision } from '@/lib/video-availability';
 
 export const dynamic = 'force-dynamic';
+
+function isMissingPlaybackSessionTable(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021';
+}
 
 async function getPlaybackPayload(req: NextRequest, videoId: string, requireFullAccess: boolean) {
   const auth = await getAuthFromRequest(req);
@@ -218,6 +223,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       ipHash: '',
       userAgent: req.headers.get('user-agent') || undefined
     }
+  }).catch((error) => {
+    if (isMissingPlaybackSessionTable(error)) {
+      console.warn('[movie-playback] PlaybackSession table missing; continuing without playback session persistence.', {
+        videoId: video.id
+      });
+      return null;
+    }
+
+    throw error;
   });
 
   const hlsUrl = bunnyMovieHlsUrl ?? (hlsManifestKey ? createSignedHlsManifestUrl(hlsManifestKey) : null);
@@ -244,6 +258,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       preferred: hlsUrl ? 'hls' : 'progressive'
     },
     playbackType: hlsUrl ? 'hls' : 'progressive',
-    sessionId: session.id
+    sessionId: session?.id ?? null
   });
 }

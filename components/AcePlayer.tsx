@@ -185,6 +185,10 @@ export default function AcePlayer({
       : getMediaAssetUrl(trailerKey)
     : null;
   const activeVideoSrc = isPlayingTrailer && trailerSrc ? trailerSrc : streamUrl;
+  const bindDirectVideoSrc = Boolean(
+    activeVideoSrc &&
+      (((isPlayingTrailer && !isHlsSource(activeVideoSrc)) || streamKind === 'progressive'))
+  );
   const isMovieMode = !isPlayingTrailer;
   const hasLockedMoviePreview = teaserSec > 0;
 
@@ -1003,7 +1007,7 @@ export default function AcePlayer({
         <video
           key={`${streamKind}:${activeVideoSrc}`}
           ref={videoRef}
-          src={streamKind === 'progressive' || isPlayingTrailer ? activeVideoSrc : undefined}
+          src={bindDirectVideoSrc ? activeVideoSrc : undefined}
           controls
           playsInline
           preload="metadata"

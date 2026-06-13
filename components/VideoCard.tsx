@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getDefaultTierPriceNaira } from '@/lib/commerce';
 import { formatCurrencyMinor } from '@/lib/format';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getViewerMoviePosterUrl } from '@/lib/movie-assets';
 import { type PriceTierValue } from '@/lib/media-types';
 
 const labelize = (value: string) =>
@@ -50,7 +50,7 @@ function formatRuntime(_durationSec?: number) {
 export default function VideoCard({ video }: { video: VideoCardData }) {
   const priceMinor = video.price?.amountMinor ?? getDefaultTierPriceNaira(video.priceTier) * 100;
   const currencyCode = video.price?.currency ?? 'USD';
-  const posterUrl = getMoviePosterUrl(video);
+  const posterUrl = getViewerMoviePosterUrl(video);
   const runtimeLabel = formatRuntime(video.durationSec);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const [canHoverPreview, setCanHoverPreview] = useState(false);

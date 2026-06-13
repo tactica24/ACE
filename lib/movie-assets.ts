@@ -73,6 +73,10 @@ export function getMoviePosterUrl(video: Pick<MovieAssetVideo, 'id' | 'posterKey
   return getMediaAssetUrl(resolveMoviePosterKey(video));
 }
 
+export function getViewerMoviePosterUrl(video: Pick<MovieAssetVideo, 'id'>) {
+  return `/api/movies/${encodeURIComponent(video.id)}/poster`;
+}
+
 export function getMoviePosterUrlFromCandidates(
   _video: Pick<MovieAssetVideo, 'id'>,
   ...posterCandidates: Array<Pick<MovieAssetVideo, 'posterKey'> | null | undefined>

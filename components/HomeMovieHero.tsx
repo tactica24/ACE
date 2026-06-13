@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getMoviePosterUrl } from '@/lib/movie-assets';
+import { getViewerMoviePosterUrl } from '@/lib/movie-assets';
 
 type HeroCarouselVideo = {
   id: string;
@@ -24,7 +24,7 @@ function secondsToRuntime(_seconds: number): string {
 }
 
 function getPosterUrl(video?: HeroCarouselVideo | null): string | null {
-  return video ? getMoviePosterUrl(video) : null;
+  return video ? getViewerMoviePosterUrl(video) : null;
 }
 
 function cardStyleFor(

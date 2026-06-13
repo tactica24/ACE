@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
+import { getBunnyStreamThumbnailUrl } from '@/lib/bunny-stream';
+import { headObject, createSignedStorageUrl } from '@/lib/bunny-storage';
 import { prisma } from '@/lib/db';
 import { resolveMoviePosterKeyFromCandidates } from '@/lib/movie-assets';
-import { createSignedStorageUrl } from '@/lib/bunny-storage';
 import { isViewerVisibleStatus } from '@/lib/release-status';
 import { canPreviewVideo } from '@/lib/video-access';
 
@@ -15,9 +16,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       creatorId: true,
       status: true,
       posterKey: true,
+      technicalMetadata: {
+        select: {
+          bunnyStreamVideoId: true,
+          bunnyStreamReadyAt: true
+        }
+      },
       series: {
         select: {
-          posterKey: true
+          posterKey: true,
+          technicalMetadata: {
+            select: {
+              bunnyStreamVideoId: true,
+              bunnyStreamReadyAt: true
+            }
+          }
         }
       }
     }
@@ -41,13 +54,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   const posterKey = resolveMoviePosterKeyFromCandidates(video, video.series);
-  if (!posterKey) {
-    return NextResponse.json({ error: 'Poster not available.' }, { status: 404 });
+  if (posterKey) {
+    try {
+      await headObject(posterKey);
+      const url = await createSignedStorageUrl(posterKey, {
+        expiresIn: 7200
+      });
+      return NextResponse.redirect(url);
+    } catch {
+      // Fall through to Bunny Stream thumbnail when the stored poster record points to a missing object.
+    }
   }
 
-  // Use longer expiry for poster images and set proper content type
-  const url = await createSignedStorageUrl(posterKey, {
-    expiresIn: 7200 // 2 hours for poster images
-  });
-  return NextResponse.redirect(url);
+  const thumbnailVideoId =
+    (video.technicalMetadata?.bunnyStreamVideoId && video.technicalMetadata?.bunnyStreamReadyAt
+      ? video.technicalMetadata.bunnyStreamVideoId
+      : null) ??
+    (video.series?.technicalMetadata?.bunnyStreamVideoId && video.series.technicalMetadata?.bunnyStreamReadyAt
+      ? video.series.technicalMetadata.bunnyStreamVideoId
+      : null);
+
+  if (thumbnailVideoId) {
+    return NextResponse.redirect(getBunnyStreamThumbnailUrl(thumbnailVideoId));
+  }
+
+  return NextResponse.json({ error: 'Poster not available.' }, { status: 404 });
 }

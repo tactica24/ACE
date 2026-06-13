@@ -14,7 +14,7 @@ import { getFinanceConfig } from '@/lib/finance';
 import { formatCurrencyMinor } from '@/lib/format';
 import { getMediaAssetUrl } from '@/lib/media';
 import { getLanguageLabel } from '@/lib/media-types';
-import { getMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
+import { getViewerMoviePosterUrl, hasMovieMp4 } from '@/lib/movie-assets';
 import { getUiCopy } from '@/lib/ui-language';
 import { getPreferredUiLanguage } from '@/lib/ui-language-server';
 import { getSiteSettings } from '@/lib/site-settings';
@@ -147,7 +147,7 @@ export default async function VideoPage({
 
   if (requestedVideo.videoType !== 'SERIES' && !requestedVideo.seriesId) {
     const regionalPrice = getRegionalPriceForVideo(requestHeaders, requestedVideo, pricingConfig);
-    const posterUrl = getMoviePosterUrl(requestedVideo);
+    const posterUrl = getViewerMoviePosterUrl(requestedVideo);
     const backdropUrl = posterUrl;
     const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'movie');
     const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
@@ -360,10 +360,10 @@ export default async function VideoPage({
   const regionalPrice = getRegionalPriceForVideo(requestHeaders, selectedEpisode ?? series, pricingConfig);
   const priceLabel = formatUnlockPriceLabel(regionalPrice.amountMinor, regionalPrice.currency, 'episode');
   const priceAmountLabel = formatPriceAmountLabel(regionalPrice.amountMinor, regionalPrice.currency);
-  const seriesPosterUrl = getMoviePosterUrl(series);
+  const seriesPosterUrl = getViewerMoviePosterUrl(series);
   const seriesBackdropUrl = seriesPosterUrl;
   const selectedPosterUrl = selectedEpisode
-    ? getMoviePosterUrl({ ...selectedEpisode, posterKey: selectedEpisode.posterKey ?? series.posterKey })
+    ? getViewerMoviePosterUrl(selectedEpisode)
     : seriesPosterUrl;
   const totalSeasons = new Set(viewerReadyEpisodes.map((episode) => episode.seasonNumber).filter(Boolean)).size;
   const relatedSeries = await prisma.video.findMany({
@@ -547,7 +547,7 @@ export default async function VideoPage({
                       {seasonEpisodes.map((episode) => {
                         const episodeHref = `/v/${series.id}?episode=${episode.id}`;
                         const selected = selectedEpisode?.id === episode.id;
-                        const episodePoster = getMoviePosterUrl({ ...episode, posterKey: episode.posterKey ?? series.posterKey });
+                        const episodePoster = getViewerMoviePosterUrl(episode);
                         return (
                           <Link
                             key={episode.id}
