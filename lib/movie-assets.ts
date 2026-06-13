@@ -54,7 +54,7 @@ export function resolveMoviePosterKey(video: Pick<MovieAssetVideo, 'posterKey'>)
   if (!key) return null;
   const lower = key.toLowerCase();
   if (BLOCKED_POSTER_MARKERS.some((marker) => lower.includes(marker))) return null;
-  return hasExtension(lower, ['.jpg', '.jpeg', '.png', '.webp']) ? key : null;
+  return hasExtension(lower, ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.svg']) ? key : null;
 }
 
 export function resolveMoviePosterKeyFromCandidates(

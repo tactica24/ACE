@@ -350,6 +350,10 @@ const videoCases: Case[] = [
         null,
       );
       assert.equal(
+        getMoviePosterUrl({ id: 'movie-3', posterKey: 'uploads/admin/poster/movie-logo.svg' }),
+        '/api/media/uploads/admin/poster/movie-logo.svg',
+      );
+      assert.equal(
         resolveMoviePosterKeyFromCandidates(
           { posterKey: null },
           { posterKey: 'uploads/admin/poster/series.webp' },

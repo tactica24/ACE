@@ -157,6 +157,7 @@ export default function AcePlayer({
   const [watchMode, setWatchMode] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string>('');
   const [streamKind, setStreamKind] = useState<PlaybackKind>('progressive');
+  const [fallbackProgressiveUrl, setFallbackProgressiveUrl] = useState<string | null>(null);
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(Boolean(trailerKey));
   const [feedback, setFeedback] = useState<string | null>(null);
   const [resumePrompt, setResumePrompt] = useState<number | null>(null);
@@ -446,6 +447,7 @@ export default function AcePlayer({
     pendingResumeRef.current = typeof resumeAt === 'number' ? resumeAt : null;
     pendingAutoplayRef.current = Boolean(autoplay);
     setPlaybackSessionId(data.sessionId);
+    setFallbackProgressiveUrl(progressiveUrl ?? null);
     setStreamKind(hlsUrl ? 'hls' : 'progressive');
     setStreamUrl(hlsUrl ?? progressiveUrl ?? '');
   }, [isAuthenticated, initialStreamUrl, loadPreviewStream, videoId]);
@@ -689,8 +691,14 @@ export default function AcePlayer({
         hls.attachMedia(video);
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data?.fatal) {
-            setFeedback('This HLS stream could not be played right now.');
             hls.destroy();
+            if (fallbackProgressiveUrl) {
+              setFeedback('HLS playback failed. Falling back to MP4.');
+              setStreamKind('progressive');
+              setStreamUrl(fallbackProgressiveUrl);
+            } else {
+              setFeedback('This HLS stream could not be played right now.');
+            }
           }
         });
         cleanup = () => hls.destroy();
@@ -703,7 +711,7 @@ export default function AcePlayer({
       disposed = true;
       cleanup?.();
     };
-  }, [activeVideoSrc, isPlayingTrailer, streamKind]);
+  }, [activeVideoSrc, fallbackProgressiveUrl, isPlayingTrailer, streamKind]);
 
   useEffect(() => {
     const video = videoRef.current;

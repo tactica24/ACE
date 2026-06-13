@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Movie poster placeholder</title>
+  <desc id="desc">A placeholder poster image for unavailable movie artwork.</desc>
+  <rect width="600" height="900" fill="#101010" />
+  <rect x="60" y="120" width="480" height="660" rx="32" fill="#171717" stroke="#333" stroke-width="4" />
+  <text x="300" y="420" fill="#f7f3e8" font-family="Inter,system-ui,sans-serif" font-size="42" font-weight="700" text-anchor="middle">POSTER</text>
+  <text x="300" y="480" fill="#a8a198" font-family="Inter,system-ui,sans-serif" font-size="26" text-anchor="middle">Not available</text>
+</svg>

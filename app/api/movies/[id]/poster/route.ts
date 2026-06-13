@@ -88,5 +88,5 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.redirect(getBunnyStreamThumbnailUrl(thumbnailVideoId));
   }
 
-  return NextResponse.json({ error: 'Poster not available.' }, { status: 404 });
+  return NextResponse.redirect(new URL('/default-poster.svg', req.url));
 }
