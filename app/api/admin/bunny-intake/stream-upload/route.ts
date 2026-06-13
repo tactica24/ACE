@@ -4,10 +4,35 @@ import {
   createBunnyStreamVideo,
   createBunnyTusUploadSignature,
   fetchBunnyStreamVideoFromUrl,
+  getBunnyStreamVideo,
   getBunnyStreamLibraryId
 } from '@/lib/bunny-stream';
 import { prisma } from '@/lib/db';
 import { normalizeDropboxSourceUrl } from '@/lib/master-source';
+
+async function resolveReusableStreamVideo(input: {
+  assetType: 'movie' | 'trailer';
+  existingVideoId: string | null | undefined;
+  title: string;
+}) {
+  if (!input.existingVideoId) {
+    return createBunnyStreamVideo({
+      title: input.assetType === 'movie' ? input.title : `${input.title} Trailer`
+    });
+  }
+
+  try {
+    await getBunnyStreamVideo(input.existingVideoId, getBunnyStreamLibraryId());
+    return {
+      libraryId: getBunnyStreamLibraryId(),
+      videoId: input.existingVideoId
+    };
+  } catch {
+    return createBunnyStreamVideo({
+      title: input.assetType === 'movie' ? input.title : `${input.title} Trailer`
+    });
+  }
+}
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthFromRequest(req);
@@ -59,14 +84,11 @@ export async function POST(req: NextRequest) {
         sourceUrl,
         title: remoteAssetTitle
       })
-    : existingVideoId
-      ? {
-          libraryId: getBunnyStreamLibraryId(),
-          videoId: existingVideoId
-        }
-      : await createBunnyStreamVideo({
-          title: assetType === 'movie' ? video.title : `${video.title} Trailer`
-        });
+    : await resolveReusableStreamVideo({
+        assetType,
+        existingVideoId,
+        title: video.title
+      });
 
   const tusUpload = sourceUrl ? null : createBunnyTusUploadSignature(streamVideo.videoId);
 
