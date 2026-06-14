@@ -7,6 +7,7 @@ import '../../../core/network/media_url.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../../../widgets/section_heading.dart';
 import '../../../widgets/title_card.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../profile/data/user_preferences.dart';
 import '../data/catalog_repository.dart';
 import '../models/title_summary.dart';
@@ -17,23 +18,32 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final titlesAsync = ref.watch(catalogTitlesProvider);
+    final authState = ref.watch(firebaseUserChangesProvider);
     final compactCards = ref.watch(userPreferencesProvider).maybeWhen(
           data: (preferences) => preferences.compactTitleCards,
           orElse: () => false,
         );
+    final isSignedIn = authState.maybeWhen(
+      data: (user) => user != null,
+      orElse: () => false,
+    );
 
     return PremiumScaffold(
       title: 'Home',
       currentLocation: '/home',
       actions: [
         IconButton(
-          onPressed: () => context.push('/profile'),
-          icon: const Icon(Icons.notifications_none_rounded),
+          onPressed: () => context.push(isSignedIn ? '/profile' : '/login'),
+          icon: Icon(
+              isSignedIn ? Icons.person_outline_rounded : Icons.login_rounded),
         ),
       ],
       body: titlesAsync.when(
-        data: (titles) =>
-            _HomeContent(titles: titles, compactCards: compactCards),
+        data: (titles) => _HomeContent(
+          titles: titles,
+          compactCards: compactCards,
+          isSignedIn: isSignedIn,
+        ),
         loading: () => const Padding(
           padding: EdgeInsets.only(top: 80),
           child: Center(child: CircularProgressIndicator()),
@@ -51,10 +61,12 @@ class _HomeContent extends StatelessWidget {
   const _HomeContent({
     required this.titles,
     required this.compactCards,
+    required this.isSignedIn,
   });
 
   final List<TitleSummary> titles;
   final bool compactCards;
+  final bool isSignedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +78,10 @@ class _HomeContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (featured != null) _HeroCard(title: featured),
+        if (!isSignedIn) ...[
+          const SizedBox(height: 18),
+          const _VisitorAccessCard(),
+        ],
         const SizedBox(height: 28),
         const SectionHeading(
           eyebrow: 'Curated for you',
@@ -253,10 +269,68 @@ class _CategoryStrip extends StatelessWidget {
           .map(
             (category) => ActionChip(
               label: Text(category),
-              onPressed: () => context.push('/browse?q=$category'),
+              onPressed: () {
+                final route = Uri(
+                  path: '/browse',
+                  queryParameters: category == 'New Releases'
+                      ? {'sort': 'newest'}
+                      : {'category': category},
+                ).toString();
+                context.push(route);
+              },
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _VisitorAccessCard extends StatelessWidget {
+  const _VisitorAccessCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Browse first, sign in when you are ready',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Preview titles, explore new releases, and sign in only when you want to unlock, download, or continue on your account.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textMuted,
+                  height: 1.5,
+                ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              ElevatedButton(
+                onPressed: () => context.push('/login'),
+                child: const Text('Sign in'),
+              ),
+              OutlinedButton(
+                onPressed: () => context.push('/register'),
+                child: const Text('Create account'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

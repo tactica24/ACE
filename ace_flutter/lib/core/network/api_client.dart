@@ -24,7 +24,8 @@ class ApiClient {
           : parsedPath;
     }
 
-    final rawPath = parsedPath?.path.isNotEmpty == true ? parsedPath!.path : path;
+    final rawPath =
+        parsedPath?.path.isNotEmpty == true ? parsedPath!.path : path;
     final normalizedPath = rawPath.startsWith('/') ? rawPath : '/$rawPath';
     final resolvedQuery = query?.isNotEmpty == true
         ? query
@@ -33,7 +34,8 @@ class ApiClient {
             : null;
 
     return base.replace(
-      path: '${base.path.endsWith('/') ? base.path.substring(0, base.path.length - 1) : base.path}$normalizedPath',
+      path:
+          '${base.path.endsWith('/') ? base.path.substring(0, base.path.length - 1) : base.path}$normalizedPath',
       queryParameters: resolvedQuery,
     );
   }
@@ -50,6 +52,10 @@ class ApiClient {
     }
 
     return headers;
+  }
+
+  Future<Map<String, String>> authHeaders({Map<String, String>? extra}) {
+    return _headers(extra: extra);
   }
 
   Future<dynamic> getJson(String path, {Map<String, String>? query}) async {
@@ -78,13 +84,16 @@ class ApiClient {
 
   dynamic _decode(http.Response response) {
     final contentType = response.headers['content-type'] ?? '';
-    final payload = contentType.contains('application/json') && response.body.isNotEmpty
-        ? jsonDecode(response.body)
-        : response.body;
+    final payload =
+        contentType.contains('application/json') && response.body.isNotEmpty
+            ? jsonDecode(response.body)
+            : response.body;
 
     if (response.statusCode >= 400) {
       final message = payload is Map<String, dynamic>
-          ? (payload['error']?.toString() ?? payload['message']?.toString() ?? 'Request failed')
+          ? (payload['error']?.toString() ??
+              payload['message']?.toString() ??
+              'Request failed')
           : response.body;
       throw ApiException(message, statusCode: response.statusCode);
     }

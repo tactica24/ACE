@@ -11,6 +11,7 @@ class DownloadedTitle {
     required this.localPath,
     required this.downloadedAtIso,
     required this.principalId,
+    this.offlinePackageId,
     this.releaseYear,
     this.fileSizeBytes,
   });
@@ -26,6 +27,7 @@ class DownloadedTitle {
   final String localPath;
   final String downloadedAtIso;
   final String principalId;
+  final String? offlinePackageId;
   final int? releaseYear;
   final int? fileSizeBytes;
 
@@ -45,6 +47,7 @@ class DownloadedTitle {
       localPath: json['localPath'] as String? ?? '',
       downloadedAtIso: json['downloadedAtIso'] as String? ?? '',
       principalId: json['principalId'] as String? ?? '',
+      offlinePackageId: json['offlinePackageId'] as String?,
       releaseYear: (json['releaseYear'] as num?)?.toInt(),
       fileSizeBytes: (json['fileSizeBytes'] as num?)?.toInt(),
     );
@@ -62,6 +65,7 @@ class DownloadedTitle {
         'localPath': localPath,
         'downloadedAtIso': downloadedAtIso,
         'principalId': principalId,
+        'offlinePackageId': offlinePackageId,
         'releaseYear': releaseYear,
         'fileSizeBytes': fileSizeBytes,
       };

@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../widgets/premium_scaffold.dart';
+import '../data/offline_download_repository.dart';
 import '../../profile/data/user_preferences.dart';
 import '../models/downloaded_title.dart';
 
@@ -24,6 +23,7 @@ class _OfflinePlaybackPageState extends ConsumerState<OfflinePlaybackPage> {
   String? _error;
   bool _loading = true;
   bool _muted = true;
+  String? _preparedPlaybackPath;
 
   @override
   void initState() {
@@ -33,18 +33,22 @@ class _OfflinePlaybackPageState extends ConsumerState<OfflinePlaybackPage> {
 
   @override
   void dispose() {
+    final preparedPlaybackPath = _preparedPlaybackPath;
+    if (preparedPlaybackPath != null && preparedPlaybackPath.isNotEmpty) {
+      ref.read(offlineDownloadRepositoryProvider).cleanupPreparedPlaybackFile(
+            download: widget.download,
+            preparedPath: preparedPlaybackPath,
+          );
+    }
     _controller?.dispose();
     super.dispose();
   }
 
   Future<void> _bootstrap() async {
     try {
-      final file = File(widget.download.localPath);
-      final exists = await file.exists();
-      if (!exists) {
-        throw Exception('Offline file is no longer available on this device.');
-      }
-
+      final file = await ref
+          .read(offlineDownloadRepositoryProvider)
+          .preparePlaybackFile(widget.download);
       final controller = VideoPlayerController.file(file);
       await controller.initialize();
       final preferences = await ref.read(userPreferencesProvider.future);
@@ -59,6 +63,7 @@ class _OfflinePlaybackPageState extends ConsumerState<OfflinePlaybackPage> {
       setState(() {
         _controller = controller;
         _muted = preferences.startPlaybackMuted;
+        _preparedPlaybackPath = file.path;
         _loading = false;
       });
     } catch (error) {

@@ -14,14 +14,19 @@ final catalogTitlesProvider = FutureProvider<List<TitleSummary>>((ref) async {
 });
 
 final catalogSearchProvider =
-    FutureProvider.family<List<TitleSummary>, String>((ref, query) async {
-  final trimmed = query.trim();
-  return ref
-      .watch(catalogRepositoryProvider)
-      .fetchTitles(limit: trimmed.isEmpty ? 24 : 100, query: trimmed);
+    FutureProvider.family<List<TitleSummary>, BrowseFilters>(
+        (ref, filters) async {
+  return ref.watch(catalogRepositoryProvider).fetchTitles(
+        limit: filters.query.trim().isEmpty ? 24 : 100,
+        query: filters.query,
+        category: filters.category,
+        videoType: filters.videoType,
+        sort: filters.sort.apiValue,
+      );
 });
 
-final titleDetailProvider = FutureProvider.family<TitleDetail, String>((ref, id) async {
+final titleDetailProvider =
+    FutureProvider.family<TitleDetail, String>((ref, id) async {
   return ref.watch(catalogRepositoryProvider).fetchTitleDetail(id);
 });
 
@@ -33,13 +38,24 @@ class CatalogRepository {
   Future<List<TitleSummary>> fetchTitles({
     int limit = 24,
     String? query,
+    String? category,
+    String? videoType,
+    String? sort,
   }) async {
     final trimmedQuery = query?.trim() ?? '';
+    final trimmedCategory = category?.trim() ?? '';
+    final trimmedVideoType = videoType?.trim() ?? '';
+    final trimmedSort = sort?.trim() ?? '';
     final payload = await _apiClient.getJson(
       '/api/mobile/titles',
       query: {
         'limit': '$limit',
         if (trimmedQuery.isNotEmpty) 'q': trimmedQuery,
+        if (trimmedCategory.isNotEmpty && trimmedCategory != 'All')
+          'category': trimmedCategory,
+        if (trimmedVideoType.isNotEmpty && trimmedVideoType != 'All')
+          'type': trimmedVideoType,
+        if (trimmedSort.isNotEmpty) 'sort': trimmedSort,
       },
     ) as Map<String, dynamic>;
 
@@ -49,7 +65,44 @@ class CatalogRepository {
   }
 
   Future<TitleDetail> fetchTitleDetail(String id) async {
-    final payload = await _apiClient.getJson('/api/mobile/titles/$id') as Map<String, dynamic>;
+    final payload = await _apiClient.getJson('/api/mobile/titles/$id')
+        as Map<String, dynamic>;
     return TitleDetail.fromJson(payload);
   }
+}
+
+enum BrowseSort {
+  newest('newest'),
+  oldest('oldest'),
+  title('title');
+
+  const BrowseSort(this.apiValue);
+
+  final String apiValue;
+}
+
+class BrowseFilters {
+  const BrowseFilters({
+    this.query = '',
+    this.category = 'All',
+    this.videoType = 'All',
+    this.sort = BrowseSort.newest,
+  });
+
+  final String query;
+  final String category;
+  final String videoType;
+  final BrowseSort sort;
+
+  @override
+  bool operator ==(Object other) {
+    return other is BrowseFilters &&
+        other.query == query &&
+        other.category == category &&
+        other.videoType == videoType &&
+        other.sort == sort;
+  }
+
+  @override
+  int get hashCode => Object.hash(query, category, videoType, sort);
 }

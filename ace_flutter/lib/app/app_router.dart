@@ -25,16 +25,26 @@ GoRouter createRouter() {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const BootstrapPage()),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-      GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+      GoRoute(
+          path: '/register', builder: (context, state) => const RegisterPage()),
       GoRoute(path: '/home', builder: (context, state) => const HomePage()),
       GoRoute(
         path: '/browse',
-        builder: (context, state) => BrowsePage(initialQuery: state.uri.queryParameters['q']),
+        builder: (context, state) => BrowsePage(
+          initialQuery: state.uri.queryParameters['q'],
+          initialCategory: state.uri.queryParameters['category'],
+          initialVideoType: state.uri.queryParameters['type'],
+          initialSort: state.uri.queryParameters['sort'],
+        ),
       ),
-      GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
-      GoRoute(path: '/profile', builder: (context, state) => const ProfilePage()),
-      GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
-      GoRoute(path: '/support', builder: (context, state) => const SupportPage()),
+      GoRoute(
+          path: '/library', builder: (context, state) => const LibraryPage()),
+      GoRoute(
+          path: '/profile', builder: (context, state) => const ProfilePage()),
+      GoRoute(
+          path: '/settings', builder: (context, state) => const SettingsPage()),
+      GoRoute(
+          path: '/support', builder: (context, state) => const SupportPage()),
       GoRoute(
         path: '/offline-player',
         builder: (context, state) {
@@ -51,7 +61,8 @@ GoRouter createRouter() {
       ),
       GoRoute(
         path: '/title/:id',
-        builder: (context, state) => TitleDetailPage(titleId: state.pathParameters['id']!),
+        builder: (context, state) =>
+            TitleDetailPage(titleId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/player/:id',

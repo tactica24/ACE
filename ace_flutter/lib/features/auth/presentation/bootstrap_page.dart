@@ -27,12 +27,12 @@ class _BootstrapPageState extends ConsumerState<BootstrapPage> {
 
     return authState.when(
       data: (user) {
-        _redirectTo(user == null ? '/login' : '/home');
+        _redirectTo('/home');
         return const _BootstrapScaffold();
       },
       loading: () => const _BootstrapScaffold(),
       error: (_, __) {
-        _redirectTo('/login');
+        _redirectTo('/home');
         return const _BootstrapScaffold();
       },
     );

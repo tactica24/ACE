@@ -1,23 +1,54 @@
-import { Prisma } from '@prisma/client';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { onlyCatalogVideosWithPosters } from '@/lib/catalog-posters';
-import { prisma } from '@/lib/db';
-import { getFinanceConfig } from '@/lib/finance';
-import { formatRecordedCharge } from '@/lib/format';
-import { getMoviePosterUrlFromCandidates } from '@/lib/movie-assets';
-import { getRegionalCurrency } from '@/lib/pricing';
-import { getRegionalPriceForVideo } from '@/lib/video-pricing';
-import { getViewerReadyCatalogWhere } from '@/lib/video-visibility';
+import { Prisma, PriceTier, RightsTier, VideoType } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { onlyCatalogVideosWithPosters } from "@/lib/catalog-posters";
+import { prisma } from "@/lib/db";
+import { getFinanceConfig } from "@/lib/finance";
+import { formatRecordedCharge } from "@/lib/format";
+import { getMoviePosterUrlFromCandidates } from "@/lib/movie-assets";
+import { getRegionalCurrency } from "@/lib/pricing";
+import { getRegionalPriceForVideo } from "@/lib/video-pricing";
+import { getViewerReadyCatalogWhere } from "@/lib/video-visibility";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
   limit: z.coerce.number().min(1).max(50).default(24),
   q: z.string().trim().max(80).optional(),
+  category: z.string().trim().max(40).optional(),
+  type: z.nativeEnum(VideoType).optional(),
+  sort: z.enum(["newest", "oldest", "title"]).default("newest"),
 });
 
-function buildMobileCatalogSearchWhere(query: string): Prisma.VideoWhereInput | null {
+type MobileCatalogVideo = {
+  id: string;
+  seriesId: string | null;
+  title: string;
+  description: string;
+  videoType: VideoType;
+  ageRating: string;
+  category: string;
+  genres: string[];
+  teaserSec: number;
+  durationSec: number;
+  releaseYear: number | null;
+  posterKey: string | null;
+  priceTier: PriceTier;
+  rightsTier: RightsTier;
+  series: {
+    posterKey: string | null;
+  } | null;
+  technicalMetadata: {
+    vendorId: string | null;
+    studioReleaseTitle: string | null;
+    countriesOfOrigin: string[];
+    licensedTerritories: string[];
+  } | null;
+};
+
+function buildMobileCatalogSearchWhere(
+  query: string,
+): Prisma.VideoWhereInput | null {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) {
     return null;
@@ -31,9 +62,9 @@ function buildMobileCatalogSearchWhere(query: string): Prisma.VideoWhereInput | 
 
   return {
     OR: [
-      { title: { contains: normalizedQuery, mode: 'insensitive' } },
-      { description: { contains: normalizedQuery, mode: 'insensitive' } },
-      { category: { contains: normalizedQuery, mode: 'insensitive' } },
+      { title: { contains: normalizedQuery, mode: "insensitive" } },
+      { description: { contains: normalizedQuery, mode: "insensitive" } },
+      { category: { contains: normalizedQuery, mode: "insensitive" } },
       ...tokens.map((token) => ({ genres: { has: token } })),
     ],
   };
@@ -42,21 +73,42 @@ function buildMobileCatalogSearchWhere(query: string): Prisma.VideoWhereInput | 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const { limit, q } = querySchema.parse({
-      limit: searchParams.get('limit') ?? undefined,
-      q: searchParams.get('q') ?? undefined,
+    const { limit, q, category, type, sort } = querySchema.parse({
+      limit: searchParams.get("limit") ?? undefined,
+      q: searchParams.get("q") ?? undefined,
+      category: searchParams.get("category") ?? undefined,
+      type: searchParams.get("type") ?? undefined,
+      sort: searchParams.get("sort") ?? undefined,
     });
-    const searchQuery = q?.trim() ?? '';
+    const searchQuery = q?.trim() ?? "";
+    const categoryFilter = category?.trim() ?? "";
+    const typeFilter = type;
     const searchWhere = buildMobileCatalogSearchWhere(searchQuery);
-    const where = searchWhere
-      ? {
-          AND: [getViewerReadyCatalogWhere(), searchWhere],
-        }
-      : {
-          AND: [getViewerReadyCatalogWhere()]
-        };
+    const filters: Prisma.VideoWhereInput[] = [getViewerReadyCatalogWhere()];
+    if (searchWhere) {
+      filters.push(searchWhere);
+    }
+    if (categoryFilter && categoryFilter.toLowerCase() !== "all") {
+      filters.push({
+        category: {
+          equals: categoryFilter,
+          mode: "insensitive",
+        },
+      });
+    }
+    if (typeFilter) {
+      filters.push({ videoType: typeFilter });
+    }
+    const where: Prisma.VideoWhereInput = { AND: filters };
 
-    const videos = await prisma.video.findMany({
+    const orderBy =
+      sort === "oldest"
+        ? [{ createdAt: "asc" as const }]
+        : sort === "title"
+          ? [{ title: "asc" as const }]
+          : [{ createdAt: "desc" as const }];
+
+    const videos = (await prisma.video.findMany({
       where,
       select: {
         id: true,
@@ -75,21 +127,21 @@ export async function GET(request: NextRequest) {
         rightsTier: true,
         series: {
           select: {
-            posterKey: true
-          }
+            posterKey: true,
+          },
         },
         technicalMetadata: {
           select: {
             vendorId: true,
             studioReleaseTitle: true,
             countriesOfOrigin: true,
-            licensedTerritories: true
-          }
-        }
+            licensedTerritories: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       take: limit + 1,
-    });
+    })) as MobileCatalogVideo[];
     const posterBackedVideos = onlyCatalogVideosWithPosters(videos);
     const hasMore = posterBackedVideos.length > limit;
     const filteredVideos = posterBackedVideos.slice(0, limit);
@@ -114,9 +166,11 @@ export async function GET(request: NextRequest) {
         posterUrl: getMoviePosterUrlFromCandidates(video, video, video.series),
         metadata: {
           vendorId: video.technicalMetadata?.vendorId ?? null,
-          studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,
+          studioReleaseTitle:
+            video.technicalMetadata?.studioReleaseTitle ?? null,
           countriesOfOrigin: video.technicalMetadata?.countriesOfOrigin ?? [],
-          licensedTerritories: video.technicalMetadata?.licensedTerritories ?? []
+          licensedTerritories:
+            video.technicalMetadata?.licensedTerritories ?? [],
         },
         priceTier: video.priceTier,
         rightsTier: video.rightsTier,
@@ -125,11 +179,12 @@ export async function GET(request: NextRequest) {
           minorUnits: price.amountMinor,
           formatted: formatRecordedCharge(price),
         },
-        heroLabel: video.videoType === 'SERIES' ? 'SERIES' : 'FILM',
+        heroLabel: video.videoType === "SERIES" ? "SERIES" : "FILM",
       };
     });
 
-    const currency = titles[0]?.price.currency ?? getRegionalCurrency(request).currency;
+    const currency =
+      titles[0]?.price.currency ?? getRegionalCurrency(request).currency;
 
     return NextResponse.json(
       {
@@ -140,12 +195,15 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
         },
-      }
+      },
     );
   } catch (error) {
-    console.error('Mobile titles API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch titles' }, { status: 500 });
+    console.error("Mobile titles API error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch titles" },
+      { status: 500 },
+    );
   }
 }
