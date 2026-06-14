@@ -16,6 +16,7 @@ const DOWNLOAD_CACHE_HEADERS = {
 };
 
 const APK_DOWNLOAD_FILENAME = 'ace-studio-android.apk';
+const DEFAULT_GITHUB_RELEASE_APK_URL = 'https://github.com/tactica24/ACE/releases/download/android-latest/ace-studio-android.apk';
 
 function isTemporarySignedUrl(value: string) {
   try {
@@ -27,6 +28,20 @@ function isTemporarySignedUrl(value: string) {
       url.searchParams.has('AWSAccessKeyId') ||
       (url.searchParams.has('Expires') && url.searchParams.has('Signature'))
     );
+  } catch {
+    return false;
+  }
+}
+
+async function isReachableDownloadUrl(value: string) {
+  try {
+    const response = await fetch(value, {
+      method: 'HEAD',
+      redirect: 'manual',
+      cache: 'no-store'
+    });
+
+    return response.ok || [301, 302, 303, 307, 308].includes(response.status);
   } catch {
     return false;
   }
@@ -53,7 +68,7 @@ async function resolveAndroidApkSource(req: NextRequest): Promise<AndroidApkSour
   const configuredUrl = process.env.ACE_ANDROID_APK_URL?.trim();
   const configuredUrlIsTemporary = configuredUrl ? isTemporarySignedUrl(configuredUrl) : false;
 
-  if (configuredUrl && !configuredUrlIsTemporary) {
+  if (configuredUrl && !configuredUrlIsTemporary && await isReachableDownloadUrl(configuredUrl)) {
     return { kind: 'url', url: configuredUrl };
   }
 
@@ -72,6 +87,10 @@ async function resolveAndroidApkSource(req: NextRequest): Promise<AndroidApkSour
     } catch {
       return null;
     }
+  }
+
+  if (await isReachableDownloadUrl(DEFAULT_GITHUB_RELEASE_APK_URL)) {
+    return { kind: 'url', url: DEFAULT_GITHUB_RELEASE_APK_URL };
   }
 
   return null;
