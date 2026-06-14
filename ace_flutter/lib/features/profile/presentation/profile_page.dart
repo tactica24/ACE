@@ -6,11 +6,40 @@ import '../../../app/app_theme.dart';
 import '../../../widgets/premium_scaffold.dart';
 import '../../auth/data/auth_repository.dart';
 
-class ProfilePage extends ConsumerWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  bool _signingOut = false;
+
+  Future<void> _handleSignOut() async {
+    if (_signingOut) {
+      return;
+    }
+
+    setState(() {
+      _signingOut = true;
+    });
+
+    await ref.read(authRepositoryProvider).signOut();
+    ref.invalidate(currentAccountProvider);
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('You have signed out.')),
+    );
+    context.go('/login');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final accountAsync = ref.watch(currentAccountProvider);
 
     return PremiumScaffold(
@@ -99,14 +128,15 @@ class ProfilePage extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await ref.read(authRepositoryProvider).signOut();
-                    if (context.mounted) {
-                      context.go('/home');
-                    }
-                  },
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Sign out'),
+                  onPressed: _signingOut ? null : _handleSignOut,
+                  icon: _signingOut
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.logout_rounded),
+                  label: Text(_signingOut ? 'Signing out...' : 'Sign out'),
                 ),
               ),
             ],

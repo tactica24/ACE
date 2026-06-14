@@ -69,10 +69,10 @@ class OfflineDownloadRepository {
       teaserOnly: false,
       isSignedIn: true,
     );
-    final streamUrl = urls.progressiveUrl;
+    final streamUrl = _resolveDownloadUrl(urls);
     if (streamUrl == null) {
       throw Exception(
-          'No downloadable MP4 is available for this title yet. Playback may be ready before offline download is prepared.');
+          'Offline download is not available for this title yet. This title can stream online, but a downloadable file is not ready.');
     }
 
     final request = http.Request('GET', Uri.parse(streamUrl));
@@ -243,5 +243,26 @@ class OfflineDownloadRepository {
       return 'title';
     }
     return safe;
+  }
+
+  String? _resolveDownloadUrl(PlaybackStreamUrls urls) {
+    final progressiveUrl = urls.progressiveUrl?.trim();
+    if (progressiveUrl != null && progressiveUrl.isNotEmpty) {
+      return progressiveUrl;
+    }
+
+    final playbackUrl = urls.playbackUrl?.trim();
+    if (playbackUrl != null &&
+        playbackUrl.isNotEmpty &&
+        !_looksLikeHlsPlaylist(playbackUrl)) {
+      return playbackUrl;
+    }
+
+    return null;
+  }
+
+  bool _looksLikeHlsPlaylist(String url) {
+    final normalized = url.toLowerCase();
+    return normalized.contains('.m3u8') || normalized.contains('playlist.m3u8');
   }
 }

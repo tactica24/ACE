@@ -144,6 +144,19 @@ jobs:
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
+      - name: Setup Node for APK R2 upload
+        if: steps.storage.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Node dependencies for APK R2 upload
+        if: steps.storage.outputs.configured == 'true'
+        working-directory: .
+        run: npm ci --ignore-scripts
+
       - name: Upload APK to R2
         if: steps.storage.outputs.configured == 'true'
         env:
