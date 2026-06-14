@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 import { NextResponse, type NextRequest } from 'next/server';
-import { createSignedStorageUrl, hasConfiguredBunnyStorage } from '@/lib/bunny-storage';
+import { getObjectMetadata, getObjectStream, hasConfiguredBunnyStorage } from '@/lib/bunny-storage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,6 +14,8 @@ const DOWNLOAD_CACHE_HEADERS = {
   'CDN-Cache-Control': 'no-store',
   'Vercel-CDN-Cache-Control': 'no-store'
 };
+
+const APK_DOWNLOAD_FILENAME = 'ace-studio-android.apk';
 
 function isTemporarySignedUrl(value: string) {
   try {
@@ -29,30 +32,54 @@ function isTemporarySignedUrl(value: string) {
   }
 }
 
-async function resolveAndroidApkUrl(req: NextRequest) {
+type AndroidApkSource =
+  | { kind: 'url'; url: string }
+  | { kind: 'local'; url: string }
+  | { kind: 'storage'; key: string; metadata: Awaited<ReturnType<typeof getObjectMetadata>> };
+
+function buildAttachmentHeaders(contentType?: string, contentLength?: number, contentRange?: string) {
+  return {
+    'Content-Disposition': `attachment; filename="${APK_DOWNLOAD_FILENAME}"`,
+    'Content-Type': contentType || 'application/vnd.android.package-archive',
+    'Accept-Ranges': 'bytes',
+    ...(typeof contentLength === 'number' && Number.isFinite(contentLength)
+      ? { 'Content-Length': String(contentLength) }
+      : {}),
+    ...(contentRange ? { 'Content-Range': contentRange } : {})
+  };
+}
+
+async function resolveAndroidApkSource(req: NextRequest): Promise<AndroidApkSource | null> {
   const configuredUrl = process.env.ACE_ANDROID_APK_URL?.trim();
   const configuredUrlIsTemporary = configuredUrl ? isTemporarySignedUrl(configuredUrl) : false;
 
   if (configuredUrl && !configuredUrlIsTemporary) {
-    return configuredUrl;
+    return { kind: 'url', url: configuredUrl };
   }
 
-  const localApkPath = path.join(process.cwd(), 'public', 'downloads', 'ace-studio-android.apk');
+  const localApkPath = path.join(process.cwd(), 'public', 'downloads', APK_DOWNLOAD_FILENAME);
   if (fs.existsSync(localApkPath)) {
-    return new URL('/downloads/ace-studio-android.apk', req.url).toString();
+    return { kind: 'local', url: new URL(`/downloads/${APK_DOWNLOAD_FILENAME}`, req.url).toString() };
   }
 
   const primaryStorageKey = process.env.ACE_ANDROID_APK_STORAGE_KEY?.trim() || DEFAULT_ANDROID_APK_STORAGE_KEY;
   if (hasConfiguredBunnyStorage()) {
-    return createSignedStorageUrl(primaryStorageKey);
+    try {
+      const metadata = await getObjectMetadata(primaryStorageKey);
+      if ((metadata.ContentLength ?? 0) > 0) {
+        return { kind: 'storage', key: primaryStorageKey, metadata };
+      }
+    } catch {
+      return null;
+    }
   }
 
   return null;
 }
 
 export async function GET(req: NextRequest) {
-  const apkUrl = await resolveAndroidApkUrl(req);
-  if (!apkUrl) {
+  const apkSource = await resolveAndroidApkSource(req);
+  if (!apkSource) {
     return NextResponse.json(
       {
         error: 'Native Android APK is not available yet.',
@@ -62,26 +89,50 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return new Response(null, {
-    status: 302,
+  if (apkSource.kind === 'url' || apkSource.kind === 'local') {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: apkSource.url,
+        ...DOWNLOAD_CACHE_HEADERS
+      }
+    });
+  }
+
+  const range = req.headers.get('range') ?? undefined;
+  const apkObject = await getObjectStream(apkSource.key, range);
+  const body = apkObject.Body ? Readable.toWeb(apkObject.Body) as ReadableStream : null;
+
+  return new Response(body, {
+    status: apkObject.ContentRange ? 206 : 200,
     headers: {
-      Location: apkUrl,
-      ...DOWNLOAD_CACHE_HEADERS
+      ...DOWNLOAD_CACHE_HEADERS,
+      ...buildAttachmentHeaders(apkObject.ContentType, apkObject.ContentLength, apkObject.ContentRange)
     }
   });
 }
 
 export async function HEAD(req: NextRequest) {
-  const apkUrl = await resolveAndroidApkUrl(req);
-  if (!apkUrl) {
+  const apkSource = await resolveAndroidApkSource(req);
+  if (!apkSource) {
     return new Response(null, { status: 404 });
   }
 
+  if (apkSource.kind === 'url' || apkSource.kind === 'local') {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: apkSource.url,
+        ...DOWNLOAD_CACHE_HEADERS
+      }
+    });
+  }
+
   return new Response(null, {
-    status: 302,
+    status: 200,
     headers: {
-      Location: apkUrl,
-      ...DOWNLOAD_CACHE_HEADERS
+      ...DOWNLOAD_CACHE_HEADERS,
+      ...buildAttachmentHeaders(apkSource.metadata.ContentType, apkSource.metadata.ContentLength)
     }
   });
 }
