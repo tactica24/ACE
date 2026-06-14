@@ -1,157 +1,116 @@
-import fs from 'fs';
-import path from 'path';
-import { Readable } from 'stream';
+import { HeadObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getObjectMetadata, getObjectStream, hasConfiguredBunnyStorage } from '@/lib/bunny-storage';
+import { normalizeMediaKey } from '@/lib/media';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-const DEFAULT_ANDROID_APK_STORAGE_KEY = 'downloads/ace-studio-android.apk';
+const DEFAULT_ANDROID_APK_R2_KEY = 'downloads/ace-studio-android.apk';
+const APK_DOWNLOAD_FILENAME = 'ace-studio-android.apk';
+const SIGNED_URL_TTL_SECONDS = 60 * 10;
+
 const DOWNLOAD_CACHE_HEADERS = {
   'Cache-Control': 'private, no-store, no-cache, max-age=0, s-maxage=0, must-revalidate',
   'CDN-Cache-Control': 'no-store',
   'Vercel-CDN-Cache-Control': 'no-store'
 };
 
-const APK_DOWNLOAD_FILENAME = 'ace-studio-android.apk';
-const DEFAULT_GITHUB_RELEASE_APK_URL = 'https://github.com/tactica24/ACE/releases/download/android-latest/ace-studio-android.apk';
-
-function isTemporarySignedUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return (
-      url.searchParams.has('X-Amz-Signature') ||
-      url.searchParams.has('X-Amz-Expires') ||
-      url.searchParams.has('X-Amz-Credential') ||
-      url.searchParams.has('AWSAccessKeyId') ||
-      (url.searchParams.has('Expires') && url.searchParams.has('Signature'))
-    );
-  } catch {
-    return false;
+function getRequiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing required Android APK R2 configuration: ${name}`);
   }
+
+  return value;
 }
 
-async function isReachableDownloadUrl(value: string) {
+function getAndroidApkR2Client() {
+  return new S3Client({
+    region: process.env.R2_REGION?.trim() || 'auto',
+    endpoint: getRequiredEnv('R2_ENDPOINT'),
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: getRequiredEnv('R2_ACCESS_KEY_ID'),
+      secretAccessKey: getRequiredEnv('R2_SECRET_ACCESS_KEY')
+    }
+  });
+}
+
+function getAndroidApkR2Bucket() {
+  return getRequiredEnv('R2_BUCKET');
+}
+
+function getAndroidApkR2Key() {
+  const key = normalizeMediaKey(process.env.ACE_ANDROID_APK_R2_KEY?.trim() || DEFAULT_ANDROID_APK_R2_KEY);
+  if (!key) {
+    throw new Error('ACE_ANDROID_APK_R2_KEY must resolve to a valid object key.');
+  }
+
+  return key;
+}
+
+async function createAndroidApkDownloadUrl() {
+  const publicUrl = process.env.ACE_ANDROID_APK_R2_PUBLIC_URL?.trim();
+  if (publicUrl) {
+    return publicUrl;
+  }
+
+  const client = getAndroidApkR2Client();
+  const bucket = getAndroidApkR2Bucket();
+  const key = getAndroidApkR2Key();
+
+  await client.send(
+    new HeadObjectCommand({
+      Bucket: bucket,
+      Key: key
+    })
+  );
+
+  return getSignedUrl(
+    client as never,
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${APK_DOWNLOAD_FILENAME}"`,
+      ResponseContentType: 'application/vnd.android.package-archive'
+    }) as never,
+    {
+      expiresIn: SIGNED_URL_TTL_SECONDS
+    }
+  );
+}
+
+async function resolveAndroidApkResponse() {
   try {
-    const response = await fetch(value, {
-      method: 'HEAD',
-      redirect: 'manual',
-      cache: 'no-store'
+    const url = await createAndroidApkDownloadUrl();
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: url,
+        ...DOWNLOAD_CACHE_HEADERS
+      }
+    });
+  } catch (error) {
+    console.error('[android-apk] R2 download resolution failed', {
+      error: error instanceof Error ? error.message : String(error)
     });
 
-    return response.ok || [301, 302, 303, 307, 308].includes(response.status);
-  } catch {
-    return false;
-  }
-}
-
-type AndroidApkSource =
-  | { kind: 'url'; url: string }
-  | { kind: 'local'; url: string }
-  | { kind: 'storage'; key: string; metadata: Awaited<ReturnType<typeof getObjectMetadata>> };
-
-function buildAttachmentHeaders(contentType?: string, contentLength?: number, contentRange?: string) {
-  return {
-    'Content-Disposition': `attachment; filename="${APK_DOWNLOAD_FILENAME}"`,
-    'Content-Type': contentType || 'application/vnd.android.package-archive',
-    'Accept-Ranges': 'bytes',
-    ...(typeof contentLength === 'number' && Number.isFinite(contentLength)
-      ? { 'Content-Length': String(contentLength) }
-      : {}),
-    ...(contentRange ? { 'Content-Range': contentRange } : {})
-  };
-}
-
-async function resolveAndroidApkSource(req: NextRequest): Promise<AndroidApkSource | null> {
-  const configuredUrl = process.env.ACE_ANDROID_APK_URL?.trim();
-  const configuredUrlIsTemporary = configuredUrl ? isTemporarySignedUrl(configuredUrl) : false;
-
-  if (configuredUrl && !configuredUrlIsTemporary && await isReachableDownloadUrl(configuredUrl)) {
-    return { kind: 'url', url: configuredUrl };
-  }
-
-  const localApkPath = path.join(process.cwd(), 'public', 'downloads', APK_DOWNLOAD_FILENAME);
-  if (fs.existsSync(localApkPath)) {
-    return { kind: 'local', url: new URL(`/downloads/${APK_DOWNLOAD_FILENAME}`, req.url).toString() };
-  }
-
-  const primaryStorageKey = process.env.ACE_ANDROID_APK_STORAGE_KEY?.trim() || DEFAULT_ANDROID_APK_STORAGE_KEY;
-  if (hasConfiguredBunnyStorage()) {
-    try {
-      const metadata = await getObjectMetadata(primaryStorageKey);
-      if ((metadata.ContentLength ?? 0) > 0) {
-        return { kind: 'storage', key: primaryStorageKey, metadata };
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  if (await isReachableDownloadUrl(DEFAULT_GITHUB_RELEASE_APK_URL)) {
-    return { kind: 'url', url: DEFAULT_GITHUB_RELEASE_APK_URL };
-  }
-
-  return null;
-}
-
-export async function GET(req: NextRequest) {
-  const apkSource = await resolveAndroidApkSource(req);
-  if (!apkSource) {
     return NextResponse.json(
       {
-        error: 'Native Android APK is not available yet.',
-        details: 'Upload ace-studio-android.apk to Bunny Storage and set ACE_ANDROID_APK_URL or ACE_ANDROID_APK_STORAGE_KEY.'
+        error: 'Native Android APK is not available right now.',
+        details: 'Verify the Android APK exists at the configured R2 object key and that the APK-specific R2 credentials are valid.'
       },
       { status: 404 }
     );
   }
-
-  if (apkSource.kind === 'url' || apkSource.kind === 'local') {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: apkSource.url,
-        ...DOWNLOAD_CACHE_HEADERS
-      }
-    });
-  }
-
-  const range = req.headers.get('range') ?? undefined;
-  const apkObject = await getObjectStream(apkSource.key, range);
-  const body = apkObject.Body ? Readable.toWeb(apkObject.Body) as ReadableStream : null;
-
-  return new Response(body, {
-    status: apkObject.ContentRange ? 206 : 200,
-    headers: {
-      ...DOWNLOAD_CACHE_HEADERS,
-      ...buildAttachmentHeaders(apkObject.ContentType, apkObject.ContentLength, apkObject.ContentRange)
-    }
-  });
 }
 
-export async function HEAD(req: NextRequest) {
-  const apkSource = await resolveAndroidApkSource(req);
-  if (!apkSource) {
-    return new Response(null, { status: 404 });
-  }
+export async function GET(_req: NextRequest) {
+  return resolveAndroidApkResponse();
+}
 
-  if (apkSource.kind === 'url' || apkSource.kind === 'local') {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: apkSource.url,
-        ...DOWNLOAD_CACHE_HEADERS
-      }
-    });
-  }
-
-  return new Response(null, {
-    status: 200,
-    headers: {
-      ...DOWNLOAD_CACHE_HEADERS,
-      ...buildAttachmentHeaders(apkSource.metadata.ContentType, apkSource.metadata.ContentLength)
-    }
-  });
+export async function HEAD(_req: NextRequest) {
+  return resolveAndroidApkResponse();
 }
