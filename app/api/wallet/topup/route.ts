@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       amountNaira,
       email: user.email,
       reference,
+      callbackUrl: `${env.ACE_APP_BASE_URL.replace(/\/+$/, '')}/wallet/verify`,
       metadata: { userId: user.id, type: 'topup', referralCode: referral?.code ?? null }
     });
 

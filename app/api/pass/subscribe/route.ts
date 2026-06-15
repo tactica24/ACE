@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       amountNaira: PASS_PRICE_NAIRA,
       email: user.email,
       reference,
+      callbackUrl: `${env.ACE_APP_BASE_URL.replace(/\/+$/, '')}/wallet/verify`,
       metadata: { userId: user.id, type: 'pass', credits: PASS_CREDITS, referralCode: referral?.code ?? null }
     });
 

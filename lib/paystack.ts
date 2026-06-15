@@ -7,6 +7,7 @@ export async function initializeTransaction(args: {
   amountNaira: number;
   email: string;
   reference: string;
+  callbackUrl: string;
   metadata?: Record<string, unknown>;
 }) {
   const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
@@ -19,6 +20,7 @@ export async function initializeTransaction(args: {
       amount: args.amountNaira * 100,
       email: args.email,
       reference: args.reference,
+      callback_url: args.callbackUrl,
       metadata: args.metadata ?? {}
     })
   });
@@ -54,6 +56,10 @@ export function verifyPaystackWebhookSignature(rawBody: string, signature: strin
     return false;
   }
 
-  const expected = crypto.createHmac('sha512', env.PAYSTACK_SECRET_KEY).update(rawBody, 'utf8').digest('base64');
-  return crypto.timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(signature, 'utf8'));
+  const expected = crypto.createHmac('sha512', env.PAYSTACK_SECRET_KEY).update(rawBody, 'utf8').digest('hex');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const signatureBuffer = Buffer.from(signature, 'utf8');
+
+  return expectedBuffer.length === signatureBuffer.length
+    && crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 }

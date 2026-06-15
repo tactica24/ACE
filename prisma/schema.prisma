@@ -105,6 +105,7 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  ABANDONED
   REFUNDED
   REVERSED
 }

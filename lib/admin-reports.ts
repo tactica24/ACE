@@ -441,10 +441,13 @@ function rightsLabel(rightsTier: string) {
   return rightsTier === 'EXCLUSIVE' ? 'Exclusive license' : 'Shared license';
 }
 
-function priceTierLabel(priceTier: string) {
-  if (priceTier === 'SNACK') return 'Snack tier';
-  if (priceTier === 'PREMIERE') return 'Premiere tier';
-  return 'Standard tier';
+function priceNairaForTier(
+  priceTier: string,
+  config: { snackNaira: number; standardNaira: number; premiereNaira: number }
+) {
+  if (priceTier === 'SNACK') return config.snackNaira;
+  if (priceTier === 'PREMIERE') return config.premiereNaira;
+  return config.standardNaira;
 }
 
 function territoryLabelFromCurrency(currency: string) {
@@ -1004,7 +1007,7 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
       rightsTier: video.rightsTier,
       rightsLabel: rightsLabel(video.rightsTier),
       priceTier: video.priceTier,
-      priceLabel: priceTierLabel(video.priceTier),
+      priceNaira: priceNairaForTier(video.priceTier, financeConfig),
       creatorName: video.creator.creator?.displayName ?? video.creator.email,
       creatorNumber: video.creator.creator?.creatorNumber ?? null,
       creatorVerified: video.creator.creator?.verified ?? false
@@ -1203,7 +1206,7 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
       rightsTier: video.rightsTier,
       rightsLabel: rightsLabel(video.rightsTier),
       priceTier: video.priceTier,
-      priceLabel: priceTierLabel(video.priceTier),
+      priceNaira: priceNairaForTier(video.priceTier, financeConfig),
       vendorId: video.technicalMetadata?.vendorId ?? 'Not recorded',
       studioReleaseTitle: video.technicalMetadata?.studioReleaseTitle ?? null,
       licensedTerritories: Array.isArray(video.technicalMetadata?.licensedTerritories)
@@ -1261,15 +1264,16 @@ export async function getAdminMonthlyReportData({ monthKey, requestedVideoIds = 
       availabilityNote: buildAvailabilityNote(video),
       transactionRows: video.settlements.map((settlement, index) => {
         const unlock = video.unlocks[index] ?? null;
-        const customerPrice = unlock?.amountMinor ?? unlock?.amountNaira ?? settlement.grossNaira;
+        const customerPriceNaira = unlock?.amountNaira ?? settlement.grossNaira;
+        const customerPriceMinor = unlock?.amountMinor ?? customerPriceNaira * 100;
         const serviceFeeNaira = settlement.gatewayFeeNaira + settlement.taxNaira + settlement.referralNaira + settlement.platformNaira;
 
         return {
           date: settlement.createdAt,
-          vendorId: video.technicalMetadata?.vendorId ?? 'Not recorded',
           title: video.title,
           transactionCount: 1,
-          customerPrice,
+          customerPriceNaira,
+          customerPriceMinor,
           currency: unlock?.currency ?? 'NGN',
           serviceFeeNaira,
           netRevenueNaira: settlement.creatorNaira,

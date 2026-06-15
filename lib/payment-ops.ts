@@ -210,6 +210,14 @@ export async function markPaymentSuccessful({
 }
 
 export async function markPaymentFailed(reference: string) {
+  return markPaymentUnsuccessful(reference, 'FAILED');
+}
+
+export async function markPaymentAbandoned(reference: string) {
+  return markPaymentUnsuccessful(reference, 'ABANDONED');
+}
+
+async function markPaymentUnsuccessful(reference: string, status: 'FAILED' | 'ABANDONED') {
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`payment:${reference}`}))`;
@@ -226,13 +234,13 @@ export async function markPaymentFailed(reference: string) {
         throw new Error('Payment not found');
       }
 
-      if (payment.status === 'SUCCESS' || payment.status === 'FAILED') {
+      if (payment.status === 'SUCCESS' || payment.status === status) {
         return payment;
       }
 
       return tx.payment.update({
         where: { reference },
-        data: { status: 'FAILED' }
+        data: { status }
       });
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

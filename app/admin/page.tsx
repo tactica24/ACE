@@ -168,7 +168,7 @@ export default async function AdminPage() {
       actions={
         <>
           <Link className="btn btn-primary" href="/admin/moderation">Edit titles</Link>
-          <Link className="btn btn-ghost" href="/admin/payments">Payouts</Link>
+          <Link className="btn btn-ghost" href="/admin/transactions">Transactions</Link>
           <Link className="btn btn-ghost" href="/admin/finance">Finance</Link>
         </>
       }
@@ -298,7 +298,8 @@ export default async function AdminPage() {
             <Link className="btn btn-ghost" href="/admin/intake">Producer approvals</Link>
             <Link className="btn btn-ghost" href="/admin/moderation">Edit titles</Link>
             <Link className="btn btn-ghost" href="/admin/publish">Publish queue</Link>
-            <Link className="btn btn-ghost" href="/admin/payments">Payout operations</Link>
+            <Link className="btn btn-ghost" href="/admin/transactions">Customer transactions</Link>
+            <Link className="btn btn-ghost" href="/admin/payments">Producer payouts</Link>
             <Link className="btn btn-ghost" href="/admin/finance">Finance console</Link>
             <Link className="btn btn-ghost" href="/admin/reports">Producer reports</Link>
             <Link className="btn btn-ghost" href="/admin/settings">Admin controls</Link>

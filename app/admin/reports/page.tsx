@@ -44,12 +44,6 @@ function formatPercent(value: number) {
   return `${Math.round(value * 10) / 10}%`;
 }
 
-function videoStatusTone(status: string) {
-  if (status === 'APPROVED') return 'status-live';
-  if (status === 'PENDING') return 'status-review';
-  return 'status-warn';
-}
-
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
   await requireAdminUser('/admin/reports');
 
@@ -327,16 +321,13 @@ let recentStatements: Array<{
               <table className="table report-table">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Vendor ID</th>
-                    <th>Status</th>
-                    <th>Rights</th>
+                    <th>Movie title</th>
                     <th>Price</th>
                     <th>Unlocks</th>
-                    <th>Gross</th>
+                    <th>Gross revenue</th>
                     <th>Producer share</th>
-                    <th>Completion</th>
-                    <th>Availability</th>
+                    <th>Unique viewers</th>
+                    <th>Completion rate</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,24 +341,17 @@ let recentStatements: Array<{
                             {video.category}{video.releaseYear ? ` | ${video.releaseYear}` : ''}
                           </div>
                         </td>
-                        <td>{video.vendorId}</td>
-                        <td>
-                          <span className={`status-chip ${videoStatusTone(video.status)}`}>
-                            {video.statusLabel}
-                          </span>
-                        </td>
-                        <td>{video.rightsLabel}</td>
-                        <td>{video.priceLabel}</td>
+                        <td>{formatMoney(video.priceNaira)}</td>
                         <td>{video.unlockCount}</td>
                         <td>{formatMoney(video.grossNaira)}</td>
                         <td>{formatMoney(video.creatorNaira)}</td>
+                        <td>{video.uniqueAccounts}</td>
                         <td>{formatPercent(video.completionRate)}</td>
-                        <td>{video.availabilityNote}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={10}>No titles are currently associated with this producer.</td>
+                      <td colSpan={7}>No titles are currently associated with this producer.</td>
                     </tr>
                   )}
                 </tbody>
@@ -381,37 +365,39 @@ let recentStatements: Array<{
                   <h3>Transaction line items</h3>
                 </div>
                 <p className="report-sheet-note">
-                  These rows are shaped for licensor royalty statements: vendor ID, transaction count, transaction date, customer price, ACE service fee, and net revenue.
+                  Each unlock is shown with a clear movie title, payment date, customer price, deductions, and producer net revenue.
                 </p>
               </div>
               <table className="table report-table">
                 <thead>
                   <tr>
-                    <th>Vendor ID</th>
-                    <th>Title</th>
-                    <th>Date</th>
-                    <th>Transactions</th>
-                    <th>Customer price</th>
-                    <th>Service fee</th>
-                    <th>Net revenue</th>
+                    <th>Movie title</th>
+                    <th>Payment date</th>
+                    <th>Unlocks</th>
+                    <th>Price paid</th>
+                    <th>Fees and deductions</th>
+                    <th>Producer net</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.videos.flatMap((video) => video.transactionRows).length ? (
                     report.videos.flatMap((video) => video.transactionRows).map((row, index) => (
-                      <tr key={`${row.vendorId}-${row.date.toISOString()}-${index}`}>
-                        <td>{row.vendorId}</td>
+                      <tr key={`${row.title}-${row.date.toISOString()}-${index}`}>
                         <td>{row.title}</td>
                         <td>{formatPrintDate(row.date)}</td>
                         <td>{row.transactionCount}</td>
-                        <td>{row.currency === 'NGN' ? formatMoney(row.customerPrice) : `${row.currency} ${row.customerPrice}`}</td>
+                        <td>{formatRecordedCharge({
+                          amountMinor: row.customerPriceMinor,
+                          amountNaira: row.customerPriceNaira,
+                          currency: row.currency
+                        })}</td>
                         <td>{formatMoney(row.serviceFeeNaira)}</td>
                         <td>{formatMoney(row.netRevenueNaira)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7}>No transaction activity was recorded for this producer in the selected month.</td>
+                      <td colSpan={6}>No transaction activity was recorded for this producer in the selected month.</td>
                     </tr>
                   )}
                 </tbody>

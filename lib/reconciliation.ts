@@ -2,7 +2,12 @@ import { prisma } from '@/lib/db';
 import { verifyTransaction } from '@/lib/paystack';
 import { getStripe } from '@/lib/stripe';
 import { env } from '@/lib/env';
-import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
+import {
+  markPaymentAbandoned,
+  markPaymentFailed,
+  markPaymentSuccessful,
+  validateSettledPayment
+} from '@/lib/payment-ops';
 
 const STALE_PENDING_MINUTES = 15;
 
@@ -76,7 +81,13 @@ export async function reconcilePendingCommerce() {
           continue;
         }
 
-        if (verification.data.status === 'failed' || verification.data.status === 'abandoned') {
+        if (verification.data.status === 'abandoned') {
+          await markPaymentAbandoned(payment.reference);
+          failed += 1;
+          continue;
+        }
+
+        if (verification.data.status === 'failed') {
           await markPaymentFailed(payment.reference);
           failed += 1;
           continue;

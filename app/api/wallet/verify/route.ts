@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 import { verifyTransaction } from '@/lib/paystack';
-import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
+import {
+  markPaymentAbandoned,
+  markPaymentFailed,
+  markPaymentSuccessful,
+  validateSettledPayment
+} from '@/lib/payment-ops';
 import { getStripe } from '@/lib/stripe';
 
 export async function POST(req: NextRequest) {
@@ -73,6 +78,9 @@ export async function POST(req: NextRequest) {
   if (payment.status === 'SUCCESS' && payment.entitlementAppliedAt) {
     return NextResponse.json({ ok: true, credited: false });
   }
+  if (payment.status === 'ABANDONED') {
+    return NextResponse.json({ error: 'Payment was abandoned' }, { status: 400 });
+  }
   if (payment.status === 'SUCCESS' && !payment.entitlementAppliedAt) {
     await markPaymentSuccessful({
       reference,
@@ -87,7 +95,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: 'pending' }, { status: 202 });
   }
   if (verification.data.status !== 'success') {
-    if (verification.data.status === 'failed' || verification.data.status === 'abandoned') {
+    if (verification.data.status === 'abandoned') {
+      await markPaymentAbandoned(reference);
+      return NextResponse.json({ error: 'Payment was abandoned' }, { status: 400 });
+    }
+    if (verification.data.status === 'failed') {
       await markPaymentFailed(reference);
       return NextResponse.json({ error: 'Payment not successful' }, { status: 400 });
     }
