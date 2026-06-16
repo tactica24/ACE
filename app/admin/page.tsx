@@ -252,7 +252,7 @@ export default async function AdminPage() {
           <div className="grid">
             <div className="card">
               <h3>Reconciliation</h3>
-              <p className="muted">Keep payment gateways, wallet credits, and family passes synchronized.</p>
+              <p className="muted">Keep payment gateways and wallet balances synchronized.</p>
               <AdminOpsPanel initialSummary={reconciliationSummary} />
             </div>
 

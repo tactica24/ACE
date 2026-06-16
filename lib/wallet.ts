@@ -41,38 +41,3 @@ export async function creditWallet(userId: string, amount: number) {
     create: { userId, balanceNaira: amount }
   });
 }
-
-export async function usePassCredit(userId: string, creditsRequired = 1) {
-  return prisma.$transaction(
-    async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pass-credit:${userId}`}))`;
-
-      const pass = await tx.subscriptionPass.findFirst({
-        where: { userId, expiresAt: { gt: new Date() }, creditsRemaining: { gte: creditsRequired } },
-        orderBy: { expiresAt: 'asc' }
-      });
-      if (!pass || pass.creditsRemaining < creditsRequired) return null;
-      return tx.subscriptionPass.update({
-        where: { id: pass.id },
-        data: { creditsRemaining: { decrement: creditsRequired } }
-      });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
-}
-
-export async function useWalletCredit(userId: string, creditsRequired = 1) {
-  return prisma.$transaction(
-    async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`wallet-credit:${userId}`}))`;
-
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet || wallet.credits < creditsRequired) return null;
-      return tx.wallet.update({
-        where: { userId },
-        data: { credits: { decrement: creditsRequired } }
-      });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
-}

@@ -19,7 +19,6 @@ import {
   getViewerReadyCatalogWhere,
 } from '../lib/video-visibility';
 import { calculateUnlockSplit } from '../lib/finance';
-import { alignNairaToCreditValue, getCreditsForNaira } from '../lib/credits';
 import { getUnlockAmountNairaForVideo } from '../lib/video-pricing';
 import { canAccessVideoFromCountry } from '../lib/video-availability';
 import { getMultipartUploadRateLimit } from '../lib/upload-rate-limit';
@@ -35,6 +34,7 @@ import { getSignedStoredMediaUrl } from '../lib/media-delivery';
 import { getMediaAssetUrl, normalizeMediaKey } from '../lib/media';
 import { isHlsSource } from '../lib/playback-source';
 import { type PricingConfigValues } from '../lib/pricing';
+import { getGeoContextFromHeaders } from '../lib/geo';
 import {
   canAccessVideo,
   canPreviewVideo,
@@ -42,7 +42,6 @@ import {
   isPlayableVideo,
   isSeriesContainer,
 } from '../lib/video-access';
-import { PASS_CREDITS } from '../lib/commerce';
 
 type Case = {
   name: string;
@@ -448,11 +447,12 @@ const videoCases: Case[] = [
     },
   },
   {
-    name: 'pricing supports NGN 50 half-credit snack watches',
+    name: 'pricing supports NGN 50 wallet-amount unlocks',
     run: () => {
-      assert.equal(alignNairaToCreditValue(50), 50);
-      assert.equal(getCreditsForNaira(50), 0.5);
-      assert.equal(PASS_CREDITS / getCreditsForNaira(50), 60);
+      assert.equal(
+        getUnlockAmountNairaForVideo({ priceTier: 'SNACK', videoType: 'FEATURE', unlockPrice: null }, {} as PricingConfigValues),
+        50,
+      );
     },
   },
   {
@@ -462,6 +462,22 @@ const videoCases: Case[] = [
       assert.equal(canAccessVideoFromCountry('AFRICA', 'NG'), true);
       assert.equal(canAccessVideoFromCountry('AFRICA', 'ZA'), true);
       assert.equal(canAccessVideoFromCountry('AFRICA', 'US'), false);
+    },
+  },
+  {
+    name: 'geo context does not infer country from browser language',
+    run: () => {
+      const languageOnly = new Headers({ 'accept-language': 'en-US,en;q=0.9' });
+      assert.deepEqual(getGeoContextFromHeaders(languageOnly), {
+        country: null,
+        regionHint: null,
+      });
+
+      const explicitCountry = new Headers({
+        'accept-language': 'en-US,en;q=0.9',
+        'x-vercel-ip-country': 'NG',
+      });
+      assert.equal(getGeoContextFromHeaders(explicitCountry).country, 'NG');
     },
   },
   {

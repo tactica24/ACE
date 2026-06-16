@@ -425,7 +425,7 @@ function percentDelta(currentValue: number, previousValue: number) {
 function sourceLabel(source: string) {
   if (source === 'PAYSTACK') return 'Card checkout';
   if (source === 'WALLET') return 'Wallet';
-  if (source === 'PASS') return 'Pass credits';
+  if (source === 'PASS') return 'Legacy pass';
   if (source === 'ADMIN') return 'Admin unlock';
   return source;
 }

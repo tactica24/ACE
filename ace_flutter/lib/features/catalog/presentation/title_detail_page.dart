@@ -76,6 +76,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             subtitleTracks: episode.subtitleTracks,
             resumePositionSec: episode.progressSec,
             trailerUrl: episode.trailerUrl,
+            parentTitleId: widget.detail.summary.id,
             seasonNumber: episode.seasonNumber,
             episodeNumber: episode.episodeNumber,
           ),

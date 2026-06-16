@@ -56,11 +56,7 @@ export default async function AdminSettingsPage() {
           premiereGbpMinor: finance.premiereGbpMinor,
           snackCadMinor: finance.snackCadMinor,
           standardCadMinor: finance.standardCadMinor,
-          premiereCadMinor: finance.premiereCadMinor,
-          familyPassUsdMinor: finance.familyPassUsdMinor,
-          familyPassEurMinor: finance.familyPassEurMinor,
-          familyPassGbpMinor: finance.familyPassGbpMinor,
-          familyPassCadMinor: finance.familyPassCadMinor
+          premiereCadMinor: finance.premiereCadMinor
         }}
         initialSite={{
           homePageMode: site.homePageMode,

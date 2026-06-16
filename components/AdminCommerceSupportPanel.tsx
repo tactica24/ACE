@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCredits, getCreditsForNaira } from '@/lib/credits';
 import { formatRecordedCharge } from '@/lib/format';
 
 type PaymentRow = {
@@ -35,7 +34,7 @@ export default function AdminCommerceSupportPanel({
   initialActions
 }: {
   userId: string;
-  wallet: { balanceNaira: number; credits: number };
+  wallet: { balanceNaira: number };
   walletDisplayLabel?: string;
   recentPayments: PaymentRow[];
   initialActions: SupportActionRow[];
@@ -43,7 +42,6 @@ export default function AdminCommerceSupportPanel({
   const [reference, setReference] = useState(recentPayments[0]?.reference ?? '');
   const [statusNote, setStatusNote] = useState('');
   const [amountNairaDelta, setAmountNairaDelta] = useState(0);
-  const [creditsDelta, setCreditsDelta] = useState(0);
   const [adjustmentNote, setAdjustmentNote] = useState('');
   const [walletState, setWalletState] = useState(wallet);
   const [payments, setPayments] = useState(recentPayments);
@@ -165,7 +163,6 @@ export default function AdminCommerceSupportPanel({
         userId,
         reference: reference || undefined,
         amountNairaDelta,
-        creditsDelta,
         note: adjustmentNote
       },
       'adjust'
@@ -176,8 +173,7 @@ export default function AdminCommerceSupportPanel({
     if (!data) return;
 
     setWalletState({
-      balanceNaira: data.wallet.balanceNaira,
-      credits: data.wallet.credits
+      balanceNaira: data.wallet.balanceNaira
     });
     if (data.action) {
       recordAction({
@@ -194,7 +190,6 @@ export default function AdminCommerceSupportPanel({
     }
     setAdjustmentNote('');
     setAmountNairaDelta(0);
-    setCreditsDelta(0);
     setFeedback('User wallet updated and logged.');
   };
 
@@ -226,21 +221,14 @@ export default function AdminCommerceSupportPanel({
       </div>
 
       <div className="card">
-        <h3>Wallet and credit remediation</h3>
+        <h3>Wallet remediation</h3>
         <p className="muted">
-          Current balance: {walletDisplayLabel ?? formatRecordedCharge({ amountMinor: walletState.balanceNaira * 100, amountNaira: walletState.balanceNaira, currency: 'NGN' })} | {formatCredits(getCreditsForNaira(walletState.balanceNaira))} value
+          Current balance: {walletDisplayLabel ?? formatRecordedCharge({ amountMinor: walletState.balanceNaira * 100, amountNaira: walletState.balanceNaira, currency: 'NGN' })}
         </p>
-        <p className="muted">Stored credits: {formatCredits(walletState.credits)}</p>
-        <div className="field-grid field-grid-2">
-          <label className="field">
-            <span className="field-label">Wallet delta (ledger value)</span>
-            <input className="input" type="number" value={amountNairaDelta} onChange={(event) => setAmountNairaDelta(Math.round(Number(event.target.value || '0')))} />
-          </label>
-          <label className="field">
-            <span className="field-label">Credits delta</span>
-            <input className="input" type="number" step="0.5" value={creditsDelta} onChange={(event) => setCreditsDelta(Number(event.target.value || '0'))} />
-          </label>
-        </div>
+        <label className="field">
+          <span className="field-label">Wallet delta</span>
+          <input className="input" type="number" value={amountNairaDelta} onChange={(event) => setAmountNairaDelta(Math.round(Number(event.target.value || '0')))} />
+        </label>
         <label className="field" style={{ marginTop: 12 }}>
           <span className="field-label">Support note</span>
           <textarea className="input" rows={3} value={adjustmentNote} onChange={(event) => setAdjustmentNote(event.target.value)} />
@@ -305,7 +293,6 @@ export default function AdminCommerceSupportPanel({
                       })}
                     </span>
                   ) : null}
-                  {action.creditsDelta !== 0 ? <span className="muted">{action.creditsDelta > 0 ? '+' : ''}{action.creditsDelta} credits</span> : null}
                 </div>
               </div>
             ))}

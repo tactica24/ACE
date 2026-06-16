@@ -21,10 +21,6 @@ type FinanceSettings = {
   snackCadMinor: number;
   standardCadMinor: number;
   premiereCadMinor: number;
-  familyPassUsdMinor: number;
-  familyPassEurMinor: number;
-  familyPassGbpMinor: number;
-  familyPassCadMinor: number;
 };
 
 type SiteSettings = {
@@ -53,11 +49,7 @@ const pricingFields: Array<{ key: keyof FinanceSettings; label: string }> = [
   { key: 'premiereGbpMinor', label: 'Premiere GBP pence' },
   { key: 'snackCadMinor', label: 'Snack CAD cents' },
   { key: 'standardCadMinor', label: 'Standard CAD cents' },
-  { key: 'premiereCadMinor', label: 'Premiere CAD cents' },
-  { key: 'familyPassUsdMinor', label: 'Family pass USD cents' },
-  { key: 'familyPassEurMinor', label: 'Family pass EUR cents' },
-  { key: 'familyPassGbpMinor', label: 'Family pass GBP pence' },
-  { key: 'familyPassCadMinor', label: 'Family pass CAD cents' }
+  { key: 'premiereCadMinor', label: 'Premiere CAD cents' }
 ];
 
 export default function AdminSettingsPanel({

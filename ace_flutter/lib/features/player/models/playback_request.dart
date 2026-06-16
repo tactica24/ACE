@@ -14,6 +14,7 @@ class PlaybackQueueEntry {
     required this.subtitleTracks,
     required this.resumePositionSec,
     required this.trailerUrl,
+    this.parentTitleId,
     this.seasonNumber,
     this.episodeNumber,
   });
@@ -30,6 +31,7 @@ class PlaybackQueueEntry {
   final List<TitleSubtitleTrack> subtitleTracks;
   final int resumePositionSec;
   final String? trailerUrl;
+  final String? parentTitleId;
   final int? seasonNumber;
   final int? episodeNumber;
 
@@ -46,6 +48,7 @@ class PlaybackQueueEntry {
     List<TitleSubtitleTrack>? subtitleTracks,
     int? resumePositionSec,
     String? trailerUrl,
+    String? parentTitleId,
     int? seasonNumber,
     int? episodeNumber,
   }) {
@@ -62,6 +65,7 @@ class PlaybackQueueEntry {
       subtitleTracks: subtitleTracks ?? this.subtitleTracks,
       resumePositionSec: resumePositionSec ?? this.resumePositionSec,
       trailerUrl: trailerUrl ?? this.trailerUrl,
+      parentTitleId: parentTitleId ?? this.parentTitleId,
       seasonNumber: seasonNumber ?? this.seasonNumber,
       episodeNumber: episodeNumber ?? this.episodeNumber,
     );

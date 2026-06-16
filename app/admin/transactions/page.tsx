@@ -57,8 +57,8 @@ function getDateRange(period: string, from?: string, to?: string) {
 function paymentType(metadata: Prisma.JsonValue | null) {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return 'Wallet top-up';
   const type = typeof metadata.type === 'string' ? metadata.type : 'topup';
-  if (type === 'pass') return 'Hybrid pass';
-  if (type === 'family') return 'Family bundle';
+  if (type === 'pass') return 'Legacy pass';
+  if (type === 'family') return 'Legacy family bundle';
   return 'Wallet top-up';
 }
 
@@ -229,8 +229,8 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
             <select className="input" name="type" defaultValue={selectedType}>
               <option value="ALL">All types</option>
               <option value="topup">Wallet top-up</option>
-              <option value="pass">Hybrid pass</option>
-              <option value="family">Family bundle</option>
+              <option value="pass">Legacy pass</option>
+              <option value="family">Legacy family bundle</option>
             </select>
           </label>
           <label className="field">

@@ -1,33 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
-import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { markPaymentFailed, markPaymentSuccessful, validateSettledPayment } from '@/lib/payment-ops';
 import { verifyTransaction } from '@/lib/paystack';
 import { getStripe } from '@/lib/stripe';
 
-function getActionType(balanceNairaDelta: number, creditsDelta: number) {
-  if (balanceNairaDelta !== 0 && creditsDelta !== 0) return 'SUPPORT_COMPENSATION';
-  if (creditsDelta !== 0) return 'CREDIT_ADJUSTMENT';
-  return 'WALLET_ADJUSTMENT';
+function getActionType(balanceNairaDelta: number) {
+  if (balanceNairaDelta !== 0) return 'WALLET_ADJUSTMENT' as const;
+  return 'WALLET_ADJUSTMENT' as const;
 }
 
-function serializeWallet(wallet: { balanceNaira: number; credits: number }) {
-  return {
-    ...wallet,
-    credits: storedUnitsToCredits(wallet.credits)
-  };
+function serializeWallet(wallet: { balanceNaira: number }) {
+  return wallet;
 }
 
-function serializeSupportAction<T extends {
-  creditsDelta: number;
-  resultingCredits: number | null;
-}>(action: T) {
-  return {
-    ...action,
-    creditsDelta: storedUnitsToCredits(action.creditsDelta),
-    resultingCredits: action.resultingCredits === null ? null : storedUnitsToCredits(action.resultingCredits)
-  };
+function serializeSupportAction<T>(action: T) {
+  return action;
 }
 
 async function logSupportAction(args: {
@@ -231,13 +219,12 @@ export async function POST(req: NextRequest) {
       const note = typeof body?.note === 'string' ? body.note.trim() : '';
       const reference = typeof body?.reference === 'string' ? body.reference.trim() : '';
       const amountNairaDelta = Math.round(Number(body?.amountNairaDelta ?? 0));
-      const creditsDelta = creditsToStoredUnits(Number(body?.creditsDelta ?? 0));
 
       if (!userId || !note) {
         return NextResponse.json({ error: 'User and support note are required.' }, { status: 400 });
       }
-      if (!amountNairaDelta && !creditsDelta) {
-        return NextResponse.json({ error: 'Provide a wallet or credit adjustment.' }, { status: 400 });
+      if (!amountNairaDelta) {
+        return NextResponse.json({ error: 'Provide a wallet adjustment.' }, { status: 400 });
       }
 
       const payment = reference ? await prisma.payment.findUnique({ where: { reference } }) : null;
@@ -255,17 +242,13 @@ export async function POST(req: NextRequest) {
         });
 
         const nextBalance = wallet.balanceNaira + amountNairaDelta;
-        const nextCredits = wallet.credits + creditsDelta;
-        if (nextBalance < 0 || nextCredits < 0) {
-          throw new Error('This adjustment would leave the user with a negative wallet balance or credits.');
+        if (nextBalance < 0) {
+          throw new Error('This adjustment would leave the user with a negative wallet balance.');
         }
 
         const updatedWallet = await tx.wallet.update({
           where: { userId },
-          data: {
-            balanceNaira: nextBalance,
-            credits: nextCredits
-          }
+          data: { balanceNaira: nextBalance }
         });
 
         const actionRecord = await tx.adminSupportAction.create({
@@ -273,9 +256,9 @@ export async function POST(req: NextRequest) {
             adminUserId: auth.sub,
             userId,
             paymentId: payment?.id ?? null,
-            actionType: getActionType(amountNairaDelta, creditsDelta),
+            actionType: getActionType(amountNairaDelta),
             amountNairaDelta,
-            creditsDelta,
+            creditsDelta: 0,
             resultingBalanceNaira: updatedWallet.balanceNaira,
             resultingCredits: updatedWallet.credits,
             note

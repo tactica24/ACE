@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { EMAIL_VERIFICATION_REQUIRED_MESSAGE, getAuthFromRequest, hasVerifiedEmail } from '@/lib/auth';
-import { creditsToStoredUnits, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import { getRegionalCurrency } from '@/lib/pricing';
 import { consumeRateLimit, getRateLimitIdentity } from '@/lib/rate-limit';
@@ -28,14 +27,13 @@ export async function POST(req: NextRequest) {
 
   const { region } = getRegionalCurrency(req);
   if (region !== 'DIASPORA') {
-    return NextResponse.json({ error: 'Family sharing from wallet credits or balance is available for diaspora accounts only.' }, { status: 403 });
+    return NextResponse.json({ error: 'Family wallet sharing is available for diaspora accounts only.' }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);
   const recipientEmail = normalizeEmail(typeof body?.recipientEmail === 'string' ? body.recipientEmail : '');
-  const shareType = body?.shareType === 'BALANCE' ? 'BALANCE' : 'CREDITS';
   const rawAmount = Number(body?.amount ?? 0);
-  const amount = shareType === 'CREDITS' ? creditsToStoredUnits(rawAmount) : Math.floor(rawAmount);
+  const amount = Math.floor(rawAmount);
 
   if (!recipientEmail) {
     return NextResponse.json({ error: 'Enter the family member email address.' }, { status: 400 });
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: shareType === 'CREDITS' ? 'Enter the number of credits to share.' : 'Enter the wallet amount to share.' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter the wallet amount to share.' }, { status: 400 });
   }
 
   try {
@@ -74,33 +72,18 @@ export async function POST(req: NextRequest) {
           create: { userId: recipient.id }
         });
 
-        if (shareType === 'CREDITS') {
-          if (senderWallet.credits < amount) {
-            throw new Error('You do not have enough credits to share that amount.');
-          }
-
-          await tx.wallet.update({
-            where: { userId: auth.sub },
-            data: { credits: { decrement: amount } }
-          });
-          await tx.wallet.update({
-            where: { userId: recipient.id },
-            data: { credits: { increment: amount } }
-          });
-        } else {
-          if (senderWallet.balanceNaira < amount) {
-            throw new Error('You do not have enough wallet balance to share that amount.');
-          }
-
-          await tx.wallet.update({
-            where: { userId: auth.sub },
-            data: { balanceNaira: { decrement: amount } }
-          });
-          await tx.wallet.update({
-            where: { userId: recipient.id },
-            data: { balanceNaira: { increment: amount } }
-          });
+        if (senderWallet.balanceNaira < amount) {
+          throw new Error('You do not have enough wallet balance to share that amount.');
         }
+
+        await tx.wallet.update({
+          where: { userId: auth.sub },
+          data: { balanceNaira: { decrement: amount } }
+        });
+        await tx.wallet.update({
+          where: { userId: recipient.id },
+          data: { balanceNaira: { increment: amount } }
+        });
 
         const existingLink = await tx.familyLink.findFirst({
           where: { ownerId: auth.sub, recipientEmail }
@@ -117,7 +100,7 @@ export async function POST(req: NextRequest) {
 
         const updatedSenderWallet = await tx.wallet.findUnique({
           where: { userId: auth.sub },
-          select: { balanceNaira: true, credits: true }
+          select: { balanceNaira: true }
         });
 
         return {
@@ -130,14 +113,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      shareType,
-      wallet: result.wallet
-        ? { ...result.wallet, credits: storedUnitsToCredits(result.wallet.credits) }
-        : result.wallet,
-      message:
-        shareType === 'CREDITS'
-          ? `${storedUnitsToCredits(amount)} credits shared with ${result.recipient.name ?? result.recipient.email}.`
-          : `NGN ${amount} shared with ${result.recipient.name ?? result.recipient.email}.`
+      shareType: 'BALANCE',
+      wallet: result.wallet,
+      message: `NGN ${amount} shared with ${result.recipient.name ?? result.recipient.email}.`
     });
   } catch (error) {
     return NextResponse.json(

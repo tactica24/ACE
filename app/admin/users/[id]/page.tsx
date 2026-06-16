@@ -14,7 +14,6 @@ import { getAdminNavItems } from '@/lib/admin-nav';
 import { getAdminPosterAssetHref, getAdminTrailerAssetHref } from '@/lib/admin-video-assets';
 import { requireAdminUser } from '@/lib/auth-page';
 import { formatContractDate } from '@/lib/contracts';
-import { formatCredits, getCreditsForNaira, storedUnitsToCredits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 import {
   getDeliveryFormatLabel,
@@ -218,8 +217,6 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <span className="muted">Signup intent: {user.signupIntent}</span>
             <span className="muted">Producer access: {user.creatorAccessStatus}</span>
             <span className="muted">Viewer wallet: {formatMoney(user.wallet?.balanceNaira ?? 0)}</span>
-            <span className="muted">Wallet value: {formatCredits(getCreditsForNaira(user.wallet?.balanceNaira ?? 0))}</span>
-            <span className="muted">Viewer credits: {formatCredits(storedUnitsToCredits(user.wallet?.credits ?? 0))}</span>
           </div>
         </div>
 
@@ -371,7 +368,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                         <strong>{payment.reference}</strong>
                         <p className="muted">{payment.gateway} | {payment.status} | {payment.createdAt.toISOString().slice(0, 10)}</p>
                       </div>
-                      <span>{`${formatRecordedCharge({ amountMinor: payment.amountMinor ?? payment.amountNaira * 100, amountNaira: payment.amountNaira, currency: payment.currency })} | ${formatCredits(getCreditsForNaira(payment.amountNaira))}`}</span>
+                      <span>{formatRecordedCharge({ amountMinor: payment.amountMinor ?? payment.amountNaira * 100, amountNaira: payment.amountNaira, currency: payment.currency })}</span>
                     </div>
                   ))}
                 </div>
@@ -388,7 +385,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                     <div key={unlock.id} className="stack-row">
                       <div>
                         <strong>{videoTitleById.get(unlock.videoId) ?? 'Deleted or unavailable title'}</strong>
-                        <p className="muted">{unlock.createdAt.toISOString().slice(0, 10)} | {unlock.source} | {formatCredits(getCreditsForNaira(unlock.amountNaira))}</p>
+                        <p className="muted">{unlock.createdAt.toISOString().slice(0, 10)} | {unlock.source}</p>
                       </div>
                       <span>{formatRecordedCharge({ amountMinor: unlock.amountMinor ?? unlock.amountNaira * 100, amountNaira: unlock.amountNaira, currency: unlock.currency })}</span>
                     </div>
@@ -402,8 +399,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
             <AdminCommerceSupportPanel
               userId={user.id}
               wallet={{
-                balanceNaira: user.wallet?.balanceNaira ?? 0,
-                credits: storedUnitsToCredits(user.wallet?.credits ?? 0)
+                balanceNaira: user.wallet?.balanceNaira ?? 0
               }}
               walletDisplayLabel={formatMoney(user.wallet?.balanceNaira ?? 0)}
               recentPayments={user.payments.map((payment) => ({
@@ -420,9 +416,9 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
                 id: action.id,
                 actionType: action.actionType,
                 amountNairaDelta: action.amountNairaDelta,
-                creditsDelta: storedUnitsToCredits(action.creditsDelta),
+                creditsDelta: action.creditsDelta,
                 resultingBalanceNaira: action.resultingBalanceNaira,
-                resultingCredits: action.resultingCredits === null ? null : storedUnitsToCredits(action.resultingCredits),
+                resultingCredits: action.resultingCredits,
                 note: action.note,
                 createdAt: action.createdAt.toISOString().slice(0, 10),
                 adminEmail: adminEmailById.get(action.adminUserId) ?? 'Deleted admin account'

@@ -46,7 +46,7 @@ export default function AdminOpsPanel({
         <div>
           <h3 style={{ marginBottom: 8 }}>Commerce reconciliation</h3>
           <p className="muted" style={{ marginTop: 0 }}>
-            Keep top-ups, pass purchases, and family bundles aligned even when webhooks or gateway callbacks arrive late.
+            Keep wallet top-ups aligned even when webhooks or gateway callbacks arrive late.
           </p>
         </div>
         <button className="btn btn-primary" type="button" onClick={runReconciliation} disabled={loading}>

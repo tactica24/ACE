@@ -578,7 +578,7 @@ export default function AcePlayer({
       if (!res.ok) {
         if (res.status === 402) {
           setUnlockState('needs_topup');
-          setFeedback('You need more credits or wallet balance to keep watching.');
+          setFeedback('You need more wallet balance to keep watching.');
           if (immediatePrompt) {
             setShowPaywall(true);
           }

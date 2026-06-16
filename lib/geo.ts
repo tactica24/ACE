@@ -32,18 +32,8 @@ function normalizeCountry(country: string | null) {
   return normalized === 'UK' ? 'GB' : normalized;
 }
 
-function inferCountryFromLanguage(headers: Headers) {
-  const preferredLanguage = headers.get('accept-language');
-  if (!preferredLanguage) return null;
-
-  const regionMatch = preferredLanguage.match(/-[A-Za-z]{2}\b/);
-  return normalizeCountry(regionMatch ? regionMatch[0].slice(1) : null);
-}
-
 export function getGeoContextFromHeaders(headers: Headers) {
-  const country =
-    COUNTRY_HEADER_KEYS.map((headerName) => headers.get(headerName)).find(Boolean) ??
-    inferCountryFromLanguage(headers);
+  const country = COUNTRY_HEADER_KEYS.map((headerName) => headers.get(headerName)).find(Boolean) ?? null;
   const regionHint = REGION_HEADER_KEYS.map((headerName) => headers.get(headerName)).find(Boolean) ?? null;
 
   return { country: normalizeCountry(country), regionHint };

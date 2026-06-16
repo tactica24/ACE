@@ -495,6 +495,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
 
     try {
       await ref.read(unlockRepositoryProvider).unlockTitle(entry.id);
+      _invalidateAccessCaches(entry);
       return entry.copyWith(
         hasAccess: true,
         teaserOnly: false,
@@ -537,9 +538,7 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
 
     try {
       await ref.read(unlockRepositoryProvider).unlockTitle(entry.id);
-
-      // Invalidate so the detail screen updates its access state
-      ref.invalidate(titleDetailProvider(entry.id));
+      _invalidateAccessCaches(entry);
 
       if (!mounted) return;
 
@@ -572,6 +571,14 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
           _unlockingNext = false;
         });
       }
+    }
+  }
+
+  void _invalidateAccessCaches(PlaybackQueueEntry entry) {
+    ref.invalidate(titleDetailProvider(entry.id));
+    final parentTitleId = entry.parentTitleId;
+    if (parentTitleId != null && parentTitleId != entry.id) {
+      ref.invalidate(titleDetailProvider(parentTitleId));
     }
   }
 

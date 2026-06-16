@@ -1,5 +1,4 @@
 import { type NextRequest } from 'next/server';
-import { CREDIT_UNIT_VALUE_NAIRA } from './credits';
 import { type PriceTierValue, type VideoTypeValue } from './media-types';
 import { getChargeForNaira, type PricingConfigValues, type RegionalPrice } from './pricing';
 
@@ -10,8 +9,8 @@ type PricedVideo = {
   unlockPrice?: number | null;
 };
 
-export const SERIES_EPISODE_UNLOCK_NAIRA = CREDIT_UNIT_VALUE_NAIRA;
-export const MOVIE_UNLOCK_NAIRA = CREDIT_UNIT_VALUE_NAIRA;
+export const SERIES_EPISODE_UNLOCK_NAIRA = 50;
+export const MOVIE_UNLOCK_NAIRA = 50;
 
 export function usesSeriesEpisodePricing(video: Pick<PricedVideo, 'videoType' | 'seriesId'>) {
   return video.videoType === 'SERIES';

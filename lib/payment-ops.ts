@@ -1,6 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { DEFAULT_FAMILY_BUNDLE_CREDITS, PASS_CREDITS } from '@/lib/commerce';
-import { creditsToStoredUnits } from '@/lib/credits';
 import { prisma } from '@/lib/db';
 
 type PaymentRecord = Prisma.PaymentGetPayload<{
@@ -27,7 +25,6 @@ function getPaymentMetadata(payment: PaymentRecord) {
   return (payment.metadata as {
     type?: string;
     recipientUserId?: string;
-    credits?: number | string;
     stripeSessionId?: string;
   } | null) ?? null;
 }
@@ -57,31 +54,20 @@ async function applyPaymentEntitlement(tx: Prisma.TransactionClient, payment: Pa
   const type = metadata?.type;
 
   if (type === 'pass') {
-    const credits = creditsToStoredUnits(Number(metadata?.credits ?? PASS_CREDITS));
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    await tx.subscriptionPass.create({
-      data: {
-        userId: payment.userId,
-        creditsRemaining: credits,
-        expiresAt
-      }
-    });
     await tx.wallet.upsert({
       where: { userId: payment.userId },
-      update: { credits: { increment: credits } },
-      create: { userId: payment.userId, credits }
+      update: { balanceNaira: { increment: payment.amountNaira } },
+      create: { userId: payment.userId, balanceNaira: payment.amountNaira }
     });
     return;
   }
 
   if (type === 'family') {
-    const credits = creditsToStoredUnits(Number(metadata?.credits ?? DEFAULT_FAMILY_BUNDLE_CREDITS));
     if (metadata?.recipientUserId) {
       await tx.wallet.upsert({
         where: { userId: metadata.recipientUserId },
-        update: { credits: { increment: credits } },
-        create: { userId: metadata.recipientUserId, credits }
+        update: { balanceNaira: { increment: payment.amountNaira } },
+        create: { userId: metadata.recipientUserId, balanceNaira: payment.amountNaira }
       });
     }
     return;
