@@ -216,6 +216,8 @@ model LiveMatch {
   description  String?
   venue        String?
   sourceLabel  String?
+  youtubeVideoId String?       @unique
+  youtubeChannelId String?
   isPublished  Boolean         @default(false)
   chatEnabled  Boolean         @default(true)
   createdById  String

@@ -87,6 +87,20 @@ export async function PATCH(req: NextRequest) {
   const body = (await req.json()) as Record<string, unknown>;
   const id = optionalText(body.id, 100);
   if (!id) return NextResponse.json({ error: 'Match ID is required.' }, { status: 400 });
+  if (body.action === 'publish' || body.action === 'unpublish') {
+    try {
+      const match = await prisma.liveMatch.update({
+        where: { id },
+        data: { isPublished: body.action === 'publish' }
+      });
+      return NextResponse.json({ ok: true, match });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return NextResponse.json({ error: 'Match not found.' }, { status: 404 });
+      }
+      throw error;
+    }
+  }
   const parsed = parseMatch(body);
   if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
