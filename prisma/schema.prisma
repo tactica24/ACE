@@ -196,6 +196,7 @@ model User {
   supportActionsPerformed AdminSupportAction[] @relation("SupportActionAdmin")
   playbackSessions       PlaybackSession[]
   liveMatchesCreated     LiveMatch[]         @relation("LiveMatchCreator")
+  youtubeMatchSourcesCreated YouTubeMatchSource[] @relation("YouTubeMatchSourceCreator")
   liveChatProfile        LiveChatProfile?
   liveChatMessages       LiveChatMessage[]
   liveChatReactions      LiveChatReaction[]
@@ -228,6 +229,22 @@ model LiveMatch {
 
   @@index([isPublished, status, kickoffAt])
   @@index([createdAt])
+}
+
+model YouTubeMatchSource {
+  id            String   @id @default(cuid())
+  channelId     String   @unique
+  title         String
+  channelUrl    String
+  sport         String   @default("Sports")
+  isActive      Boolean  @default(true)
+  lastCheckedAt DateTime?
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     User     @relation("YouTubeMatchSourceCreator", fields: [createdById], references: [id])
+
+  @@index([isActive, createdAt])
 }
 
 model LiveChatProfile {

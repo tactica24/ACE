@@ -122,11 +122,11 @@ export default function AdminLiveMatchManager({ initialMatches }: { initialMatch
   }
 
   function renderMatches(items: AdminLiveMatch[]) {
-    if (!items.length) return <div className="live-empty-admin"><Radio size={34} /><h3>No matches here</h3><p>The daily collector will place eligible broadcasts into Drafts.</p></div>;
+    if (!items.length) return <div className="live-empty-admin"><Radio size={34} /><h3>No matches here</h3><p>The automatic collector and manual YouTube intake will place eligible broadcasts into Drafts.</p></div>;
     return <div className="live-admin-list">{items.map((match) => <article className="live-admin-row" key={match.id}>
       <div className={`live-status-dot ${match.status.toLowerCase()}`} />
       <div className="live-admin-match-copy">
-        <div className="live-admin-badges"><span>{match.sport}</span><span>{match.competition}</span><span>{match.status}</span>{!match.isPublished ? <span>Draft</span> : null}{match.youtubeVideoId ? <span>Verified YouTube</span> : null}</div>
+        <div className="live-admin-badges"><span>{match.sport}</span><span>{match.competition}</span><span>{match.status}</span>{!match.isPublished ? <span>Draft</span> : null}{match.youtubeVideoId ? <span>YouTube source</span> : null}</div>
         <h3>{match.homeTeam} <span>vs</span> {match.awayTeam}</h3>
         <p><CalendarClock size={14} /> {new Date(match.kickoffAt).toLocaleString()} {match.venue ? ` · ${match.venue}` : ''}</p>
       </div>
