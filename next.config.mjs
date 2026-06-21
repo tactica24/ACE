@@ -64,6 +64,7 @@ const nextConfig = {
               "worker-src 'self' blob:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://api.stripe.com https://api.paystack.co https://storage.bunnycdn.com https://*.storage.bunnycdn.com https://video.bunnycdn.com https://*.bunnycdn.com https://*.mediadelivery.net https://*.b-cdn.net",
+              "frame-src https:",
               "frame-ancestors 'none'",
             ].join('; '),
           },

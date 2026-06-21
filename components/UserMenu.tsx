@@ -77,11 +77,17 @@ export default function UserMenu({
             <Link className="user-menu-link" href="/account" onClick={() => setOpen(false)}>
               {copy.account}
             </Link>
+            <Link className="user-menu-link" href="/my-movies" onClick={() => setOpen(false)}>
+              My Movies
+            </Link>
             {role === 'USER' ? (
               <Link className="user-menu-link" href="/wallet" onClick={() => setOpen(false)}>
                 {copy.wallet}
               </Link>
             ) : null}
+            <Link className="user-menu-link" href="/download" onClick={() => setOpen(false)}>
+              Android App
+            </Link>
             {role === 'ADMIN' ? (
               <Link className="user-menu-link" href="/admin" onClick={() => setOpen(false)}>
                 Admin dashboard

@@ -157,6 +157,13 @@ enum ReportStatementStatus {
   SUPERSEDED
 }
 
+enum LiveMatchStatus {
+  UPCOMING
+  LIVE
+  ENDED
+  POSTPONED
+}
+
 model User {
   id           String          @id @default(cuid())
   firebaseUid  String?         @unique
@@ -188,6 +195,79 @@ model User {
   supportActionsReceived AdminSupportAction[] @relation("SupportActionUser")
   supportActionsPerformed AdminSupportAction[] @relation("SupportActionAdmin")
   playbackSessions       PlaybackSession[]
+  liveMatchesCreated     LiveMatch[]         @relation("LiveMatchCreator")
+  liveChatProfile        LiveChatProfile?
+  liveChatMessages       LiveChatMessage[]
+  liveChatReactions      LiveChatReaction[]
+}
+
+model LiveMatch {
+  id           String          @id @default(cuid())
+  slug         String          @unique
+  title        String
+  sport        String          @default("Football")
+  competition  String
+  homeTeam     String
+  awayTeam     String
+  kickoffAt    DateTime
+  status       LiveMatchStatus @default(UPCOMING)
+  embedUrl     String
+  posterUrl    String?
+  description  String?
+  venue        String?
+  sourceLabel  String?
+  isPublished  Boolean         @default(false)
+  chatEnabled  Boolean         @default(true)
+  createdById  String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  createdBy    User            @relation("LiveMatchCreator", fields: [createdById], references: [id])
+  messages     LiveChatMessage[]
+
+  @@index([isPublished, status, kickoffAt])
+  @@index([createdAt])
+}
+
+model LiveChatProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  handle      String   @unique
+  avatarEmoji String   @default("⚽")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LiveChatMessage {
+  id        String            @id @default(cuid())
+  matchId   String
+  userId    String
+  parentId  String?
+  content   String
+  isDeleted Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  match     LiveMatch         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    LiveChatMessage?  @relation("LiveChatReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   LiveChatMessage[] @relation("LiveChatReplies")
+  reactions LiveChatReaction[]
+
+  @@index([matchId, createdAt])
+  @@index([userId, createdAt])
+  @@index([parentId])
+}
+
+model LiveChatReaction {
+  id        String          @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime        @default(now())
+  message   LiveChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
 model Wallet {

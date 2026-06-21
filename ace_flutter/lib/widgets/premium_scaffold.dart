@@ -66,6 +66,11 @@ class PremiumScaffold extends StatelessWidget {
           }
 
           if (index == 2) {
+            context.go('/live');
+            return;
+          }
+
+          if (index == 3) {
             context.go('/library');
             return;
           }
@@ -73,24 +78,36 @@ class PremiumScaffold extends StatelessWidget {
           context.go('/profile');
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore_rounded), label: 'Browse'),
-          BottomNavigationBarItem(icon: Icon(Icons.collections_bookmark_rounded), label: 'My Access'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.explore_rounded), label: 'Browse'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.sensors_rounded), label: 'Live'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.collections_bookmark_rounded),
+              label: 'My Access'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
     );
   }
 
   int _indexForLocation(String location) {
-    if (location.startsWith('/browse') || location.startsWith('/title') || location.startsWith('/player')) {
+    if (location.startsWith('/browse') ||
+        location.startsWith('/title') ||
+        location.startsWith('/player')) {
       return 1;
     }
-    if (location.startsWith('/library')) {
+    if (location.startsWith('/live')) {
       return 2;
     }
-    if (location.startsWith('/profile')) {
+    if (location.startsWith('/library')) {
       return 3;
+    }
+    if (location.startsWith('/profile')) {
+      return 4;
     }
     return 0;
   }

@@ -10,6 +10,8 @@ import '../features/catalog/presentation/title_detail_page.dart';
 import '../features/downloads/models/downloaded_title.dart';
 import '../features/downloads/presentation/offline_playback_page.dart';
 import '../features/library/presentation/library_page.dart';
+import '../features/live/presentation/live_match_page.dart';
+import '../features/live/presentation/live_matches_page.dart';
 import '../features/player/models/playback_request.dart';
 import '../features/player/presentation/playback_page.dart';
 import '../features/profile/presentation/profile_page.dart';
@@ -39,6 +41,13 @@ GoRouter createRouter() {
       ),
       GoRoute(
           path: '/library', builder: (context, state) => const LibraryPage()),
+      GoRoute(
+          path: '/live', builder: (context, state) => const LiveMatchesPage()),
+      GoRoute(
+        path: '/live/:id',
+        builder: (context, state) =>
+            LiveMatchPage(matchId: state.pathParameters['id']!),
+      ),
       GoRoute(
           path: '/profile', builder: (context, state) => const ProfilePage()),
       GoRoute(

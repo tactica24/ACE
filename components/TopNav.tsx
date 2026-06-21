@@ -100,11 +100,9 @@ export default function TopNav() {
           : copy.browse
     : copy.browse;
   const navLinks = [
-    { label: 'Home', href: '/' },
     { label: 'Movies', href: '/browse' },
     { label: 'Series', href: '/browse?type=SERIES' },
-    ...(user ? [{ label: 'My Movies', href: '/my-movies' }] : []),
-    ...(user ? [{ label: 'Android App', href: '/download' }] : [])
+    { label: 'Live Matches', href: '/live' }
   ];
 
   return (
@@ -138,7 +136,7 @@ export default function TopNav() {
                   ? pathname === '/'
                   : link.href.startsWith('/browse')
                     ? pathname?.startsWith('/browse')
-                    : pathname === link.href;
+                    : pathname?.startsWith(link.href);
 
               return (
                 <Link key={link.label} className={`nav-link${isActive ? ' active' : ''}`} href={link.href}>
