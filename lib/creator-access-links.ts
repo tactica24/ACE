@@ -110,9 +110,9 @@ export function verifyCreatorAccessLinkToken(token: string, expectedScope?: Crea
   }
 }
 
-export function getCreatorAccessTokenFromRequest(req: NextRequest | Request) {
-  const cookieStore = typeof cookies === 'function' ? cookies() : null;
-  const cookieToken = cookieStore?.get(CREATOR_LINK_COOKIE_NAME)?.value?.trim();
+export async function getCreatorAccessTokenFromRequest(req: NextRequest | Request) {
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get(CREATOR_LINK_COOKIE_NAME)?.value?.trim();
   if (cookieToken) {
     return cookieToken;
   }
@@ -165,7 +165,7 @@ export async function resolveCreatorFromAccessToken(token: string, expectedScope
 }
 
 export async function getCreatorLinkAuthFromRequest(req: NextRequest | Request, expectedScope: CreatorAccessLinkScope) {
-  const token = getCreatorAccessTokenFromRequest(req);
+  const token = await getCreatorAccessTokenFromRequest(req);
   if (!token) {
     return null;
   }

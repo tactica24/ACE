@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { headers } from 'next/headers';
 import { DashboardShell, SideNav } from '@/components/DashboardShell';
 import CreatorWithdrawPanel from '@/components/CreatorWithdrawPanel';
@@ -55,8 +56,8 @@ export default async function StudioWalletPage() {
       actions={
         <div className="action-list">
           <a className="btn btn-primary" href="#withdrawals">Withdrawal requests</a>
-          <a className="btn btn-ghost" href="/studio/library">Release library</a>
-          <a className="btn btn-ghost" href="/studio/contact">Support</a>
+          <Link className="btn btn-ghost" href="/studio/library">Release library</Link>
+          <Link className="btn btn-ghost" href="/studio/contact">Support</Link>
         </div>
       }
     >

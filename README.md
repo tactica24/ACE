@@ -35,6 +35,21 @@ Ace Studio is a Next.js + Prisma platform for movie streaming, creator monetizat
    npm run dev
    ```
 
+## Docker Compose setup
+
+For a clean local boot without external live services, you can run the full stack with:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+This starts Postgres plus the Next.js app, sets `MOCK_BUNNY=1` for local-only media operations, and runs the Prisma push + seed bootstrap before the app opens on port 3000.
+
+## Mock service helpers
+
+The repo includes a lightweight mock helper at `scripts/mock-bunny.ts` for tests and local setup flows that need Bunny-like config without a live backend account.
+
 ## Useful commands
 
 ```bash

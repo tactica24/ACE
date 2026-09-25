@@ -431,12 +431,12 @@ export function clearAuthSession(response: NextResponse, req?: NextRequest | Req
   return response;
 }
 
-export function getAuthCookie() {
-  return cookies().get(AUTH_COOKIE_NAME)?.value;
+export async function getAuthCookie() {
+  return (await cookies()).get(AUTH_COOKIE_NAME)?.value;
 }
 
 export async function getCurrentUser() {
-  const sessionCookie = getAuthCookie();
+  const sessionCookie = await getAuthCookie();
   if (!sessionCookie) return null;
 
   try {
