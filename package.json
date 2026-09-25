@@ -41,7 +41,7 @@
     "@firebase/auth": "1.10.8",
     "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
-    "date-fns": "^3.6.0",
+    "date-fns": "^4.4.0",
     "es-abstract": "1.24.2",
     "fflate": "^0.8.0",
     "firebase": "^12.19.0",
