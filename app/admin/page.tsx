@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
   await requireAdminUser('/admin');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   // Core dashboard metrics - fetch only what's needed for the hero section

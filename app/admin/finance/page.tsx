@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminFinancePage() {
   await requireAdminUser('/admin/finance');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
   const showSettlementLedger = getRegionalMoneyDisplay(requestHeaders, 100).currency !== 'NGN';
 

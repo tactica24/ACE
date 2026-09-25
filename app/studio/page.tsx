@@ -11,7 +11,7 @@ import GenerateProducerCodeButton from '@/components/GenerateProducerCodeButton'
 
 export default async function StudioPage() {
   const user = await requireCreatorUser('/studio');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const [creatorProfile, videos] = await Promise.all([
     prisma.creatorProfile.findUnique({
       where: { userId: user.sub },

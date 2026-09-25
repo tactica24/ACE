@@ -8,7 +8,7 @@ import { getStudioNavItems } from '@/lib/studio-nav';
 
 export default async function StudioWalletPage() {
   const user = await requireCreatorUser('/studio/wallet');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const creatorProfile = await prisma.creatorProfile.findUnique({
     where: { userId: user.sub },
     select: {

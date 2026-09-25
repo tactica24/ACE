@@ -241,7 +241,7 @@ function GuestProfessionalHome({
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
 
    let videos: HomeVideo[] = [];
    try {

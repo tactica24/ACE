@@ -4,7 +4,7 @@ import PublicUploadForm from '@/components/PublicUploadForm';
 import { getSiteSettings } from '@/lib/site-settings';
 
 export default async function PublicUploadPage() {
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const siteSettings = await getSiteSettings();
 
   return (

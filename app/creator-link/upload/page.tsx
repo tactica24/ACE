@@ -16,7 +16,7 @@ export default async function CreatorUploadLinkPage({
 }: {
   searchParams?: { token?: string | string[] };
 }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   let token = cookieStore.get(COOKIE_NAME)?.value?.trim();
 
   const queryToken = firstValue(searchParams?.token)?.trim();

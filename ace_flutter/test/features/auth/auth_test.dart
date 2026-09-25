@@ -21,7 +21,7 @@ void main() {
 
     test('signIn signs in user with email and password', () async {
       const email = 'test@example.com';
-      const password = 'password123';
+      const password = 'test-fixture-not-a-secret';
       const idToken = 'mock_id_token';
 
       firebaseAuth.signInResult =
@@ -53,7 +53,7 @@ void main() {
     test('register creates account and syncs backend profile', () async {
       const name = 'Test User';
       const email = 'test@example.com';
-      const password = 'password123';
+      const password = 'test-fixture-not-a-secret';
       const idToken = 'mock_id_token';
 
       final user = StubUser(idToken: idToken);

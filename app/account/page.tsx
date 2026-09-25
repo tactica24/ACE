@@ -44,7 +44,7 @@ function toProgressPercent(progressSec: number, durationSec: number) {
 
 export default async function AccountPage() {
   const user = await getCurrentUser();
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
 
   if (!user) {
     return (

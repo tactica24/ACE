@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPaymentsPage() {
   await requireAdminUser('/admin/payments');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
 
   const [payoutRequests, topProducerBalances] = await Promise.all([
     prisma.creatorPayoutRequest.findMany({

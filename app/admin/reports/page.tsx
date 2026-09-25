@@ -47,7 +47,7 @@ function formatPercent(value: number) {
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
   await requireAdminUser('/admin/reports');
 
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   let loadError: string | null = null;

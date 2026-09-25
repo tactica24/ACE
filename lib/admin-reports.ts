@@ -1,8 +1,14 @@
 import { Prisma } from '@prisma/client';
+import { gzipSync, gunzipSync } from 'fflate';
+
 import { prisma } from './db';
 import { getFinanceConfig } from './finance';
+import {
+  getValidNextStatuses,
+  isValidStatusTransition,
+  VALID_STATUS_TRANSITIONS,
+} from './report-status';
 import { calculateProducerVideoInsights, formatSecondsLabel } from './studio-insights';
-import { gzipSync, gunzipSync } from 'fflate';
 
 function compressStatementData(data: unknown): string {
   const jsonString = JSON.stringify(data);
@@ -172,24 +178,7 @@ type ProducerReportOption = {
 const REPORT_STATEMENT_STORAGE_ERROR =
   'Report statement storage is not available yet on this environment. Apply the latest database migration and redeploy.';
 
-const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ['REVIEWED', 'SUPERSEDED'],
-  REVIEWED: ['APPROVED', 'DRAFT', 'SUPERSEDED'],
-  APPROVED: ['ISSUED', 'REVIEWED', 'SUPERSEDED'],
-  ISSUED: ['PAID', 'APPROVED', 'SUPERSEDED'],
-  PAID: ['SUPERSEDED'],
-  SUPERSEDED: []
-};
-
-export function getValidNextStatuses(status: string): string[] {
-  return VALID_STATUS_TRANSITIONS[status] ?? [];
-}
-
-export function isValidStatusTransition(currentStatus: string, nextStatus: string): boolean {
-  if (currentStatus === nextStatus) return true;
-  const validNext = VALID_STATUS_TRANSITIONS[currentStatus];
-  return validNext ? validNext.includes(nextStatus) : false;
-}
+export { VALID_STATUS_TRANSITIONS, getValidNextStatuses, isValidStatusTransition };
 
 function isReportStatementStorageUnavailableError(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {

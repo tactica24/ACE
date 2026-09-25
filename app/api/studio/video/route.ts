@@ -10,6 +10,7 @@ import { assertUploadedObjectExists } from '@/lib/uploaded-assets';
 import { v4 as uuid } from 'uuid';
 import { getCreatorLinkAuthFromRequest } from '@/lib/creator-access-links';
 import { normalizeDropboxSourceUrl } from '@/lib/master-source';
+import { logger } from '@/lib/logger';
 
 type PriceTierValue = 'SNACK' | 'STANDARD' | 'PREMIERE';
 type VideoStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -136,7 +137,7 @@ async function convertSubtitleTracksIfNeeded(tracks: Array<{ fileKey: string; la
         await putObject(newKey, vttBuffer, 'text/vtt');
         track.fileKey = newKey;
       } catch (error) {
-        console.error('Failed to convert subtitle', track.fileKey, error);
+        logger.error({ err: error, fileKey: track.fileKey }, 'subtitle conversion failed');
       }
     }
   }

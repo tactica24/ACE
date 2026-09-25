@@ -46,9 +46,13 @@ async function main() {
   const creatorEmail = 'creator@acestudio.ng';
   const userEmail = 'viewer@acestudio.ng';
 
-  const adminPlainPassword = 'admin123';
-  const creatorPlainPassword = 'creator123';
-  const userPlainPassword = 'user123';
+  const adminPlainPassword = process.env.ADMIN_SEED_PASSWORD?.trim();
+  const creatorPlainPassword = process.env.CREATOR_SEED_PASSWORD?.trim();
+  const userPlainPassword = process.env.USER_SEED_PASSWORD?.trim();
+
+  if (!adminPlainPassword || !creatorPlainPassword || !userPlainPassword) {
+    throw new Error('Missing required seed credentials. Set ADMIN_SEED_PASSWORD, CREATOR_SEED_PASSWORD, and USER_SEED_PASSWORD in the environment.');
+  }
 
   const adminPassword = await bcrypt.hash(adminPlainPassword, 10);
   const creatorPassword = await bcrypt.hash(creatorPlainPassword, 10);

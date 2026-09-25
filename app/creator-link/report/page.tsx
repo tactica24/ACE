@@ -36,7 +36,7 @@ export default async function CreatorReportLinkPage({
 }: {
   searchParams?: { token?: string | string[]; month?: string | string[] };
 }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   let token = cookieStore.get(COOKIE_NAME)?.value?.trim();
 
   const queryToken = firstValue(searchParams?.token)?.trim();
@@ -44,7 +44,7 @@ export default async function CreatorReportLinkPage({
     redirect(`/api/creator-link/auth?token=${encodeURIComponent(queryToken)}&redirect=/creator-link/report`);
   }
 
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   const rawMonth = firstValue(searchParams?.month)?.trim() ?? '';

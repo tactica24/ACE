@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminUserDetailPage({ params }: { params: { id: string } }) {
   const adminUser = await requireAdminUser(`/admin/users/${params.id}`);
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const formatMoney = (amountNaira: number) => getRegionalMoneyDisplay(requestHeaders, amountNaira).label;
 
   const user = await prisma.user.findUnique({

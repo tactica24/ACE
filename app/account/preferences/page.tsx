@@ -41,7 +41,7 @@ export default async function PreferencesPage() {
     );
   }
 
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const [wallet, supportTickets, unlockCount] = await Promise.all([
     prisma.wallet.findUnique({ where: { userId: user.sub } }),
     prisma.supportTicket.findMany({

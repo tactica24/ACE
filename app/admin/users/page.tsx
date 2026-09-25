@@ -21,7 +21,7 @@ type UserWithCreator = {
 
 export default async function UsersPage() {
   await requireAdminUser('/admin/users');
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
 
   let users: UserWithCreator[] = [];
   let openSupport = 0;

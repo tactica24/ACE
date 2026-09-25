@@ -56,7 +56,7 @@ export default async function LibraryPage() {
       }
     }
   });
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const pricingConfig = await getFinanceConfig();
 
   return (

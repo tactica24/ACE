@@ -58,7 +58,7 @@ export default async function WalletPage() {
       })
     : [];
   const videoTitleById = new Map<string, string>(unlockVideos.map((video) => [video.id, video.title] as const));
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
   const region = getRegionalCurrency(requestHeaders);
 
   return (

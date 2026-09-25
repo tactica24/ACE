@@ -141,7 +141,7 @@ export default async function VideoPage({
   }
 
   const pricingConfig = await getFinanceConfig();
-  const requestHeaders = headers();
+  const requestHeaders = await headers();
 
   if (requestedVideo.videoType !== 'SERIES' && !requestedVideo.seriesId) {
     const regionalPrice = getRegionalPriceForVideo(requestHeaders, requestedVideo, pricingConfig);
