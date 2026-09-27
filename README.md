@@ -6,49 +6,54 @@ Ace Studio is a Next.js + Prisma platform for movie streaming, creator monetizat
 
 - Node.js 20.11.1+
 - npm 10+
-- PostgreSQL 15+
+- PostgreSQL 15+ (or Docker)
 - Optional: Flutter 3.22+ for mobile-side validation
 
 ## Local setup
 
-1. Clone the repo and install dependencies:
-   ```bash
-   git clone <repo-url> ace-studio
-   cd ace-studio
-   npm install
-   ```
-2. Copy the environment template and fill in your local values:
-   ```bash
-   cp .env.example .env
-   ```
-3. Start PostgreSQL locally (or use Docker Compose):
-   ```bash
-   docker compose up -d db
-   ```
-4. Push the Prisma schema and seed local auth accounts:
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
-5. Start the app:
-   ```bash
-   npm run dev
-   ```
+```bash
+git clone https://github.com/tactica24/ACE.git ace-studio
+cd ace-studio
+npm install
+cp .env.example .env
+docker compose up -d db
+npm run db:push
+npm run db:seed
+npm run dev
+```
 
-## Docker Compose setup
+Open [http://localhost:3000](http://localhost:3000).
 
-For a clean local boot without external live services, you can run the full stack with:
+## Docker Compose (mock media, no live Bunny)
 
 ```bash
 cp .env.example .env
+# Ensure MOCK_BUNNY=1 is set in .env (default in compose)
 docker compose up --build
 ```
 
-This starts Postgres plus the Next.js app, sets `MOCK_BUNNY=1` for local-only media operations, and runs the Prisma push + seed bootstrap before the app opens on port 3000.
+This starts Postgres plus the Next.js app with `MOCK_BUNNY=1` for local-only media operations, runs Prisma push + seed, and serves on port 3000.
 
-## Mock service helpers
+## Testing
 
-The repo includes a lightweight mock helper at `scripts/mock-bunny.ts` for tests and local setup flows that need Bunny-like config without a live backend account.
+```bash
+# Unit specs (node:test via tsx)
+npm run test
+
+# Coverage gate (c8)
+npm run test:coverage
+```
+
+Specs live under `tests/*.test.ts` and cover report formatting, upload security, studio tiers, upload helpers, and moderation status helpers. Coverage is enforced in CI.
+
+Mock-only sequence (no external API keys required for unit tests):
+
+```bash
+cp .env.example .env
+export MOCK_BUNNY=1
+npm run test
+npm run test:coverage
+```
 
 ## Useful commands
 
@@ -64,14 +69,18 @@ npm run build
 
 ## Environment notes
 
-- The app expects Firebase web/admin credentials, Bunny Storage/Stream values, Stripe/Paystack keys, and a PostgreSQL `DATABASE_URL`.
-- The seed script reads `ADMIN_SEED_PASSWORD`, `CREATOR_SEED_PASSWORD`, and `USER_SEED_PASSWORD` from the environment; do not leave them unset.
-- The `.env.example` file includes the common keys used across the app and relay tooling.
+Copy `.env.example` → `.env`. Required groups:
 
-## Testing
+- `DATABASE_URL` / `DIRECT_URL` — Postgres
+- Firebase web + admin credentials
+- Bunny Storage/Stream (or `MOCK_BUNNY=1` for local mocks)
+- Stripe / Paystack keys for payments
+- Seed passwords: `ADMIN_SEED_PASSWORD`, `CREATOR_SEED_PASSWORD`, `USER_SEED_PASSWORD`
+- Optional: `ACE_SENTRY_DSN` for error tracking bridge
+- Optional smoke targets: `ACE_PRODUCTION_SMOKE_BASE_URL`, `TARGET_EMAIL`, `TARGET_ROLE`, `VERCEL_URL`
 
-This repository includes a small real spec suite in `tests/*.test.ts` for status transitions and metadata normalization, alongside the existing legacy verification script. Coverage is enforced with `c8` for the spec suite.
+See `CONTRIBUTING.md` for commit and PR conventions.
 
-## Deployment notes
+## Deployment
 
-The production build runs Prisma generation and Next.js build steps. For managed hosting, set the same environment variables exposed in `.env.example` in your deployment console before starting the app.
+Production build runs Prisma generate and Next.js build. Set the same variables from `.env.example` in your host console before starting the app.
