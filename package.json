@@ -49,7 +49,7 @@
     "firebase-admin": "^14.5.0",
     "hls.js": "^1.5.17",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.263.1",
+    "lucide-react": "^1.48.0",
     "next": "^15.5.26",
     "pino": "^9.6.0",
     "react": "18.2.0",
