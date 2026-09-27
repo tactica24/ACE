@@ -10,6 +10,28 @@ jobs:
   web-quality:
     name: Web lint + typecheck + test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ace
+          POSTGRES_PASSWORD: ace
+          POSTGRES_DB: ace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ace -d ace"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MOCK_BUNNY: "1"
+      DATABASE_URL: postgresql://ace:ace@localhost:5432/ace?schema=public
+      DIRECT_URL: postgresql://ace:ace@localhost:5432/ace?schema=public
+      ACE_STREAM_SIGNING_SECRET: test-signing-secret
+      ADMIN_SEED_PASSWORD: TestAdmin1!
+      CREATOR_SEED_PASSWORD: TestCreator1!
+      USER_SEED_PASSWORD: TestUser1!
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +47,12 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+      - name: Prisma generate
+        run: npm run prisma:generate
+
+      - name: Database push
+        run: npx prisma db push --skip-generate
 
       - name: Lint
         run: npm run lint
