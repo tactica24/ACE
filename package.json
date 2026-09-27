@@ -6,12 +6,12 @@
     "node": ">=20.11.1"
   },
   "scripts": {
-    "dev": "npm run db:push && next dev",
-    "postinstall": "node scripts/run-prisma.mjs generate",
-    "build": "npm run deploy:prepare:production && npm run prisma:generate && next build",
+    "dev": "node scripts/ensure-component-mains.mjs && npm run db:push && next dev",
+    "postinstall": "node scripts/ensure-component-mains.mjs && node scripts/run-prisma.mjs generate",
+    "build": "node scripts/ensure-component-mains.mjs && npm run deploy:prepare:production && npm run prisma:generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/ensure-component-mains.mjs && tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts && tsx tests/run-tests.ts",
     "test:coverage": "c8 --check-coverage --lines 50 --functions 50 --branches 40 --statements 50 tsx --test tests/**/*.test.ts",
     "test:legacy": "tsx tests/run-tests.ts",
