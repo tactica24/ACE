@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { captureException, logger } from '../lib/logger';
 
-test('logger exposes structured methods and child logger', () => {
+test('logger is a structured pino instance', () => {
   assert.equal(typeof logger.info, 'function');
   assert.equal(typeof logger.warn, 'function');
   assert.equal(typeof logger.error, 'function');
